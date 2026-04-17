@@ -59,7 +59,7 @@ Root ProjX is a community giving platform connecting diaspora supporters to veri
 
 - [x] Step 1 — Project scaffold complete
 - [x] Step 2 — Database schema pushed, all 8 tables live, seed data verified
-- [ ] Step 3 — API server routes
+- [x] Step 3 — API server routes — all 7 route groups live and tested
 - [ ] Step 4 — Mobile app
 - [ ] Step 5 — Web app
 - [ ] Step 6 — Stripe donation flow
