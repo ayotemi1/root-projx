@@ -10,6 +10,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@stripe/stripe-react-native": "^0.64.0",
     "firebase": "^11.0.0"
   },
   "devDependencies": {

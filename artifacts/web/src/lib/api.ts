@@ -62,6 +62,19 @@ export interface Resource {
   createdAt: string;
 }
 
+export interface Donation {
+  _id: string;
+  userId: string;
+  orgId: string;
+  orgName: string;
+  amountGbp: number;
+  currency: string;
+  type: "one_time" | "recurring";
+  note: string;
+  status: string;
+  createdAt: string;
+}
+
 // ── Core fetch helper ─────────────────────────────────────────────────────────
 
 async function req<T>(
@@ -80,9 +93,7 @@ async function req<T>(
     try {
       const body = (await res.json()) as { error?: string };
       if (body.error) msg = body.error;
-    } catch {
-      // ignore
-    }
+    } catch { /* ignore */ }
     throw new Error(msg);
   }
   return res.json() as Promise<T>;
@@ -113,12 +124,9 @@ export const logout = (token: string) =>
 
 export const getMe = (token: string) => req<ApiUser>("/auth/me", {}, token);
 
-// ── Organisations ──────────────────────────────────────────────────────────────
+// ── Organisations ─────────────────────────────────────────────────────────────
 
-export const getOrganisations = (params?: {
-  category?: string;
-  country?: string;
-}) => {
+export const getOrganisations = (params?: { category?: string; country?: string }) => {
   const qs = params
     ? "?" +
       Object.entries(params)
@@ -193,5 +201,27 @@ export const updateProfile = (
 
 // ── Donations ─────────────────────────────────────────────────────────────────
 
-export const getMyDonations = (token: string) =>
-  req<unknown[]>("/donations/my", {}, token);
+export const getStripePublishableKey = () =>
+  req<{ publishableKey: string }>("/donations/publishable-key");
+
+export const createPaymentIntent = (
+  data: { orgId: string; amountGbp: number; note?: string },
+  token: string,
+) =>
+  req<{ clientSecret: string; paymentIntentId: string; amountGbp: number; feePence: number }>(
+    "/donations/payment-intent",
+    { method: "POST", body: JSON.stringify(data) },
+    token,
+  );
+
+export const createSubscription = (
+  data: { orgId: string; amountGbp: number; note?: string },
+  token: string,
+) =>
+  req<{ subscriptionId: string; clientSecret: string; amountGbp: number; feePence: number }>(
+    "/donations/subscription",
+    { method: "POST", body: JSON.stringify(data) },
+    token,
+  );
+
+export const getMyDonations = (token: string) => req<Donation[]>("/donations/my", {}, token);

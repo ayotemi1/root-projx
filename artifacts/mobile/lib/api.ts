@@ -221,5 +221,41 @@ export const updateProfile = (
 
 // ── Donations ─────────────────────────────────────────────────────────────────
 
+export interface Donation {
+  _id: string;
+  userId: string;
+  orgId: string;
+  orgName: string;
+  amountGbp: number;
+  currency: string;
+  type: "one_time" | "recurring";
+  note: string;
+  status: string;
+  createdAt: string;
+}
+
+export const getStripePublishableKey = () =>
+  req<{ publishableKey: string }>("/donations/publishable-key");
+
+export const createPaymentIntent = (
+  data: { orgId: string; amountGbp: number; note?: string },
+  token: string,
+) =>
+  req<{ clientSecret: string; paymentIntentId: string; amountGbp: number; feePence: number }>(
+    "/donations/payment-intent",
+    { method: "POST", body: JSON.stringify(data) },
+    token,
+  );
+
+export const createSubscription = (
+  data: { orgId: string; amountGbp: number; note?: string },
+  token: string,
+) =>
+  req<{ subscriptionId: string; clientSecret: string; amountGbp: number; feePence: number }>(
+    "/donations/subscription",
+    { method: "POST", body: JSON.stringify(data) },
+    token,
+  );
+
 export const getMyDonations = (token: string) =>
-  req<unknown[]>("/donations/my", {}, token);
+  req<Donation[]>("/donations/my", {}, token);
