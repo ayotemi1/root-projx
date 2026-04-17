@@ -1,15 +1,20 @@
 /**
- * Root ProjX — exact colour system (do not deviate from these values)
+ * Root ProjX — exact colour system (do not deviate)
  *
- * Deep red background, gold accent, clean whites and greys.
- * This is the perfected colour system — match it on every screen, every component.
+ * --red:         #B50000
+ * --red-deep:    #7A0000
+ * --red-mid:     #9E0000
+ * --gold:        #F5B800
+ * --white:       #FFFFFF
+ * --white-faint: rgba(255,255,255,0.12)
+ * --gold-dim:    rgba(245,184,0,0.55)
  */
 
 const colors = {
   light: {
     // Legacy aliases
     text: "#1A1A1A",
-    tint: "#C9A84C",
+    tint: "#F5B800",
 
     // Core surfaces
     background: "#FFFFFF",
@@ -19,13 +24,26 @@ const colors = {
     card: "#F9F6F0",
     cardForeground: "#1A1A1A",
 
-    // Primary action — Deep Red (nav bars, primary buttons)
-    primary: "#8B1A1A",
+    // Primary action — Red (#B50000)
+    primary: "#B50000",
     primaryForeground: "#FFFFFF",
 
-    // Gold accent — active tabs, highlights, badges, CTA secondary
-    accent: "#C9A84C",
+    // Deep red — nav bar background, headers
+    navBackground: "#7A0000",
+    navForeground: "#FFFFFF",
+
+    // Mid red — hover / pressed states
+    redMid: "#9E0000",
+
+    // Gold accent — active tabs, highlights, CTAs
+    accent: "#F5B800",
     accentForeground: "#1A1A1A",
+
+    // Dimmed gold — subtle highlights, backgrounds
+    goldDim: "rgba(245,184,0,0.55)",
+
+    // White faint — overlay text on dark surfaces
+    whiteFaint: "rgba(255,255,255,0.12)",
 
     // Secondary surfaces
     secondary: "#F2EDE4",
@@ -36,7 +54,7 @@ const colors = {
     mutedForeground: "#888888",
 
     // Destructive actions
-    destructive: "#C0392B",
+    destructive: "#B50000",
     destructiveForeground: "#FFFFFF",
 
     // Borders and inputs
@@ -48,16 +66,12 @@ const colors = {
     successForeground: "#FFFFFF",
 
     // Tab bar
-    tabBarBackground: "#8B1A1A",
-    tabBarActive: "#C9A84C",
+    tabBarBackground: "#7A0000",
+    tabBarActive: "#F5B800",
     tabBarInactive: "#FFFFFF",
 
-    // Nav
-    navBackground: "#8B1A1A",
-    navForeground: "#FFFFFF",
-
     // Goal tracker
-    goalFill: "#C9A84C",
+    goalFill: "#F5B800",
     goalTrack: "#E0D8CC",
 
     // Verified badge
@@ -79,7 +93,6 @@ const colors = {
     shadow: "rgba(0,0,0,0.08)",
   },
 
-  // No separate dark mode — app uses light only
   radius: 10,
 };
 

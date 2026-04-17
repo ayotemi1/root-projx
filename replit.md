@@ -32,16 +32,17 @@ Root ProjX is a community giving platform connecting diaspora supporters to veri
 
 ## Colour System (CRITICAL — do not deviate)
 
-- **Primary (Deep Red)**: `#8B1A1A` — nav bar, primary buttons
-- **Accent (Gold)**: `#C9A84C` — active tab, highlights, CTAs
-- **Background**: `#FFFFFF`
+- **--red**: `#B50000` — primary buttons, destructive
+- **--red-deep**: `#7A0000` — nav bar background, tab bar background
+- **--red-mid**: `#9E0000` — hover/pressed states
+- **--gold**: `#F5B800` — active tab, highlights, CTAs, goal fill
+- **--white**: `#FFFFFF` — backgrounds, inactive tab
+- **--white-faint**: `rgba(255,255,255,0.12)` — overlay text on dark surfaces
+- **--gold-dim**: `rgba(245,184,0,0.55)` — subtle highlights, backgrounds
 - **Card surface**: `#F9F6F0`
 - **Secondary surface**: `#F2EDE4`
 - **Border**: `#E0D8CC`
 - **Muted text**: `#888888`
-- **Tab bar background**: `#8B1A1A` (deep red)
-- **Active tab**: `#C9A84C` (gold)
-- **Inactive tab**: `#FFFFFF`
 
 ## Database Schema (8 tables)
 
@@ -57,7 +58,7 @@ Root ProjX is a community giving platform connecting diaspora supporters to veri
 ## Build Progress
 
 - [x] Step 1 — Project scaffold complete
-- [ ] Step 2 — Database schema push + seed data
+- [x] Step 2 — Database schema pushed, all 8 tables live, seed data verified
 - [ ] Step 3 — API server routes
 - [ ] Step 4 — Mobile app
 - [ ] Step 5 — Web app
