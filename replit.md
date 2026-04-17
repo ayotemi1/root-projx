@@ -11,13 +11,11 @@ Root ProjX is a community giving platform connecting diaspora supporters to veri
 - **Package manager**: pnpm
 - **TypeScript version**: 5.9
 - **API framework**: Express 5
-- **Database**: PostgreSQL + Drizzle ORM
-- **Validation**: Zod (`zod/v4`), `drizzle-zod`
-- **API codegen**: Orval (from OpenAPI spec)
+- **Database**: Firebase Firestore (REST API, no Admin SDK — Replit compatible)
+- **Auth**: Firebase Auth REST API (token stored in AsyncStorage on mobile)
 - **Build**: esbuild (CJS bundle)
-- **Auth**: bcryptjs (password hashing) + jsonwebtoken (JWT, 30-day expiry)
-- **Mobile**: Expo (React Native), Expo Router
-- **Web**: React + Vite (to be built in Step 5)
+- **Mobile**: Expo (React Native), Expo Router, TanStack Query
+- **Web**: React + Vite (Step 8)
 
 ## Packages
 
@@ -66,7 +64,7 @@ Root ProjX is a community giving platform connecting diaspora supporters to veri
 - [x] Firebase Step 4 — Firebase Auth complete. register/login/logout/me all working. Uses Firebase Auth REST API + Firestore REST API with user's ID token. EXPO_PUBLIC_ vars passed through mobile dev script.
 - [x] Firebase Step 5 — Firestore seed complete: 6 orgs, 10 updates, 4 reviews, 3 resources, 3 user stubs. Seed script: artifacts/api-server/scripts/seed.mjs (no build needed). Server token cached for public reads.
 - [x] Firebase Step 6 — All 6 route groups live and tested (18/18 passing): organisations (CRUD), feed (public + personalised + org + post), follows (follow/unfollow/my), help (directory + reviews + contact), profile (get/patch), donations (stub ready for Stripe Step 9). JS-side sorting used to avoid Firestore composite index requirements.
-- [ ] Firebase Step 7 — Connect mobile screens to Firestore
+- [x] Firebase Step 7 — Mobile app fully connected to live API. 14 files: lib/api.ts (typed client), context/AuthContext.tsx (AsyncStorage persistence), root layout with auth redirect, login/register screens, 4 tabs (Discover with search+category chips, Feed with All/For You toggle, Get Help with resource directory, Account with edit profile + logout), org profile detail ([id].tsx with follow/donate/updates/reviews), donate screen with preset amounts, org dashboard with post-update form.
 - [ ] Firebase Step 8 — Connect web pages to Firestore
 - [ ] Firebase Step 9 — Stripe donation flow
 - [ ] Firebase Step 10 — Brevo newsletter trigger
