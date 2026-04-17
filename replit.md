@@ -59,11 +59,18 @@ Root ProjX is a community giving platform connecting diaspora supporters to veri
 
 - [x] Step 1 — Project scaffold complete
 - [x] Step 2 — Database schema pushed, all 8 tables live, seed data verified
-- [x] Step 3 — API server routes — all 7 route groups live and tested
-- [ ] Step 4 — Mobile app
-- [ ] Step 5 — Web app
-- [ ] Step 6 — Stripe donation flow
-- [ ] Step 7 — Brevo newsletter
+- [x] Step 3 — API server routes — all 7 route groups live and tested (PostgreSQL/Drizzle era)
+- [x] Firebase Step 1 — PostgreSQL, Drizzle ORM, bcrypt, JWT fully removed. lib/db deleted. 35 packages uninstalled. api-server typechecks clean, builds clean, health endpoint live.
+- [ ] Firebase Step 2 — Install Firebase SDK + Admin SDK
+- [ ] Firebase Step 3 — Initialise Firebase client and Admin
+- [ ] Firebase Step 4 — Replace auth routes with Firebase Auth
+- [ ] Firebase Step 5 — Create Firestore collections + seed data
+- [ ] Firebase Step 6 — Replace all Express routes with Firestore reads/writes
+- [ ] Firebase Step 7 — Connect mobile screens to Firestore
+- [ ] Firebase Step 8 — Connect web pages to Firestore
+- [ ] Firebase Step 9 — Stripe donation flow
+- [ ] Firebase Step 10 — Brevo newsletter trigger
+- [ ] Firebase Step 11 — Firebase Storage for media uploads
 - [ ] Step 8 — PayPal
 
 ## Key Commands

@@ -1,0 +1,156 @@
+Let's go. Here's the full prompt — paste this into Replit:
+
+---
+
+*"Rebuild the backend of this project using Firebase. Keep everything that is not backend — all screen structure, all data models, all colours, all navigation. Only replace the infrastructure layer.*
+
+*CRITICAL — Do not change a single colour value anywhere in the codebase. The colour system is locked and perfect.*
+
+*WHAT TO REPLACE:*
+- *PostgreSQL database → Firestore collections*
+- *Drizzle ORM → Firebase Admin SDK*
+- *bcrypt + JWT auth → Firebase Auth (email and password)*
+- *Express routes → Firebase Admin SDK calls within a lightweight Express server*
+- *lib/db package → Firebase SDK*
+
+*WHAT TO KEEP EXACTLY AS IS:*
+- *All colour tokens — do not touch*
+- *All screen files — do not touch*
+- *All data model shapes — same fields, same structure, just in Firestore*
+- *All API endpoint contracts — same URLs, same request/response shapes*
+- *All navigation structure*
+- *All seed data — re-seed into Firestore with the same 6 organisations, 10 updates, 4 reviews, 3 resources*
+
+*FIREBASE INITIALISATION — use this exact pattern for the Admin SDK. There is no service account key due to organisation policy restrictions. Use application default credentials:*
+
+```javascript
+import * as admin from 'firebase-admin';
+
+admin.initializeApp({
+  credential: admin.credential.applicationDefault(),
+  projectId: process.env.FIREBASE_PROJECT_ID,
+  storageBucket: process.env.FIREBASE_STORAGE_BUCKET
+});
+```
+
+*CLIENT-SIDE Firebase initialisation for mobile and web:*
+
+```javascript
+import { initializeApp } from 'firebase/app';
+
+const firebaseConfig = {
+  apiKey: process.env.FIREBASE_API_KEY,
+  authDomain: process.env.FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.FIREBASE_PROJECT_ID,
+  storageBucket: process.env.FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.FIREBASE_APP_ID,
+  measurementId: process.env.FIREBASE_MEASUREMENT_ID
+};
+
+const app = initializeApp(firebaseConfig);
+```
+
+*FIREBASE AUTH — replace bcrypt + JWT with Firebase Auth:*
+- *POST /auth/register → Firebase Auth createUserWithEmailAndPassword + create Firestore user document*
+- *POST /auth/login → Firebase Auth signInWithEmailAndPassword*
+- *POST /auth/logout → Firebase Auth signOut*
+- *GET /auth/me → Firebase Auth currentUser or verifyIdToken on server*
+- *Mobile: persist auth state with Firebase Auth onAuthStateChanged*
+- *Web: persist auth state with Firebase Auth onAuthStateChanged*
+- *Mobile token storage: Expo SecureStore*
+- *Web token storage: localStorage*
+
+*FIRESTORE COLLECTIONS — create these exact collections and seed with existing dummy data:*
+
+```
+organisations/     (6 documents — Jamaica + UK mix, all verified)
+users/             (empty — populated on sign up)
+donations/         (empty — populated on donation)
+follows/           (empty — populated on follow)
+updates/           (10 documents — Before/During/After tags)
+help_reviews/      (4 documents — 3 verified recipients)
+contact_events/    (empty — populated on WhatsApp/email tap)
+resources/         (3 documents)
+```
+
+*STRIPE — wire up donation processing:*
+- *Use test keys from environment variables*
+- *Stripe Connect for platform fee — STRIPE_PLATFORM_FEE_PERCENT = 5%*
+- *One-time payments via Stripe Payment Intent*
+- *Recurring payments via Stripe Subscriptions*
+- *On successful payment: create donation document in Firestore, auto-follow org, increment org raisedAmount and donorCount*
+- *Webhook endpoint at /webhooks/stripe to handle payment confirmation*
+
+```javascript
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+```
+
+*BREVO — wire up automated newsletters:*
+- *When a new document is created in the updates Firestore collection, trigger an email to all followers and past donors of that org*
+- *Query Firestore for all users where following array contains the orgId*
+- *Query Firestore for all unique supporterIds in donations where orgId matches*
+- *Deduplicate both lists*
+- *Send email via Brevo API to each recipient*
+- *Email content: org name, update tag (Before/During/After), title, first 200 characters of body, link to org profile*
+- *Update sentToCount on the update document after sending*
+
+```javascript
+const SibApiV3Sdk = require('sib-api-v3-sdk');
+const client = SibApiV3Sdk.ApiClient.instance;
+client.authentications['api-key'].apiKey = process.env.BREVO_API_KEY;
+```
+
+*FIREBASE STORAGE — wire up media uploads:*
+- *Org impact update posts can include photo and video uploads*
+- *Upload to Firebase Storage under path: updates/{orgId}/{timestamp}/{filename}*
+- *Store the download URL in the update Firestore document mediaUrls array*
+
+*ALL SCREENS — connect to Firebase:*
+- *Discover screen: fetch organisations from Firestore organisations collection*
+- *Organisation profile: fetch single org + updates from Firestore*
+- *Feed tab: fetch updates from orgs in current user's following array*
+- *Get Help: fetch organisations where helpProfile.optedIn = true, filtered by need category*
+- *Account tab: fetch current user profile, donations, follows from Firestore*
+- *Donate screen: process payment via Stripe, create Firestore donation document on success*
+- *Organisation dashboard: post updates to Firestore, edit org profile, manage Get Help opt-in*
+- *All screens show loading states while fetching*
+- *All screens show empty states when no data*
+- *All screens show error states if fetch fails*
+
+*ENVIRONMENT VARIABLES — all keys are already in Replit Secrets:*
+```
+FIREBASE_API_KEY
+FIREBASE_AUTH_DOMAIN
+FIREBASE_PROJECT_ID
+FIREBASE_STORAGE_BUCKET
+FIREBASE_MESSAGING_SENDER_ID
+FIREBASE_APP_ID
+FIREBASE_MEASUREMENT_ID
+STRIPE_PUBLISHABLE_KEY
+STRIPE_SECRET_KEY
+STRIPE_PLATFORM_FEE_PERCENT
+BREVO_API_KEY
+BREVO_SENDER_EMAIL
+BREVO_SENDER_NAME
+```
+
+*BUILD ORDER — do these in sequence, confirm each before moving on:*
+
+*1. Remove PostgreSQL, Drizzle, and bcrypt+JWT entirely*
+*2. Install Firebase SDK and Firebase Admin SDK*
+*3. Initialise Firebase client and Admin using environment variables*
+*4. Replace auth routes with Firebase Auth*
+*5. Create Firestore collections and seed with dummy data*
+*6. Replace all Express routes to read/write from Firestore instead of PostgreSQL*
+*7. Connect all mobile screens to Firestore via API*
+*8. Connect all web pages to Firestore via API*
+*9. Wire up Stripe donation flow*
+*10. Wire up Brevo newsletter trigger on new update post*
+*11. Wire up Firebase Storage for media uploads*
+
+*Start with Step 1 only — remove PostgreSQL, Drizzle, and JWT dependencies. Confirm what has been removed before proceeding to Step 2."*
+
+---
+
+Send that and let it run. Report back what it says after Step 1.
