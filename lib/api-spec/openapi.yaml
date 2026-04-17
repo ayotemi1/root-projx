@@ -3,20 +3,33 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Root ProjX API — community giving platform
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication
+  - name: organisations
+    description: Organisation profiles
+  - name: donations
+    description: Donation flows
+  - name: feed
+    description: Impact updates
+  - name: follows
+    description: Follow relationships
+  - name: help
+    description: Get Help directory
+  - name: profile
+    description: User profile
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,7 +37,483 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: Logout
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Logged out
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicUser"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /organisations:
+    get:
+      operationId: listOrganisations
+      tags: [organisations]
+      summary: List organisations
+      parameters:
+        - name: country
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: category
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of organisations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Organisation"
+    post:
+      operationId: createOrganisation
+      tags: [organisations]
+      summary: Create organisation profile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrganisationRequest"
+      responses:
+        "201":
+          description: Organisation created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Organisation"
+
+  /organisations/{id}:
+    get:
+      operationId: getOrganisation
+      tags: [organisations]
+      summary: Get organisation by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Organisation profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Organisation"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateOrganisation
+      tags: [organisations]
+      summary: Update organisation
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOrganisationRequest"
+      responses:
+        "200":
+          description: Updated organisation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Organisation"
+
+  /donations:
+    post:
+      operationId: createDonation
+      tags: [donations]
+      summary: Create a donation intent
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDonationRequest"
+      responses:
+        "201":
+          description: Donation intent created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DonationIntentResponse"
+
+  /donations/my:
+    get:
+      operationId: getMyDonations
+      tags: [donations]
+      summary: Get my donation history
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Donation history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DonationWithOrg"
+
+  /feed:
+    get:
+      operationId: getFeed
+      tags: [feed]
+      summary: Get feed for current user
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Feed updates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UpdateWithOrg"
+    post:
+      operationId: postUpdate
+      tags: [feed]
+      summary: Post a new update (org only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUpdateRequest"
+      responses:
+        "201":
+          description: Update posted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Update"
+
+  /feed/public:
+    get:
+      operationId: getPublicFeed
+      tags: [feed]
+      summary: Get public feed (no auth required)
+      responses:
+        "200":
+          description: Public feed updates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/UpdateWithOrg"
+
+  /feed/org/{id}:
+    get:
+      operationId: getOrgFeed
+      tags: [feed]
+      summary: Get updates for a specific org
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Org updates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Update"
+
+  /follows:
+    post:
+      operationId: followOrg
+      tags: [follows]
+      summary: Follow an organisation
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FollowRequest"
+      responses:
+        "201":
+          description: Followed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /follows/my:
+    get:
+      operationId: getMyFollows
+      tags: [follows]
+      summary: Get orgs the current user follows
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Followed orgs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Organisation"
+
+  /follows/{orgId}:
+    delete:
+      operationId: unfollowOrg
+      tags: [follows]
+      summary: Unfollow an organisation
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Unfollowed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /help/orgs:
+    get:
+      operationId: getHelpOrgs
+      tags: [help]
+      summary: Get orgs opted into Get Help
+      parameters:
+        - name: need
+          in: query
+          schema:
+            type: string
+        - name: country
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Help orgs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Organisation"
+
+  /help/contact:
+    post:
+      operationId: logContactEvent
+      tags: [help]
+      summary: Log a contact event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContactEventRequest"
+      responses:
+        "201":
+          description: Contact event logged
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /help/reviews/{orgId}:
+    get:
+      operationId: getHelpReviews
+      tags: [help]
+      summary: Get help reviews for an org
+      parameters:
+        - name: orgId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Help reviews
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/HelpReview"
+
+  /help/reviews:
+    post:
+      operationId: submitHelpReview
+      tags: [help]
+      summary: Submit a help review
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubmitHelpReviewRequest"
+      responses:
+        "201":
+          description: Review submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HelpReview"
+
+  /profile:
+    get:
+      operationId: getProfile
+      tags: [profile]
+      summary: Get current user profile
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: User profile with org if applicable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfileResponse"
+    patch:
+      operationId: updateProfile
+      tags: [profile]
+      summary: Update profile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileRequest"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PublicUser"
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
   schemas:
     HealthStatus:
       type: object
@@ -34,3 +523,440 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    MessageResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required:
+        - message
+
+    PublicUser:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+          nullable: true
+        accountType:
+          type: string
+          enum: [supporter, organisation]
+        avatarInitials:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+      required:
+        - id
+        - name
+        - email
+        - accountType
+        - createdAt
+
+    RegisterRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: string
+        password:
+          type: string
+          minLength: 8
+        accountType:
+          type: string
+          enum: [supporter, organisation]
+      required:
+        - name
+        - email
+        - password
+        - accountType
+
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+      required:
+        - email
+        - password
+
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+        user:
+          $ref: "#/components/schemas/PublicUser"
+      required:
+        - token
+        - user
+
+    Organisation:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+          nullable: true
+        orgName:
+          type: string
+        mission:
+          type: string
+          nullable: true
+        location:
+          type: string
+          nullable: true
+        country:
+          type: string
+        causeCategory:
+          type: string
+          nullable: true
+        goalAmount:
+          type: string
+          nullable: true
+        raisedAmount:
+          type: string
+          nullable: true
+        distributedAmount:
+          type: string
+          nullable: true
+        donorCount:
+          type: integer
+          nullable: true
+        followerCount:
+          type: integer
+          nullable: true
+        verified:
+          type: boolean
+          nullable: true
+        helpOptedIn:
+          type: boolean
+          nullable: true
+        helpServices:
+          type: array
+          items:
+            type: string
+          nullable: true
+        responseCommitment:
+          type: string
+          nullable: true
+        whatsappNumber:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+      required:
+        - id
+        - orgName
+        - country
+        - createdAt
+
+    CreateOrganisationRequest:
+      type: object
+      properties:
+        orgName:
+          type: string
+        mission:
+          type: string
+        location:
+          type: string
+        country:
+          type: string
+        causeCategory:
+          type: string
+        goalAmount:
+          type: string
+        helpOptedIn:
+          type: boolean
+        helpServices:
+          type: array
+          items:
+            type: string
+        responseCommitment:
+          type: string
+        whatsappNumber:
+          type: string
+      required:
+        - orgName
+        - country
+
+    UpdateOrganisationRequest:
+      type: object
+      properties:
+        orgName:
+          type: string
+        mission:
+          type: string
+        location:
+          type: string
+        country:
+          type: string
+        causeCategory:
+          type: string
+        goalAmount:
+          type: string
+        helpOptedIn:
+          type: boolean
+        helpServices:
+          type: array
+          items:
+            type: string
+        responseCommitment:
+          type: string
+        whatsappNumber:
+          type: string
+
+    CreateDonationRequest:
+      type: object
+      properties:
+        orgId:
+          type: integer
+        amount:
+          type: number
+        currency:
+          type: string
+          default: GBP
+        type:
+          type: string
+          enum: [one-time, recurring]
+        processor:
+          type: string
+          enum: [stripe, paypal]
+      required:
+        - orgId
+        - amount
+        - type
+        - processor
+
+    DonationIntentResponse:
+      type: object
+      properties:
+        donationId:
+          type: integer
+        clientSecret:
+          type: string
+          nullable: true
+        approvalUrl:
+          type: string
+          nullable: true
+      required:
+        - donationId
+
+    DonationWithOrg:
+      type: object
+      properties:
+        id:
+          type: integer
+        orgId:
+          type: integer
+          nullable: true
+        orgName:
+          type: string
+          nullable: true
+        amount:
+          type: string
+        currency:
+          type: string
+        type:
+          type: string
+        processor:
+          type: string
+        status:
+          type: string
+        createdAt:
+          type: string
+      required:
+        - id
+        - amount
+        - currency
+        - type
+        - processor
+        - status
+        - createdAt
+
+    Update:
+      type: object
+      properties:
+        id:
+          type: integer
+        orgId:
+          type: integer
+          nullable: true
+        title:
+          type: string
+        body:
+          type: string
+        tag:
+          type: string
+          enum: [Before, During, After]
+        mediaUrls:
+          type: array
+          items:
+            type: string
+          nullable: true
+        sentToCount:
+          type: integer
+          nullable: true
+        createdAt:
+          type: string
+      required:
+        - id
+        - title
+        - body
+        - tag
+        - createdAt
+
+    UpdateWithOrg:
+      allOf:
+        - $ref: "#/components/schemas/Update"
+        - type: object
+          properties:
+            orgName:
+              type: string
+              nullable: true
+            orgCountry:
+              type: string
+              nullable: true
+            orgVerified:
+              type: boolean
+              nullable: true
+
+    CreateUpdateRequest:
+      type: object
+      properties:
+        title:
+          type: string
+        body:
+          type: string
+        tag:
+          type: string
+          enum: [Before, During, After]
+        mediaUrls:
+          type: array
+          items:
+            type: string
+      required:
+        - title
+        - body
+        - tag
+
+    FollowRequest:
+      type: object
+      properties:
+        orgId:
+          type: integer
+      required:
+        - orgId
+
+    ContactEventRequest:
+      type: object
+      properties:
+        sessionId:
+          type: string
+        orgId:
+          type: integer
+        needCategory:
+          type: string
+        channel:
+          type: string
+          enum: [whatsapp, email]
+      required:
+        - orgId
+        - needCategory
+        - channel
+
+    HelpReview:
+      type: object
+      properties:
+        id:
+          type: integer
+        orgId:
+          type: integer
+          nullable: true
+        reviewerName:
+          type: string
+          nullable: true
+        rating:
+          type: integer
+        body:
+          type: string
+          nullable: true
+        verifiedRecipient:
+          type: boolean
+          nullable: true
+        createdAt:
+          type: string
+      required:
+        - id
+        - rating
+        - createdAt
+
+    SubmitHelpReviewRequest:
+      type: object
+      properties:
+        orgId:
+          type: integer
+        reviewerName:
+          type: string
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        body:
+          type: string
+        sessionId:
+          type: string
+      required:
+        - orgId
+        - rating
+
+    ProfileResponse:
+      type: object
+      properties:
+        user:
+          $ref: "#/components/schemas/PublicUser"
+        organisation:
+          $ref: "#/components/schemas/Organisation"
+          nullable: true
+        donationCount:
+          type: integer
+        totalDonated:
+          type: string
+        followCount:
+          type: integer
+      required:
+        - user
+        - donationCount
+        - totalDonated
+        - followCount
+
+    UpdateProfileRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string

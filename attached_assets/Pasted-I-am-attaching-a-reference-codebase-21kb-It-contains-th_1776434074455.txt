@@ -1,0 +1,168 @@
+I am attaching a reference codebase (21kb). It contains the colour system, data models, database schema, and screen structure from a previous build. Use it as your blueprint. Do not copy it directly — build a new clean project from scratch using it as reference.
+The app is called Root ProjX. It is a community giving platform connecting diaspora supporters to verified grassroots organisations in Jamaica, the UK, and beyond.
+CRITICAL — Colour system: The colors.ts file in the reference is the exact colour system. Match it perfectly on every single screen, every component, every button. Do not deviate from it at all. This has already been perfected.
+CRITICAL — Data models: The data.ts and schema files define exactly what the data looks like. Use these as the foundation for both the database and the API.
+
+Architecture — build exactly this:
+Monorepo with four packages:
+
+mobile — Expo React Native, iOS and Android
+web — React, fully responsive, desktop and mobile browser
+api-server — Express, TypeScript
+db — Drizzle ORM, PostgreSQL via Replit database
+
+
+Database — PostgreSQL + Drizzle:
+Use the schema files from the reference as the exact table structure. Tables needed:
+
+users — id, name, email, phone, password_hash, account_type (supporter/organisation), avatar_initials, created_at, token
+organisations — id, user_id, org_name, mission, location, country, cause_category, goal_amount, raised_amount, distributed_amount, donor_count, follower_count, verified, help_opted_in, help_services, response_commitment, whatsapp_number
+donations — id, supporter_id, org_id, amount, currency, type (one-time/recurring), processor (stripe/paypal), platform_fee, status, created_at
+follows — id, supporter_id, org_id, created_at
+updates — id, org_id, title, body, tag (Before/During/After), media_urls, sent_to_count, created_at
+help_reviews — id, org_id, reviewer_session, reviewer_name, rating, body, verified_recipient, flagged, created_at
+contact_events — id, session_id, org_id, need_category, channel (whatsapp/email), review_left, created_at
+resources — id, org_id, title, body, category, created_at
+
+Seed the database with realistic dummy data on first run — at least 6 organisations (mix of Jamaica and UK), 10 feed updates, 4 help reviews, 3 resources. Use the dummy data from data.ts in the reference as the seed content.
+
+API Server — Express + TypeScript:
+All routes properly connected to the database. No hardcoded data anywhere.
+Auth routes:
+
+POST /auth/register — name, email, phone, password, account_type. Hash password with bcrypt. Return JWT.
+POST /auth/login — email, password. Verify bcrypt hash. Return JWT.
+POST /auth/logout — invalidate token
+GET /auth/me — return current user from JWT
+
+Organisation routes:
+
+GET /organisations — list all, supports ?country= and ?search= filters
+GET /organisations/:id — single org with full profile
+POST /organisations — create org profile (requires auth, account_type = organisation)
+PATCH /organisations/:id — update org profile
+
+Donation routes:
+
+POST /donations — create donation, trigger Stripe, auto-follow org on success
+GET /donations/my — current user's donation history
+
+Feed routes:
+
+GET /feed — all updates from orgs the current user follows
+GET /feed/org/:id — all updates for a specific org
+POST /feed — org posts a new update, triggers Brevo newsletter
+
+Follow routes:
+
+POST /follows — follow an org
+DELETE /follows/:orgId — unfollow
+GET /follows/my — list of orgs current user follows
+
+Help routes:
+
+GET /help/orgs?need= — orgs opted into Get Help, filtered by need category
+POST /help/contact — log a contact event
+GET /help/reviews/:orgId — all reviews for an org
+POST /help/reviews — submit a review
+
+Profile routes:
+
+GET /profile — current user full profile
+PATCH /profile — update name, email, phone
+
+
+Mobile App — Expo Router:
+All screens pull real data from the API. Zero hardcoded data.
+Screens:
+
+(tabs)/discover — org list, location filter strip, search
+(tabs)/feed — impact updates from followed orgs
+(tabs)/help — Get Help need category grid
+(tabs)/account — profile, giving history, following, settings
+help/[category] — orgs filtered by need
+help/org/[id] — org detail with reviews and contact buttons
+organisation/[id] — public org profile, goal tracker, updates
+donate/[id] — donation flow, Stripe + PayPal
+auth/signin — email and password sign in
+auth/signup — name, email, phone, password, account type
+dashboard — org dashboard, post update, edit profile, Get Help opt-in
+
+Bottom tab navigation: Discover · Updates · Get Help · Account
+Gold active state, white inactive
+
+Web App — React Router:
+All pages pull real data from the API. Same screens as mobile.
+Routes:
+
+/ → Discover
+/org/:id → Organisation profile
+/donate/:id → Donation flow
+/get-help → Get Help home
+/get-help/:need → Results by need
+/signin → Sign in
+/signup → Sign up
+/profile → Supporter profile dashboard
+/dashboard → Organisation dashboard
+/apply → Organisation application form
+
+Top navigation bar on desktop. Hamburger on mobile browser.
+Gold active state. Deep red nav background.
+
+Authentication:
+
+bcrypt for password hashing
+JWT for sessions — 30 day expiry
+Mobile: store token in Expo SecureStore
+Web: store token in localStorage
+All protected routes check for valid JWT
+On sign up: create user record + auto-create org profile stub if account_type = organisation
+
+
+Stripe Connect:
+
+Process donations through Stripe
+Platform fee percentage from environment variable STRIPE_PLATFORM_FEE_PERCENT
+On successful payment: create donation record, auto-follow org, increment org raised_amount and donor_count
+Stripe webhook handles payment confirmation
+
+PayPal:
+
+Secondary payment option alongside Stripe
+Same platform fee logic
+Same post-payment logic
+
+
+Brevo newsletters:
+
+Triggered when org posts a new update via POST /feed
+Query all followers of that org + all unique donors
+Deduplicate and check email preferences
+Send email via Brevo API
+Email content: org name, update tag, title, first 200 characters of body, link to org profile
+Update sent_to_count on the update record after sending
+
+
+Environment variables:
+DATABASE_URL
+JWT_SECRET
+STRIPE_SECRET_KEY
+STRIPE_PUBLISHABLE_KEY
+STRIPE_WEBHOOK_SECRET
+STRIPE_PLATFORM_FEE_PERCENT
+PAYPAL_CLIENT_ID
+PAYPAL_CLIENT_SECRET
+BREVO_API_KEY
+BREVO_SENDER_EMAIL
+BREVO_SENDER_NAME
+
+Build order — one step at a time, confirm each before moving on:
+Step 1 — Project scaffold. Monorepo structure, all package.json files, TypeScript configs, Drizzle config. No screens yet.
+Step 2 — Database. Schema migrations, seed data running. Confirm tables exist and seed data is queryable.
+Step 3 — API server. All routes built and connected to database. Auth working with JWT. Test every endpoint.
+Step 4 — Mobile app. All screens built, pulling real data from API. Navigation working. Colours matching reference exactly.
+Step 5 — Web app. All pages built, pulling real data from API. Responsive layout working.
+Step 6 — Stripe donation flow. End to end — select amount, pay, donation recorded, org auto-followed.
+Step 7 — Brevo newsletter. Post update, email triggers, sent_to_count updates.
+Step 8 — PayPal.
+Start with Step 1 only. Show me the project structure before writing any application code."
