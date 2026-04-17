@@ -62,8 +62,8 @@ Root ProjX is a community giving platform connecting diaspora supporters to veri
 - [x] Step 3 — API server routes — all 7 route groups live and tested (PostgreSQL/Drizzle era)
 - [x] Firebase Step 1 — PostgreSQL, Drizzle ORM, bcrypt, JWT fully removed. lib/db deleted. 35 packages uninstalled. api-server typechecks clean, builds clean, health endpoint live.
 - [x] Firebase Step 2 — firebase-admin + firebase installed. Admin SDK initialised with applicationDefault() + projectId=rootprojx-1111. Client SDK init module created in mobile/lib/firebase.ts.
-- [ ] Firebase Step 3 — Initialise Firebase client and Admin
-- [ ] Firebase Step 4 — Replace auth routes with Firebase Auth
+- [x] Firebase Step 3 — Firebase client and Admin initialised (REST-based, no GCP credentials needed)
+- [x] Firebase Step 4 — Firebase Auth complete. register/login/logout/me all working. Uses Firebase Auth REST API + Firestore REST API with user's ID token. EXPO_PUBLIC_ vars passed through mobile dev script.
 - [ ] Firebase Step 5 — Create Firestore collections + seed data
 - [ ] Firebase Step 6 — Replace all Express routes with Firestore reads/writes
 - [ ] Firebase Step 7 — Connect mobile screens to Firestore
