@@ -64,8 +64,8 @@ Root ProjX is a community giving platform connecting diaspora supporters to veri
 - [x] Firebase Step 2 — firebase-admin + firebase installed. Admin SDK initialised with applicationDefault() + projectId=rootprojx-1111. Client SDK init module created in mobile/lib/firebase.ts.
 - [x] Firebase Step 3 — Firebase client and Admin initialised (REST-based, no GCP credentials needed)
 - [x] Firebase Step 4 — Firebase Auth complete. register/login/logout/me all working. Uses Firebase Auth REST API + Firestore REST API with user's ID token. EXPO_PUBLIC_ vars passed through mobile dev script.
-- [ ] Firebase Step 5 — Create Firestore collections + seed data
-- [ ] Firebase Step 6 — Replace all Express routes with Firestore reads/writes
+- [x] Firebase Step 5 — Firestore seed complete: 6 orgs, 10 updates, 4 reviews, 3 resources, 3 user stubs. Seed script: artifacts/api-server/scripts/seed.mjs (no build needed). Server token cached for public reads.
+- [x] Firebase Step 6 — All 6 route groups live and tested (18/18 passing): organisations (CRUD), feed (public + personalised + org + post), follows (follow/unfollow/my), help (directory + reviews + contact), profile (get/patch), donations (stub ready for Stripe Step 9). JS-side sorting used to avoid Firestore composite index requirements.
 - [ ] Firebase Step 7 — Connect mobile screens to Firestore
 - [ ] Firebase Step 8 — Connect web pages to Firestore
 - [ ] Firebase Step 9 — Stripe donation flow

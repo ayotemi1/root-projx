@@ -3,6 +3,26 @@ const PROJECT_ID = process.env.FIREBASE_PROJECT_ID!;
 const IDENTITY = "https://identitytoolkit.googleapis.com/v1/accounts";
 const FIRESTORE = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
 
+// Server-side token cache — used for server-initiated Firestore reads (no user token available)
+const SERVER_EMAIL = process.env.FIREBASE_SERVER_EMAIL ?? "seeder@rootprojx.internal";
+const SERVER_PASS  = process.env.FIREBASE_SERVER_PASSWORD ?? "RootSeed2024!";
+let _serverToken: string | null = null;
+let _serverTokenExpiry = 0;
+
+export async function getServerToken(): Promise<string> {
+  if (_serverToken && Date.now() < _serverTokenExpiry) return _serverToken;
+  const res = await fetch(`${IDENTITY}:signInWithPassword?key=${API_KEY}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: SERVER_EMAIL, password: SERVER_PASS, returnSecureToken: true }),
+  });
+  const data = await res.json() as Record<string, unknown>;
+  if (!res.ok) throw new Error("Server token refresh failed");
+  _serverToken = data.idToken as string;
+  _serverTokenExpiry = Date.now() + 55 * 60 * 1000; // refresh 5 min before 1-hour expiry
+  return _serverToken;
+}
+
 // ─── Firebase Auth REST ───────────────────────────────────────────────────────
 
 export async function firebaseSignUp(email: string, password: string) {
@@ -150,29 +170,39 @@ export async function fsQuery(
   collection: string,
   filters: Array<{ field: string; op: string; value: unknown }>,
   idToken?: string,
+  opts?: { orderBy?: { field: string; dir?: "ASCENDING" | "DESCENDING" }; limit?: number },
 ): Promise<Array<Record<string, unknown>>> {
-  const structuredQuery = {
+  const where =
+    filters.length === 0
+      ? undefined
+      : filters.length === 1
+        ? {
+            fieldFilter: {
+              field: { fieldPath: filters[0]!.field },
+              op: filters[0]!.op,
+              value: toFsVal(filters[0]!.value),
+            },
+          }
+        : {
+            compositeFilter: {
+              op: "AND",
+              filters: filters.map((f) => ({
+                fieldFilter: {
+                  field: { fieldPath: f.field },
+                  op: f.op,
+                  value: toFsVal(f.value),
+                },
+              })),
+            },
+          };
+
+  const structuredQuery: Record<string, unknown> = {
     from: [{ collectionId: collection }],
-    where: filters.length === 1
-      ? {
-          fieldFilter: {
-            field: { fieldPath: filters[0]!.field },
-            op: filters[0]!.op,
-            value: toFsVal(filters[0]!.value),
-          },
-        }
-      : {
-          compositeFilter: {
-            op: "AND",
-            filters: filters.map((f) => ({
-              fieldFilter: {
-                field: { fieldPath: f.field },
-                op: f.op,
-                value: toFsVal(f.value),
-              },
-            })),
-          },
-        },
+    ...(where ? { where } : {}),
+    ...(opts?.orderBy
+      ? { orderBy: [{ field: { fieldPath: opts.orderBy.field }, direction: opts.orderBy.dir ?? "DESCENDING" }] }
+      : {}),
+    ...(opts?.limit ? { limit: opts.limit } : {}),
   };
 
   const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -193,4 +223,59 @@ export async function fsQuery(
       _id: r.document!.name?.split("/").pop() ?? "",
       ...fromFsDoc(r.document!.fields!),
     }));
+}
+
+export async function fsList(
+  collection: string,
+  idToken?: string,
+  pageSize = 100,
+): Promise<Array<Record<string, unknown>>> {
+  const headers: Record<string, string> = {};
+  if (idToken) headers["Authorization"] = `Bearer ${idToken}`;
+  const res = await fetch(`${FIRESTORE}/${collection}?pageSize=${pageSize}`, { headers });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Firestore LIST ${collection} failed ${res.status}: ${text.slice(0, 200)}`);
+  }
+  const body = await res.json() as { documents?: Array<{ fields?: Record<string, FsValue>; name?: string }> };
+  return (body.documents ?? []).map((d) => ({
+    _id: d.name?.split("/").pop() ?? "",
+    ...fromFsDoc(d.fields ?? {}),
+  }));
+}
+
+export async function fsDelete(
+  collection: string,
+  docId: string,
+  idToken?: string,
+): Promise<void> {
+  const headers: Record<string, string> = {};
+  if (idToken) headers["Authorization"] = `Bearer ${idToken}`;
+  const res = await fetch(`${FIRESTORE}/${collection}/${docId}`, { method: "DELETE", headers });
+  if (!res.ok && res.status !== 404) {
+    const text = await res.text();
+    throw new Error(`Firestore DELETE ${collection}/${docId} failed ${res.status}: ${text.slice(0, 200)}`);
+  }
+}
+
+export async function fsCreate(
+  collection: string,
+  data: Record<string, unknown>,
+  idToken?: string,
+): Promise<string> {
+  const fields: Record<string, FsValue> = {};
+  for (const [k, v] of Object.entries(data)) fields[k] = toFsVal(v);
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (idToken) headers["Authorization"] = `Bearer ${idToken}`;
+  const res = await fetch(`${FIRESTORE}/${collection}`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ fields }),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Firestore POST ${collection} failed ${res.status}: ${text.slice(0, 200)}`);
+  }
+  const doc = await res.json() as { name?: string };
+  return doc.name?.split("/").pop() ?? "";
 }
