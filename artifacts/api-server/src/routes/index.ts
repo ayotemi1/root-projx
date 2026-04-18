@@ -8,6 +8,7 @@ import donationsRouter from "./donations.js";
 import helpRouter from "./help.js";
 import profileRouter from "./profile.js";
 import newsletterRouter from "./newsletter.js";
+import uploadsRouter from "./uploads.js";
 
 const router: IRouter = Router();
 
@@ -20,5 +21,6 @@ router.use(donationsRouter);
 router.use(helpRouter);
 router.use(profileRouter);
 router.use(newsletterRouter);
+router.use(uploadsRouter);
 
 export default router;

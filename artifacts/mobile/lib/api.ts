@@ -37,6 +37,7 @@ export interface FeedUpdate {
   type: "update" | "milestone" | "campaign";
   title: string;
   content: string;
+  mediaUrls: string[];
   imageUrl: string | null;
   likes: number;
   createdAt: string;
@@ -156,10 +157,44 @@ export const getMyFeed = (token: string) => req<FeedUpdate[]>("/feed", {}, token
 export const getOrgFeed = (orgId: string) =>
   req<FeedUpdate[]>(`/feed/org/${orgId}`);
 export const postUpdate = (
-  data: { title: string; content: string; type: string; imageUrl?: string },
+  data: { title: string; content: string; type: string; mediaUrls?: string[] },
   token: string,
 ) =>
   req<FeedUpdate>("/feed", { method: "POST", body: JSON.stringify(data) }, token);
+
+// ── Media uploads ─────────────────────────────────────────────────────────────
+
+/**
+ * Upload media files to Firebase Storage via the API proxy.
+ * `files` is an array of { uri, name, mimeType } objects (from expo-image-picker).
+ */
+export async function uploadMedia(
+  files: Array<{ uri: string; name: string; mimeType: string }>,
+  token: string,
+): Promise<string[]> {
+  const formData = new FormData();
+  files.forEach((f) => {
+    formData.append("files", {
+      uri: f.uri,
+      name: f.name,
+      type: f.mimeType,
+    } as unknown as Blob);
+  });
+
+  const response = await fetch(`${BASE_URL}/uploads/media`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ error: "Upload failed" })) as { error?: string };
+    throw new Error(err.error ?? "Upload failed");
+  }
+
+  const result = await response.json() as { urls: string[] };
+  return result.urls;
+}
 
 // ── Follows ───────────────────────────────────────────────────────────────────
 

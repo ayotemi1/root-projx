@@ -10,11 +10,13 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@types/multer": "^2.1.0",
     "@workspace/api-zod": "workspace:*",
     "cookie-parser": "^1.4.7",
     "cors": "^2",
     "express": "^5",
     "firebase-admin": "^13.4.0",
+    "multer": "^2.1.1",
     "pino": "^9",
     "pino-http": "^10",
     "stripe": "20.0.0"

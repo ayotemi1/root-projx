@@ -95,7 +95,7 @@ router.post("/feed", requireAuth, async (req, res) => {
     const uid = req.user!.userId;
     const token = req.headers.authorization!.slice(7);
 
-    const { title, content, type, imageUrl } = req.body as Record<string, unknown>;
+    const { title, content, type, mediaUrls } = req.body as Record<string, unknown>;
     if (!title || !content) {
       res.status(400).json({ error: "title and content are required" });
       return;
@@ -105,13 +105,18 @@ router.post("/feed", requireAuth, async (req, res) => {
     const org = await fsGet("organisations", uid, token);
     const orgName = (org?.["name"] as string) ?? "";
 
+    // Validate mediaUrls if provided
+    const urls: string[] = Array.isArray(mediaUrls)
+      ? (mediaUrls as unknown[]).filter((u): u is string => typeof u === "string")
+      : [];
+
     const data: Record<string, unknown> = {
       orgId: uid,
       orgName,
       type: type ?? "update",
       title,
       content,
-      imageUrl: imageUrl ?? null,
+      mediaUrls: urls,
       likes: 0,
       createdAt: new Date().toISOString(),
     };

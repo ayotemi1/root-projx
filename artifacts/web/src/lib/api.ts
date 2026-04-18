@@ -36,6 +36,7 @@ export interface FeedUpdate {
   type: "update" | "milestone" | "campaign";
   title: string;
   content: string;
+  mediaUrls: string[];
   imageUrl: string | null;
   likes: number;
   createdAt: string;
@@ -149,10 +150,32 @@ export const getPublicFeed = () => req<FeedUpdate[]>("/feed/public");
 export const getMyFeed = (token: string) => req<FeedUpdate[]>("/feed", {}, token);
 export const getOrgFeed = (orgId: string) => req<FeedUpdate[]>(`/feed/org/${orgId}`);
 export const postUpdate = (
-  data: { title: string; content: string; type: string },
+  data: { title: string; content: string; type: string; mediaUrls?: string[] },
   token: string,
 ) =>
   req<FeedUpdate>("/feed", { method: "POST", body: JSON.stringify(data) }, token);
+
+// ── Media uploads ─────────────────────────────────────────────────────────────
+
+/** Upload media files for an update. Returns download URLs. */
+export async function uploadMedia(files: File[], token: string): Promise<string[]> {
+  const formData = new FormData();
+  files.forEach((f) => formData.append("files", f));
+
+  const response = await fetch(`${API_BASE}/uploads/media`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ error: "Upload failed" })) as { error?: string };
+    throw new Error(err.error ?? "Upload failed");
+  }
+
+  const result = await response.json() as { urls: string[] };
+  return result.urls;
+}
 
 // ── Follows ───────────────────────────────────────────────────────────────────
 

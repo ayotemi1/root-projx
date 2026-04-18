@@ -1,12 +1,11 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle, PlusCircle } from "lucide-react";
+import { CheckCircle, PlusCircle, Image as ImageIcon, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/context/AuthContext";
 import * as api from "@/lib/api";
@@ -32,10 +31,15 @@ const TYPE_COLORS: Record<string, string> = {
 export default function DashboardPage() {
   const { user, token } = useAuth();
   const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [showForm, setShowForm] = useState(false);
   const [postTitle, setPostTitle] = useState("");
   const [postContent, setPostContent] = useState("");
   const [postType, setPostType] = useState<typeof UPDATE_TYPES[number]>("update");
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const [uploadProgress, setUploadProgress] = useState<"idle" | "uploading" | "done">("idle");
   const [formError, setFormError] = useState("");
 
   const orgId = user?.id ?? "";
@@ -53,22 +57,66 @@ export default function DashboardPage() {
   });
 
   const postMut = useMutation({
-    mutationFn: () =>
-      api.postUpdate(
-        { title: postTitle.trim(), content: postContent.trim(), type: postType },
+    mutationFn: async () => {
+      // 1. Upload any selected files first
+      let mediaUrls: string[] = [];
+      if (selectedFiles.length > 0) {
+        setUploadProgress("uploading");
+        mediaUrls = await api.uploadMedia(selectedFiles, token!);
+        setUploadProgress("done");
+      }
+      // 2. Post the update with media URLs
+      return api.postUpdate(
+        {
+          title: postTitle.trim(),
+          content: postContent.trim(),
+          type: postType,
+          mediaUrls,
+        },
         token!,
-      ),
+      );
+    },
     onSuccess: () => {
       setPostTitle("");
       setPostContent("");
       setPostType("update");
+      setSelectedFiles([]);
+      setPreviewUrls([]);
+      setUploadProgress("idle");
       setShowForm(false);
       setFormError("");
       queryClient.invalidateQueries({ queryKey: ["org-feed", orgId] });
       queryClient.invalidateQueries({ queryKey: ["feed", "public"] });
     },
-    onError: (e: Error) => setFormError(e.message),
+    onError: (e: Error) => {
+      setUploadProgress("idle");
+      setFormError(e.message);
+    },
   });
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length + selectedFiles.length > 5) {
+      setFormError("You can attach up to 5 files per update.");
+      return;
+    }
+    setFormError("");
+    const newFiles = [...selectedFiles, ...files].slice(0, 5);
+    setSelectedFiles(newFiles);
+    // Generate previews
+    const urls = newFiles.map((f) =>
+      f.type.startsWith("video/") ? "" : URL.createObjectURL(f),
+    );
+    setPreviewUrls(urls);
+  }
+
+  function removeFile(index: number) {
+    const newFiles = selectedFiles.filter((_, i) => i !== index);
+    setSelectedFiles(newFiles);
+    setPreviewUrls(newFiles.map((f) =>
+      f.type.startsWith("video/") ? "" : URL.createObjectURL(f),
+    ));
+  }
 
   function handlePost(e: React.FormEvent) {
     e.preventDefault();
@@ -78,8 +126,26 @@ export default function DashboardPage() {
     postMut.mutate();
   }
 
+  function resetForm() {
+    setShowForm(false);
+    setPostTitle("");
+    setPostContent("");
+    setPostType("update");
+    setSelectedFiles([]);
+    setPreviewUrls([]);
+    setUploadProgress("idle");
+    setFormError("");
+  }
+
   const org = orgQ.data;
   const updates = updatesQ.data ?? [];
+  const isSubmitting = postMut.isPending;
+  const uploadLabel =
+    uploadProgress === "uploading"
+      ? "Uploading media…"
+      : uploadProgress === "done"
+        ? "Publishing…"
+        : "Publish Update";
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
@@ -135,7 +201,7 @@ export default function DashboardPage() {
             <Button
               variant={showForm ? "outline" : "default"}
               size="sm"
-              onClick={() => setShowForm(!showForm)}
+              onClick={() => (showForm ? resetForm() : setShowForm(true))}
             >
               <PlusCircle className="w-4 h-4 mr-1.5" />
               {showForm ? "Cancel" : "New Update"}
@@ -196,12 +262,74 @@ export default function DashboardPage() {
                 />
               </div>
 
+              {/* Media upload */}
+              <div>
+                <Label className="text-sm font-semibold mb-2 block">
+                  Photos &amp; Videos
+                  <span className="text-muted-foreground font-normal ml-1">(optional, up to 5)</span>
+                </Label>
+
+                {/* Previews */}
+                {selectedFiles.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {selectedFiles.map((file, i) => (
+                      <div key={i} className="relative group">
+                        {file.type.startsWith("video/") ? (
+                          <div className="w-20 h-20 bg-secondary rounded-lg flex items-center justify-center border border-border">
+                            <span className="text-2xl">🎬</span>
+                          </div>
+                        ) : (
+                          <img
+                            src={previewUrls[i]}
+                            alt="preview"
+                            className="w-20 h-20 object-cover rounded-lg border border-border"
+                          />
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => removeFile(i)}
+                          className="absolute -top-2 -right-2 w-5 h-5 bg-destructive text-white rounded-full flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                        <p className="text-xs text-muted-foreground mt-1 w-20 truncate text-center">
+                          {file.name}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {selectedFiles.length < 5 && (
+                  <>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/quicktime,video/webm"
+                      multiple
+                      className="hidden"
+                      onChange={handleFileChange}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex items-center gap-2 px-4 py-2.5 border-2 border-dashed border-border rounded-lg text-sm text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors"
+                    >
+                      <ImageIcon className="w-4 h-4" />
+                      {selectedFiles.length === 0
+                        ? "Add photos or videos"
+                        : `Add more (${selectedFiles.length}/5 selected)`}
+                    </button>
+                  </>
+                )}
+              </div>
+
               <Button
                 type="submit"
                 className="w-full bg-accent text-accent-foreground hover:bg-accent/90 font-bold"
-                disabled={postMut.isPending}
+                disabled={isSubmitting}
               >
-                {postMut.isPending ? "Publishing…" : "Publish Update"}
+                {isSubmitting ? uploadLabel : "Publish Update"}
               </Button>
             </form>
           </CardContent>
@@ -225,10 +353,7 @@ export default function DashboardPage() {
           ) : (
             <div className="space-y-4">
               {updates.map((u: FeedUpdate) => (
-                <div
-                  key={u._id}
-                  className="border border-border rounded-xl p-4 space-y-2"
-                >
+                <div key={u._id} className="border border-border rounded-xl p-4 space-y-2">
                   <div className="flex items-center gap-2">
                     <span
                       className={`text-xs font-bold px-2 py-0.5 rounded-full border ${
@@ -243,6 +368,32 @@ export default function DashboardPage() {
                   <p className="text-foreground/70 text-sm leading-relaxed line-clamp-2">
                     {u.content}
                   </p>
+                  {/* Media thumbnails */}
+                  {u.mediaUrls && u.mediaUrls.length > 0 && (
+                    <div className="flex gap-2 mt-2 flex-wrap">
+                      {u.mediaUrls.map((url, i) => (
+                        url.includes("video") ? (
+                          <a
+                            key={i}
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="w-16 h-16 bg-secondary rounded-lg flex items-center justify-center text-xl border border-border"
+                          >
+                            🎬
+                          </a>
+                        ) : (
+                          <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                            <img
+                              src={url}
+                              alt="media"
+                              className="w-16 h-16 object-cover rounded-lg border border-border"
+                            />
+                          </a>
+                        )
+                      ))}
+                    </div>
+                  )}
                   <p className="text-xs text-muted-foreground">♥ {u.likes ?? 0} likes</p>
                 </div>
               ))}
