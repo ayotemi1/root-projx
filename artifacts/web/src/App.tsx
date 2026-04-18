@@ -6,6 +6,7 @@ import { AuthProvider, useAuth } from "@/context/AuthContext";
 
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import SplashScreen from "@/components/SplashScreen";
 import DiscoverPage from "@/pages/discover";
 import FeedPage from "@/pages/feed";
 import HelpPage from "@/pages/help";
@@ -38,6 +39,10 @@ function AuthRoute({ component: Component }: { component: React.ComponentType })
 }
 
 function AppRoutes() {
+  const { isLoading } = useAuth();
+
+  if (isLoading) return <SplashScreen />;
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />

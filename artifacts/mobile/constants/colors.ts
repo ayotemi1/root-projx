@@ -1,20 +1,20 @@
 /**
- * Root ProjX — exact colour system (do not deviate)
+ * Root ProjX — colour system derived from official logo
  *
- * --red:         #B50000
- * --red-deep:    #7A0000
- * --red-mid:     #9E0000
- * --gold:        #F5B800
+ * --red:         #E31C23  (bright candy red — logo background)
+ * --red-deep:    #C1181E  (15% darker — nav headers)
+ * --red-mid:     #D11A20  (8% darker  — card surfaces / hover)
+ * --gold:        #F5C200  (bright warm yellow-gold — logo script)
  * --white:       #FFFFFF
  * --white-faint: rgba(255,255,255,0.12)
- * --gold-dim:    rgba(245,184,0,0.55)
+ * --gold-dim:    rgba(245,194,0,0.55)
  */
 
 const colors = {
   light: {
     // Legacy aliases
     text: "#1A1A1A",
-    tint: "#F5B800",
+    tint: "#F5C200",
 
     // Core surfaces
     background: "#FFFFFF",
@@ -24,23 +24,23 @@ const colors = {
     card: "#F9F6F0",
     cardForeground: "#1A1A1A",
 
-    // Primary action — Red (#B50000)
-    primary: "#B50000",
+    // Primary action — Candy Red (#E31C23)
+    primary: "#E31C23",
     primaryForeground: "#FFFFFF",
 
-    // Deep red — nav bar background, headers
-    navBackground: "#7A0000",
+    // Deep red — nav bar background, headers (15% darker)
+    navBackground: "#C1181E",
     navForeground: "#FFFFFF",
 
-    // Mid red — hover / pressed states
-    redMid: "#9E0000",
+    // Mid red — hover / pressed states (8% darker)
+    redMid: "#D11A20",
 
     // Gold accent — active tabs, highlights, CTAs
-    accent: "#F5B800",
+    accent: "#F5C200",
     accentForeground: "#1A1A1A",
 
     // Dimmed gold — subtle highlights, backgrounds
-    goldDim: "rgba(245,184,0,0.55)",
+    goldDim: "rgba(245,194,0,0.55)",
 
     // White faint — overlay text on dark surfaces
     whiteFaint: "rgba(255,255,255,0.12)",
@@ -54,7 +54,7 @@ const colors = {
     mutedForeground: "#888888",
 
     // Destructive actions
-    destructive: "#B50000",
+    destructive: "#E31C23",
     destructiveForeground: "#FFFFFF",
 
     // Borders and inputs
@@ -66,12 +66,12 @@ const colors = {
     successForeground: "#FFFFFF",
 
     // Tab bar
-    tabBarBackground: "#7A0000",
-    tabBarActive: "#F5B800",
+    tabBarBackground: "#C1181E",
+    tabBarActive: "#F5C200",
     tabBarInactive: "#FFFFFF",
 
     // Goal tracker
-    goalFill: "#F5B800",
+    goalFill: "#F5C200",
     goalTrack: "#E0D8CC",
 
     // Verified badge

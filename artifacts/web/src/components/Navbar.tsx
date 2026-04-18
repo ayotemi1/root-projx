@@ -38,9 +38,11 @@ export default function Navbar() {
       <nav className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center h-16 gap-6">
         {/* Logo */}
         <Link href="/" className="flex-shrink-0">
-          <span className="text-xl font-extrabold text-gold tracking-wide">
-            Root ProjX
-          </span>
+          <img
+            src="/logo.jpg"
+            alt="Root ProjX"
+            className="h-8 w-auto object-contain"
+          />
         </Link>
 
         {/* Desktop nav links */}
