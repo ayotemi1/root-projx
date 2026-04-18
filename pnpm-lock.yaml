@@ -185,9 +185,6 @@ importers:
       firebase-admin:
         specifier: ^13.4.0
         version: 13.8.0
-      pg:
-        specifier: ^8.20.0
-        version: 8.20.0
       pino:
         specifier: ^9
         version: 9.14.0
@@ -197,9 +194,6 @@ importers:
       stripe:
         specifier: 20.0.0
         version: 20.0.0(@types/node@25.3.5)
-      stripe-replit-sync:
-        specifier: 1.0.0
-        version: 1.0.0(stripe@20.0.0(@types/node@25.3.5))
     devDependencies:
       '@types/cookie-parser':
         specifier: ^1.4.10

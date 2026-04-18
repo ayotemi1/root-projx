@@ -21,11 +21,12 @@ app.use(
 );
 app.use(cors());
 
-// ── CRITICAL: Stripe webhook must be registered BEFORE express.json() ─────────
-// The webhook route uses express.raw() to get the raw Buffer for signature verification.
+// ── CRITICAL: Stripe webhook — raw body ONLY on this exact path ────────────────
+// Must be mounted BEFORE express.json() so the raw Buffer is available for
+// Stripe signature verification. express.raw() must NOT apply to other routes.
 import webhooksRouter from "./routes/webhooks.js";
 app.use(
-  "/api",
+  "/api/webhooks",
   express.raw({ type: "application/json" }),
   webhooksRouter,
 );

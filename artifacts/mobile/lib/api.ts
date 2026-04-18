@@ -259,3 +259,11 @@ export const createSubscription = (
 
 export const getMyDonations = (token: string) =>
   req<Donation[]>("/donations/my", {}, token);
+
+// ── Newsletter ─────────────────────────────────────────────────────────────────
+
+export const subscribeNewsletter = (data: { email: string; name?: string }) =>
+  req<{ message: string }>("/newsletter/subscribe", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });

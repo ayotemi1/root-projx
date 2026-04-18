@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
 
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 import DiscoverPage from "@/pages/discover";
 import FeedPage from "@/pages/feed";
 import HelpPage from "@/pages/help";
@@ -62,6 +63,7 @@ function AppRoutes() {
           <Route component={NotFound} />
         </Switch>
       </main>
+      <Footer />
     </div>
   );
 }

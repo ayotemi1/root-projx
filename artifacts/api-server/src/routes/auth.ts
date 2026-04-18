@@ -7,6 +7,7 @@ import {
   fsPatch,
 } from "../lib/firebase-rest.js";
 import { requireAuth } from "../lib/auth.js";
+import { brevoAddContact, brevoSendEmail, welcomeEmailHtml } from "../lib/brevo.js";
 
 const router = Router();
 
@@ -74,6 +75,32 @@ router.post("/auth/register", async (req, res) => {
       createdAt: now,
     };
     await fsPatch("users", uid, userDoc, initialToken);
+
+    // Fire-and-forget: add contact to Brevo + send welcome email
+    // Errors here must never block the registration response
+    const nameParts = name.trim().split(" ");
+    const firstName = nameParts[0] ?? name;
+    const lastName = nameParts.slice(1).join(" ") || undefined;
+    const newsletterListId = process.env.BREVO_NEWSLETTER_LIST_ID
+      ? [parseInt(process.env.BREVO_NEWSLETTER_LIST_ID, 10)]
+      : undefined;
+
+    Promise.all([
+      brevoAddContact({
+        email: email.toLowerCase(),
+        firstName,
+        lastName,
+        listIds: newsletterListId,
+      }),
+      brevoSendEmail({
+        to: [{ email: email.toLowerCase(), name }],
+        subject: "Welcome to Root ProjX 🌱",
+        htmlContent: welcomeEmailHtml(name),
+      }),
+    ]).catch((err) => {
+      // Log but never throw — registration already succeeded
+      console.error("[Brevo] Welcome email/contact error:", err);
+    });
 
     res.status(201).json({
       token: initialToken,

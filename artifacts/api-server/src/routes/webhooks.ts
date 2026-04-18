@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { fsCreate, fsGet, fsPatch, fsQuery, getServerToken } from "../lib/firebase-rest.js";
 import { getUncachableStripeClient } from "../lib/stripeClient.js";
+import { brevoSendEmail, donationConfirmationHtml } from "../lib/brevo.js";
 import type Stripe from "stripe";
 
 const router = Router();
@@ -8,7 +9,7 @@ const router = Router();
 // POST /webhooks/stripe — Stripe payment confirmation webhook
 // IMPORTANT: must be mounted BEFORE express.json() — uses raw body
 router.post(
-  "/webhooks/stripe",
+  "/stripe",
   async (req, res) => {
     const sig = req.headers["stripe-signature"];
     if (!sig) {
@@ -84,6 +85,7 @@ async function handlePaymentSuccess(
   }
 
   // 1. Create donation document in Firestore
+  const donationDate = new Date().toISOString();
   const donationId = await fsCreate(
     "donations",
     {
@@ -96,11 +98,39 @@ async function handlePaymentSuccess(
       note: note ?? "",
       stripeRef,
       status: "succeeded",
-      createdAt: new Date().toISOString(),
+      createdAt: donationDate,
     },
     serverToken,
   );
   log.info({ donationId, userId, orgId, amountGbp }, "Donation recorded in Firestore");
+
+  // 1b. Send donation confirmation email via Brevo (fire-and-forget)
+  try {
+    const userDoc = await fsGet("users", userId, serverToken);
+    const userEmail = userDoc?.["email"] as string | undefined;
+    const userName = (userDoc?.["name"] as string | undefined) ?? "Supporter";
+    if (userEmail) {
+      await brevoSendEmail({
+        to: [{ email: userEmail, name: userName }],
+        subject: `Your donation to ${orgName ?? "Root ProjX"} — confirmed ✓`,
+        htmlContent: donationConfirmationHtml({
+          name: userName,
+          orgName: orgName ?? "the organisation",
+          amountGbp,
+          type: type ?? "one_time",
+          donationDate: new Date(donationDate).toLocaleDateString("en-GB", {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          }),
+        }),
+      });
+      log.info({ userId, userEmail }, "Donation confirmation email sent via Brevo");
+    }
+  } catch (emailErr) {
+    // Never let email failure break the webhook response
+    log.error({ emailErr }, "Brevo donation email failed (non-fatal)");
+  }
 
   // 2. Auto-follow the org if not already following
   const followId = `${userId}_${orgId}`;

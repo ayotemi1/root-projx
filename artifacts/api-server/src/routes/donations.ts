@@ -2,7 +2,6 @@ import { Router } from "express";
 import { fsCreate, fsGet, fsPatch, fsQuery, getServerToken } from "../lib/firebase-rest.js";
 import { requireAuth } from "../lib/auth.js";
 import { getUncachableStripeClient, getStripePublishableKey } from "../lib/stripeClient.js";
-import pg from "pg";
 
 const router = Router();
 
@@ -13,43 +12,40 @@ function platformFee(amountGbp: number): number {
   return Math.round(amountGbp * 100 * (FEE_PERCENT / 100));
 }
 
-// ── Get / upsert Stripe customer for authenticated user ────────────────────────
-async function ensureStripeCustomer(userId: string, email: string): Promise<string> {
-  const dbUrl = process.env.DATABASE_URL;
-  if (!dbUrl) throw new Error("DATABASE_URL not set");
+// ── Get / upsert Stripe customer — stored in Firestore users/{uid} ─────────────
+async function ensureStripeCustomer(userId: string, email: string, token: string): Promise<string> {
+  // Check for existing stripeCustomerId in Firestore user doc
+  const serverToken = await getServerToken();
+  const userDoc = await fsGet("users", userId, serverToken);
 
-  const pool = new pg.Pool({ connectionString: dbUrl, max: 2 });
-  try {
-    const existing = await pool.query(
-      "SELECT stripe_customer_id FROM stripe_customers WHERE user_id = $1",
-      [userId],
-    );
-    if (existing.rows.length > 0 && existing.rows[0].stripe_customer_id) {
-      return existing.rows[0].stripe_customer_id as string;
-    }
-
-    const stripe = await getUncachableStripeClient();
-    const customer = await stripe.customers.create({ email, metadata: { userId } });
-
-    await pool.query(
-      `INSERT INTO stripe_customers (user_id, email, stripe_customer_id)
-       VALUES ($1, $2, $3)
-       ON CONFLICT (user_id) DO UPDATE SET stripe_customer_id = $3`,
-      [userId, email, customer.id],
-    );
-
-    return customer.id;
-  } finally {
-    await pool.end();
+  if (userDoc?.["stripeCustomerId"]) {
+    return userDoc["stripeCustomerId"] as string;
   }
+
+  // Create a new Stripe customer and persist the ID back to Firestore
+  const stripe = await getUncachableStripeClient();
+  const customer = await stripe.customers.create({
+    email,
+    metadata: { userId },
+  });
+
+  // Write stripeCustomerId to the Firestore user document
+  await fsPatch(
+    "users",
+    userId,
+    { ...(userDoc ?? {}), stripeCustomerId: customer.id },
+    serverToken,
+  );
+
+  return customer.id;
 }
 
-// ── POST /donations/publishable-key — return public Stripe key for client ──────
+// ── GET /donations/publishable-key — return public Stripe key for client ───────
 router.get("/donations/publishable-key", async (_req, res) => {
   try {
     const key = await getStripePublishableKey();
     res.json({ publishableKey: key });
-  } catch (err) {
+  } catch {
     res.status(503).json({ error: "Stripe not configured" });
   }
 });
@@ -70,18 +66,16 @@ router.post("/donations/payment-intent", requireAuth, async (req, res) => {
       return;
     }
 
-    // Validate org exists
     const org = await fsGet("organisations", orgId, token);
     if (!org) {
       res.status(404).json({ error: "Organisation not found" });
       return;
     }
 
-    // Resolve user email from Firestore profile
     const userDoc = await fsGet("users", uid, token);
     const email = (userDoc?.["email"] as string | undefined) ?? `user-${uid}@rootprojx.internal`;
 
-    const customerId = await ensureStripeCustomer(uid, email);
+    const customerId = await ensureStripeCustomer(uid, email, token);
     const stripe = await getUncachableStripeClient();
 
     const amountPence = Math.round(amountGbp * 100);
@@ -139,13 +133,12 @@ router.post("/donations/subscription", requireAuth, async (req, res) => {
     const userDoc = await fsGet("users", uid, token);
     const email = (userDoc?.["email"] as string | undefined) ?? `user-${uid}@rootprojx.internal`;
 
-    const customerId = await ensureStripeCustomer(uid, email);
+    const customerId = await ensureStripeCustomer(uid, email, token);
     const stripe = await getUncachableStripeClient();
 
     const amountPence = Math.round(amountGbp * 100);
     const feePence = platformFee(amountGbp);
 
-    // Create an on-demand price for this recurring amount
     const price = await stripe.prices.create({
       unit_amount: amountPence,
       currency: "gbp",

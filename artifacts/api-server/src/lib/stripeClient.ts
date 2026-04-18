@@ -54,20 +54,3 @@ export async function getStripeSecretKey(): Promise<string> {
   const { secretKey } = await getCredentials();
   return secretKey;
 }
-
-// StripeSync singleton for webhook processing
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let _stripeSync: any = null;
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export async function getStripeSync(): Promise<any> {
-  if (!_stripeSync) {
-    const { StripeSync } = await import("stripe-replit-sync");
-    const secretKey = await getStripeSecretKey();
-    _stripeSync = new StripeSync({
-      poolConfig: { connectionString: process.env.DATABASE_URL!, max: 2 },
-      stripeSecretKey: secretKey,
-    });
-  }
-  return _stripeSync;
-}
