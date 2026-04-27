@@ -1,0 +1,65 @@
+Make the following changes to the Root ProjX site:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. ORGANISATION SIGNUP FORM
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+When the user selects the "Organisation" tab on the signup page, show a different form with these fields:
+- Organisation name (required)
+- Contact person full name (required)
+- Email (required)
+- Country (required — dropdown)
+- Registration number (optional — label it "Company/CIC/Charity number (if registered)")
+- Password (required — min 6 characters)
+- A "Create account" button in the same red brand style
+- "Already have an account? Sign in" link below
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. MERCH SHOP PAGE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Create a new /shop page accessible from the nav bar. Build a real e-commerce storefront connected to Stripe Checkout. 
+
+Layout:
+- Page heading: "Root ProjX Shop" in brand red
+- Subheading: "Wear the roots. Fund the mission." in gold
+- Grid of product cards (3 across on desktop, 1-2 on mobile) — use placeholder products for now: a t-shirt, a hoodie, and a tote bag. Each card has a product image placeholder, name, price, and "Add to cart" button.
+- A cart icon in the nav that shows item count
+- A checkout button that initiates Stripe Checkout session
+
+For Stripe: create a checkout session on the backend with line items. Use test mode keys from environment variables: STRIPE_SECRET_KEY and STRIPE_PUBLISHABLE_KEY. Add a success and cancel redirect page.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. FEED/HOME PAGE — INSTAGRAM STYLE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Rename the "Feed" nav item to "Home" and make it the first item in the nav bar (before Discover).
+The Home page should look and feel like an Instagram feed:
+- Vertical scroll of posts
+- Each post card has: organisation avatar + name at the top, a photo or video placeholder, a caption, like and comment icons, and a "Support" button in brand red
+- Use 4-5 placeholder posts with realistic Root ProjX-style captions (e.g. community updates, project progress, calls to action)
+- On mobile it should feel native — full width cards, clean spacing
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4. ABOUT PAGE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Create a new /about page linked in the nav or footer. Write placeholder content based on the following:
+
+Root ProjX is a transparent, community-driven giving platform that connects diaspora supporters to verified grassroots organisations. It was founded in response to a fundamental trust gap in charitable giving — billions in potential donations are lost every year because donors don't trust where their money goes. Root ProjX solves this by giving grassroots organisations a living digital presence: real-time fundraising goals, impact update feeds, verified profiles, and direct supporter relationships.
+
+It operates as a Community Interest Company (CIC) — meaning every pound generated is reinvested into the mission, not extracted for private gain. Launching first in Jamaica and the UK.
+
+The tagline is: "Restoration. Culture. Access."
+The mission is: "To send support straight to the source."
+
+Page sections:
+- Hero section with tagline and a short mission statement
+- "Our Story" section — origin in Hurricane Melissa's devastation in Jamaica, the question "what can the diaspora contribute?", how that became Root ProjX
+- "How It Works" — 3 simple steps: Discover verified orgs → Support directly → See your impact
+- "Meet the Team" section — include a featured card for Visaka as the face of Root ProjX. Use a placeholder avatar image, her name "Visaka", title "Founder & Community Lead", and a short 2-line placeholder bio: "Visaka is the heart behind Root ProjX. Her vision is a world where every community has direct access to the support it deserves."
+- A closing CTA section: "Ready to make an impact?" with Join and Discover buttons
+
+Style everything using the existing brand colours — deep red and gold.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5. NAV BAR UPDATE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Update the nav bar order to: Home | Discover | Shop | About | Get Help
+Remove the old "Feed" link entirely since it is now "Home".
