@@ -464,16 +464,17 @@ export default function DiscoverPage() {
       </div>
 
       {/* Country dropdown + view toggle */}
-      <div className="flex items-center gap-3 mb-5">
+      <div className="flex items-center justify-center gap-3 mb-5">
         <select
           value={locationFilter}
           onChange={(e) => setLocationFilter(e.target.value)}
-          className="flex-1 min-w-0 h-9 px-3 text-sm font-medium rounded-lg appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/40"
+          className="h-9 px-3 text-sm font-medium rounded-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/40"
           style={{
             background: "#fff",
             border: `1.5px solid ${BRAND_RED}`,
             color: BRAND_RED,
             borderRadius: "8px",
+            width: "220px",
           }}
         >
           {COUNTRIES.map(({ label, value }) => (
