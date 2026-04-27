@@ -96,7 +96,7 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4 py-16">
       <div className="text-center mb-8">
-        <h1 className="text-4xl font-extrabold text-primary tracking-wide">Root ProjX</h1>
+        <h1 className="text-4xl text-primary" style={{ fontFamily: "'Dancing Script', cursive", fontWeight: 700 }}>Root ProjX</h1>
         <p className="text-muted-foreground mt-2 text-sm">Join the community.</p>
       </div>
 
@@ -137,7 +137,7 @@ export default function RegisterPage() {
               <>
                 <div className="space-y-1.5">
                   <Label htmlFor="name">Full name</Label>
-                  <Input id="name" placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} />
+                  <Input id="name" placeholder="Marcus Garvey" value={name} onChange={(e) => setName(e.target.value)} />
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="email">Email</Label>

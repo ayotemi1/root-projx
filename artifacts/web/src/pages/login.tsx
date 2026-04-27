@@ -33,7 +33,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4 py-16">
       {/* Logo header */}
       <div className="text-center mb-8">
-        <h1 className="text-4xl font-extrabold text-primary tracking-wide">Root ProjX</h1>
+        <h1 className="text-4xl text-primary" style={{ fontFamily: "'Dancing Script', cursive", fontWeight: 700 }}>Root ProjX</h1>
         <p className="text-muted-foreground mt-2 text-sm">Connecting diaspora with grassroots change.</p>
       </div>
 

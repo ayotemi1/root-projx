@@ -43,7 +43,7 @@ export default function Navbar() {
         {/* Logo */}
         <Link href="/" className="flex-shrink-0">
           <img
-            src="/logo.jpg"
+            src="/logo.png"
             alt="Root ProjX"
             className="h-8 w-auto object-contain"
           />
