@@ -45,7 +45,7 @@ export default function Navbar() {
           <img
             src="/logo.png"
             alt="Root ProjX"
-            className="h-8 w-auto object-contain"
+            className="h-10 w-auto object-contain"
           />
         </Link>
 
