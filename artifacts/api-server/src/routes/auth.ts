@@ -23,12 +23,15 @@ function avatarInitials(name: string): string {
 // POST /auth/register
 router.post("/auth/register", async (req, res) => {
   try {
-    const { name, email, phone, password, accountType } = req.body as {
+    const { name, email, phone, password, accountType, orgName, country, registrationNumber } = req.body as {
       name: string;
       email: string;
       phone?: string;
       password: string;
       accountType: "supporter" | "organisation";
+      orgName?: string;
+      country?: string;
+      registrationNumber?: string;
     };
 
     if (!name || !email || !password || !accountType) {
@@ -37,6 +40,10 @@ router.post("/auth/register", async (req, res) => {
     }
     if (!["supporter", "organisation"].includes(accountType)) {
       res.status(400).json({ error: "accountType must be supporter or organisation" });
+      return;
+    }
+    if (accountType === "organisation" && !orgName) {
+      res.status(400).json({ error: "orgName is required for organisation accounts" });
       return;
     }
 
@@ -65,7 +72,7 @@ router.post("/auth/register", async (req, res) => {
     // 3. Create Firestore user document (authenticated as the new user)
     const initials = avatarInitials(name);
     const now = new Date().toISOString();
-    const userDoc = {
+    const userDoc: Record<string, unknown> = {
       uid,
       name,
       email: email.toLowerCase(),
@@ -74,6 +81,11 @@ router.post("/auth/register", async (req, res) => {
       avatarInitials: initials,
       createdAt: now,
     };
+    if (accountType === "organisation") {
+      userDoc.orgName = orgName ?? null;
+      userDoc.country = country ?? null;
+      userDoc.registrationNumber = registrationNumber ?? null;
+    }
     await fsPatch("users", uid, userDoc, initialToken);
 
     // Fire-and-forget: add contact to Brevo + send welcome email

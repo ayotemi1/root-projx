@@ -9,6 +9,7 @@ import helpRouter from "./help.js";
 import profileRouter from "./profile.js";
 import newsletterRouter from "./newsletter.js";
 import uploadsRouter from "./uploads.js";
+import shopRouter from "./shop.js";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(helpRouter);
 router.use(profileRouter);
 router.use(newsletterRouter);
 router.use(uploadsRouter);
+router.use(shopRouter);
 
 export default router;

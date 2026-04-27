@@ -23,6 +23,9 @@ interface AuthContextValue {
     phone?: string;
     password: string;
     accountType: string;
+    orgName?: string;
+    country?: string;
+    registrationNumber?: string;
   }) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -58,6 +61,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       phone?: string;
       password: string;
       accountType: string;
+      orgName?: string;
+      country?: string;
+      registrationNumber?: string;
     }) => {
       const res = await api.register(data);
       localStorage.setItem(TOKEN_KEY, res.token);

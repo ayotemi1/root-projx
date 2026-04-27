@@ -108,6 +108,9 @@ export const register = (data: {
   phone?: string;
   password: string;
   accountType: string;
+  orgName?: string;
+  country?: string;
+  registrationNumber?: string;
 }) =>
   req<{ token: string; user: ApiUser }>("/auth/register", {
     method: "POST",
@@ -255,4 +258,23 @@ export const subscribeNewsletter = (data: { email: string; name?: string }) =>
   req<{ message: string }>("/newsletter/subscribe", {
     method: "POST",
     body: JSON.stringify(data),
+  });
+
+// ── Shop ───────────────────────────────────────────────────────────────────────
+
+export interface ShopProduct {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  currency: string;
+}
+
+export const getShopProducts = () =>
+  req<{ products: ShopProduct[] }>("/shop/products");
+
+export const createShopCheckout = (items: Array<{ id: string; quantity: number }>) =>
+  req<{ url: string }>("/shop/checkout", {
+    method: "POST",
+    body: JSON.stringify({ items }),
   });

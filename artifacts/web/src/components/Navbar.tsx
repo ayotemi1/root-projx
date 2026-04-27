@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Menu, X, LogOut, LayoutDashboard, User } from "lucide-react";
+import { Menu, X, LogOut, LayoutDashboard, User, ShoppingBag } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,10 +10,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
+import { useCart } from "@/context/CartContext";
 
 const NAV_LINKS = [
-  { href: "/", label: "Discover" },
-  { href: "/feed", label: "Feed" },
+  { href: "/", label: "Home" },
+  { href: "/discover", label: "Discover" },
+  { href: "/shop", label: "Shop" },
+  { href: "/about", label: "About" },
   { href: "/help", label: "Get Help" },
 ];
 
@@ -28,6 +31,7 @@ function Avatar({ initials }: { initials: string }) {
 export default function Navbar() {
   const [location] = useLocation();
   const { user, isAuthenticated, logout } = useAuth();
+  const { totalItems } = useCart();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const isActive = (href: string) =>
@@ -62,8 +66,20 @@ export default function Navbar() {
           ))}
         </div>
 
-        {/* Auth section */}
+        {/* Cart icon + Auth section */}
         <div className="hidden md:flex items-center gap-3 ml-auto">
+          {/* Cart */}
+          <Link href="/shop">
+            <button className="relative p-1.5 text-white/80 hover:text-white transition-colors" aria-label="Cart">
+              <ShoppingBag className="w-5 h-5" />
+              {totalItems > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-gold text-black text-[10px] font-extrabold flex items-center justify-center leading-none">
+                  {totalItems > 9 ? "9+" : totalItems}
+                </span>
+              )}
+            </button>
+          </Link>
+
           {isAuthenticated && user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -117,14 +133,26 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* Mobile hamburger */}
-        <button
-          className="md:hidden ml-auto text-white p-1"
-          onClick={() => setMobileOpen(!mobileOpen)}
-          aria-label="Toggle menu"
-        >
-          {mobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-        </button>
+        {/* Mobile: cart icon + hamburger */}
+        <div className="md:hidden ml-auto flex items-center gap-2">
+          <Link href="/shop">
+            <button className="relative p-1.5 text-white/80 hover:text-white transition-colors" aria-label="Cart">
+              <ShoppingBag className="w-5 h-5" />
+              {totalItems > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-gold text-black text-[10px] font-extrabold flex items-center justify-center leading-none">
+                  {totalItems > 9 ? "9+" : totalItems}
+                </span>
+              )}
+            </button>
+          </Link>
+          <button
+            className="text-white p-1"
+            onClick={() => setMobileOpen(!mobileOpen)}
+            aria-label="Toggle menu"
+          >
+            {mobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+        </div>
       </nav>
 
       {/* Mobile menu */}

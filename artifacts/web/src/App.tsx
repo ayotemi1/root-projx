@@ -3,12 +3,13 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
+import { CartProvider } from "@/context/CartContext";
 
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import SplashScreen from "@/components/SplashScreen";
+import HomePage from "@/pages/home";
 import DiscoverPage from "@/pages/discover";
-import FeedPage from "@/pages/feed";
 import HelpPage from "@/pages/help";
 import AccountPage from "@/pages/account";
 import OrgProfilePage from "@/pages/org-profile";
@@ -16,6 +17,10 @@ import DonatePage from "@/pages/donate";
 import DashboardPage from "@/pages/dashboard";
 import LoginPage from "@/pages/login";
 import RegisterPage from "@/pages/register";
+import ShopPage from "@/pages/shop";
+import ShopSuccessPage from "@/pages/shop-success";
+import ShopCancelPage from "@/pages/shop-cancel";
+import AboutPage from "@/pages/about";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -48,8 +53,12 @@ function AppRoutes() {
       <Navbar />
       <main className="flex-1">
         <Switch>
-          <Route path="/" component={DiscoverPage} />
-          <Route path="/feed" component={FeedPage} />
+          <Route path="/" component={HomePage} />
+          <Route path="/discover" component={DiscoverPage} />
+          <Route path="/shop/success" component={ShopSuccessPage} />
+          <Route path="/shop/cancel" component={ShopCancelPage} />
+          <Route path="/shop" component={ShopPage} />
+          <Route path="/about" component={AboutPage} />
           <Route path="/help" component={HelpPage} />
           <Route path="/account">
             {() => <ProtectedRoute component={AccountPage} />}
@@ -65,6 +74,9 @@ function AppRoutes() {
           <Route path="/register">
             {() => <AuthRoute component={RegisterPage} />}
           </Route>
+          <Route path="/feed">
+            <Redirect to="/" />
+          </Route>
           <Route component={NotFound} />
         </Switch>
       </main>
@@ -77,12 +89,14 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <TooltipProvider>
-          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <AppRoutes />
-          </WouterRouter>
-          <Toaster />
-        </TooltipProvider>
+        <CartProvider>
+          <TooltipProvider>
+            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+              <AppRoutes />
+            </WouterRouter>
+            <Toaster />
+          </TooltipProvider>
+        </CartProvider>
       </AuthProvider>
     </QueryClientProvider>
   );
