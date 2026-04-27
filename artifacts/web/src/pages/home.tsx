@@ -25,63 +25,6 @@ function initials(name: string): string {
     .join("");
 }
 
-const PLACEHOLDER_POSTS = [
-  {
-    _id: "ph1",
-    orgId: "placeholder",
-    orgName: "Trench Town Futures",
-    title: "New community library opens its doors",
-    content:
-      "After 14 months of fundraising and volunteer weekends, our library is open. Over 400 children signed up on day one. Thank you to every supporter who made this possible. 📚🇯🇲",
-    type: "milestone",
-    likes: 214,
-    createdAt: new Date(Date.now() - 2 * 864e5).toISOString(),
-  },
-  {
-    _id: "ph2",
-    orgId: "placeholder",
-    orgName: "Roots & Wings UK",
-    title: "Youth coding bootcamp — applications now open",
-    content:
-      "We're running our third free coding bootcamp this summer for 16-25 year olds across East London. Spots are limited. Share this with someone who needs it. 💻",
-    type: "campaign",
-    likes: 87,
-    createdAt: new Date(Date.now() - 5 * 864e5).toISOString(),
-  },
-  {
-    _id: "ph3",
-    orgId: "placeholder",
-    orgName: "Kingston Clean Water Project",
-    title: "50 households now have clean water access",
-    content:
-      "We hit our first major milestone: 50 families in Waterhouse no longer have to walk over 2km for clean water. This is just the beginning — our target is 500 by end of year.",
-    type: "milestone",
-    likes: 319,
-    createdAt: new Date(Date.now() - 8 * 864e5).toISOString(),
-  },
-  {
-    _id: "ph4",
-    orgId: "placeholder",
-    orgName: "Diaspora Giving Circle",
-    title: "Monthly giving challenge — join us",
-    content:
-      "Did you know that just £10/month can fund a week of after-school meals for 5 children? We're challenging the diaspora to step up this October. Who's in? 🌍",
-    type: "update",
-    likes: 54,
-    createdAt: new Date(Date.now() - 12 * 864e5).toISOString(),
-  },
-  {
-    _id: "ph5",
-    orgId: "placeholder",
-    orgName: "August Town Arts Collective",
-    title: "Our mural is complete — come see it!",
-    content:
-      "Six weeks, twelve local artists, and one giant wall later — the August Town mural tells the story of our community across the generations. Come see it on Market Street.",
-    type: "milestone",
-    likes: 162,
-    createdAt: new Date(Date.now() - 18 * 864e5).toISOString(),
-  },
-];
 
 type PostData = {
   _id: string;
@@ -188,10 +131,7 @@ export default function HomePage() {
   const active = mode === "mine" && isAuthenticated ? mineQ : publicQ;
   const { data: liveUpdates = [], isLoading } = active;
 
-  const posts =
-    liveUpdates.length > 0
-      ? liveUpdates
-      : PLACEHOLDER_POSTS;
+  const posts = liveUpdates;
 
   return (
     <div className="max-w-xl mx-auto px-4 py-6">
@@ -250,6 +190,17 @@ export default function HomePage() {
               </div>
             </div>
           ))}
+        </div>
+      ) : posts.length === 0 ? (
+        <div className="text-center py-20">
+          <p className="text-3xl mb-3">🌱</p>
+          <p className="font-semibold text-foreground mb-1">Nothing here yet</p>
+          <p className="text-muted-foreground text-sm mb-5">
+            Be the first — discover organisations and follow the ones you care about.
+          </p>
+          <Link href="/discover">
+            <Button>Discover organisations</Button>
+          </Link>
         </div>
       ) : (
         <div className="space-y-5">
