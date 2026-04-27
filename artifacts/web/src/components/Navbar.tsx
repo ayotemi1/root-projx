@@ -20,6 +20,8 @@ const NAV_LINKS = [
   { href: "/help", label: "Get Help" },
 ];
 
+const GOLD = "#F5C000";
+
 function Avatar({ initials }: { initials: string }) {
   return (
     <div className="w-8 h-8 rounded-full bg-accent text-accent-foreground flex items-center justify-center text-sm font-bold cursor-pointer select-none">
@@ -51,19 +53,23 @@ export default function Navbar() {
 
         {/* Desktop nav links */}
         <div className="hidden md:flex items-center gap-1 flex-1">
-          {NAV_LINKS.map(({ href, label }) => (
-            <Link key={href} href={href}>
-              <span
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  isActive(href)
-                    ? "bg-gold text-black"
-                    : "text-white/80 hover:text-white hover:bg-white/10"
-                }`}
-              >
-                {label}
-              </span>
-            </Link>
-          ))}
+          {NAV_LINKS.map(({ href, label }) => {
+            const active = isActive(href);
+            return (
+              <Link key={href} href={href}>
+                <span
+                  style={active ? { color: GOLD, borderBottom: `2px solid ${GOLD}` } : undefined}
+                  className={`px-3 py-1.5 text-sm font-medium transition-colors inline-block ${
+                    active
+                      ? "pb-1"
+                      : "text-white hover:text-white/80"
+                  }`}
+                >
+                  {label}
+                </span>
+              </Link>
+            );
+          })}
         </div>
 
         {/* Cart icon + Auth section */}
@@ -73,7 +79,10 @@ export default function Navbar() {
             <button className="relative p-1.5 text-white/80 hover:text-white transition-colors" aria-label="Cart">
               <ShoppingBag className="w-5 h-5" />
               {totalItems > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-gold text-black text-[10px] font-extrabold flex items-center justify-center leading-none">
+                <span
+                  style={{ backgroundColor: GOLD, color: "#111" }}
+                  className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[10px] font-extrabold flex items-center justify-center leading-none"
+                >
                   {totalItems > 9 ? "9+" : totalItems}
                 </span>
               )}
@@ -114,9 +123,9 @@ export default function Navbar() {
             <>
               <Link href="/login">
                 <Button
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
-                  className="text-white/90 hover:text-white hover:bg-white/10"
+                  className="border-white text-white bg-transparent hover:bg-white/10 hover:text-white"
                 >
                   Sign in
                 </Button>
@@ -124,7 +133,8 @@ export default function Navbar() {
               <Link href="/register">
                 <Button
                   size="sm"
-                  className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold"
+                  style={{ backgroundColor: GOLD, color: "#111" }}
+                  className="font-bold hover:opacity-90"
                 >
                   Join
                 </Button>
@@ -139,7 +149,10 @@ export default function Navbar() {
             <button className="relative p-1.5 text-white/80 hover:text-white transition-colors" aria-label="Cart">
               <ShoppingBag className="w-5 h-5" />
               {totalItems > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-gold text-black text-[10px] font-extrabold flex items-center justify-center leading-none">
+                <span
+                  style={{ backgroundColor: GOLD, color: "#111" }}
+                  className="absolute -top-1 -right-1 w-4 h-4 rounded-full text-[10px] font-extrabold flex items-center justify-center leading-none"
+                >
                   {totalItems > 9 ? "9+" : totalItems}
                 </span>
               )}
@@ -158,19 +171,21 @@ export default function Navbar() {
       {/* Mobile menu */}
       {mobileOpen && (
         <div className="md:hidden border-t border-white/10 px-4 pb-4 flex flex-col gap-1">
-          {NAV_LINKS.map(({ href, label }) => (
-            <Link key={href} href={href} onClick={() => setMobileOpen(false)}>
-              <span
-                className={`block px-3 py-2 rounded-md text-sm font-medium ${
-                  isActive(href)
-                    ? "bg-gold text-black"
-                    : "text-white/80 hover:bg-white/10"
-                }`}
-              >
-                {label}
-              </span>
-            </Link>
-          ))}
+          {NAV_LINKS.map(({ href, label }) => {
+            const active = isActive(href);
+            return (
+              <Link key={href} href={href} onClick={() => setMobileOpen(false)}>
+                <span
+                  style={active ? { color: GOLD, borderLeft: `3px solid ${GOLD}` } : undefined}
+                  className={`block px-3 py-2 rounded-md text-sm font-medium ${
+                    active ? "pl-3" : "text-white/80 hover:text-white hover:bg-white/10"
+                  }`}
+                >
+                  {label}
+                </span>
+              </Link>
+            );
+          })}
           <div className="mt-2 pt-2 border-t border-white/10 flex flex-col gap-1">
             {isAuthenticated ? (
               <>
@@ -196,13 +211,16 @@ export default function Navbar() {
             ) : (
               <>
                 <Link href="/login" onClick={() => setMobileOpen(false)}>
-                  <span className="block px-3 py-2 text-sm text-white/80 hover:bg-white/10 rounded-md">
+                  <span className="block px-3 py-2 text-sm border border-white/40 rounded-md text-white text-center">
                     Sign in
                   </span>
                 </Link>
                 <Link href="/register" onClick={() => setMobileOpen(false)}>
-                  <span className="block px-3 py-2 text-sm font-bold text-gold hover:bg-white/10 rounded-md">
-                    Create account
+                  <span
+                    style={{ backgroundColor: GOLD, color: "#111" }}
+                    className="block px-3 py-2 text-sm font-bold rounded-md text-center"
+                  >
+                    Join
                   </span>
                 </Link>
               </>

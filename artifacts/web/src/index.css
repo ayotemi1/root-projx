@@ -64,6 +64,9 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+
+  --color-gold: #F5C000;
+  --color-deep-red: #7A0000;
 }
 
 /* ROOT PROJX COLOUR SYSTEM — from official logo
