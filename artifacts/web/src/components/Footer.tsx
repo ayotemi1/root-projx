@@ -76,7 +76,8 @@ export default function Footer() {
             <p className="font-bold text-sm text-foreground mb-3 uppercase tracking-wide">Platform</p>
             <ul className="space-y-2 text-sm text-muted-foreground">
               <li><a href="/discover" className="hover:text-primary transition-colors">Discover Organisations</a></li>
-              <li><a href="/feed" className="hover:text-primary transition-colors">Impact Feed</a></li>
+              <li><a href="/" className="hover:text-primary transition-colors">Home Feed</a></li>
+              <li><a href="/about" className="hover:text-primary transition-colors">About Root ProjX</a></li>
               <li><a href="/help" className="hover:text-primary transition-colors">Get Help Directory</a></li>
             </ul>
           </div>
