@@ -11,8 +11,8 @@ import { useColors } from "@/hooks/useColors";
 
 const LogoWordmark = () => (
   <Image
-    source={require("../../assets/images/logo.jpg")}
-    style={{ height: 30, width: 110, resizeMode: "contain" }}
+    source={require("../../assets/images/logo.png")}
+    style={{ height: 41, width: 150, resizeMode: "contain" }}
     accessibilityLabel="Root ProjX"
   />
 );
