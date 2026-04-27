@@ -96,7 +96,12 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4 py-16">
       <div className="text-center mb-8">
-        <h1 className="text-4xl text-primary" style={{ fontFamily: "'Dancing Script', cursive", fontWeight: 700 }}>Root ProjX</h1>
+        <img
+          src="/logo-stylised.png"
+          alt="Root ProjX"
+          className="mx-auto mb-2"
+          style={{ height: "120px", width: "auto", objectFit: "contain" }}
+        />
         <p className="text-muted-foreground mt-2 text-sm">Join the community.</p>
       </div>
 
