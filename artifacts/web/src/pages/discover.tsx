@@ -1,7 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
-import { Search, BadgeCheck } from "lucide-react";
+import { Search, BadgeCheck, LayoutGrid, MapPin } from "lucide-react";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,7 +35,100 @@ const LOCATIONS = [
   { label: "USA 🇺🇸", value: "United States" },
 ];
 
+const COUNTRY_COORDS: Record<string, { center: [number, number]; zoom: number }> = {
+  Jamaica:               { center: [18.1096, -77.2975], zoom: 8 },
+  "United Kingdom":      { center: [55.3781, -3.4360],  zoom: 6 },
+  Nigeria:               { center: [9.0820,   8.6753],  zoom: 6 },
+  Ghana:                 { center: [7.9465,  -1.0232],  zoom: 7 },
+  "Trinidad and Tobago": { center: [10.6918, -61.2225], zoom: 9 },
+  Barbados:              { center: [13.1939, -59.5432], zoom: 10 },
+  Kenya:                 { center: [-1.2864,  36.8172], zoom: 7 },
+  "United States":       { center: [37.0902, -95.7129], zoom: 4 },
+};
+
+const DEFAULT_CENTER: [number, number] = [20, -30];
+const DEFAULT_ZOOM = 3;
+
 const GOLD = "#F5C000";
+const BRAND_RED = "#E31C23";
+
+const goldIcon = L.divIcon({
+  className: "",
+  html: `<div style="width:16px;height:16px;background:${GOLD};border:2.5px solid #333;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.35)"></div>`,
+  iconSize: [16, 16],
+  iconAnchor: [8, 8],
+  popupAnchor: [0, -10],
+});
+
+function MapController({ country }: { country: string }) {
+  const map = useMap();
+  useEffect(() => {
+    if (country === "All") {
+      map.flyTo(DEFAULT_CENTER, DEFAULT_ZOOM, { duration: 1 });
+    } else {
+      const loc = COUNTRY_COORDS[country];
+      if (loc) map.flyTo(loc.center, loc.zoom, { duration: 1 });
+    }
+  }, [country, map]);
+  return null;
+}
+
+function OrgMap({ orgs, country }: { orgs: Org[]; country: string }) {
+  return (
+    <MapContainer
+      center={DEFAULT_CENTER}
+      zoom={DEFAULT_ZOOM}
+      style={{ height: "520px", width: "100%", borderRadius: "12px" }}
+      className="z-0"
+    >
+      <TileLayer
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      />
+      <MapController country={country} />
+      {orgs.map((org) => {
+        const coords = COUNTRY_COORDS[org.country];
+        if (!coords) return null;
+        const jitter: [number, number] = [
+          coords.center[0] + (Math.random() - 0.5) * 0.8,
+          coords.center[1] + (Math.random() - 0.5) * 0.8,
+        ];
+        return (
+          <Marker key={org._id} position={jitter} icon={goldIcon}>
+            <Popup>
+              <div style={{ minWidth: "180px", maxWidth: "220px" }}>
+                <div style={{ fontWeight: 700, fontSize: "14px", marginBottom: "2px" }}>
+                  {org.name}
+                </div>
+                <div style={{ fontSize: "12px", color: "#666", marginBottom: "6px" }}>
+                  {[org.city, org.country].filter(Boolean).join(", ")}
+                </div>
+                <div style={{ fontSize: "12px", marginBottom: "10px", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
+                  {org.description}
+                </div>
+                <a
+                  href={`/organisations/${org._id}`}
+                  style={{
+                    display: "inline-block",
+                    padding: "4px 12px",
+                    backgroundColor: BRAND_RED,
+                    color: "#fff",
+                    borderRadius: "6px",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    textDecoration: "none",
+                  }}
+                >
+                  View
+                </a>
+              </div>
+            </Popup>
+          </Marker>
+        );
+      })}
+    </MapContainer>
+  );
+}
 
 function OrgCard({ org }: { org: Org }) {
   const [, navigate] = useLocation();
@@ -43,7 +139,6 @@ function OrgCard({ org }: { org: Org }) {
       onClick={() => navigate(`/organisations/${org._id}`)}
       className="bg-card border border-border rounded-xl p-5 hover:shadow-md transition-shadow cursor-pointer hover:border-primary/30 flex flex-col gap-3"
     >
-      {/* Header row */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1.5 flex-wrap">
@@ -69,7 +164,6 @@ function OrgCard({ org }: { org: Org }) {
         </div>
       </div>
 
-      {/* Category badge */}
       <Badge
         variant="secondary"
         className="w-fit bg-accent/20 text-accent-foreground border-accent/30 text-xs font-semibold"
@@ -77,12 +171,10 @@ function OrgCard({ org }: { org: Org }) {
         {org.category}
       </Badge>
 
-      {/* Description */}
       <p className="text-foreground text-sm leading-relaxed line-clamp-2">
         {org.description}
       </p>
 
-      {/* Stats */}
       <div className="flex items-center gap-4 text-sm text-muted-foreground">
         <span>
           <strong className="text-foreground">{org.followerCount ?? 0}</strong> followers
@@ -94,7 +186,6 @@ function OrgCard({ org }: { org: Org }) {
         )}
       </div>
 
-      {/* Progress bar */}
       <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
         <div
           className="h-full rounded-full transition-all"
@@ -102,7 +193,6 @@ function OrgCard({ org }: { org: Org }) {
         />
       </div>
 
-      {/* Action buttons — stop propagation so they don't navigate to profile */}
       <div className="flex gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
         <Link href={`/donate/${org._id}`} className="flex-1">
           <button
@@ -141,10 +231,13 @@ function OrgCardSkeleton() {
   );
 }
 
+type ViewMode = "grid" | "map";
+
 export default function DiscoverPage() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
-  const [location, setLocation] = useState("All");
+  const [locationFilter, setLocationFilter] = useState("All");
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
 
   const { data: orgs = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["organisations", category],
@@ -158,13 +251,12 @@ export default function DiscoverPage() {
       (o.city ?? "").toLowerCase().includes(search.toLowerCase()) ||
       o.country.toLowerCase().includes(search.toLowerCase());
     const matchesLocation =
-      location === "All" || o.country === location;
+      locationFilter === "All" || o.country === locationFilter;
     return matchesSearch && matchesLocation;
   });
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
-      {/* Page header */}
       <div className="mb-8">
         <h1 className="text-3xl font-extrabold text-foreground">Discover Organisations</h1>
         <p className="text-muted-foreground mt-1">
@@ -172,7 +264,6 @@ export default function DiscoverPage() {
         </p>
       </div>
 
-      {/* Search */}
       <div className="relative mb-5">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
@@ -184,49 +275,83 @@ export default function DiscoverPage() {
         />
       </div>
 
-      {/* Location filter strip */}
-      <div
-        className="flex gap-3 mb-5 overflow-x-auto pb-1"
-        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-      >
-        {LOCATIONS.map(({ label, value }) => {
-          const active = location === value;
-          return (
-            <button
-              key={value}
-              onClick={() => setLocation(value)}
-              className="flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-semibold text-white transition-all"
-              style={{
-                backgroundColor: "var(--color-primary, #E31C23)",
-                opacity: active ? 1 : 0.6,
-                borderBottom: active ? `2px solid ${GOLD}` : "2px solid transparent",
-              }}
-            >
-              {label}
-            </button>
-          );
-        })}
-      </div>
+      {/* Location filter strip + view toggle */}
+      <div className="flex items-center gap-3 mb-5">
+        <div
+          className="flex gap-3 flex-1 overflow-x-auto pb-1"
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        >
+          {LOCATIONS.map(({ label, value }) => {
+            const active = locationFilter === value;
+            return (
+              <button
+                key={value}
+                onClick={() => setLocationFilter(value)}
+                className="flex-shrink-0 px-4 py-1.5 rounded-full text-sm font-semibold text-white transition-all"
+                style={{
+                  backgroundColor: BRAND_RED,
+                  opacity: active ? 1 : 0.6,
+                  borderBottom: active ? `2px solid ${GOLD}` : "2px solid transparent",
+                }}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
 
-      {/* Category chips */}
-      <div className="flex flex-wrap gap-2 mb-6">
-        {CATEGORIES.map((cat) => (
+        {/* View toggle */}
+        <div className="flex-shrink-0 flex items-center gap-1 border border-border rounded-lg p-0.5">
           <button
-            key={cat}
-            onClick={() => setCategory(cat)}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-              category === cat
-                ? "bg-primary text-primary-foreground border-primary"
-                : "bg-background text-muted-foreground border-border hover:border-primary/40 hover:text-foreground"
-            }`}
+            onClick={() => setViewMode("grid")}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-semibold transition-all"
+            style={
+              viewMode === "grid"
+                ? { backgroundColor: GOLD, color: "#111" }
+                : { backgroundColor: "transparent", color: BRAND_RED, border: "none" }
+            }
           >
-            {cat}
+            <LayoutGrid className="w-4 h-4" />
+            Grid
           </button>
-        ))}
+          <button
+            onClick={() => setViewMode("map")}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-semibold transition-all"
+            style={
+              viewMode === "map"
+                ? { backgroundColor: GOLD, color: "#111" }
+                : { backgroundColor: "transparent", color: BRAND_RED, border: "none" }
+            }
+          >
+            <MapPin className="w-4 h-4" />
+            Map
+          </button>
+        </div>
       </div>
 
-      {/* Results */}
-      {isError ? (
+      {/* Category chips — only show in grid view */}
+      {viewMode === "grid" && (
+        <div className="flex flex-wrap gap-2 mb-6">
+          {CATEGORIES.map((cat) => (
+            <button
+              key={cat}
+              onClick={() => setCategory(cat)}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
+                category === cat
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background text-muted-foreground border-border hover:border-primary/40 hover:text-foreground"
+              }`}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Content */}
+      {viewMode === "map" ? (
+        <OrgMap orgs={filtered} country={locationFilter} />
+      ) : isError ? (
         <div className="text-center py-20">
           <p className="text-destructive mb-4">Could not load organisations.</p>
           <Button onClick={() => refetch()} variant="outline">Retry</Button>

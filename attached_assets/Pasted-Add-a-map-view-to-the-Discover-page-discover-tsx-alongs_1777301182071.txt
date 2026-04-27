@@ -1,0 +1,54 @@
+Add a map view to the Discover page (discover.tsx) alongside the 
+existing organisation card grid.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. VIEW TOGGLE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Add two toggle buttons just above the organisation cards, 
+to the right of the location filter strip:
+- "Grid" (with a grid icon) 
+- "Map" (with a map pin icon)
+Active toggle: gold (#F5C000) background, dark text
+Inactive toggle: white outline, brand red text
+Default view is Grid.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. MAP VIEW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Use Leaflet.js (react-leaflet) for the map — it's free and 
+requires no API key.
+
+- Map fills the full content area below the filter strip
+- Min height 500px, responsive
+- Default view centred on the Atlantic/diaspora corridor 
+  (roughly lat 20, lng -30, zoom 3) so Jamaica, UK, West Africa 
+  and USA are all visible
+- Each verified organisation is shown as a map pin/marker
+- Pin colour: gold (#F5C000)
+- Clicking a pin opens a small popup with:
+    - Org name
+    - Country
+    - Short description (2 lines max)
+    - A "View" button in brand red that links to the org profile
+- Use the organisation's country field to geocode a default 
+  position per country (hardcode a lat/lng lookup for the 
+  countries in the filter strip: Jamaica, UK, Nigeria, Ghana, 
+  Trinidad, Barbados, Kenya, USA). If an org has a more specific 
+  location use that, otherwise plot it at the country centroid.
+- When a location filter chip is selected, the map pans and 
+  zooms to that country and only shows orgs from that country.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. TILE LAYER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Use OpenStreetMap tiles (free, no key needed):
+https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4. INSTALL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Install: react-leaflet, leaflet, and @types/leaflet
+Import Leaflet CSS in the map component:
+import 'leaflet/dist/leaflet.css'
+Fix the default marker icon path issue by manually setting 
+the icon using L.icon with a CDN url for the marker images.
