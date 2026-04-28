@@ -96,16 +96,28 @@ export default function AboutPage() {
       {/* Meet the Team */}
       <section>
         <h2 className="text-2xl font-extrabold text-foreground mb-8 text-center">Meet the Team</h2>
-        <div className="flex justify-center">
-          <div className="bg-card border border-border rounded-2xl p-8 text-center shadow-sm max-w-xs w-full">
+        <div className="grid sm:grid-cols-2 gap-6 max-w-2xl mx-auto">
+          <div className="bg-card border border-border rounded-2xl p-8 text-center shadow-sm">
             <div className="w-20 h-20 rounded-full bg-primary/20 text-primary flex items-center justify-center text-2xl font-extrabold mx-auto mb-4">
-              VD
+              VF
             </div>
-            <h3 className="font-extrabold text-foreground text-lg">Visaka</h3>
+            <h3 className="font-extrabold text-foreground text-lg">Visaka Fernando</h3>
             <p className="text-sm text-primary font-semibold mt-0.5">Founder & CEO</p>
             <p className="text-sm text-muted-foreground mt-3 leading-relaxed">
               Born in Kingston, raised in London. Visaka has spent 15 years bridging diaspora communities
               with grassroots organisations across Jamaica and the UK.
+            </p>
+          </div>
+          <div className="bg-card border border-border rounded-2xl p-8 text-center shadow-sm">
+            <div className="w-20 h-20 rounded-full bg-primary/20 text-primary flex items-center justify-center text-2xl font-extrabold mx-auto mb-4">
+              AA
+            </div>
+            <h3 className="font-extrabold text-foreground text-lg">Ayotemi Adediwura</h3>
+            <p className="text-sm text-primary font-semibold mt-0.5">Co-Founder & CTO</p>
+            <p className="text-sm text-muted-foreground mt-3 leading-relaxed">
+              Born in Maryland to Nigerian roots, Ayotemi is a founder and technologist who believes AI
+              and automation can put power back in the hands of communities. At Root ProjX he architects
+              the systems that make direct giving possible at scale.
             </p>
           </div>
         </div>

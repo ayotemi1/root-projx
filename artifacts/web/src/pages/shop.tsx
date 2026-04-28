@@ -22,10 +22,9 @@ function ProductCard({ product }: { product: api.ShopProduct }) {
 
   return (
     <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm flex flex-col">
-      {/* Product image placeholder */}
-      <div className="w-full aspect-square bg-secondary/60 flex flex-col items-center justify-center gap-2">
-        <ShoppingBag className="w-12 h-12 text-muted-foreground/40" />
-        <span className="text-xs text-muted-foreground italic">Product photo coming soon</span>
+      {/* Product image */}
+      <div className="w-full aspect-square bg-primary/10 flex items-center justify-center">
+        <ShoppingBag className="w-16 h-16 text-primary/30" />
       </div>
 
       <div className="p-5 flex flex-col flex-1 gap-3">
