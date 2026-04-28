@@ -80,12 +80,6 @@ export default function LandingPage() {
             </p>
           )}
 
-          {/* Donate */}
-          <Link href="/discover">
-            <button className="w-full px-5 py-3 rounded-lg text-sm font-bold border-2 border-white text-white transition-colors hover:bg-white/10">
-              Donate to Root ProjX
-            </button>
-          </Link>
         </div>
       </div>
 
