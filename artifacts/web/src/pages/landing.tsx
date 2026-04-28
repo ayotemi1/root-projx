@@ -31,7 +31,7 @@ export default function LandingPage() {
         <img
           src="/logo-gold-v2.png"
           alt="Root ProjX"
-          className="h-28 sm:h-36 w-auto object-contain"
+          className="h-36 sm:h-48 w-auto object-contain"
         />
 
         {/* Tagline */}
