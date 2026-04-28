@@ -92,7 +92,7 @@ export default function LandingPage() {
       {/* Bottom links */}
       <div
         className="pb-8 flex flex-col sm:flex-row items-center gap-2 sm:gap-5 text-xs text-center"
-        style={{ color: "rgba(255,255,255,0.35)" }}
+        style={{ color: "rgba(255,255,255,0.75)" }}
       >
         <span>
           Already have an account?{" "}
