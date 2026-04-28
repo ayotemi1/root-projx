@@ -21,7 +21,7 @@ export default function LoginPage() {
     setError("");
     try {
       await login(email.trim().toLowerCase(), password);
-      navigate("/");
+      navigate("/feed");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Login failed.");
     } finally {
@@ -33,7 +33,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4 py-16">
       {/* Logo header */}
       <div className="text-center mb-8">
-        <h1 className="text-4xl text-primary" style={{ fontFamily: "'Dancing Script', cursive", fontWeight: 700 }}>Root ProjX</h1>
+        <img src="/logo-stylised.png" alt="Root ProjX" className="h-24 w-auto object-contain mx-auto" />
         <p className="text-muted-foreground mt-2 text-sm">Connecting diaspora with grassroots change.</p>
       </div>
 
