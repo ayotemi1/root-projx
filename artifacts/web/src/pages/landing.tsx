@@ -1,25 +1,6 @@
-import { useState } from "react";
 import { Link } from "wouter";
-import * as api from "@/lib/api";
 
 export default function LandingPage() {
-  const [email, setEmail] = useState("");
-  const [status, setStatus] = useState<"idle" | "loading" | "done" | "error">("idle");
-  const [errorMsg, setErrorMsg] = useState("");
-
-  async function handleSubscribe(e: React.FormEvent) {
-    e.preventDefault();
-    if (!email) return;
-    setStatus("loading");
-    try {
-      await api.subscribeNewsletter({ email });
-      setStatus("done");
-    } catch (err) {
-      setStatus("error");
-      setErrorMsg(err instanceof Error ? err.message : "Something went wrong. Please try again.");
-    }
-  }
-
   return (
     <div
       className="min-h-screen flex flex-col items-center px-6"
@@ -44,43 +25,16 @@ export default function LandingPage() {
           </p>
         </div>
 
-        {/* Actions */}
-        <div className="w-full flex flex-col gap-3">
+        {/* Enter button */}
+        <Link href="/register" className="w-full">
+          <button
+            className="w-full py-4 rounded-xl text-lg font-extrabold tracking-wide transition-opacity hover:opacity-90 active:scale-95"
+            style={{ backgroundColor: "#F5C000", color: "#111" }}
+          >
+            Enter
+          </button>
+        </Link>
 
-          {/* Newsletter */}
-          {status === "done" ? (
-            <p className="text-white font-medium py-3 text-sm">
-              You're in. Welcome to the movement.
-            </p>
-          ) : (
-            <form onSubmit={handleSubscribe} className="flex flex-col sm:flex-row gap-2">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Your email address"
-                required
-                className="flex-1 min-w-0 px-4 py-3 rounded-lg text-sm text-gray-900 placeholder-gray-400 bg-white outline-none focus:ring-2"
-                style={{ "--tw-ring-color": "#F5C000" } as React.CSSProperties}
-              />
-              <button
-                type="submit"
-                disabled={status === "loading"}
-                className="px-5 py-3 rounded-lg text-sm font-bold transition-opacity hover:opacity-90 disabled:opacity-60 whitespace-nowrap shrink-0"
-                style={{ backgroundColor: "#F5C000", color: "#111" }}
-              >
-                {status === "loading" ? "Joining…" : "Join the movement"}
-              </button>
-            </form>
-          )}
-
-          {status === "error" && (
-            <p className="text-xs" style={{ color: "rgba(255,255,255,0.65)" }}>
-              {errorMsg}
-            </p>
-          )}
-
-        </div>
       </div>
 
       {/* Bottom links */}
