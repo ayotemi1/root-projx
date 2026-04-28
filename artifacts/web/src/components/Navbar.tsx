@@ -13,7 +13,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useCart } from "@/context/CartContext";
 
 const NAV_LINKS = [
-  { href: "/", label: "Home" },
+  { href: "/feed", label: "Home" },
   { href: "/discover", label: "Discover" },
   { href: "/shop", label: "Shop" },
   { href: "/about", label: "About" },

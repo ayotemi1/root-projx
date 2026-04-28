@@ -8,6 +8,7 @@ import { CartProvider } from "@/context/CartContext";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import SplashScreen from "@/components/SplashScreen";
+import LandingPage from "@/pages/landing";
 import HomePage from "@/pages/home";
 import DiscoverPage from "@/pages/discover";
 import HelpPage from "@/pages/help";
@@ -39,7 +40,7 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
 function AuthRoute({ component: Component }: { component: React.ComponentType }) {
   const { isAuthenticated, isLoading } = useAuth();
   if (isLoading) return null;
-  if (isAuthenticated) return <Redirect to="/" />;
+  if (isAuthenticated) return <Redirect to="/feed" />;
   return <Component />;
 }
 
@@ -49,39 +50,44 @@ function AppRoutes() {
   if (isLoading) return <SplashScreen />;
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <Navbar />
-      <main className="flex-1">
-        <Switch>
-          <Route path="/" component={HomePage} />
-          <Route path="/discover" component={DiscoverPage} />
-          <Route path="/shop/success" component={ShopSuccessPage} />
-          <Route path="/shop/cancel" component={ShopCancelPage} />
-          <Route path="/shop" component={ShopPage} />
-          <Route path="/about" component={AboutPage} />
-          <Route path="/help" component={HelpPage} />
-          <Route path="/account">
-            {() => <ProtectedRoute component={AccountPage} />}
-          </Route>
-          <Route path="/organisations/:id" component={OrgProfilePage} />
-          <Route path="/donate/:orgId" component={DonatePage} />
-          <Route path="/dashboard">
-            {() => <ProtectedRoute component={DashboardPage} />}
-          </Route>
-          <Route path="/login">
-            {() => <AuthRoute component={LoginPage} />}
-          </Route>
-          <Route path="/register">
-            {() => <AuthRoute component={RegisterPage} />}
-          </Route>
-          <Route path="/feed">
-            <Redirect to="/" />
-          </Route>
-          <Route component={NotFound} />
-        </Switch>
-      </main>
-      <Footer />
-    </div>
+    <Switch>
+      {/* Landing page — no navbar or footer */}
+      <Route path="/" component={LandingPage} />
+
+      {/* All other pages — wrapped in navbar + footer */}
+      <Route>
+        <div className="min-h-screen flex flex-col bg-background">
+          <Navbar />
+          <main className="flex-1">
+            <Switch>
+              <Route path="/feed" component={HomePage} />
+              <Route path="/discover" component={DiscoverPage} />
+              <Route path="/shop/success" component={ShopSuccessPage} />
+              <Route path="/shop/cancel" component={ShopCancelPage} />
+              <Route path="/shop" component={ShopPage} />
+              <Route path="/about" component={AboutPage} />
+              <Route path="/help" component={HelpPage} />
+              <Route path="/account">
+                {() => <ProtectedRoute component={AccountPage} />}
+              </Route>
+              <Route path="/organisations/:id" component={OrgProfilePage} />
+              <Route path="/donate/:orgId" component={DonatePage} />
+              <Route path="/dashboard">
+                {() => <ProtectedRoute component={DashboardPage} />}
+              </Route>
+              <Route path="/login">
+                {() => <AuthRoute component={LoginPage} />}
+              </Route>
+              <Route path="/register">
+                {() => <AuthRoute component={RegisterPage} />}
+              </Route>
+              <Route component={NotFound} />
+            </Switch>
+          </main>
+          <Footer />
+        </div>
+      </Route>
+    </Switch>
   );
 }
 
