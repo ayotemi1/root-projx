@@ -91,21 +91,18 @@ export default function LandingPage() {
 
       {/* Bottom links */}
       <div
-        className="pb-8 flex flex-col sm:flex-row items-center gap-2 sm:gap-5 text-xs text-center"
+        className="pb-16 flex flex-row items-center gap-5 text-sm text-center"
         style={{ color: "rgba(255,255,255,0.75)" }}
       >
-        <span>
-          Already have an account?{" "}
-          <Link href="/login">
-            <span className="underline cursor-pointer hover:text-white/60 transition-colors">
-              Sign in
-            </span>
-          </Link>
-        </span>
-        <span className="hidden sm:block">·</span>
-        <Link href="/feed">
+        <Link href="/login">
           <span className="underline cursor-pointer hover:text-white/60 transition-colors">
-            Explore the platform →
+            Sign in
+          </span>
+        </Link>
+        <span className="opacity-40">·</span>
+        <Link href="/register">
+          <span className="underline cursor-pointer hover:text-white/60 transition-colors">
+            Sign up
           </span>
         </Link>
       </div>
