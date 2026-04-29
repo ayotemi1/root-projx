@@ -160,7 +160,7 @@ export default function AboutPage() {
               </p>
             </div>
             <p className="text-foreground/80 leading-relaxed">
-              The person who built the app and website you're experiencing now. More than that, Ayotemi spoke life into this idea at the very beginning — when it was still just a vision, he believed in it. That belief became the foundation. A technologist and founder who believes technology can decentralise power and put it back in the hands of communities.
+              Nigerian-American, born in Maryland. Ayotemi is a technologist and founder who believes AI and automation can decentralise power and return it to communities. He built the platform you're on — and was one of the first to believe it should exist. Co-Founder & CTO of Root ProjX.
             </p>
           </div>
         </div>
