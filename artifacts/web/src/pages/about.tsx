@@ -128,9 +128,6 @@ export default function AboutPage() {
               <p>
                 Root ProjX was born when I asked: what if I offered that skill not to a single organisation, but to the whole ecosystem? The platform is the answer.
               </p>
-              <p>
-                None of it would exist without Ayotemi Adediwura — Co-Founder and the person who built the app and website you're experiencing now. More than that, he spoke life into this idea at the very beginning. When it was still just a vision, he believed in it. That belief became the foundation.
-              </p>
             </div>
           </div>
 
