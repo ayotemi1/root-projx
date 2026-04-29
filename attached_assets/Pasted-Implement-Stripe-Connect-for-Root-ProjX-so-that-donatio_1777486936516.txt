@@ -1,0 +1,72 @@
+Implement Stripe Connect for Root ProjX so that donations flow 
+directly from donors to verified organisations, with Root ProjX 
+automatically taking a 5% platform fee before payout.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. STRIPE CONNECT SETUP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Use Stripe Connect Express accounts (simplest onboarding 
+  for orgs)
+- Root ProjX Ltd is the platform account (already has 
+  STRIPE_SECRET_KEY set)
+- Add STRIPE_CLIENT_ID to environment variables 
+  (found in Stripe Dashboard → Connect → Settings)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. ORG ONBOARDING FLOW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+When an organisation account is approved/verified, show a 
+"Connect your bank account" button on their dashboard.
+
+- Clicking it initiates Stripe Connect Express onboarding
+- Create GET /api/stripe/connect/onboard endpoint that 
+  generates a Stripe Connect OAuth link and redirects the 
+  org to complete their bank setup on Stripe
+- Add GET /api/stripe/connect/callback to handle the return, 
+  save the org's stripe_account_id to their Firestore doc
+- Once connected, show a green "Payouts enabled" status on 
+  their dashboard
+- Store stripe_account_id and payouts_enabled boolean on 
+  the org's Firestore document
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. DONATION PAYMENT FLOW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+When a donor clicks Donate on an org profile:
+
+- Create POST /api/donations/checkout endpoint
+- Accept: orgId, amount (in pence), donorEmail
+- Look up the org's stripe_account_id from Firestore
+- Create a Stripe Checkout Session with:
+    - payment_intent_data.application_fee_amount = 5% of amount
+    - payment_intent_data.transfer_data.destination = 
+      org's stripe_account_id
+- This routes money directly to the org and automatically 
+  splits the 5% fee to Root ProjX
+- Return the checkout URL and redirect donor to Stripe
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4. DONATION AMOUNTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+On the donate page/modal show preset amounts:
+£5 · £10 · £25 · £50 · £100 · Custom
+
+Styled in brand red and gold. Custom amount is a text input.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5. SUCCESS + CONFIRMATION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- After successful donation redirect to a confirmation page
+- Show: amount donated, org name, "Your support goes straight 
+  to the source." in brand styling
+- Log the donation to a Firestore donations collection with: 
+  donorEmail, orgId, amount, fee, timestamp, stripeSessionId
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+6. ORG DASHBOARD
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+On the org's dashboard show:
+- Total donations received
+- Pending payout amount
+- A "View payouts" link that opens their Stripe Express 
+  dashboard (use Stripe's login link API)

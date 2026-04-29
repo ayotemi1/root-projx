@@ -10,6 +10,7 @@ import profileRouter from "./profile.js";
 import newsletterRouter from "./newsletter.js";
 import uploadsRouter from "./uploads.js";
 import shopRouter from "./shop.js";
+import stripeConnectRouter from "./stripe-connect.js";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use(profileRouter);
 router.use(newsletterRouter);
 router.use(uploadsRouter);
 router.use(shopRouter);
+router.use(stripeConnectRouter);
 
 export default router;

@@ -1,6 +1,7 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle, PlusCircle, Image as ImageIcon, X } from "lucide-react";
+import { useSearch } from "wouter";
+import { CheckCircle, PlusCircle, Image as ImageIcon, X, Banknote, ExternalLink, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,6 +33,7 @@ export default function DashboardPage() {
   const { user, token } = useAuth();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const search = useSearch();
 
   const [showForm, setShowForm] = useState(false);
   const [postTitle, setPostTitle] = useState("");
@@ -43,12 +45,25 @@ export default function DashboardPage() {
   const [formError, setFormError] = useState("");
 
   const orgId = user?.id ?? "";
+  const connectComplete = new URLSearchParams(search).get("connect") === "complete";
 
   const orgQ = useQuery({
     queryKey: ["org", orgId],
     queryFn: () => api.getOrganisation(orgId, token),
     enabled: !!orgId,
   });
+
+  const connectQ = useQuery({
+    queryKey: ["connect-status", orgId],
+    queryFn: () => api.getConnectStatus(token!),
+    enabled: !!token,
+  });
+
+  useEffect(() => {
+    if (connectComplete) {
+      connectQ.refetch();
+    }
+  }, [connectComplete]);
 
   const updatesQ = useQuery({
     queryKey: ["org-feed", orgId],
@@ -192,6 +207,91 @@ export default function DashboardPage() {
           ))}
         </div>
       </div>
+
+      {/* Stripe Connect — bank / payouts panel */}
+      <Card className="border-border shadow-sm overflow-hidden">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Banknote className="w-4 h-4" style={{ color: "#CC0000" }} />
+            Payouts
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {connectQ.isLoading ? (
+            <div className="h-8 bg-secondary rounded animate-pulse" />
+          ) : connectQ.data?.payouts_enabled ? (
+            <div className="space-y-4">
+              {/* Status badge */}
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-5 h-5 text-green-500" />
+                <span className="text-sm font-semibold text-green-700">Payouts enabled</span>
+              </div>
+
+              {/* Stats */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-secondary rounded-xl p-4 text-center">
+                  <div className="text-xl font-extrabold text-foreground">
+                    £{(org?.totalRaised ?? 0).toLocaleString()}
+                  </div>
+                  <div className="text-xs text-muted-foreground mt-0.5">Total donations</div>
+                </div>
+                <div className="bg-secondary rounded-xl p-4 text-center">
+                  <div className="text-xl font-extrabold text-foreground">—</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">Pending payout</div>
+                </div>
+              </div>
+
+              {/* Stripe Express dashboard link */}
+              <Button
+                variant="outline"
+                className="w-full gap-2"
+                onClick={async () => {
+                  try {
+                    const { url } = await api.getConnectDashboardLink(token!);
+                    window.open(url, "_blank", "noopener,noreferrer");
+                  } catch {
+                    alert("Could not open Stripe dashboard. Please try again.");
+                  }
+                }}
+              >
+                <ExternalLink className="w-4 h-4" />
+                View payouts on Stripe
+              </Button>
+            </div>
+          ) : connectQ.data?.stripe_account_id ? (
+            /* Account created but onboarding not complete */
+            <div className="space-y-3">
+              <div className="flex items-start gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                Finish setting up your Stripe account to receive donations.
+              </div>
+              <a href="/api/stripe/connect/onboard">
+                <Button
+                  className="w-full font-bold text-black"
+                  style={{ backgroundColor: "#F5C000" }}
+                >
+                  Complete bank setup
+                </Button>
+              </a>
+            </div>
+          ) : (
+            /* No Stripe account yet */
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Connect your bank account so donors can send money directly to your organisation. Root ProjX takes a 5% platform fee automatically.
+              </p>
+              <a href="/api/stripe/connect/onboard">
+                <Button
+                  className="w-full font-bold text-black"
+                  style={{ backgroundColor: "#F5C000" }}
+                >
+                  Connect your bank account
+                </Button>
+              </a>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Post update */}
       <Card className="border-border shadow-sm">

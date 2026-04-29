@@ -252,6 +252,37 @@ export const createSubscription = (
 
 export const getMyDonations = (token: string) => req<Donation[]>("/donations/my", {}, token);
 
+export const createDonationCheckout = (
+  data: { orgId: string; amountPence: number },
+  token: string,
+) =>
+  req<{ url: string; sessionId: string }>(
+    "/donations/checkout",
+    { method: "POST", body: JSON.stringify(data) },
+    token,
+  );
+
+export const confirmDonation = (sessionId: string) =>
+  req<{
+    orgId: string;
+    orgName: string;
+    amountGbp: number;
+    feePence: number;
+    donorEmail: string | null;
+  }>(`/donations/confirm?session_id=${encodeURIComponent(sessionId)}`);
+
+// ── Stripe Connect ─────────────────────────────────────────────────────────────
+
+export const getConnectStatus = (token: string) =>
+  req<{ stripe_account_id: string | null; payouts_enabled: boolean; charges_enabled: boolean }>(
+    "/stripe/connect/status",
+    {},
+    token,
+  );
+
+export const getConnectDashboardLink = (token: string) =>
+  req<{ url: string }>("/stripe/connect/dashboard-link", {}, token);
+
 // ── Newsletter ─────────────────────────────────────────────────────────────────
 
 export const subscribeNewsletter = (data: { email: string; name?: string }) =>

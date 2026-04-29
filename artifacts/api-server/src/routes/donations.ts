@@ -3,6 +3,12 @@ import { fsCreate, fsGet, fsPatch, fsQuery, getServerToken } from "../lib/fireba
 import { requireAuth } from "../lib/auth.js";
 import { getUncachableStripeClient, getStripePublishableKey } from "../lib/stripeClient.js";
 
+const DOMAIN = process.env.REPLIT_DEV_DOMAIN
+  ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+  : process.env.REPLIT_DEPLOYMENT === "1"
+  ? `https://${process.env.REPLIT_DEPLOYMENT_DOMAIN ?? ""}`
+  : "http://localhost:3000";
+
 const router = Router();
 
 // ── Platform fee ──────────────────────────────────────────────────────────────
@@ -180,6 +186,147 @@ router.post("/donations/subscription", requireAuth, async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "POST /donations/subscription error");
     res.status(500).json({ error: "Failed to create subscription" });
+  }
+});
+
+// ── POST /donations/checkout — Stripe Connect Checkout Session ────────────────
+router.post("/donations/checkout", requireAuth, async (req, res) => {
+  try {
+    const uid = req.user!.userId;
+    const { orgId, amountPence } = req.body as {
+      orgId: string;
+      amountPence: number;
+    };
+
+    if (!orgId || !amountPence || amountPence < 100) {
+      res.status(400).json({ error: "orgId and amountPence (≥100) are required" });
+      return;
+    }
+
+    const serverToken = await getServerToken();
+    const org = await fsGet("organisations", orgId, serverToken);
+    if (!org) {
+      res.status(404).json({ error: "Organisation not found" });
+      return;
+    }
+
+    const stripeAccountId = org["stripe_account_id"] as string | undefined;
+    if (!stripeAccountId) {
+      res.status(400).json({
+        error: "This organisation has not connected their bank account yet",
+      });
+      return;
+    }
+
+    const userDoc = await fsGet("users", uid, serverToken);
+    const donorEmail = (userDoc?.["email"] as string | undefined) ?? undefined;
+
+    const feePence = Math.round(amountPence * 0.05);
+    const stripe = await getUncachableStripeClient();
+
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      line_items: [
+        {
+          price_data: {
+            currency: "gbp",
+            unit_amount: amountPence,
+            product_data: {
+              name: `Donation to ${org["name"] as string}`,
+              description: "Your support goes straight to the source.",
+            },
+          },
+          quantity: 1,
+        },
+      ],
+      payment_intent_data: {
+        application_fee_amount: feePence,
+        transfer_data: { destination: stripeAccountId },
+        metadata: {
+          userId: uid,
+          orgId,
+          orgName: (org["name"] as string) ?? "",
+          amountPence: String(amountPence),
+          feePence: String(feePence),
+          platform: "rootprojx",
+        },
+      },
+      customer_email: donorEmail,
+      success_url: `${DOMAIN}/donate/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${DOMAIN}/donate/${orgId}`,
+    });
+
+    res.json({ url: session.url, sessionId: session.id });
+  } catch (err) {
+    req.log.error({ err }, "POST /donations/checkout error");
+    res.status(500).json({ error: "Failed to create checkout session" });
+  }
+});
+
+// ── GET /donations/confirm — verify session + log donation idempotently ────────
+router.get("/donations/confirm", async (req, res) => {
+  try {
+    const { session_id } = req.query as { session_id?: string };
+    if (!session_id) {
+      res.status(400).json({ error: "session_id is required" });
+      return;
+    }
+
+    const stripe = await getUncachableStripeClient();
+    const session = await stripe.checkout.sessions.retrieve(session_id, {
+      expand: ["payment_intent"],
+    });
+
+    if (session.payment_status !== "paid") {
+      res.status(402).json({ error: "Payment not yet complete" });
+      return;
+    }
+
+    const meta = (session.payment_intent as import("stripe").Stripe.PaymentIntent)?.metadata ?? {};
+    const orgId = meta["orgId"] ?? "";
+    const orgName = meta["orgName"] ?? "";
+    const amountPence = parseInt(meta["amountPence"] ?? "0", 10);
+    const feePence = parseInt(meta["feePence"] ?? "0", 10);
+    const userId = meta["userId"] ?? "";
+
+    // Idempotent — only write if not already logged
+    const serverToken = await getServerToken();
+    const existing = await fsQuery(
+      "donations",
+      [{ field: "stripeSessionId", op: "EQUAL", value: session_id }],
+      serverToken,
+    );
+
+    if (existing.length === 0) {
+      await fsCreate(
+        "donations",
+        {
+          stripeSessionId: session_id,
+          userId,
+          orgId,
+          orgName,
+          amountPence,
+          amountGbp: amountPence / 100,
+          feePence,
+          donorEmail: session.customer_email ?? "",
+          currency: "gbp",
+          status: "paid",
+          createdAt: new Date().toISOString(),
+        },
+        serverToken,
+      );
+    }
+
+    res.json({
+      orgId,
+      orgName,
+      amountGbp: amountPence / 100,
+      feePence,
+      donorEmail: session.customer_email,
+    });
+  } catch (err) {
+    req.log.error({ err }, "GET /donations/confirm error");
+    res.status(500).json({ error: "Failed to confirm donation" });
   }
 });
 
