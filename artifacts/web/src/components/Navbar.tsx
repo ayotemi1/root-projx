@@ -15,9 +15,9 @@ import { useCart } from "@/context/CartContext";
 const NAV_LINKS = [
   { href: "/feed", label: "Home" },
   { href: "/discover", label: "Discover" },
+  { href: "/help", label: "Get Help" },
   { href: "/shop", label: "Shop" },
   { href: "/about", label: "About" },
-  { href: "/help", label: "Get Help" },
 ];
 
 const GOLD = "#F5C000";
