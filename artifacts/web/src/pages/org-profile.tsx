@@ -1,10 +1,17 @@
 import { useState } from "react";
-import { useRoute, Link } from "wouter";
+import { useRoute, Link, useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle, ArrowLeft, Heart, HeartOff } from "lucide-react";
+import { CheckCircle, ArrowLeft, Heart, HeartOff, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useAuth } from "@/context/AuthContext";
 import * as api from "@/lib/api";
 import type { FeedUpdate, Review } from "@/lib/api";
@@ -57,6 +64,123 @@ function ReviewRow({ item }: { item: Review }) {
   );
 }
 
+// ── Guest donate modal ────────────────────────────────────────────────────────
+function DonateGuestModal({
+  open,
+  onClose,
+  orgId,
+  orgName,
+}: {
+  open: boolean;
+  onClose: () => void;
+  orgId: string;
+  orgName: string;
+}) {
+  const [, navigate] = useLocation();
+  const [showEmail, setShowEmail] = useState(false);
+  const [email, setEmail] = useState("");
+
+  function handleGuestContinue(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email.trim()) return;
+    // Pre-fill email in register, then redirect back to donate after signup
+    navigate(
+      `/register?email=${encodeURIComponent(email.trim())}&next=${encodeURIComponent(`/donate/${orgId}`)}`,
+    );
+    onClose();
+  }
+
+  function handleClose() {
+    setShowEmail(false);
+    setEmail("");
+    onClose();
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
+      <DialogContent className="max-w-sm p-0 overflow-hidden rounded-2xl border-0 shadow-2xl">
+        {/* Red header */}
+        <div className="px-6 pt-6 pb-5 text-white" style={{ backgroundColor: "#CC0000" }}>
+          <button
+            onClick={handleClose}
+            className="absolute top-4 right-4 text-white/60 hover:text-white transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+          <DialogTitle className="text-lg font-extrabold text-white leading-snug">
+            Join Root ProjX to support<br />
+            <span style={{ color: "#F5C000" }}>{orgName}</span>
+          </DialogTitle>
+          <p className="text-white/70 text-sm mt-1">
+            Your support goes straight to the source.
+          </p>
+        </div>
+
+        {/* Options */}
+        <div className="px-6 py-5 space-y-3 bg-white">
+          <Link href="/register" onClick={handleClose}>
+            <Button
+              className="w-full font-bold text-black h-11"
+              style={{ backgroundColor: "#F5C000" }}
+            >
+              Create an account
+            </Button>
+          </Link>
+
+          <Link href={`/login?next=${encodeURIComponent(`/donate/${orgId}`)}`} onClick={handleClose}>
+            <Button
+              variant="outline"
+              className="w-full font-semibold h-11 border-2"
+              style={{ borderColor: "#CC0000", color: "#CC0000" }}
+            >
+              Sign in
+            </Button>
+          </Link>
+
+          <div className="relative flex items-center gap-3 py-1">
+            <div className="flex-1 h-px bg-border" />
+            <span className="text-xs text-muted-foreground">or</span>
+            <div className="flex-1 h-px bg-border" />
+          </div>
+
+          {!showEmail ? (
+            <button
+              className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors py-1"
+              onClick={() => setShowEmail(true)}
+            >
+              Continue as guest →
+            </button>
+          ) : (
+            <form onSubmit={handleGuestContinue} className="space-y-2">
+              <Input
+                type="email"
+                placeholder="Your email address"
+                value={email}
+                autoFocus
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="h-10"
+              />
+              <Button
+                type="submit"
+                variant="outline"
+                className="w-full text-sm font-semibold"
+                disabled={!email.trim()}
+              >
+                Continue as guest
+              </Button>
+              <p className="text-xs text-center text-muted-foreground">
+                We'll create a quick free account to complete your donation.
+              </p>
+            </form>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
 export default function OrgProfilePage() {
   const [, params] = useRoute("/organisations/:id");
   const id = params?.id ?? "";
@@ -64,6 +188,7 @@ export default function OrgProfilePage() {
   const queryClient = useQueryClient();
   const [tab, setTab] = useState<"updates" | "reviews">("updates");
   const [localFollow, setLocalFollow] = useState<boolean | null>(null);
+  const [donateModalOpen, setDonateModalOpen] = useState(false);
 
   const orgQ = useQuery({
     queryKey: ["org", id],
@@ -95,8 +220,13 @@ export default function OrgProfilePage() {
       : (followsQ.data ?? []).some((o) => o._id === id);
 
   const followMut = useMutation({
-    mutationFn: () =>
-      followed ? api.unfollowOrg(id, token!) : api.followOrg(id, token!),
+    mutationFn: async () => {
+      if (followed) {
+        await api.unfollowOrg(id, token!);
+      } else {
+        await api.followOrg(id, token!);
+      }
+    },
     onSuccess: () => {
       setLocalFollow(!followed);
       queryClient.invalidateQueries({ queryKey: ["follows", "my"] });
@@ -125,10 +255,27 @@ export default function OrgProfilePage() {
 
   const initials = org.name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
 
+  function handleDonateClick() {
+    if (isAuthenticated) {
+      window.location.href = `/donate/${id}`;
+    } else {
+      setDonateModalOpen(true);
+    }
+  }
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
+
+      {/* Guest donate modal */}
+      <DonateGuestModal
+        open={donateModalOpen}
+        onClose={() => setDonateModalOpen(false)}
+        orgId={id}
+        orgName={org.name}
+      />
+
       {/* Back */}
-      <Link href="/">
+      <Link href="/discover">
         <button className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground text-sm mb-4 transition-colors">
           <ArrowLeft className="w-4 h-4" /> Back to Discover
         </button>
@@ -198,14 +345,13 @@ export default function OrgProfilePage() {
               )}
             </Button>
           )}
-          <Link href={`/donate/${id}`}>
-            <Button
-              size="sm"
-              className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold"
-            >
-              Donate
-            </Button>
-          </Link>
+          <Button
+            size="sm"
+            className="bg-accent text-accent-foreground hover:bg-accent/90 font-bold"
+            onClick={handleDonateClick}
+          >
+            Donate
+          </Button>
         </div>
       </div>
 

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,13 +18,22 @@ const COUNTRIES = [
 export default function RegisterPage() {
   const { register } = useAuth();
   const [, navigate] = useLocation();
-  const [accountType, setAccountType] = useState<AccountType>("supporter");
+  const search = useSearch();
+  const params = new URLSearchParams(search);
+
+  // Determine account type from URL — ?type=org forces org form, default = supporter
+  const typeParam = params.get("type");
+  const defaultType: AccountType = typeParam === "org" ? "organisation" : "supporter";
+  const prefillEmail = params.get("email") ?? "";
+  const nextPath = params.get("next") ?? "/";
+
+  const [accountType] = useState<AccountType>(defaultType);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   // Supporter fields
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(prefillEmail);
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
 
@@ -58,7 +67,7 @@ export default function RegisterPage() {
           password,
           accountType: "supporter",
         });
-        navigate("/");
+        navigate(nextPath);
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Registration failed.");
       } finally {
@@ -84,7 +93,7 @@ export default function RegisterPage() {
           country,
           registrationNumber: regNumber.trim() || undefined,
         });
-        navigate("/");
+        navigate("/dashboard");
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Registration failed.");
       } finally {
@@ -92,6 +101,8 @@ export default function RegisterPage() {
       }
     }
   }
+
+  const isOrg = accountType === "organisation";
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4 py-16">
@@ -102,12 +113,16 @@ export default function RegisterPage() {
           className="mx-auto mb-2"
           style={{ height: "120px", width: "auto", objectFit: "contain" }}
         />
-        <p className="text-muted-foreground mt-2 text-sm">Join the community.</p>
+        <p className="text-muted-foreground mt-2 text-sm">
+          {isOrg ? "List your organisation." : "Join the community."}
+        </p>
       </div>
 
       <Card className="w-full max-w-sm shadow-md border-border">
         <CardHeader className="pb-2">
-          <CardTitle className="text-2xl">Create account</CardTitle>
+          <CardTitle className="text-2xl">
+            {isOrg ? "Register your organisation" : "Create account"}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -117,28 +132,8 @@ export default function RegisterPage() {
               </div>
             )}
 
-            {/* Account type toggle */}
-            <div className="space-y-1.5">
-              <Label>I am a</Label>
-              <div className="flex gap-2">
-                {(["supporter", "organisation"] as AccountType[]).map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => { setAccountType(t); setError(""); }}
-                    className={`flex-1 py-2 rounded-md text-sm font-semibold border-2 transition-colors ${
-                      accountType === t
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border text-muted-foreground hover:border-primary/40"
-                    }`}
-                  >
-                    {t === "supporter" ? "Supporter" : "Organisation"}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {accountType === "supporter" ? (
+            {/* Supporter form */}
+            {!isOrg && (
               <>
                 <div className="space-y-1.5">
                   <Label htmlFor="name">Full name</Label>
@@ -157,7 +152,10 @@ export default function RegisterPage() {
                   <Input id="password" type="password" placeholder="Min. 6 characters" value={password} onChange={(e) => setPassword(e.target.value)} />
                 </div>
               </>
-            ) : (
+            )}
+
+            {/* Organisation form */}
+            {isOrg && (
               <>
                 <div className="space-y-1.5">
                   <Label htmlFor="orgName">Organisation name</Label>
@@ -197,7 +195,7 @@ export default function RegisterPage() {
             )}
 
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Creating account…" : "Create account"}
+              {loading ? "Creating account…" : isOrg ? "Register organisation" : "Create account"}
             </Button>
             <p className="text-center text-sm text-muted-foreground">
               Already have an account?{" "}

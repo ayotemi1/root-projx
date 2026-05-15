@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useRoute, Link, useLocation } from "wouter";
+import { useRoute, Link, useLocation, useSearch } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,8 @@ export default function DonatePage() {
   const orgId = params?.orgId ?? "";
   const { isAuthenticated, token } = useAuth();
   const [, navigate] = useLocation();
+  const search = useSearch();
+  const urlParams = new URLSearchParams(search);
 
   const [preset, setPreset] = useState<number | null>(25);
   const [custom, setCustom] = useState("");
@@ -39,9 +41,12 @@ export default function DonatePage() {
     .join("")
     .toUpperCase() || "??";
 
+  // Suppress unused var warning — urlParams used for future next-param handling
+  void urlParams;
+
   async function handleDonate() {
     if (!isAuthenticated) {
-      navigate("/login");
+      navigate(`/login?next=${encodeURIComponent(`/donate/${orgId}`)}`);
       return;
     }
     if (!amountGbp || amountGbp < 1) {
@@ -179,27 +184,41 @@ export default function DonatePage() {
             </div>
           )}
 
-          <Button
-            className="w-full font-bold text-base h-12 text-black"
-            style={{ backgroundColor: "#F5C000" }}
-            onClick={handleDonate}
-            disabled={!amountGbp || amountGbp < 1 || redirecting}
-          >
-            {redirecting
-              ? "Redirecting to Stripe…"
-              : amountGbp > 0
-              ? `Donate £${amountGbp.toFixed(2)} →`
-              : "Select an amount"}
-          </Button>
-
-          {!isAuthenticated && (
-            <p className="text-center text-sm text-muted-foreground">
-              You'll need to{" "}
-              <Link href="/login" className="text-primary font-semibold hover:underline">
-                sign in
-              </Link>{" "}
-              to complete your donation.
-            </p>
+          {isAuthenticated ? (
+            <Button
+              className="w-full font-bold text-base h-12 text-black"
+              style={{ backgroundColor: "#F5C000" }}
+              onClick={handleDonate}
+              disabled={!amountGbp || amountGbp < 1 || redirecting}
+            >
+              {redirecting
+                ? "Redirecting to Stripe…"
+                : amountGbp > 0
+                ? `Donate £${amountGbp.toFixed(2)} →`
+                : "Select an amount"}
+            </Button>
+          ) : (
+            <div className="rounded-xl border-2 border-dashed border-border px-4 py-4 text-center space-y-2">
+              <p className="text-sm font-semibold text-foreground">
+                Create a free account to complete your donation
+              </p>
+              <p className="text-xs text-muted-foreground">Takes 30 seconds — no spam, ever.</p>
+              <div className="flex gap-2 mt-3">
+                <Link href="/register" className="flex-1">
+                  <Button
+                    className="w-full font-bold text-black text-sm"
+                    style={{ backgroundColor: "#F5C000" }}
+                  >
+                    Create account
+                  </Button>
+                </Link>
+                <Link href={`/login?next=${encodeURIComponent(`/donate/${orgId}`)}`} className="flex-1">
+                  <Button variant="outline" className="w-full text-sm font-semibold">
+                    Sign in
+                  </Button>
+                </Link>
+              </div>
+            </div>
           )}
 
           <p className="text-center text-xs text-muted-foreground">

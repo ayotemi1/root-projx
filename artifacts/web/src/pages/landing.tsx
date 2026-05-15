@@ -8,7 +8,7 @@ export default function LandingPage() {
     >
       <div className="flex-1 flex flex-col items-center justify-center w-full max-w-sm text-center gap-8 py-16">
 
-        {/* Logo — hero element */}
+        {/* Logo */}
         <img
           src="/logo-gold-v2.png"
           alt="Root ProjX"
@@ -25,8 +25,8 @@ export default function LandingPage() {
           </p>
         </div>
 
-        {/* Enter button */}
-        <Link href="/register" className="w-full">
+        {/* Enter — goes straight to Discover, no signup gate */}
+        <Link href="/discover" className="w-full">
           <button
             className="w-full py-4 rounded-xl text-lg font-extrabold tracking-wide transition-opacity hover:opacity-90 active:scale-95"
             style={{ backgroundColor: "#F5C000", color: "#111" }}
@@ -50,7 +50,7 @@ export default function LandingPage() {
         <span className="opacity-40">·</span>
         <Link href="/register">
           <span className="underline cursor-pointer hover:text-white/60 transition-colors">
-            Sign up
+            Join
           </span>
         </Link>
       </div>

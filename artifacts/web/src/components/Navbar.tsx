@@ -121,6 +121,13 @@ export default function Navbar() {
             </DropdownMenu>
           ) : (
             <>
+              {/* Org CTA — subtle, logged-out only */}
+              <Link href="/register?type=org">
+                <span className="text-xs text-white/60 hover:text-white transition-colors cursor-pointer whitespace-nowrap">
+                  Are you an organisation?
+                </span>
+              </Link>
+
               <Link href="/login">
                 <Button
                   variant="outline"
@@ -210,6 +217,12 @@ export default function Navbar() {
               </>
             ) : (
               <>
+                {/* Org CTA in mobile menu */}
+                <Link href="/register?type=org" onClick={() => setMobileOpen(false)}>
+                  <span className="block px-3 py-2 text-xs text-white/60 hover:text-white transition-colors rounded-md">
+                    Are you an organisation?
+                  </span>
+                </Link>
                 <Link href="/login" onClick={() => setMobileOpen(false)}>
                   <span className="block px-3 py-2 text-sm border border-white/40 rounded-md text-white text-center">
                     Sign in
