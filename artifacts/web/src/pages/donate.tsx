@@ -19,10 +19,14 @@ export default function DonatePage() {
   const search = useSearch();
   const urlParams = new URLSearchParams(search);
 
+  // Guest email pre-filled from the donate-gate modal
+  const guestEmail = urlParams.get("email") ?? "";
+
   const [preset, setPreset] = useState<number | null>(25);
   const [custom, setCustom] = useState("");
   const [redirecting, setRedirecting] = useState(false);
   const [error, setError] = useState("");
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false);
 
   const orgQ = useQuery({
     queryKey: ["org", orgId],
@@ -41,19 +45,18 @@ export default function DonatePage() {
     .join("")
     .toUpperCase() || "??";
 
-  // Suppress unused var warning — urlParams used for future next-param handling
-  void urlParams;
-
   async function handleDonate() {
-    if (!isAuthenticated) {
-      navigate(`/login?next=${encodeURIComponent(`/donate/${orgId}`)}`);
-      return;
-    }
     if (!amountGbp || amountGbp < 1) {
       setError("Please enter an amount of at least £1.");
       return;
     }
+    if (!isAuthenticated) {
+      // Show inline auth prompt instead of hard-redirecting
+      setShowAuthPrompt(true);
+      return;
+    }
     setError("");
+    setShowAuthPrompt(false);
     setRedirecting(true);
     try {
       const { url } = await api.createDonationCheckout(
@@ -184,27 +187,32 @@ export default function DonatePage() {
             </div>
           )}
 
-          {isAuthenticated ? (
-            <Button
-              className="w-full font-bold text-base h-12 text-black"
-              style={{ backgroundColor: "#F5C000" }}
-              onClick={handleDonate}
-              disabled={!amountGbp || amountGbp < 1 || redirecting}
-            >
-              {redirecting
-                ? "Redirecting to Stripe…"
-                : amountGbp > 0
-                ? `Donate £${amountGbp.toFixed(2)} →`
-                : "Select an amount"}
-            </Button>
-          ) : (
-            <div className="rounded-xl border-2 border-dashed border-border px-4 py-4 text-center space-y-2">
+          {/* Donate button — shown for everyone */}
+          <Button
+            className="w-full font-bold text-base h-12 text-black"
+            style={{ backgroundColor: "#F5C000" }}
+            onClick={handleDonate}
+            disabled={!amountGbp || amountGbp < 1 || redirecting}
+          >
+            {redirecting
+              ? "Redirecting to Stripe…"
+              : amountGbp > 0
+              ? `Donate £${amountGbp.toFixed(2)} →`
+              : "Select an amount"}
+          </Button>
+
+          {/* Inline auth prompt — appears when a guest clicks Donate */}
+          {showAuthPrompt && (
+            <div className="rounded-xl border-2 border-border px-4 py-4 text-center space-y-2 animate-in fade-in">
               <p className="text-sm font-semibold text-foreground">
                 Create a free account to complete your donation
               </p>
               <p className="text-xs text-muted-foreground">Takes 30 seconds — no spam, ever.</p>
               <div className="flex gap-2 mt-3">
-                <Link href="/register" className="flex-1">
+                <Link
+                  href={`/register?${guestEmail ? `email=${encodeURIComponent(guestEmail)}&` : ""}next=${encodeURIComponent(`/donate/${orgId}`)}`}
+                  className="flex-1"
+                >
                   <Button
                     className="w-full font-bold text-black text-sm"
                     style={{ backgroundColor: "#F5C000" }}

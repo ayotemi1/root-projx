@@ -50,7 +50,7 @@ export default function LandingPage() {
         <span className="opacity-40">·</span>
         <Link href="/register">
           <span className="underline cursor-pointer hover:text-white/60 transition-colors">
-            Join
+            Join as supporter
           </span>
         </Link>
       </div>

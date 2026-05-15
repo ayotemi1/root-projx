@@ -83,10 +83,8 @@ function DonateGuestModal({
   function handleGuestContinue(e: React.FormEvent) {
     e.preventDefault();
     if (!email.trim()) return;
-    // Pre-fill email in register, then redirect back to donate after signup
-    navigate(
-      `/register?email=${encodeURIComponent(email.trim())}&next=${encodeURIComponent(`/donate/${orgId}`)}`,
-    );
+    // Route directly to the donate page with the email pre-filled
+    navigate(`/donate/${orgId}?email=${encodeURIComponent(email.trim())}`);
     onClose();
   }
 
