@@ -13,7 +13,7 @@ import * as api from "@/lib/api";
 import type { Org } from "@/lib/api";
 
 const CATEGORIES = [
-  "All",
+  "All Causes",
   "Youth Empowerment",
   "Maternal Health",
   "Environment",
@@ -21,6 +21,27 @@ const CATEGORIES = [
   "Education",
   "Mental Health",
   "Arts & Culture",
+  "Food Security & Nutrition",
+  "Housing & Homelessness",
+  "Women & Girls",
+  "Elderly Care",
+  "Disability & Accessibility",
+  "Community Development",
+  "Conservation & Wildlife",
+  "Sport & Recreation",
+  "Economic Empowerment & Livelihoods",
+  "Disaster Relief",
+  "Religious & Spiritual Community",
+  "Children & Family",
+  "Health & Wellbeing",
+  "Human Rights & Justice",
+  "Animal Welfare",
+  "Digital Inclusion",
+  "Drug & Alcohol Recovery",
+  "Refugee & Migrant Support",
+  "Prison & Rehabilitation",
+  "Clean Water & Sanitation",
+  "Agriculture & Farming",
 ];
 
 const COUNTRIES = [
@@ -423,14 +444,14 @@ type ViewMode = "grid" | "map";
 
 export default function DiscoverPage() {
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState("All");
+  const [category, setCategory] = useState("All Causes");
   const [locationFilter, setLocationFilter] = useState("All");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
 
   const { data: orgs = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["organisations", category],
     queryFn: () =>
-      api.getOrganisations(category !== "All" ? { category } : undefined),
+      api.getOrganisations(category !== "All Causes" ? { category } : undefined),
   });
 
   const filtered = orgs.filter((o) => {
@@ -463,23 +484,45 @@ export default function DiscoverPage() {
         />
       </div>
 
-      {/* Country dropdown + view toggle */}
-      <div className="flex items-center justify-center gap-3 mb-5">
+      {/* Filters + view toggle */}
+      <div className="flex flex-wrap items-center justify-center gap-3 mb-6">
+        {/* Country dropdown */}
         <select
           value={locationFilter}
           onChange={(e) => setLocationFilter(e.target.value)}
-          className="h-9 px-3 text-sm font-medium rounded-lg cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/40"
+          className="h-9 px-3 text-sm font-medium cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/40"
           style={{
             background: "#fff",
             border: `1.5px solid ${BRAND_RED}`,
             color: BRAND_RED,
             borderRadius: "8px",
-            width: "220px",
+            width: "180px",
           }}
         >
           {COUNTRIES.map(({ label, value }) => (
             <option key={value} value={value}>
               {label}
+            </option>
+          ))}
+        </select>
+
+        {/* Causes dropdown */}
+        <select
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          className="h-9 px-3 text-sm font-medium cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/40"
+          style={{
+            background: "#fff",
+            border: `1.5px solid ${BRAND_RED}`,
+            color: category === "All Causes" ? BRAND_RED : "#111",
+            borderRadius: "8px",
+            width: "200px",
+            fontWeight: category !== "All Causes" ? 600 : undefined,
+          }}
+        >
+          {CATEGORIES.map((cat) => (
+            <option key={cat} value={cat}>
+              {cat}
             </option>
           ))}
         </select>
@@ -512,25 +555,6 @@ export default function DiscoverPage() {
           </button>
         </div>
       </div>
-
-      {/* Category chips — only show in grid view */}
-      {viewMode === "grid" && (
-        <div className="flex flex-wrap gap-2 mb-6">
-          {CATEGORIES.map((cat) => (
-            <button
-              key={cat}
-              onClick={() => setCategory(cat)}
-              className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-                category === cat
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-background text-muted-foreground border-border hover:border-primary/40 hover:text-foreground"
-              }`}
-            >
-              {cat}
-            </button>
-          ))}
-        </div>
-      )}
 
       {/* Content */}
       {viewMode === "map" ? (
