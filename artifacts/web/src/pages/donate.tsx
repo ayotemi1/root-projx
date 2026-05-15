@@ -50,8 +50,9 @@ export default function DonatePage() {
       setError("Please enter an amount of at least £1.");
       return;
     }
-    if (!isAuthenticated) {
-      // Show inline auth prompt instead of hard-redirecting
+    // If not authenticated and no guest email was provided, show the inline auth prompt.
+    // If a guest email was pre-filled from the modal, proceed directly to checkout.
+    if (!isAuthenticated && !guestEmail) {
       setShowAuthPrompt(true);
       return;
     }
@@ -60,8 +61,8 @@ export default function DonatePage() {
     setRedirecting(true);
     try {
       const { url } = await api.createDonationCheckout(
-        { orgId, amountPence },
-        token!,
+        { orgId, amountPence, guestEmail: guestEmail || undefined },
+        token ?? undefined,
       );
       window.location.href = url;
     } catch (err: unknown) {

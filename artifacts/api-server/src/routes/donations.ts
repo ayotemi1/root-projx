@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { fsCreate, fsGet, fsPatch, fsQuery, getServerToken } from "../lib/firebase-rest.js";
-import { requireAuth } from "../lib/auth.js";
+import { requireAuth, optionalAuth } from "../lib/auth.js";
 import { getUncachableStripeClient, getStripePublishableKey } from "../lib/stripeClient.js";
 
 const DOMAIN = process.env.REPLIT_DEV_DOMAIN
@@ -190,16 +190,24 @@ router.post("/donations/subscription", requireAuth, async (req, res) => {
 });
 
 // ── POST /donations/checkout — Stripe Connect Checkout Session ────────────────
-router.post("/donations/checkout", requireAuth, async (req, res) => {
+// Supports both authenticated users and guests (with guestEmail in body).
+router.post("/donations/checkout", optionalAuth, async (req, res) => {
   try {
-    const uid = req.user!.userId;
-    const { orgId, amountPence } = req.body as {
+    const { orgId, amountPence, guestEmail } = req.body as {
       orgId: string;
       amountPence: number;
+      guestEmail?: string;
     };
 
     if (!orgId || !amountPence || amountPence < 100) {
       res.status(400).json({ error: "orgId and amountPence (≥100) are required" });
+      return;
+    }
+
+    // Either an authenticated user or a valid guest email is required
+    const uid = req.user?.userId;
+    if (!uid && !guestEmail) {
+      res.status(400).json({ error: "Sign in or provide an email to donate" });
       return;
     }
 
@@ -218,8 +226,12 @@ router.post("/donations/checkout", requireAuth, async (req, res) => {
       return;
     }
 
-    const userDoc = await fsGet("users", uid, serverToken);
-    const donorEmail = (userDoc?.["email"] as string | undefined) ?? undefined;
+    // Determine donor email: authenticated user's email takes priority
+    let donorEmail: string | undefined = guestEmail;
+    if (uid) {
+      const userDoc = await fsGet("users", uid, serverToken);
+      donorEmail = (userDoc?.["email"] as string | undefined) ?? guestEmail;
+    }
 
     const feePence = Math.round(amountPence * 0.05);
     const stripe = await getUncachableStripeClient();
@@ -243,7 +255,7 @@ router.post("/donations/checkout", requireAuth, async (req, res) => {
         application_fee_amount: feePence,
         transfer_data: { destination: stripeAccountId },
         metadata: {
-          userId: uid,
+          userId: uid ?? "guest",
           orgId,
           orgName: (org["name"] as string) ?? "",
           amountPence: String(amountPence),

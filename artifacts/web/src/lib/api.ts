@@ -253,8 +253,8 @@ export const createSubscription = (
 export const getMyDonations = (token: string) => req<Donation[]>("/donations/my", {}, token);
 
 export const createDonationCheckout = (
-  data: { orgId: string; amountPence: number },
-  token: string,
+  data: { orgId: string; amountPence: number; guestEmail?: string },
+  token?: string,
 ) =>
   req<{ url: string; sessionId: string }>(
     "/donations/checkout",
