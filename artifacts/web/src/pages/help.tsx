@@ -7,8 +7,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import * as api from "@/lib/api";
 import type { Resource } from "@/lib/api";
 
-const CATEGORIES = ["All", "Housing", "Legal", "Mental Health", "Health"];
-const COUNTRIES = ["All", "Jamaica", "United Kingdom"];
+const CATEGORIES = ["All Categories", "Housing", "Legal", "Mental Health", "Health"];
+const COUNTRIES = ["All Countries", "Jamaica", "United Kingdom"];
 
 function ResourceCard({ item }: { item: Resource }) {
   return (
@@ -90,15 +90,15 @@ function ResourceSkeleton() {
 }
 
 export default function HelpPage() {
-  const [category, setCategory] = useState("All");
-  const [country, setCountry] = useState("All");
+  const [category, setCategory] = useState("All Categories");
+  const [country, setCountry] = useState("All Countries");
 
   const { data: resources = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["resources", category, country],
     queryFn: () =>
       api.getResources({
-        category: category !== "All" ? category : undefined,
-        country: country !== "All" ? country : undefined,
+        category: category !== "All Categories" ? category : undefined,
+        country: country !== "All Countries" ? country : undefined,
       }),
   });
 
@@ -113,47 +113,42 @@ export default function HelpPage() {
       </div>
 
       {/* Filters */}
-      <div className="space-y-3 mb-6">
-        <div>
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-            Category
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {CATEGORIES.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setCategory(cat)}
-                className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-                  category === cat
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-background text-muted-foreground border-border hover:border-primary/40"
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div>
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
-            Country
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {COUNTRIES.map((c) => (
-              <button
-                key={c}
-                onClick={() => setCountry(c)}
-                className={`px-4 py-1.5 rounded-full text-sm font-medium border transition-colors ${
-                  country === c
-                    ? "bg-sidebar text-sidebar-foreground border-sidebar"
-                    : "bg-background text-muted-foreground border-border hover:border-sidebar/40"
-                }`}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
-        </div>
+      <div className="flex flex-wrap items-center gap-3 mb-6">
+        <select
+          value={country}
+          onChange={(e) => setCountry(e.target.value)}
+          className="h-10 px-3 text-sm cursor-pointer focus:outline-none focus:ring-1 focus:ring-ring"
+          style={{
+            background: "#fff",
+            border: "1px solid #e2e8f0",
+            color: "#0f172a",
+            borderRadius: "8px",
+            width: "180px",
+            boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+          }}
+        >
+          {COUNTRIES.map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
+
+        <select
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          className="h-10 px-3 text-sm cursor-pointer focus:outline-none focus:ring-1 focus:ring-ring"
+          style={{
+            background: "#fff",
+            border: "1px solid #e2e8f0",
+            color: "#0f172a",
+            borderRadius: "8px",
+            width: "200px",
+            boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
+          }}
+        >
+          {CATEGORIES.map((cat) => (
+            <option key={cat} value={cat}>{cat}</option>
+          ))}
+        </select>
       </div>
 
       {/* Results */}
