@@ -45,7 +45,7 @@ const CATEGORIES = [
 ];
 
 const COUNTRIES = [
-  { label: "All 🌍", value: "All" },
+  { label: "All Countries", value: "All" },
   { label: "Afghanistan 🇦🇫", value: "Afghanistan" },
   { label: "Albania 🇦🇱", value: "Albania" },
   { label: "Algeria 🇩🇿", value: "Algeria" },
