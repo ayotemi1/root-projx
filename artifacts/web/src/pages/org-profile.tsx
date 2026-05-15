@@ -168,7 +168,7 @@ function DonateGuestModal({
                 Continue as guest
               </Button>
               <p className="text-xs text-center text-muted-foreground">
-                We'll create a quick free account to complete your donation.
+                No account needed — your email is only used for your receipt.
               </p>
             </form>
           )}

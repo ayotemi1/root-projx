@@ -6,8 +6,6 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/context/AuthContext";
 
-type AccountType = "supporter" | "organisation";
-
 const COUNTRIES = [
   "Jamaica", "United Kingdom", "United States", "Canada", "Trinidad and Tobago",
   "Barbados", "Guyana", "Grenada", "St Lucia", "Antigua and Barbuda",
@@ -21,13 +19,12 @@ export default function RegisterPage() {
   const search = useSearch();
   const params = new URLSearchParams(search);
 
-  // Determine account type from URL — ?type=org forces org form, default = supporter
-  const typeParam = params.get("type");
-  const defaultType: AccountType = typeParam === "org" ? "organisation" : "supporter";
+  // Derive form type and pre-fills directly from URL params each render
+  // so navigating to/from ?type=org always reflects the current URL.
+  const isOrg = params.get("type") === "org";
   const prefillEmail = params.get("email") ?? "";
   const nextPath = params.get("next") ?? "/";
 
-  const [accountType] = useState<AccountType>(defaultType);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -49,7 +46,7 @@ export default function RegisterPage() {
     e.preventDefault();
     setError("");
 
-    if (accountType === "supporter") {
+    if (!isOrg) {
       if (!name || !email || !password) {
         setError("Name, email and password are required.");
         return;
@@ -101,8 +98,6 @@ export default function RegisterPage() {
       }
     }
   }
-
-  const isOrg = accountType === "organisation";
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4 py-16">
