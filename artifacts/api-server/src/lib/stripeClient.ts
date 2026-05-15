@@ -1,7 +1,15 @@
-// Stripe client using Replit connection API — WARNING: never cache this client
 import Stripe from "stripe";
 
 async function getCredentials(): Promise<{ publishableKey: string; secretKey: string }> {
+  // Prefer direct env vars (set as Replit secrets) over the connector proxy
+  if (process.env.STRIPE_SECRET_KEY) {
+    return {
+      secretKey: process.env.STRIPE_SECRET_KEY,
+      publishableKey: process.env.STRIPE_PUBLISHABLE_KEY ?? "",
+    };
+  }
+
+  // Fall back to Replit connector proxy
   const hostname = process.env.REPLIT_CONNECTORS_HOSTNAME;
   const xReplitToken = process.env.REPL_IDENTITY
     ? "repl " + process.env.REPL_IDENTITY
@@ -9,7 +17,7 @@ async function getCredentials(): Promise<{ publishableKey: string; secretKey: st
       ? "depl " + process.env.WEB_REPL_RENEWAL
       : null;
 
-  if (!xReplitToken) throw new Error("X-Replit-Token not found for repl/depl");
+  if (!xReplitToken) throw new Error("Stripe not configured: set STRIPE_SECRET_KEY secret or connect via Replit Stripe integration");
 
   const connectorName = "stripe";
   const isProduction = process.env.REPLIT_DEPLOYMENT === "1";
@@ -33,7 +41,7 @@ async function getCredentials(): Promise<{ publishableKey: string; secretKey: st
 
   const settings = data.items?.[0]?.settings;
   if (!settings?.publishable || !settings?.secret) {
-    throw new Error(`Stripe ${targetEnvironment} connection not found`);
+    throw new Error(`Stripe ${targetEnvironment} connection not found — set STRIPE_SECRET_KEY secret or connect via Replit Stripe integration`);
   }
 
   return { publishableKey: settings.publishable, secretKey: settings.secret };
