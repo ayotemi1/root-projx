@@ -485,18 +485,19 @@ export default function DiscoverPage() {
       </div>
 
       {/* Filters + view toggle */}
-      <div className="flex flex-wrap items-center justify-center gap-3 mb-6">
+      <div className="flex flex-wrap items-center gap-3 mb-6">
         {/* Country dropdown */}
         <select
           value={locationFilter}
           onChange={(e) => setLocationFilter(e.target.value)}
-          className="h-9 px-3 text-sm font-medium cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/40"
+          className="h-10 px-3 text-sm cursor-pointer focus:outline-none focus:ring-1 focus:ring-ring"
           style={{
             background: "#fff",
-            border: `1.5px solid ${BRAND_RED}`,
-            color: BRAND_RED,
+            border: "1px solid #e2e8f0",
+            color: "#0f172a",
             borderRadius: "8px",
             width: "180px",
+            boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
           }}
         >
           {COUNTRIES.map(({ label, value }) => (
@@ -510,14 +511,14 @@ export default function DiscoverPage() {
         <select
           value={category}
           onChange={(e) => setCategory(e.target.value)}
-          className="h-9 px-3 text-sm font-medium cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/40"
+          className="h-10 px-3 text-sm cursor-pointer focus:outline-none focus:ring-1 focus:ring-ring"
           style={{
             background: "#fff",
-            border: `1.5px solid ${BRAND_RED}`,
-            color: category === "All Causes" ? BRAND_RED : "#111",
+            border: "1px solid #e2e8f0",
+            color: "#0f172a",
             borderRadius: "8px",
             width: "200px",
-            fontWeight: category !== "All Causes" ? 600 : undefined,
+            boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
           }}
         >
           {CATEGORIES.map((cat) => (
