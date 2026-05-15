@@ -1,6 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Phone, Mail, Globe } from "lucide-react";
+import { Phone, Mail, Globe, LayoutGrid, MapPin } from "lucide-react";
+import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -9,6 +12,99 @@ import type { Resource } from "@/lib/api";
 
 const CATEGORIES = ["All Categories", "Housing", "Legal", "Mental Health", "Health"];
 const COUNTRIES = ["All Countries", "Jamaica", "United Kingdom"];
+
+const COUNTRY_COORDS: Record<string, { center: [number, number]; zoom: number }> = {
+  Jamaica:          { center: [18.1096, -77.2975], zoom: 8 },
+  "United Kingdom": { center: [55.3781,  -3.4360], zoom: 6 },
+};
+
+const DEFAULT_CENTER: [number, number] = [30, -20];
+const DEFAULT_ZOOM = 3;
+
+const GOLD = "#F5C000";
+const BRAND_RED = "#E31C23";
+
+const goldIcon = L.divIcon({
+  className: "",
+  html: `<div style="width:16px;height:16px;background:${GOLD};border:2.5px solid #333;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.35)"></div>`,
+  iconSize: [16, 16],
+  iconAnchor: [8, 8],
+  popupAnchor: [0, -10],
+});
+
+function MapController({ country }: { country: string }) {
+  const map = useMap();
+  useEffect(() => {
+    if (country === "All Countries") {
+      map.flyTo(DEFAULT_CENTER, DEFAULT_ZOOM, { duration: 1 });
+    } else {
+      const loc = COUNTRY_COORDS[country];
+      if (loc) map.flyTo(loc.center, loc.zoom, { duration: 1 });
+    }
+  }, [country, map]);
+  return null;
+}
+
+function ResourceMap({ resources, country }: { resources: Resource[]; country: string }) {
+  return (
+    <MapContainer
+      center={DEFAULT_CENTER}
+      zoom={DEFAULT_ZOOM}
+      style={{ height: "520px", width: "100%", borderRadius: "12px" }}
+      className="z-0"
+    >
+      <TileLayer
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      />
+      <MapController country={country} />
+      {resources.map((item) => {
+        const coords = COUNTRY_COORDS[item.country];
+        if (!coords) return null;
+        const jitter: [number, number] = [
+          coords.center[0] + (Math.random() - 0.5) * 0.6,
+          coords.center[1] + (Math.random() - 0.5) * 0.6,
+        ];
+        return (
+          <Marker key={item._id} position={jitter} icon={goldIcon}>
+            <Popup>
+              <div style={{ minWidth: "180px", maxWidth: "220px" }}>
+                <div style={{ fontWeight: 700, fontSize: "14px", marginBottom: "4px" }}>
+                  {item.title}
+                </div>
+                <div style={{ fontSize: "12px", color: "#666", marginBottom: "6px" }}>
+                  {item.category} · {item.country}
+                </div>
+                <div style={{ fontSize: "12px", marginBottom: "10px", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" }}>
+                  {item.description}
+                </div>
+                {item.contact?.website && (
+                  <a
+                    href={item.contact.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      display: "inline-block",
+                      padding: "4px 12px",
+                      backgroundColor: BRAND_RED,
+                      color: "#fff",
+                      borderRadius: "6px",
+                      fontSize: "12px",
+                      fontWeight: 600,
+                      textDecoration: "none",
+                    }}
+                  >
+                    Visit
+                  </a>
+                )}
+              </div>
+            </Popup>
+          </Marker>
+        );
+      })}
+    </MapContainer>
+  );
+}
 
 function ResourceCard({ item }: { item: Resource }) {
   return (
@@ -89,9 +185,12 @@ function ResourceSkeleton() {
   );
 }
 
+type ViewMode = "grid" | "map";
+
 export default function HelpPage() {
   const [category, setCategory] = useState("All Categories");
   const [country, setCountry] = useState("All Countries");
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
 
   const { data: resources = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["resources", category, country],
@@ -112,7 +211,7 @@ export default function HelpPage() {
         </p>
       </div>
 
-      {/* Filters */}
+      {/* Filters + view toggle */}
       <div className="flex flex-wrap items-center gap-3 mb-6">
         <select
           value={country}
@@ -149,10 +248,40 @@ export default function HelpPage() {
             <option key={cat} value={cat}>{cat}</option>
           ))}
         </select>
+
+        {/* View toggle */}
+        <div className="flex-shrink-0 flex items-center gap-1 border border-border rounded-lg p-0.5">
+          <button
+            onClick={() => setViewMode("grid")}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-semibold transition-all"
+            style={
+              viewMode === "grid"
+                ? { backgroundColor: GOLD, color: "#111" }
+                : { backgroundColor: "transparent", color: BRAND_RED, border: "none" }
+            }
+          >
+            <LayoutGrid className="w-4 h-4" />
+            Grid
+          </button>
+          <button
+            onClick={() => setViewMode("map")}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-semibold transition-all"
+            style={
+              viewMode === "map"
+                ? { backgroundColor: GOLD, color: "#111" }
+                : { backgroundColor: "transparent", color: BRAND_RED, border: "none" }
+            }
+          >
+            <MapPin className="w-4 h-4" />
+            Map
+          </button>
+        </div>
       </div>
 
-      {/* Results */}
-      {isError ? (
+      {/* Content */}
+      {viewMode === "map" ? (
+        <ResourceMap resources={resources} country={country} />
+      ) : isError ? (
         <div className="text-center py-16">
           <p className="text-destructive mb-4">Could not load resources.</p>
           <Button onClick={() => refetch()} variant="outline">Retry</Button>
