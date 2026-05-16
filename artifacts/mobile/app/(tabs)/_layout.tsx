@@ -2,7 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import React from "react";
-import { Image, Platform, StyleSheet } from "react-native";
+import { Image, Platform } from "react-native";
 
 const LogoWordmark = () => (
   <Image
@@ -95,4 +95,3 @@ export default function TabLayout() {
   );
 }
 
-const _styles = StyleSheet.create({});
