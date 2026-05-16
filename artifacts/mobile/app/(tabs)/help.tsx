@@ -4,10 +4,12 @@ import {
   ActivityIndicator,
   FlatList,
   Linking,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
+  TouchableOpacity,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -16,115 +18,133 @@ import * as api from "@/lib/api";
 import type { Resource } from "@/lib/api";
 import { useColors } from "@/hooks/useColors";
 
-const CATEGORIES = ["All", "Housing", "Legal", "Mental Health", "Health"];
-const COUNTRIES = ["All", "Jamaica", "United Kingdom"];
+const CATEGORIES = [
+  "All Categories",
+  "Education",
+  "Employment",
+  "Family Support",
+  "Financial Aid",
+  "Food",
+  "Health",
+  "Housing",
+  "Immigration",
+  "Legal",
+  "Mental Health",
+  "Youth",
+];
+
+const COUNTRIES = [
+  "All Countries",
+  "Antigua & Barbuda",
+  "Barbados",
+  "Belize",
+  "Canada",
+  "Grenada",
+  "Guyana",
+  "Jamaica",
+  "Saint Lucia",
+  "Trinidad & Tobago",
+  "United Kingdom",
+  "United States",
+];
+
+function Dropdown({
+  value,
+  options,
+  onChange,
+  colors,
+}: {
+  value: string;
+  options: string[];
+  onChange: (v: string) => void;
+  colors: ReturnType<typeof useColors>;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Pressable
+        style={[s.dropBtn, { borderColor: colors.border, backgroundColor: colors.card }]}
+        onPress={() => setOpen(true)}
+      >
+        <Text style={[s.dropBtnText, { color: colors.foreground }]} numberOfLines={1}>{value}</Text>
+        <Text style={{ color: colors.mutedForeground, fontSize: 10 }}>▼</Text>
+      </Pressable>
+      <Modal visible={open} transparent animationType="fade">
+        <Pressable style={s.modalOverlay} onPress={() => setOpen(false)}>
+          <View style={[s.modalSheet, { backgroundColor: colors.background, borderColor: colors.border }]}>
+            <ScrollView>
+              {options.map((opt) => (
+                <TouchableOpacity
+                  key={opt}
+                  style={[s.modalItem, { borderBottomColor: colors.border }]}
+                  onPress={() => { onChange(opt); setOpen(false); }}
+                >
+                  <Text style={[s.modalItemText, { color: colors.foreground }, value === opt && { color: colors.primary, fontWeight: "700" }]}>
+                    {opt}
+                  </Text>
+                  {value === opt && <Text style={{ color: colors.primary }}>✓</Text>}
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </Pressable>
+      </Modal>
+    </>
+  );
+}
 
 function ResourceCard({ item }: { item: Resource }) {
   const colors = useColors();
-  const s = StyleSheet.create({
-    card: {
-      backgroundColor: colors.card,
-      borderRadius: colors.radius + 2,
-      padding: 16,
-      marginHorizontal: 16,
-      marginBottom: 12,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 1,
-      shadowRadius: 3,
-      elevation: 2,
-    },
-    topRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
-    categoryBadge: {
-      backgroundColor: colors.goldDim,
-      borderRadius: 4,
-      paddingHorizontal: 8,
-      paddingVertical: 2,
-    },
-    categoryText: { fontSize: 10, fontWeight: "700", color: colors.accentForeground },
-    countryBadge: {
-      backgroundColor: colors.secondary,
-      borderRadius: 4,
-      paddingHorizontal: 8,
-      paddingVertical: 2,
-    },
-    countryText: { fontSize: 10, fontWeight: "600", color: colors.mutedForeground },
-    title: { fontSize: 15, fontWeight: "700", color: colors.foreground, marginTop: 10 },
-    desc: { fontSize: 13, color: colors.foreground, marginTop: 6, lineHeight: 19 },
-    contactSection: { marginTop: 12, gap: 6 },
-    contactLabel: { fontSize: 12, fontWeight: "600", color: colors.mutedForeground },
-    contactRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 4 },
-    contactBtn: {
-      flexDirection: "row",
-      alignItems: "center",
-      backgroundColor: colors.secondary,
-      borderRadius: 6,
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-    },
-    contactBtnText: { fontSize: 12, color: colors.primary, fontWeight: "600" },
-    tagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 10 },
-    tag: {
-      backgroundColor: colors.secondary,
-      borderRadius: 4,
-      paddingHorizontal: 8,
-      paddingVertical: 3,
-    },
-    tagText: { fontSize: 11, color: colors.mutedForeground },
-  });
-
   const { contact } = item;
 
   return (
-    <View style={s.card}>
-      <View style={s.topRow}>
-        <View style={s.categoryBadge}>
-          <Text style={s.categoryText}>{item.category.toUpperCase()}</Text>
+    <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
+      <View style={s.cardTags}>
+        <View style={[s.categoryPill, { backgroundColor: colors.goldDim }]}>
+          <Text style={[s.categoryPillText, { color: colors.primary }]}>{item.category.toUpperCase()}</Text>
         </View>
-        <View style={s.countryBadge}>
-          <Text style={s.countryText}>{item.country}</Text>
+        <View style={[s.countryPill, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
+          <Text style={[s.countryPillText, { color: colors.mutedForeground }]}>{item.country}</Text>
         </View>
       </View>
-      <Text style={s.title}>{item.title}</Text>
-      <Text style={s.desc}>{item.description}</Text>
+
+      <Text style={[s.cardTitle, { color: colors.foreground }]}>{item.title}</Text>
+      <Text style={[s.cardDesc, { color: colors.foreground }]}>{item.description}</Text>
 
       {contact && (
-        <View style={s.contactSection}>
-          <Text style={s.contactLabel}>GET IN TOUCH</Text>
-          <View style={s.contactRow}>
-            {contact.phone && (
-              <Pressable
-                style={s.contactBtn}
-                onPress={() => Linking.openURL(`tel:${contact.phone}`)}
-              >
-                <Text style={s.contactBtnText}>📞 {contact.phone}</Text>
-              </Pressable>
-            )}
-            {contact.email && (
-              <Pressable
-                style={s.contactBtn}
-                onPress={() => Linking.openURL(`mailto:${contact.email}`)}
-              >
-                <Text style={s.contactBtnText}>✉ {contact.email}</Text>
-              </Pressable>
-            )}
-            {contact.website && (
-              <Pressable
-                style={s.contactBtn}
-                onPress={() => Linking.openURL(contact.website!)}
-              >
-                <Text style={s.contactBtnText}>🌐 Website</Text>
-              </Pressable>
-            )}
-          </View>
+        <View style={s.contactRow}>
+          {contact.phone && (
+            <Pressable
+              style={[s.contactBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}
+              onPress={() => Linking.openURL(`tel:${contact.phone}`)}
+            >
+              <Text style={[s.contactBtnText, { color: colors.primary }]}>📞 Call</Text>
+            </Pressable>
+          )}
+          {contact.email && (
+            <Pressable
+              style={[s.contactBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}
+              onPress={() => Linking.openURL(`mailto:${contact.email}`)}
+            >
+              <Text style={[s.contactBtnText, { color: colors.primary }]}>✉ Email</Text>
+            </Pressable>
+          )}
+          {contact.website && (
+            <Pressable
+              style={[s.contactBtn, { backgroundColor: colors.secondary, borderColor: colors.border }]}
+              onPress={() => Linking.openURL(contact.website!)}
+            >
+              <Text style={[s.contactBtnText, { color: colors.primary }]}>🌐 Website</Text>
+            </Pressable>
+          )}
         </View>
       )}
 
       {item.tags && item.tags.length > 0 && (
         <View style={s.tagsRow}>
           {item.tags.map((t) => (
-            <View key={t} style={s.tag}>
-              <Text style={s.tagText}>{t}</Text>
+            <View key={t} style={[s.tag, { backgroundColor: colors.secondary }]}>
+              <Text style={[s.tagText, { color: colors.mutedForeground }]}>{t}</Text>
             </View>
           ))}
         </View>
@@ -135,80 +155,50 @@ function ResourceCard({ item }: { item: Resource }) {
 
 export default function HelpScreen() {
   const colors = useColors();
-  const [category, setCategory] = useState("All");
-  const [country, setCountry] = useState("All");
+  const [category, setCategory] = useState("All Categories");
+  const [country, setCountry] = useState("All Countries");
 
   const { data: resources = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["resources", category, country],
     queryFn: () =>
       api.getResources({
-        category: category !== "All" ? category : undefined,
-        country: country !== "All" ? country : undefined,
+        category: category !== "All Categories" ? category : undefined,
+        country: country !== "All Countries" ? country : undefined,
       }),
   });
 
-  const s = styles(colors);
   return (
-    <SafeAreaView style={s.safe} edges={["top"]}>
-      {/* Category filter */}
-      <View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={s.chips}
-        >
-          {CATEGORIES.map((cat) => (
-            <Pressable
-              key={cat}
-              style={[s.chip, category === cat && s.chipActive]}
-              onPress={() => setCategory(cat)}
-            >
-              <Text style={[s.chipText, category === cat && s.chipTextActive]}>
-                {cat}
-              </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-
-        {/* Country filter */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={s.chips}
-        >
-          {COUNTRIES.map((c) => (
-            <Pressable
-              key={c}
-              style={[s.chip, country === c && s.chipCountryActive]}
-              onPress={() => setCountry(c)}
-            >
-              <Text style={[s.chipText, country === c && s.chipTextActive]}>
-                {c}
-              </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
+    <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]} edges={["top"]}>
+      <View style={[s.filtersRow, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
+        <View style={{ flex: 1 }}>
+          <Dropdown value={category} options={CATEGORIES} onChange={setCategory} colors={colors} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Dropdown value={country} options={COUNTRIES} onChange={setCountry} colors={colors} />
+        </View>
       </View>
 
       {isLoading ? (
         <ActivityIndicator style={{ marginTop: 40 }} color={colors.primary} size="large" />
       ) : isError ? (
         <View style={s.center}>
-          <Text style={s.errorText}>Could not load resources.</Text>
-          <Pressable style={s.retryBtn} onPress={() => refetch()}>
-            <Text style={s.retryText}>Retry</Text>
+          <Text style={{ color: colors.destructive, marginBottom: 12 }}>Could not load resources.</Text>
+          <Pressable style={[s.retryBtn, { backgroundColor: colors.primary }]} onPress={() => refetch()}>
+            <Text style={{ color: "#fff", fontWeight: "700" }}>Retry</Text>
           </Pressable>
         </View>
       ) : resources.length === 0 ? (
         <View style={s.center}>
-          <Text style={s.emptyText}>No resources found for this filter.</Text>
+          <Text style={{ color: colors.mutedForeground, textAlign: "center", fontSize: 15 }}>
+            No resources found for this filter.
+          </Text>
         </View>
       ) : (
         <FlatList
           data={resources}
           keyExtractor={(r) => r._id}
           renderItem={({ item }) => <ResourceCard item={item} />}
-          contentContainerStyle={{ paddingVertical: 12, paddingBottom: 100 }}
+          contentContainerStyle={{ padding: 12, paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
           onRefresh={refetch}
           refreshing={isLoading}
@@ -218,30 +208,73 @@ export default function HelpScreen() {
   );
 }
 
-const styles = (c: ReturnType<typeof useColors>) =>
-  StyleSheet.create({
-    safe: { flex: 1, backgroundColor: c.background },
-    chips: { paddingHorizontal: 12, paddingVertical: 8, gap: 8 },
-    chip: {
-      paddingHorizontal: 14,
-      paddingVertical: 6,
-      borderRadius: 20,
-      backgroundColor: c.secondary,
-      borderWidth: 1,
-      borderColor: c.border,
-    },
-    chipActive: { backgroundColor: c.primary, borderColor: c.primary },
-    chipCountryActive: { backgroundColor: c.navBackground, borderColor: c.navBackground },
-    chipText: { fontSize: 13, color: c.mutedForeground, fontWeight: "500" },
-    chipTextActive: { color: c.primaryForeground, fontWeight: "700" },
-    center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
-    errorText: { color: c.destructive, fontSize: 15, textAlign: "center", marginBottom: 12 },
-    emptyText: { color: c.mutedForeground, fontSize: 15, textAlign: "center" },
-    retryBtn: {
-      backgroundColor: c.primary,
-      borderRadius: c.radius,
-      paddingHorizontal: 24,
-      paddingVertical: 10,
-    },
-    retryText: { color: c.primaryForeground, fontWeight: "600" },
-  });
+const s = StyleSheet.create({
+  safe: { flex: 1 },
+  filtersRow: {
+    flexDirection: "row",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 8,
+    borderBottomWidth: 1,
+  },
+  dropBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    borderRadius: 8,
+    borderWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    gap: 6,
+  },
+  dropBtnText: { fontSize: 12, fontWeight: "600", flex: 1 },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  modalSheet: {
+    width: "100%",
+    maxHeight: 400,
+    borderRadius: 14,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  modalItem: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 18,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+  },
+  modalItemText: { fontSize: 15 },
+  card: {
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    shadowColor: "rgba(0,0,0,0.06)",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  cardTags: { flexDirection: "row", gap: 6, marginBottom: 10 },
+  categoryPill: { borderRadius: 5, paddingHorizontal: 8, paddingVertical: 3 },
+  categoryPillText: { fontSize: 10, fontWeight: "800" },
+  countryPill: { borderRadius: 5, paddingHorizontal: 8, paddingVertical: 3, borderWidth: 1 },
+  countryPillText: { fontSize: 10, fontWeight: "600" },
+  cardTitle: { fontSize: 16, fontWeight: "700", marginBottom: 6 },
+  cardDesc: { fontSize: 13, lineHeight: 19, marginBottom: 12 },
+  contactRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 10 },
+  contactBtn: { borderRadius: 7, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1 },
+  contactBtnText: { fontSize: 13, fontWeight: "600" },
+  tagsRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  tag: { borderRadius: 4, paddingHorizontal: 8, paddingVertical: 3 },
+  tagText: { fontSize: 11 },
+  center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24, gap: 12 },
+  retryBtn: { borderRadius: 10, paddingHorizontal: 24, paddingVertical: 10 },
+});

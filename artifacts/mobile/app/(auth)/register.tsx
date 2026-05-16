@@ -2,10 +2,12 @@ import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -14,12 +16,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAuth } from "@/context/AuthContext";
-import { useColors } from "@/hooks/useColors";
 
 type AccountType = "supporter" | "organisation";
 
 export default function RegisterScreen() {
-  const colors = useColors();
   const { register } = useAuth();
   const router = useRouter();
   const [name, setName] = useState("");
@@ -27,6 +27,9 @@ export default function RegisterScreen() {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [accountType, setAccountType] = useState<AccountType>("supporter");
+  const [orgName, setOrgName] = useState("");
+  const [orgCountry, setOrgCountry] = useState("");
+  const [orgRegNumber, setOrgRegNumber] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -39,11 +42,15 @@ export default function RegisterScreen() {
       setError("Password must be at least 6 characters.");
       return;
     }
+    if (accountType === "organisation" && !orgName.trim()) {
+      setError("Organisation name is required.");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
       await register({
-        name: name.trim(),
+        name: accountType === "organisation" ? orgName.trim() : name.trim(),
         email: email.trim().toLowerCase(),
         phone: phone.trim() || undefined,
         password,
@@ -56,191 +63,213 @@ export default function RegisterScreen() {
     }
   }
 
-  const s = styles(colors);
   return (
-    <SafeAreaView style={s.safe}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-      >
-        <ScrollView
-          contentContainerStyle={s.scroll}
-          keyboardShouldPersistTaps="handled"
+    <View style={s.root}>
+      <StatusBar barStyle="light-content" backgroundColor="#7A0000" />
+      <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
         >
-          {/* Header */}
-          <View style={s.header}>
-            <Text style={s.logo}>Root ProjX</Text>
-            <Text style={s.tagline}>Join the community.</Text>
-          </View>
-
-          {/* Form */}
-          <View style={s.card}>
-            <Text style={s.title}>Create account</Text>
-
-            {!!error && <Text style={s.error}>{error}</Text>}
-
-            {/* Account type toggle */}
-            <Text style={s.label}>I am a</Text>
-            <View style={s.toggleRow}>
-              {(["supporter", "organisation"] as AccountType[]).map((type) => (
-                <Pressable
-                  key={type}
-                  style={[s.toggleBtn, accountType === type && s.toggleActive]}
-                  onPress={() => setAccountType(type)}
-                >
-                  <Text
-                    style={[
-                      s.toggleText,
-                      accountType === type && s.toggleTextActive,
-                    ]}
-                  >
-                    {type === "supporter" ? "Supporter" : "Organisation"}
-                  </Text>
-                </Pressable>
-              ))}
+          <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
+            <View style={s.header}>
+              <Image
+                source={require("../../assets/images/logo.png")}
+                style={s.logo}
+                resizeMode="contain"
+              />
+              <Text style={s.tagline}>Join the community.</Text>
             </View>
 
-            <Text style={s.label}>Full name</Text>
-            <TextInput
-              style={s.input}
-              value={name}
-              onChangeText={setName}
-              autoCapitalize="words"
-              placeholder="Your name"
-              placeholderTextColor={colors.mutedForeground}
-            />
+            <View style={s.card}>
+              <Text style={s.title}>Create account</Text>
 
-            <Text style={s.label}>Email</Text>
-            <TextInput
-              style={s.input}
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              autoComplete="email"
-              placeholder="you@example.com"
-              placeholderTextColor={colors.mutedForeground}
-            />
-
-            <Text style={s.label}>Phone (optional)</Text>
-            <TextInput
-              style={s.input}
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-              placeholder="+44 7700 000000"
-              placeholderTextColor={colors.mutedForeground}
-            />
-
-            <Text style={s.label}>Password</Text>
-            <TextInput
-              style={s.input}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              placeholder="Min. 6 characters"
-              placeholderTextColor={colors.mutedForeground}
-              onSubmitEditing={handleRegister}
-            />
-
-            <Pressable
-              style={({ pressed }) => [s.btn, pressed && s.btnPressed]}
-              onPress={handleRegister}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color={colors.primaryForeground} />
-              ) : (
-                <Text style={s.btnText}>Create account</Text>
+              {!!error && (
+                <View style={s.errorBox}>
+                  <Text style={s.errorText}>{error}</Text>
+                </View>
               )}
-            </Pressable>
 
-            <Pressable onPress={() => router.back()}>
-              <Text style={s.link}>
-                Already have an account?{" "}
-                <Text style={s.linkAccent}>Sign in</Text>
-              </Text>
-            </Pressable>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+              <Text style={s.label}>I am a</Text>
+              <View style={s.typeRow}>
+                {(["supporter", "organisation"] as AccountType[]).map((type) => (
+                  <Pressable
+                    key={type}
+                    style={[s.typeBtn, accountType === type && s.typeBtnActive]}
+                    onPress={() => setAccountType(type)}
+                  >
+                    <Text style={[s.typeBtnText, accountType === type && s.typeBtnTextActive]}>
+                      {type === "supporter" ? "Supporter" : "Organisation"}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              {accountType === "supporter" ? (
+                <>
+                  <Text style={s.label}>Full name</Text>
+                  <TextInput
+                    style={s.input}
+                    value={name}
+                    onChangeText={setName}
+                    autoCapitalize="words"
+                    placeholder="Your name"
+                    placeholderTextColor="#888888"
+                  />
+                </>
+              ) : (
+                <>
+                  <Text style={s.label}>Organisation name</Text>
+                  <TextInput
+                    style={s.input}
+                    value={orgName}
+                    onChangeText={setOrgName}
+                    autoCapitalize="words"
+                    placeholder="Name of your organisation"
+                    placeholderTextColor="#888888"
+                  />
+                  <Text style={s.label}>Your name (contact person)</Text>
+                  <TextInput
+                    style={s.input}
+                    value={name}
+                    onChangeText={setName}
+                    autoCapitalize="words"
+                    placeholder="Your full name"
+                    placeholderTextColor="#888888"
+                  />
+                  <Text style={s.label}>Country of operation</Text>
+                  <TextInput
+                    style={s.input}
+                    value={orgCountry}
+                    onChangeText={setOrgCountry}
+                    placeholder="e.g. Jamaica, United Kingdom"
+                    placeholderTextColor="#888888"
+                  />
+                  <Text style={s.label}>Registration number (optional)</Text>
+                  <TextInput
+                    style={s.input}
+                    value={orgRegNumber}
+                    onChangeText={setOrgRegNumber}
+                    placeholder="Charity/Company reg number"
+                    placeholderTextColor="#888888"
+                  />
+                </>
+              )}
+
+              <Text style={s.label}>Email</Text>
+              <TextInput
+                style={s.input}
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                autoComplete="email"
+                placeholder="you@example.com"
+                placeholderTextColor="#888888"
+              />
+
+              <Text style={s.label}>Phone (optional)</Text>
+              <TextInput
+                style={s.input}
+                value={phone}
+                onChangeText={setPhone}
+                keyboardType="phone-pad"
+                placeholder="+44 7700 000000"
+                placeholderTextColor="#888888"
+              />
+
+              <Text style={s.label}>Password</Text>
+              <TextInput
+                style={s.input}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                placeholder="Min. 6 characters"
+                placeholderTextColor="#888888"
+                onSubmitEditing={handleRegister}
+              />
+
+              <Pressable
+                style={({ pressed }) => [s.btn, pressed && { opacity: 0.85 }]}
+                onPress={handleRegister}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#1A1A1A" />
+                ) : (
+                  <Text style={s.btnText}>Create account</Text>
+                )}
+              </Pressable>
+
+              <Pressable onPress={() => router.back()}>
+                <Text style={s.link}>
+                  Already have an account?{" "}
+                  <Text style={s.linkAccent}>Sign in</Text>
+                </Text>
+              </Pressable>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </View>
   );
 }
 
-const styles = (c: ReturnType<typeof useColors>) =>
-  StyleSheet.create({
-    safe: { flex: 1, backgroundColor: c.navBackground },
-    scroll: { flexGrow: 1 },
-    header: {
-      backgroundColor: c.navBackground,
-      alignItems: "center",
-      paddingVertical: 32,
-      paddingHorizontal: 24,
-    },
-    logo: { fontSize: 28, fontWeight: "800", color: c.accent, letterSpacing: 1 },
-    tagline: { color: c.navForeground, fontSize: 14, marginTop: 4, opacity: 0.85 },
-    card: {
-      flex: 1,
-      backgroundColor: c.background,
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
-      paddingHorizontal: 24,
-      paddingTop: 28,
-      paddingBottom: 40,
-    },
-    title: { fontSize: 22, fontWeight: "700", color: c.foreground, marginBottom: 16 },
-    error: {
-      backgroundColor: "#FDECEA",
-      color: c.destructive,
-      borderRadius: 8,
-      padding: 10,
-      marginBottom: 12,
-      fontSize: 14,
-    },
-    label: {
-      fontSize: 13,
-      fontWeight: "600",
-      color: c.foreground,
-      marginBottom: 6,
-      marginTop: 14,
-    },
-    toggleRow: { flexDirection: "row", gap: 10 },
-    toggleBtn: {
-      flex: 1,
-      paddingVertical: 10,
-      borderRadius: c.radius,
-      borderWidth: 1.5,
-      borderColor: c.border,
-      alignItems: "center",
-    },
-    toggleActive: { borderColor: c.primary, backgroundColor: "#FFF0F0" },
-    toggleText: { color: c.mutedForeground, fontWeight: "600", fontSize: 14 },
-    toggleTextActive: { color: c.primary },
-    input: {
-      borderWidth: 1,
-      borderColor: c.border,
-      borderRadius: c.radius,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      fontSize: 15,
-      color: c.foreground,
-      backgroundColor: c.background,
-    },
-    btn: {
-      backgroundColor: c.primary,
-      borderRadius: c.radius,
-      paddingVertical: 14,
-      alignItems: "center",
-      marginTop: 24,
-    },
-    btnPressed: { opacity: 0.85 },
-    btnText: { color: c.primaryForeground, fontWeight: "700", fontSize: 15 },
-    link: {
-      textAlign: "center",
-      marginTop: 20,
-      color: c.mutedForeground,
-      fontSize: 14,
-    },
-    linkAccent: { color: c.primary, fontWeight: "600" },
-  });
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: "#7A0000" },
+  scroll: { flexGrow: 1 },
+  header: {
+    backgroundColor: "#7A0000",
+    alignItems: "center",
+    paddingVertical: 24,
+    paddingHorizontal: 24,
+  },
+  logo: { width: 110, height: 110 },
+  tagline: { color: "rgba(255,255,255,0.8)", fontSize: 14, marginTop: 4 },
+  card: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 24,
+    paddingTop: 28,
+    paddingBottom: 48,
+  },
+  title: { fontSize: 24, fontWeight: "800", color: "#1A1A1A", marginBottom: 16 },
+  errorBox: { backgroundColor: "#FDECEA", borderRadius: 8, padding: 12, marginBottom: 14 },
+  errorText: { color: "#B50000", fontSize: 14 },
+  label: { fontSize: 13, fontWeight: "600", color: "#1A1A1A", marginBottom: 6, marginTop: 14 },
+  typeRow: { flexDirection: "row", gap: 10 },
+  typeBtn: {
+    flex: 1,
+    paddingVertical: 11,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: "#E0D8CC",
+    alignItems: "center",
+    backgroundColor: "#F9F6F0",
+  },
+  typeBtnActive: { borderColor: "#B50000", backgroundColor: "#FFF0F0" },
+  typeBtnText: { color: "#888888", fontWeight: "600", fontSize: 14 },
+  typeBtnTextActive: { color: "#B50000", fontWeight: "700" },
+  input: {
+    borderWidth: 1,
+    borderColor: "#E0D8CC",
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    fontSize: 15,
+    color: "#1A1A1A",
+    backgroundColor: "#FFFFFF",
+  },
+  btn: {
+    backgroundColor: "#F5B800",
+    borderRadius: 10,
+    paddingVertical: 15,
+    alignItems: "center",
+    marginTop: 24,
+  },
+  btnText: { color: "#1A1A1A", fontWeight: "800", fontSize: 16 },
+  link: { textAlign: "center", marginTop: 20, color: "#888888", fontSize: 14 },
+  linkAccent: { color: "#B50000", fontWeight: "600" },
+});

@@ -5,6 +5,11 @@ import {
   Inter_700Bold,
   useFonts,
 } from "@expo-google-fonts/inter";
+import {
+  DancingScript_400Regular,
+  DancingScript_600SemiBold,
+  DancingScript_700Bold,
+} from "@expo-google-fonts/dancing-script";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Stack, useRouter, useSegments } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
@@ -32,15 +37,14 @@ function RootLayoutNav() {
   useEffect(() => {
     if (isLoading) return;
     const inAuth = segments[0] === "(auth)";
-    if (!isAuthenticated && !inAuth) {
-      router.replace("/(auth)/login");
-    } else if (isAuthenticated && inAuth) {
+    if (isAuthenticated && inAuth) {
       router.replace("/(tabs)");
     }
   }, [isAuthenticated, isLoading]);
 
   return (
     <Stack screenOptions={{ headerBackTitle: "Back" }}>
+      <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
       <Stack.Screen
@@ -49,6 +53,8 @@ function RootLayoutNav() {
       />
       <Stack.Screen name="donate/[orgId]" options={{ title: "Donate" }} />
       <Stack.Screen name="dashboard/index" options={{ title: "Dashboard" }} />
+      <Stack.Screen name="shop/index" options={{ title: "Shop" }} />
+      <Stack.Screen name="about/index" options={{ title: "About" }} />
     </Stack>
   );
 }
@@ -59,6 +65,9 @@ export default function RootLayout() {
     Inter_500Medium,
     Inter_600SemiBold,
     Inter_700Bold,
+    DancingScript_400Regular,
+    DancingScript_600SemiBold,
+    DancingScript_700Bold,
   });
 
   useEffect(() => {

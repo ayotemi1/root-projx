@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   Pressable,
   StyleSheet,
   Text,
@@ -16,7 +17,7 @@ import * as api from "@/lib/api";
 import type { FeedUpdate } from "@/lib/api";
 import { useColors } from "@/hooks/useColors";
 
-const TYPE_COLORS: Record<string, { bg: string; text: string; label: string }> = {
+const TYPE_CONFIG: Record<string, { bg: string; text: string; label: string }> = {
   milestone: { bg: "#E8F4E8", text: "#2E7D32", label: "Milestone" },
   campaign:  { bg: "#FFF8E1", text: "#F57F17", label: "Campaign" },
   update:    { bg: "#E3F2FD", text: "#1565C0", label: "Update" },
@@ -32,55 +33,44 @@ function timeAgo(iso: string): string {
   return `${Math.floor(d / 30)}mo ago`;
 }
 
-function UpdateCard({ item }: { item: FeedUpdate }) {
+function PostCard({ item }: { item: FeedUpdate }) {
   const colors = useColors();
   const router = useRouter();
-  const typeStyle = TYPE_COLORS[item.type] ?? TYPE_COLORS.update!;
-  const s = StyleSheet.create({
-    card: {
-      backgroundColor: colors.card,
-      borderRadius: colors.radius + 2,
-      padding: 16,
-      marginHorizontal: 16,
-      marginBottom: 12,
-      shadowColor: colors.shadow,
-      shadowOffset: { width: 0, height: 1 },
-      shadowOpacity: 1,
-      shadowRadius: 3,
-      elevation: 2,
-    },
-    header: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-    orgName: { fontSize: 13, fontWeight: "700", color: colors.primary, flex: 1 },
-    badge: {
-      paddingHorizontal: 8,
-      paddingVertical: 2,
-      borderRadius: 4,
-      backgroundColor: typeStyle.bg,
-    },
-    badgeText: { fontSize: 10, fontWeight: "700", color: typeStyle.text },
-    title: { fontSize: 15, fontWeight: "700", color: colors.foreground, marginTop: 8 },
-    content: { fontSize: 13, color: colors.foreground, marginTop: 6, lineHeight: 19 },
-    footer: { flexDirection: "row", justifyContent: "space-between", marginTop: 12 },
-    likes: { color: colors.mutedForeground, fontSize: 12 },
-    date: { color: colors.mutedForeground, fontSize: 12 },
-  });
+  const typeConfig = TYPE_CONFIG[item.type] ?? TYPE_CONFIG.update!;
+  const initials = item.orgName.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
 
   return (
     <Pressable
-      style={s.card}
+      style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}
       onPress={() => router.push(`/organisations/${item.orgId}`)}
     >
-      <View style={s.header}>
-        <Text style={s.orgName} numberOfLines={1}>{item.orgName}</Text>
-        <View style={s.badge}>
-          <Text style={s.badgeText}>{typeStyle.label.toUpperCase()}</Text>
+      <View style={s.cardTop}>
+        <View style={[s.avatar, { backgroundColor: colors.primary }]}>
+          <Text style={{ color: "#fff", fontWeight: "800", fontSize: 15 }}>{initials}</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[s.orgName, { color: colors.foreground }]} numberOfLines={1}>{item.orgName}</Text>
+          <Text style={[s.date, { color: colors.mutedForeground }]}>{timeAgo(item.createdAt)}</Text>
+        </View>
+        <View style={[s.typePill, { backgroundColor: typeConfig.bg }]}>
+          <Text style={[s.typePillText, { color: typeConfig.text }]}>{typeConfig.label.toUpperCase()}</Text>
         </View>
       </View>
-      <Text style={s.title}>{item.title}</Text>
-      <Text style={s.content} numberOfLines={3}>{item.content}</Text>
-      <View style={s.footer}>
-        <Text style={s.likes}>♥ {item.likes ?? 0}</Text>
-        <Text style={s.date}>{timeAgo(item.createdAt)}</Text>
+
+      {item.imageUrl ? (
+        <Image source={{ uri: item.imageUrl }} style={s.postImage} resizeMode="cover" />
+      ) : null}
+
+      <View style={s.cardBody}>
+        <Text style={[s.postTitle, { color: colors.foreground }]}>{item.title}</Text>
+        <Text style={[s.postContent, { color: colors.foreground }]} numberOfLines={3}>
+          {item.content}
+        </Text>
+      </View>
+
+      <View style={[s.cardFooter, { borderTopColor: colors.border }]}>
+        <Text style={[s.likes, { color: colors.mutedForeground }]}>♥ {item.likes ?? 0} likes</Text>
+        <Text style={[s.readMore, { color: colors.primary }]}>View org →</Text>
       </View>
     </Pressable>
   );
@@ -89,6 +79,7 @@ function UpdateCard({ item }: { item: FeedUpdate }) {
 export default function FeedScreen() {
   const colors = useColors();
   const { isAuthenticated, token } = useAuth();
+  const router = useRouter();
   const [mode, setMode] = useState<"public" | "mine">("public");
 
   const publicQ = useQuery({
@@ -106,20 +97,31 @@ export default function FeedScreen() {
   const active = mode === "mine" && isAuthenticated ? mineQ : publicQ;
   const { data: updates = [], isLoading, isError, refetch } = active;
 
-  const s = styles(colors);
   return (
-    <SafeAreaView style={s.safe} edges={["top"]}>
-      {/* Toggle */}
-      <View style={s.toggleBar}>
+    <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]} edges={["top"]}>
+      <View style={[s.toggleBar, { backgroundColor: colors.secondary, borderBottomColor: colors.border }]}>
         {(["public", "mine"] as const).map((m) => {
           const disabled = m === "mine" && !isAuthenticated;
           return (
             <Pressable
               key={m}
-              style={[s.toggleBtn, mode === m && s.toggleActive, disabled && s.disabled]}
-              onPress={() => !disabled && setMode(m)}
+              style={[
+                s.toggleBtn,
+                mode === m && [s.toggleActive, { backgroundColor: colors.primary }],
+                disabled && { opacity: 0.4 },
+              ]}
+              onPress={() => {
+                if (disabled) {
+                  router.push("/(auth)/login");
+                  return;
+                }
+                setMode(m);
+              }}
             >
-              <Text style={[s.toggleText, mode === m && s.toggleTextActive]}>
+              <Text style={[
+                s.toggleText,
+                { color: mode === m ? "#fff" : colors.mutedForeground },
+              ]}>
                 {m === "public" ? "All Updates" : "For You"}
               </Text>
             </Pressable>
@@ -127,22 +129,18 @@ export default function FeedScreen() {
         })}
       </View>
 
-      {mode === "mine" && !isAuthenticated ? (
-        <View style={s.center}>
-          <Text style={s.emptyText}>Sign in to see your personalised feed.</Text>
-        </View>
-      ) : isLoading ? (
+      {isLoading ? (
         <ActivityIndicator style={{ marginTop: 40 }} color={colors.primary} size="large" />
       ) : isError ? (
         <View style={s.center}>
-          <Text style={s.errorText}>Could not load updates.</Text>
-          <Pressable style={s.retryBtn} onPress={() => refetch()}>
-            <Text style={s.retryText}>Retry</Text>
+          <Text style={{ color: colors.destructive, marginBottom: 12 }}>Could not load updates.</Text>
+          <Pressable style={[s.retryBtn, { backgroundColor: colors.primary }]} onPress={() => refetch()}>
+            <Text style={{ color: "#fff", fontWeight: "700" }}>Retry</Text>
           </Pressable>
         </View>
       ) : updates.length === 0 ? (
         <View style={s.center}>
-          <Text style={s.emptyText}>
+          <Text style={{ color: colors.mutedForeground, textAlign: "center", fontSize: 15 }}>
             {mode === "mine"
               ? "Follow organisations to see their updates here."
               : "No updates yet."}
@@ -152,8 +150,8 @@ export default function FeedScreen() {
         <FlatList
           data={updates}
           keyExtractor={(u) => u._id}
-          renderItem={({ item }) => <UpdateCard item={item} />}
-          contentContainerStyle={{ paddingVertical: 12, paddingBottom: 100 }}
+          renderItem={({ item }) => <PostCard item={item} />}
+          contentContainerStyle={{ padding: 12, paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
           onRefresh={refetch}
           refreshing={isLoading}
@@ -163,34 +161,74 @@ export default function FeedScreen() {
   );
 }
 
-const styles = (c: ReturnType<typeof useColors>) =>
-  StyleSheet.create({
-    safe: { flex: 1, backgroundColor: c.background },
-    toggleBar: {
-      flexDirection: "row",
-      margin: 16,
-      backgroundColor: c.secondary,
-      borderRadius: c.radius,
-      padding: 3,
-    },
-    toggleBtn: {
-      flex: 1,
-      paddingVertical: 8,
-      borderRadius: c.radius - 2,
-      alignItems: "center",
-    },
-    toggleActive: { backgroundColor: c.primary },
-    disabled: { opacity: 0.45 },
-    toggleText: { fontWeight: "600", color: c.mutedForeground, fontSize: 13 },
-    toggleTextActive: { color: c.primaryForeground },
-    center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24 },
-    errorText: { color: c.destructive, fontSize: 15, textAlign: "center", marginBottom: 12 },
-    emptyText: { color: c.mutedForeground, fontSize: 15, textAlign: "center" },
-    retryBtn: {
-      backgroundColor: c.primary,
-      borderRadius: c.radius,
-      paddingHorizontal: 24,
-      paddingVertical: 10,
-    },
-    retryText: { color: c.primaryForeground, fontWeight: "600" },
-  });
+const s = StyleSheet.create({
+  safe: { flex: 1 },
+  toggleBar: {
+    flexDirection: "row",
+    padding: 6,
+    gap: 6,
+    borderBottomWidth: 1,
+  },
+  toggleBtn: {
+    flex: 1,
+    paddingVertical: 9,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  toggleActive: {},
+  toggleText: { fontWeight: "700", fontSize: 13 },
+  card: {
+    borderRadius: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    overflow: "hidden",
+    shadowColor: "rgba(0,0,0,0.06)",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  cardTop: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    padding: 14,
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  orgName: { fontSize: 14, fontWeight: "700" },
+  date: { fontSize: 12, marginTop: 1 },
+  typePill: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  typePillText: { fontSize: 10, fontWeight: "800" },
+  postImage: {
+    width: "100%",
+    height: 200,
+  },
+  cardBody: {
+    padding: 14,
+    paddingTop: 10,
+  },
+  postTitle: { fontSize: 16, fontWeight: "700", marginBottom: 6 },
+  postContent: { fontSize: 13, lineHeight: 19 },
+  cardFooter: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+  },
+  likes: { fontSize: 13 },
+  readMore: { fontSize: 13, fontWeight: "600" },
+  center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24, gap: 12 },
+  retryBtn: { borderRadius: 10, paddingHorizontal: 24, paddingVertical: 10 },
+});

@@ -18,7 +18,7 @@ import { useAuth } from "@/context/AuthContext";
 import * as api from "@/lib/api";
 import { useColors } from "@/hooks/useColors";
 
-const PRESET_AMOUNTS = [10, 25, 50, 100];
+const PRESET_AMOUNTS = [5, 10, 25, 50, 100];
 
 function DonateForm({ orgId }: { orgId: string }) {
   const colors = useColors();
@@ -85,9 +85,6 @@ function DonateForm({ orgId }: { orgId: string }) {
           donationType === "one_time"
             ? `Donate £${amount.toFixed(2)}`
             : `Start £${amount.toFixed(2)}/month`,
-        billingDetailsCollectionConfiguration: {
-          address: "never",
-        },
       });
 
       if (initError) {

@@ -2,10 +2,12 @@ import { useRouter } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
+  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   TextInput,
@@ -14,10 +16,8 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAuth } from "@/context/AuthContext";
-import { useColors } from "@/hooks/useColors";
 
 export default function LoginScreen() {
-  const colors = useColors();
   const { login } = useAuth();
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -41,159 +41,141 @@ export default function LoginScreen() {
     }
   }
 
-  const s = styles(colors);
   return (
-    <SafeAreaView style={s.safe}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-      >
-        <ScrollView
-          contentContainerStyle={s.scroll}
-          keyboardShouldPersistTaps="handled"
+    <View style={s.root}>
+      <StatusBar barStyle="light-content" backgroundColor="#7A0000" />
+      <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
+        <KeyboardAvoidingView
+          style={{ flex: 1 }}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
         >
-          {/* Header */}
-          <View style={s.header}>
-            <Text style={s.logo}>Root ProjX</Text>
-            <Text style={s.tagline}>Connecting diaspora with grassroots change.</Text>
-          </View>
+          <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
+            <View style={s.header}>
+              <Image
+                source={require("../../assets/images/logo.png")}
+                style={s.logo}
+                resizeMode="contain"
+              />
+              <Text style={s.tagline}>Connecting diaspora with grassroots change.</Text>
+            </View>
 
-          {/* Form */}
-          <View style={s.card}>
-            <Text style={s.title}>Sign in</Text>
+            <View style={s.card}>
+              <Text style={s.title}>Sign in</Text>
 
-            {!!error && <Text style={s.error}>{error}</Text>}
-
-            <Text style={s.label}>Email</Text>
-            <TextInput
-              style={s.input}
-              value={email}
-              onChangeText={setEmail}
-              autoCapitalize="none"
-              keyboardType="email-address"
-              autoComplete="email"
-              placeholder="you@example.com"
-              placeholderTextColor={colors.mutedForeground}
-            />
-
-            <Text style={s.label}>Password</Text>
-            <TextInput
-              style={s.input}
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              autoComplete="password"
-              placeholder="••••••••"
-              placeholderTextColor={colors.mutedForeground}
-              onSubmitEditing={handleLogin}
-            />
-
-            <Pressable
-              style={({ pressed }) => [s.btn, pressed && s.btnPressed]}
-              onPress={handleLogin}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color={colors.primaryForeground} />
-              ) : (
-                <Text style={s.btnText}>Sign in</Text>
+              {!!error && (
+                <View style={s.errorBox}>
+                  <Text style={s.errorText}>{error}</Text>
+                </View>
               )}
-            </Pressable>
 
-            <Pressable onPress={() => router.push("/(auth)/register")}>
-              <Text style={s.link}>
-                Don't have an account?{" "}
-                <Text style={s.linkAccent}>Create one</Text>
-              </Text>
-            </Pressable>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+              <Text style={s.label}>Email</Text>
+              <TextInput
+                style={s.input}
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+                autoComplete="email"
+                placeholder="you@example.com"
+                placeholderTextColor="#888888"
+              />
+
+              <Text style={s.label}>Password</Text>
+              <TextInput
+                style={s.input}
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                autoComplete="password"
+                placeholder="••••••••"
+                placeholderTextColor="#888888"
+                onSubmitEditing={handleLogin}
+              />
+
+              <Pressable
+                style={({ pressed }) => [s.btn, pressed && { opacity: 0.85 }]}
+                onPress={handleLogin}
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#1A1A1A" />
+                ) : (
+                  <Text style={s.btnText}>Sign in</Text>
+                )}
+              </Pressable>
+
+              <Pressable onPress={() => router.push("/(auth)/register")}>
+                <Text style={s.link}>
+                  Don't have an account?{" "}
+                  <Text style={s.linkAccent}>Create one</Text>
+                </Text>
+              </Pressable>
+
+              <Pressable onPress={() => router.push("/(tabs)")} style={{ marginTop: 8 }}>
+                <Text style={[s.link, { textAlign: "center" }]}>
+                  <Text style={{ color: "#888888" }}>Continue as guest</Text>
+                </Text>
+              </Pressable>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    </View>
   );
 }
 
-const styles = (c: ReturnType<typeof useColors>) =>
-  StyleSheet.create({
-    safe: { flex: 1, backgroundColor: c.navBackground },
-    scroll: { flexGrow: 1 },
-    header: {
-      backgroundColor: c.navBackground,
-      alignItems: "center",
-      paddingVertical: 40,
-      paddingHorizontal: 24,
-    },
-    logo: {
-      fontSize: 32,
-      fontWeight: "800",
-      color: c.accent,
-      letterSpacing: 1,
-    },
-    tagline: {
-      color: c.navForeground,
-      fontSize: 14,
-      marginTop: 6,
-      opacity: 0.85,
-      textAlign: "center",
-    },
-    card: {
-      flex: 1,
-      backgroundColor: c.background,
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
-      paddingHorizontal: 24,
-      paddingTop: 32,
-      paddingBottom: 40,
-    },
-    title: {
-      fontSize: 24,
-      fontWeight: "700",
-      color: c.foreground,
-      marginBottom: 20,
-    },
-    error: {
-      backgroundColor: "#FDECEA",
-      color: c.destructive,
-      borderRadius: 8,
-      padding: 10,
-      marginBottom: 12,
-      fontSize: 14,
-    },
-    label: {
-      fontSize: 13,
-      fontWeight: "600",
-      color: c.foreground,
-      marginBottom: 6,
-      marginTop: 14,
-    },
-    input: {
-      borderWidth: 1,
-      borderColor: c.border,
-      borderRadius: c.radius,
-      paddingHorizontal: 14,
-      paddingVertical: 12,
-      fontSize: 15,
-      color: c.foreground,
-      backgroundColor: c.background,
-    },
-    btn: {
-      backgroundColor: c.primary,
-      borderRadius: c.radius,
-      paddingVertical: 14,
-      alignItems: "center",
-      marginTop: 24,
-    },
-    btnPressed: { opacity: 0.85 },
-    btnText: {
-      color: c.primaryForeground,
-      fontWeight: "700",
-      fontSize: 15,
-    },
-    link: {
-      textAlign: "center",
-      marginTop: 20,
-      color: c.mutedForeground,
-      fontSize: 14,
-    },
-    linkAccent: { color: c.primary, fontWeight: "600" },
-  });
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: "#7A0000" },
+  scroll: { flexGrow: 1 },
+  header: {
+    backgroundColor: "#7A0000",
+    alignItems: "center",
+    paddingVertical: 32,
+    paddingHorizontal: 24,
+  },
+  logo: { width: 140, height: 140 },
+  tagline: {
+    color: "rgba(255,255,255,0.8)",
+    fontSize: 14,
+    marginTop: 4,
+    textAlign: "center",
+  },
+  card: {
+    flex: 1,
+    backgroundColor: "#FFFFFF",
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    paddingHorizontal: 24,
+    paddingTop: 32,
+    paddingBottom: 48,
+  },
+  title: { fontSize: 26, fontWeight: "800", color: "#1A1A1A", marginBottom: 20 },
+  errorBox: {
+    backgroundColor: "#FDECEA",
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 14,
+  },
+  errorText: { color: "#B50000", fontSize: 14 },
+  label: { fontSize: 13, fontWeight: "600", color: "#1A1A1A", marginBottom: 6, marginTop: 14 },
+  input: {
+    borderWidth: 1,
+    borderColor: "#E0D8CC",
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    fontSize: 15,
+    color: "#1A1A1A",
+    backgroundColor: "#FFFFFF",
+  },
+  btn: {
+    backgroundColor: "#F5B800",
+    borderRadius: 10,
+    paddingVertical: 15,
+    alignItems: "center",
+    marginTop: 24,
+  },
+  btnText: { color: "#1A1A1A", fontWeight: "800", fontSize: 16 },
+  link: { textAlign: "center", marginTop: 20, color: "#888888", fontSize: 14 },
+  linkAccent: { color: "#B50000", fontWeight: "600" },
+});
