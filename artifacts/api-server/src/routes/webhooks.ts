@@ -78,18 +78,22 @@ async function handlePaymentSuccess(
     stripeRef = invoice.id;
   }
 
-  const { userId, orgId, orgName, note, type } = metadata;
-  if (!userId || !orgId) {
-    log.info({ metadata }, "Webhook: missing userId/orgId in metadata — skipping");
+  const { userId, orgId, orgName, note, type, guestEmail } = metadata;
+
+  // Must have at least orgId to process; userId OR guestEmail identifies the donor
+  if (!orgId) {
+    log.info({ metadata }, "Webhook: missing orgId in metadata — skipping");
     return;
   }
+  const isGuest = !userId && !!guestEmail;
 
   // 1. Create donation document in Firestore
   const donationDate = new Date().toISOString();
   const donationId = await fsCreate(
     "donations",
     {
-      userId,
+      ...(userId ? { userId } : {}),
+      ...(isGuest ? { guestEmail } : {}),
       orgId,
       orgName: orgName ?? "",
       amountGbp,
@@ -102,19 +106,27 @@ async function handlePaymentSuccess(
     },
     serverToken,
   );
-  log.info({ donationId, userId, orgId, amountGbp }, "Donation recorded in Firestore");
+  log.info({ donationId, userId: userId ?? "guest", orgId, amountGbp }, "Donation recorded in Firestore");
 
   // 1b. Send donation confirmation email via Brevo (fire-and-forget)
   try {
-    const userDoc = await fsGet("users", userId, serverToken);
-    const userEmail = userDoc?.["email"] as string | undefined;
-    const userName = (userDoc?.["name"] as string | undefined) ?? "Supporter";
-    if (userEmail) {
+    let recipientEmail: string | undefined;
+    let recipientName = "Supporter";
+
+    if (isGuest) {
+      recipientEmail = guestEmail;
+    } else if (userId) {
+      const userDoc = await fsGet("users", userId, serverToken);
+      recipientEmail = userDoc?.["email"] as string | undefined;
+      recipientName = (userDoc?.["name"] as string | undefined) ?? "Supporter";
+    }
+
+    if (recipientEmail) {
       await brevoSendEmail({
-        to: [{ email: userEmail, name: userName }],
+        to: [{ email: recipientEmail, name: recipientName }],
         subject: `Your donation to ${orgName ?? "Root ProjX"} — confirmed ✓`,
         htmlContent: donationConfirmationHtml({
-          name: userName,
+          name: recipientName,
           orgName: orgName ?? "the organisation",
           amountGbp,
           type: type ?? "one_time",
@@ -125,33 +137,34 @@ async function handlePaymentSuccess(
           }),
         }),
       });
-      log.info({ userId, userEmail }, "Donation confirmation email sent via Brevo");
+      log.info({ recipient: recipientEmail, isGuest }, "Donation confirmation email sent via Brevo");
     }
   } catch (emailErr) {
-    // Never let email failure break the webhook response
     log.error({ emailErr }, "Brevo donation email failed (non-fatal)");
   }
 
-  // 2. Auto-follow the org if not already following
-  const followId = `${userId}_${orgId}`;
-  const existingFollow = await fsGet("follows", followId, serverToken);
-  if (!existingFollow) {
-    await fsPatch(
-      "follows",
-      followId,
-      { userId, orgId, createdAt: new Date().toISOString(), autoFollowed: true },
-      serverToken,
-    );
-    // Increment followerCount
-    const org = await fsGet("organisations", orgId, serverToken);
-    if (org) {
-      const currentCount = (org["followerCount"] as number) ?? 0;
-      await fsPatch("organisations", orgId, { ...org, followerCount: currentCount + 1 }, serverToken);
+  // 2. Auto-follow the org — only for authenticated users (guests have no account)
+  if (userId) {
+    const followId = `${userId}_${orgId}`;
+    const existingFollow = await fsGet("follows", followId, serverToken);
+    if (!existingFollow) {
+      await fsPatch(
+        "follows",
+        followId,
+        { userId, orgId, createdAt: new Date().toISOString(), autoFollowed: true },
+        serverToken,
+      );
+      // Increment followerCount
+      const orgDoc = await fsGet("organisations", orgId, serverToken);
+      if (orgDoc) {
+        const currentCount = (orgDoc["followerCount"] as number) ?? 0;
+        await fsPatch("organisations", orgId, { ...orgDoc, followerCount: currentCount + 1 }, serverToken);
+      }
+      log.info({ userId, orgId }, "Auto-followed org after donation");
     }
-    log.info({ userId, orgId }, "Auto-followed org after donation");
   }
 
-  // 3. Update org totalRaised
+  // 3. Update org totalRaised (applies for both authenticated and guest donations)
   const org = await fsGet("organisations", orgId, serverToken);
   if (org) {
     const currentRaised = (org["totalRaised"] as number) ?? 0;
