@@ -1,5 +1,7 @@
+import { useQuery } from "@tanstack/react-query";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   Alert,
   FlatList,
   Modal,
@@ -8,7 +10,6 @@ import {
   StyleSheet,
   Text,
   View,
-  ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StripeProvider, usePaymentSheet } from "@stripe/stripe-react-native";
@@ -16,78 +17,40 @@ import { StripeProvider, usePaymentSheet } from "@stripe/stripe-react-native";
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
 import * as api from "@/lib/api";
-
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  description: string;
-  sizes: string[];
-  emoji: string;
-}
-
-const PRODUCTS: Product[] = [
-  {
-    id: "tshirt",
-    name: "Root ProjX T-Shirt",
-    price: 25,
-    description: "100% organic cotton. Gold logo on front, 'Restoration. Culture. Access.' on back.",
-    sizes: ["XS", "S", "M", "L", "XL", "XXL"],
-    emoji: "👕",
-  },
-  {
-    id: "hoodie",
-    name: "Root ProjX Hoodie",
-    price: 55,
-    description: "Premium heavyweight hoodie. Embroidered logo. Unisex fit.",
-    sizes: ["XS", "S", "M", "L", "XL", "XXL"],
-    emoji: "🧥",
-  },
-  {
-    id: "tote",
-    name: "Root ProjX Tote",
-    price: 15,
-    description: "Heavy-duty canvas tote. Gold screen-printed logo. Fits your whole world.",
-    sizes: ["One Size"],
-    emoji: "👜",
-  },
-  {
-    id: "cap",
-    name: "Root ProjX Cap",
-    price: 30,
-    description: "5-panel structured cap. Embroidered logo. Adjustable strap.",
-    sizes: ["One Size"],
-    emoji: "🧢",
-  },
-];
+import type { ShopProduct } from "@/lib/api";
 
 interface CartItem {
-  product: Product;
+  product: ShopProduct;
   size: string;
   qty: number;
+}
+
+function pence2Pounds(pence: number): number {
+  return pence / 100;
 }
 
 function ProductCard({
   product,
   onAddToCart,
 }: {
-  product: Product;
-  onAddToCart: (product: Product, size: string) => void;
+  product: ShopProduct;
+  onAddToCart: (product: ShopProduct, size: string) => void;
 }) {
   const colors = useColors();
   const [selectedSize, setSelectedSize] = useState<string | null>(
     product.sizes.length === 1 ? product.sizes[0]! : null,
   );
+  const price = pence2Pounds(product.price);
 
   return (
     <View style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}>
       <View style={s.cardTop}>
         <View style={[s.productEmoji, { backgroundColor: colors.secondary }]}>
-          <Text style={{ fontSize: 36 }}>{product.emoji}</Text>
+          <Text style={{ fontSize: 36 }}>{product.emoji ?? "📦"}</Text>
         </View>
         <View style={{ flex: 1 }}>
           <Text style={[s.productName, { color: colors.foreground }]}>{product.name}</Text>
-          <Text style={[s.productPrice, { color: colors.primary }]}>£{product.price}</Text>
+          <Text style={[s.productPrice, { color: colors.primary }]}>£{price.toFixed(2)}</Text>
         </View>
       </View>
 
@@ -158,7 +121,7 @@ function CartModal({
   isCheckingOut: boolean;
 }) {
   const colors = useColors();
-  const total = cart.reduce((sum, item) => sum + item.product.price * item.qty, 0);
+  const total = cart.reduce((sum, item) => sum + pence2Pounds(item.product.price) * item.qty, 0);
 
   return (
     <Modal visible={visible} transparent animationType="slide">
@@ -174,26 +137,22 @@ function CartModal({
           {cart.length === 0 ? (
             <View style={s.emptyCart}>
               <Text style={{ fontSize: 32 }}>🛒</Text>
-              <Text style={[s.emptyCartText, { color: colors.mutedForeground }]}>
-                Your cart is empty
-              </Text>
+              <Text style={[s.emptyCartText, { color: colors.mutedForeground }]}>Your cart is empty</Text>
             </View>
           ) : (
             <>
               <ScrollView style={{ maxHeight: 300 }}>
                 {cart.map((item, i) => (
                   <View key={i} style={[s.cartItem, { borderBottomColor: colors.border }]}>
-                    <Text style={{ fontSize: 24, marginRight: 10 }}>{item.product.emoji}</Text>
+                    <Text style={{ fontSize: 24, marginRight: 10 }}>{item.product.emoji ?? "📦"}</Text>
                     <View style={{ flex: 1 }}>
-                      <Text style={[s.cartItemName, { color: colors.foreground }]}>
-                        {item.product.name}
-                      </Text>
+                      <Text style={[s.cartItemName, { color: colors.foreground }]}>{item.product.name}</Text>
                       <Text style={[s.cartItemSize, { color: colors.mutedForeground }]}>
                         Size: {item.size} · Qty: {item.qty}
                       </Text>
                     </View>
                     <Text style={[s.cartItemPrice, { color: colors.primary }]}>
-                      £{(item.product.price * item.qty).toFixed(2)}
+                      £{(pence2Pounds(item.product.price) * item.qty).toFixed(2)}
                     </Text>
                     <Pressable onPress={() => onRemove(i)} style={{ marginLeft: 10 }}>
                       <Text style={{ color: colors.mutedForeground, fontSize: 18 }}>✕</Text>
@@ -204,9 +163,7 @@ function CartModal({
 
               <View style={[s.cartTotal, { borderTopColor: colors.border }]}>
                 <Text style={[s.cartTotalLabel, { color: colors.foreground }]}>Total</Text>
-                <Text style={[s.cartTotalAmount, { color: colors.primary }]}>
-                  £{total.toFixed(2)}
-                </Text>
+                <Text style={[s.cartTotalAmount, { color: colors.primary }]}>£{total.toFixed(2)}</Text>
               </View>
 
               <Pressable
@@ -238,7 +195,14 @@ function ShopContent() {
 
   const { initPaymentSheet, presentPaymentSheet } = usePaymentSheet();
 
-  function addToCart(product: Product, size: string) {
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ["shop-products"],
+    queryFn: api.getShopProducts,
+  });
+
+  const products = data?.products ?? [];
+
+  function addToCart(product: ShopProduct, size: string) {
     setCart((prev) => {
       const existing = prev.findIndex((i) => i.product.id === product.id && i.size === size);
       if (existing >= 0) {
@@ -319,10 +283,7 @@ function ShopContent() {
         <Text style={[s.successMsg, { color: colors.mutedForeground }]}>
           Thank you for supporting Root ProjX. Your order is on its way.
         </Text>
-        <Pressable
-          style={[s.backBtn, { backgroundColor: colors.primary }]}
-          onPress={() => setSuccess(false)}
-        >
+        <Pressable style={[s.backBtn, { backgroundColor: colors.primary }]} onPress={() => setSuccess(false)}>
           <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Shop more</Text>
         </Pressable>
       </View>
@@ -334,26 +295,35 @@ function ShopContent() {
       <View style={[s.shopHeader, { backgroundColor: colors.navBackground }]}>
         <Text style={s.shopTitle}>Root ProjX Shop</Text>
         <Text style={s.shopSubtitle}>Wear the movement. Every purchase supports the platform.</Text>
-
         {cart.length > 0 && (
-          <Pressable
-            style={s.cartPill}
-            onPress={() => setCartVisible(true)}
-          >
-            <Text style={s.cartPillText}>🛒 Cart ({cart.reduce((s, i) => s + i.qty, 0)})</Text>
+          <Pressable style={s.cartPill} onPress={() => setCartVisible(true)}>
+            <Text style={s.cartPillText}>
+              🛒 Cart ({cart.reduce((sum, i) => sum + i.qty, 0)})
+            </Text>
           </Pressable>
         )}
       </View>
 
-      <FlatList
-        data={PRODUCTS}
-        keyExtractor={(p) => p.id}
-        renderItem={({ item }) => (
-          <ProductCard product={item} onAddToCart={addToCart} />
-        )}
-        contentContainerStyle={{ padding: 12, paddingBottom: 100 }}
-        showsVerticalScrollIndicator={false}
-      />
+      {isLoading ? (
+        <View style={s.center}>
+          <ActivityIndicator color={colors.primary} size="large" />
+        </View>
+      ) : isError ? (
+        <View style={s.center}>
+          <Text style={{ color: colors.destructive, marginBottom: 12 }}>Could not load products.</Text>
+          <Pressable style={[s.retryBtn, { backgroundColor: colors.primary }]} onPress={() => refetch()}>
+            <Text style={{ color: "#fff", fontWeight: "700" }}>Retry</Text>
+          </Pressable>
+        </View>
+      ) : (
+        <FlatList
+          data={products}
+          keyExtractor={(p) => p.id}
+          renderItem={({ item }) => <ProductCard product={item} onAddToCart={addToCart} />}
+          contentContainerStyle={{ padding: 12, paddingBottom: 100 }}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
 
       <CartModal
         cart={cart}
@@ -398,101 +368,46 @@ export default function ShopScreen() {
 
 const s = StyleSheet.create({
   safe: { flex: 1 },
-  shopHeader: {
-    padding: 20,
-    paddingTop: 28,
-    paddingBottom: 20,
-  },
+  center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24, gap: 12 },
+  retryBtn: { borderRadius: 10, paddingHorizontal: 24, paddingVertical: 10 },
+  shopHeader: { padding: 20, paddingTop: 28, paddingBottom: 20 },
   shopTitle: { fontFamily: "DancingScript_700Bold", fontSize: 28, color: "#FFFFFF" },
   shopSubtitle: { color: "rgba(255,255,255,0.75)", fontSize: 13, marginTop: 4 },
   cartPill: {
-    alignSelf: "flex-start",
-    marginTop: 12,
-    backgroundColor: "#F5B800",
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
+    alignSelf: "flex-start", marginTop: 12, backgroundColor: "#F5B800",
+    borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6,
   },
   cartPillText: { color: "#1A1A1A", fontWeight: "700", fontSize: 13 },
   card: {
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    shadowColor: "rgba(0,0,0,0.06)",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 1,
-    shadowRadius: 4,
-    elevation: 2,
+    borderRadius: 14, padding: 16, marginBottom: 12, borderWidth: 1,
+    shadowColor: "rgba(0,0,0,0.06)", shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 1, shadowRadius: 4, elevation: 2,
   },
   cardTop: { flexDirection: "row", gap: 14, marginBottom: 10 },
-  productEmoji: {
-    width: 70,
-    height: 70,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  productEmoji: { width: 70, height: 70, borderRadius: 10, alignItems: "center", justifyContent: "center" },
   productName: { fontSize: 16, fontWeight: "700", flex: 1 },
   productPrice: { fontSize: 20, fontWeight: "800", marginTop: 4 },
   productDesc: { fontSize: 13, lineHeight: 19, marginBottom: 12 },
   sizeLabel: { fontSize: 12, fontWeight: "600", marginBottom: 8 },
   sizesRow: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 14 },
-  sizeBtn: {
-    borderRadius: 7,
-    borderWidth: 1.5,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    minWidth: 44,
-    alignItems: "center",
-  },
+  sizeBtn: { borderRadius: 7, borderWidth: 1.5, paddingHorizontal: 12, paddingVertical: 6, minWidth: 44, alignItems: "center" },
   sizeBtnText: { fontSize: 13 },
-  addBtn: {
-    borderRadius: 10,
-    paddingVertical: 13,
-    alignItems: "center",
-  },
+  addBtn: { borderRadius: 10, paddingVertical: 13, alignItems: "center" },
   addBtnText: { fontWeight: "800", fontSize: 15 },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "flex-end",
-  },
-  cartSheet: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 24,
-    paddingBottom: 40,
-  },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" },
+  cartSheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
   cartHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 16 },
   cartTitle: { fontSize: 20, fontWeight: "800" },
   emptyCart: { alignItems: "center", paddingVertical: 40, gap: 12 },
   emptyCartText: { fontSize: 16 },
-  cartItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
+  cartItem: { flexDirection: "row", alignItems: "center", paddingVertical: 12, borderBottomWidth: 1 },
   cartItemName: { fontSize: 14, fontWeight: "600" },
   cartItemSize: { fontSize: 12, marginTop: 2 },
   cartItemPrice: { fontSize: 15, fontWeight: "700" },
-  cartTotal: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 16,
-    borderTopWidth: 1,
-    marginTop: 8,
-  },
+  cartTotal: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", paddingVertical: 16, borderTopWidth: 1, marginTop: 8 },
   cartTotalLabel: { fontSize: 16, fontWeight: "700" },
   cartTotalAmount: { fontSize: 22, fontWeight: "800" },
-  checkoutBtn: {
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: "center",
-    marginTop: 8,
-  },
+  checkoutBtn: { borderRadius: 12, paddingVertical: 16, alignItems: "center", marginTop: 8 },
   checkoutBtnText: { color: "#FFFFFF", fontWeight: "800", fontSize: 16 },
   successContainer: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32, gap: 12 },
   successTitle: { fontSize: 28, fontWeight: "800", textAlign: "center" },

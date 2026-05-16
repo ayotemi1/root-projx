@@ -100,6 +100,9 @@ export const register = (data: {
   phone?: string;
   password: string;
   accountType: string;
+  orgName?: string;
+  country?: string;
+  registrationNumber?: string;
 }) =>
   req<{ token: string; user: ApiUser }>("/auth/register", {
     method: "POST",
@@ -296,6 +299,20 @@ export const getMyDonations = (token: string) =>
   req<Donation[]>("/donations/my", {}, token);
 
 // ── Shop ──────────────────────────────────────────────────────────────────────
+
+export interface ShopProduct {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  currency: string;
+  sizes: string[];
+  emoji: string;
+  image: string | null;
+}
+
+export const getShopProducts = () =>
+  req<{ products: ShopProduct[] }>("/shop/products");
 
 export const createShopPaymentIntent = (
   items: Array<{ id: string; qty: number; size?: string }>,

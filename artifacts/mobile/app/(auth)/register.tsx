@@ -50,11 +50,16 @@ export default function RegisterScreen() {
     setError("");
     try {
       await register({
-        name: accountType === "organisation" ? orgName.trim() : name.trim(),
+        name: name.trim(),
         email: email.trim().toLowerCase(),
         phone: phone.trim() || undefined,
         password,
         accountType,
+        ...(accountType === "organisation" && {
+          orgName: orgName.trim(),
+          country: orgCountry.trim() || undefined,
+          registrationNumber: orgRegNumber.trim() || undefined,
+        }),
       });
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Registration failed.");

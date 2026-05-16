@@ -70,7 +70,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="help"
         options={{
-          title: "Get Help",
+          title: "Help",
           tabBarIcon: ({ color, size }) =>
             isIOS ? (
               <SymbolView name="lifepreserver" tintColor={color} size={size} />
