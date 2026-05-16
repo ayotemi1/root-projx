@@ -314,6 +314,17 @@ export interface ShopProduct {
 export const getShopProducts = () =>
   req<{ products: ShopProduct[] }>("/shop/products");
 
+export const createGuestPaymentIntent = (data: {
+  orgId: string;
+  amountGbp: number;
+  guestEmail: string;
+  note?: string;
+}) =>
+  req<{ clientSecret: string; amountGbp: number; feePence: number }>(
+    "/donations/guest-payment-intent",
+    { method: "POST", body: JSON.stringify(data) },
+  );
+
 export const createShopPaymentIntent = (
   items: Array<{ id: string; qty: number; size?: string }>,
 ) =>

@@ -29,6 +29,7 @@ function DonateForm({ orgId }: { orgId: string }) {
   const [custom, setCustom] = useState("");
   const [note, setNote] = useState("");
   const [donationType, setDonationType] = useState<"one_time" | "recurring">("one_time");
+  const [guestEmail, setGuestEmail] = useState("");
   const [creating, setCreating] = useState(false);
   const [step, setStep] = useState<"select" | "success">("select");
 
@@ -43,27 +44,44 @@ function DonateForm({ orgId }: { orgId: string }) {
   const amount = custom ? parseFloat(custom) : (preset ?? 0);
 
   async function handleDonate() {
-    if (!isAuthenticated) {
-      Alert.alert(
-        "Sign in required",
-        "Please sign in to make a donation.",
-        [
-          { text: "Cancel", style: "cancel" },
-          { text: "Sign in", onPress: () => router.push("/(auth)/login") },
-        ],
-      );
-      return;
-    }
     if (!amount || amount <= 0) {
       Alert.alert("Invalid amount", "Please select or enter a valid amount.");
       return;
+    }
+
+    // Guests must provide email for one-time donations; recurring requires account
+    if (!isAuthenticated) {
+      if (donationType === "recurring") {
+        Alert.alert(
+          "Account required",
+          "Monthly donations require a Root ProjX account so we can manage your subscription.",
+          [
+            { text: "Cancel", style: "cancel" },
+            { text: "Sign in", onPress: () => router.push("/(auth)/login") },
+          ],
+        );
+        return;
+      }
+      if (!guestEmail.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestEmail.trim())) {
+        Alert.alert("Email required", "Please enter a valid email address to receive your receipt.");
+        return;
+      }
     }
 
     setCreating(true);
     try {
       let clientSecret: string;
 
-      if (donationType === "one_time") {
+      if (!isAuthenticated) {
+        // Guest one-time donation
+        const res = await api.createGuestPaymentIntent({
+          orgId: orgId!,
+          amountGbp: amount,
+          guestEmail: guestEmail.trim(),
+          note: note.trim() || undefined,
+        });
+        clientSecret = res.clientSecret;
+      } else if (donationType === "one_time") {
         const res = await api.createPaymentIntent(
           { orgId: orgId!, amountGbp: amount, note: note.trim() || undefined },
           token!,
@@ -82,7 +100,7 @@ function DonateForm({ orgId }: { orgId: string }) {
         merchantDisplayName: "Root ProjX",
         style: "alwaysLight",
         primaryButtonLabel:
-          donationType === "one_time"
+          donationType === "one_time" || !isAuthenticated
             ? `Donate £${amount.toFixed(2)}`
             : `Start £${amount.toFixed(2)}/month`,
       });
@@ -121,21 +139,36 @@ function DonateForm({ orgId }: { orgId: string }) {
         </View>
         <Text style={s.successTitle}>Thank you!</Text>
         <Text style={s.successMsg}>
-          Your {donationType === "recurring" ? "monthly " : ""}donation of{" "}
+          Your {donationType === "recurring" && isAuthenticated ? "monthly " : ""}donation of{" "}
           <Text style={s.successAmt}>£{amount.toFixed(2)}</Text>{" "}
           to <Text style={{ fontWeight: "700" }}>{org?.name ?? "this organisation"}</Text> was successful.
         </Text>
-        {donationType === "recurring" && (
+        {!isAuthenticated && (
+          <Text style={s.successSub}>
+            Your receipt has been sent to {guestEmail}. Join Root ProjX to track your impact.
+          </Text>
+        )}
+        {donationType === "recurring" && isAuthenticated && (
           <Text style={s.successSub}>
             You will be charged monthly. You can manage this from your account.
           </Text>
         )}
-        <Text style={s.successSub}>
-          You now follow this organisation and will see their updates in your feed.
-        </Text>
+        {isAuthenticated && (
+          <Text style={s.successSub}>
+            You now follow this organisation and will see their updates in your feed.
+          </Text>
+        )}
         <Pressable style={s.successBtn} onPress={() => router.push(`/organisations/${orgId}`)}>
           <Text style={s.successBtnText}>Back to Organisation</Text>
         </Pressable>
+        {!isAuthenticated && (
+          <Pressable
+            style={[s.successBtn, { backgroundColor: colors.primary, borderColor: colors.primary, marginTop: 10 }]}
+            onPress={() => router.push("/(auth)/register")}
+          >
+            <Text style={[s.successBtnText, { color: "#fff" }]}>Create an account →</Text>
+          </Pressable>
+        )}
       </View>
     );
   }
@@ -164,20 +197,25 @@ function DonateForm({ orgId }: { orgId: string }) {
       </View>
 
       <View style={s.body}>
-        <Text style={s.sectionLabel}>Frequency</Text>
-        <View style={s.typeRow}>
-          {(["one_time", "recurring"] as const).map((t) => (
-            <Pressable
-              key={t}
-              style={[s.typeBtn, donationType === t && s.typeBtnActive]}
-              onPress={() => setDonationType(t)}
-            >
-              <Text style={[s.typeBtnText, donationType === t && s.typeBtnTextActive]}>
-                {t === "one_time" ? "One-time" : "Monthly"}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+        {/* Frequency toggle — only for authenticated users (recurring needs account) */}
+        {isAuthenticated && (
+          <>
+            <Text style={s.sectionLabel}>Frequency</Text>
+            <View style={s.typeRow}>
+              {(["one_time", "recurring"] as const).map((t) => (
+                <Pressable
+                  key={t}
+                  style={[s.typeBtn, donationType === t && s.typeBtnActive]}
+                  onPress={() => setDonationType(t)}
+                >
+                  <Text style={[s.typeBtnText, donationType === t && s.typeBtnTextActive]}>
+                    {t === "one_time" ? "One-time" : "Monthly"}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </>
+        )}
 
         <Text style={s.sectionLabel}>Amount (GBP)</Text>
         <View style={s.presetsRow}>
@@ -218,12 +256,39 @@ function DonateForm({ orgId }: { orgId: string }) {
           numberOfLines={3}
         />
 
+        {/* Guest email field — shown only when not authenticated */}
+        {!isAuthenticated && (
+          <>
+            <Text style={s.sectionLabel}>Your email address</Text>
+            <TextInput
+              style={s.emailInput}
+              value={guestEmail}
+              onChangeText={setGuestEmail}
+              placeholder="you@example.com"
+              placeholderTextColor={colors.mutedForeground}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+            />
+            <Text style={s.guestNote}>
+              Your receipt will be sent here. No account required.{" "}
+              <Text
+                style={{ color: colors.primary, fontWeight: "700" }}
+                onPress={() => router.push("/(auth)/login")}
+              >
+                Sign in
+              </Text>{" "}
+              to track your impact.
+            </Text>
+          </>
+        )}
+
         {amount > 0 && (
           <View style={s.summary}>
             <Text style={s.summaryText}>
               You are donating{" "}
               <Text style={s.summaryAmt}>£{amount.toFixed(2)}</Text>
-              {donationType === "recurring" && <Text style={s.summarySub}> / month</Text>}
+              {donationType === "recurring" && isAuthenticated && <Text style={s.summarySub}> / month</Text>}
               {org ? ` to ${org.name}` : ""}
             </Text>
           </View>
@@ -249,13 +314,23 @@ function DonateForm({ orgId }: { orgId: string }) {
           ) : (
             <Text style={s.donateBtnText}>
               {amount > 0
-                ? donationType === "recurring"
+                ? donationType === "recurring" && isAuthenticated
                   ? `Start £${amount.toFixed(2)}/month →`
                   : `Donate £${amount.toFixed(2)} →`
                 : "Select an amount"}
             </Text>
           )}
         </Pressable>
+
+        {!isAuthenticated && (
+          <Pressable style={s.signInLink} onPress={() => router.push("/(auth)/login")}>
+            <Text style={[s.signInLinkText, { color: colors.mutedForeground }]}>
+              Have an account?{" "}
+              <Text style={{ color: colors.primary, fontWeight: "700" }}>Sign in</Text>
+              {" "}for monthly giving & impact tracking
+            </Text>
+          </Pressable>
+        )}
       </View>
     </ScrollView>
   );
@@ -343,6 +418,13 @@ const styles = (c: ReturnType<typeof useColors>) =>
       borderWidth: 1, borderColor: c.border, borderRadius: c.radius,
       padding: 14, fontSize: 14, color: c.foreground, height: 80, textAlignVertical: "top",
     },
+    emailInput: {
+      borderWidth: 1, borderColor: c.border, borderRadius: c.radius,
+      paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: c.foreground,
+    },
+    guestNote: { fontSize: 12, color: c.mutedForeground, marginTop: 8, lineHeight: 18 },
+    signInLink: { marginTop: 16, alignItems: "center" },
+    signInLinkText: { fontSize: 13, textAlign: "center", lineHeight: 20 },
     summary: {
       marginTop: 20, padding: 14, backgroundColor: c.card,
       borderRadius: c.radius, borderWidth: 1, borderColor: c.border,

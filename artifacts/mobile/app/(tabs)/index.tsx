@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -13,11 +13,38 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import MapView, { Callout, Marker, Region } from "react-native-maps";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import * as api from "@/lib/api";
 import type { Org } from "@/lib/api";
 import { useColors } from "@/hooks/useColors";
+
+// Approximate country-level coordinates (used when org has no lat/lng)
+const COUNTRY_COORDS: Record<string, { latitude: number; longitude: number }> = {
+  "Antigua & Barbuda": { latitude: 17.0608, longitude: -61.7964 },
+  Barbados: { latitude: 13.1939, longitude: -59.5432 },
+  Belize: { latitude: 17.1899, longitude: -88.4976 },
+  Canada: { latitude: 56.1304, longitude: -106.3468 },
+  Grenada: { latitude: 12.1165, longitude: -61.679 },
+  Guyana: { latitude: 4.8604, longitude: -58.9302 },
+  Jamaica: { latitude: 18.1096, longitude: -77.2975 },
+  "Saint Lucia": { latitude: 13.9094, longitude: -60.9789 },
+  "Trinidad & Tobago": { latitude: 10.6918, longitude: -61.2225 },
+  "United Kingdom": { latitude: 51.5074, longitude: -0.1278 },
+  "United States": { latitude: 37.0902, longitude: -95.7129 },
+};
+const DEFAULT_COORD = { latitude: 18.1096, longitude: -77.2975 };
+
+function orgCoord(org: Org, index: number): { latitude: number; longitude: number } {
+  const base = COUNTRY_COORDS[org.country] ?? DEFAULT_COORD;
+  // Small jitter per index so markers in the same country don't stack exactly
+  const jitter = (index % 7) * 0.08 - 0.28;
+  return {
+    latitude: base.latitude + jitter,
+    longitude: base.longitude + jitter * 1.3,
+  };
+}
 
 const CAUSES = [
   "All Causes",
@@ -154,11 +181,64 @@ function OrgCard({ org }: { org: Org }) {
   );
 }
 
+function OrgMapView({ orgs }: { orgs: Org[] }) {
+  const colors = useColors();
+  const router = useRouter();
+
+  const initialRegion: Region = {
+    latitude: 22,
+    longitude: -55,
+    latitudeDelta: 70,
+    longitudeDelta: 90,
+  };
+
+  const markers = useMemo(
+    () => orgs.map((org, i) => ({ org, coord: orgCoord(org, i) })),
+    [orgs],
+  );
+
+  return (
+    <MapView
+      style={{ flex: 1 }}
+      initialRegion={initialRegion}
+      showsUserLocation={false}
+      showsCompass={false}
+    >
+      {markers.map(({ org, coord }) => (
+        <Marker
+          key={org._id}
+          coordinate={coord}
+          pinColor="#B50000"
+          title={org.name}
+          description={[org.city, org.country].filter(Boolean).join(", ")}
+        >
+          <View style={[s.mapPin, { backgroundColor: colors.primary }]}>
+            <Text style={s.mapPinText}>
+              {org.name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()}
+            </Text>
+          </View>
+          <Callout onPress={() => router.push(`/organisations/${org._id}`)}>
+            <View style={s.callout}>
+              <Text style={s.calloutName}>{org.name}</Text>
+              <Text style={s.calloutSub}>{[org.city, org.country].filter(Boolean).join(", ")}</Text>
+              <Text style={s.calloutCategory}>{org.category}</Text>
+              <View style={[s.calloutBtn, { backgroundColor: colors.primary }]}>
+                <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}>View profile →</Text>
+              </View>
+            </View>
+          </Callout>
+        </Marker>
+      ))}
+    </MapView>
+  );
+}
+
 export default function DiscoverScreen() {
   const colors = useColors();
   const [search, setSearch] = useState("");
   const [cause, setCause] = useState("All Causes");
   const [country, setCountry] = useState("All Countries");
+  const [viewMode, setViewMode] = useState<"list" | "map">("list");
 
   const { data: orgs = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["organisations", cause, country],
@@ -180,6 +260,7 @@ export default function DiscoverScreen() {
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]} edges={["top"]}>
+      {/* Search bar */}
       <View style={[s.searchRow, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
         <TextInput
           style={[s.search, { backgroundColor: colors.secondary, color: colors.foreground, borderColor: colors.border }]}
@@ -191,12 +272,32 @@ export default function DiscoverScreen() {
         />
       </View>
 
+      {/* Filters + view toggle */}
       <View style={[s.filtersRow, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
         <View style={{ flex: 1 }}>
           <Dropdown value={cause} options={CAUSES} onChange={setCause} />
         </View>
         <View style={{ flex: 1 }}>
           <Dropdown value={country} options={COUNTRIES} onChange={setCountry} />
+        </View>
+        {/* List / Map toggle */}
+        <View style={[s.viewToggle, { borderColor: colors.border, backgroundColor: colors.secondary }]}>
+          <Pressable
+            style={[s.viewToggleBtn, viewMode === "list" && { backgroundColor: colors.primary }]}
+            onPress={() => setViewMode("list")}
+          >
+            <Text style={[s.viewToggleTxt, { color: viewMode === "list" ? "#fff" : colors.mutedForeground }]}>
+              ☰
+            </Text>
+          </Pressable>
+          <Pressable
+            style={[s.viewToggleBtn, viewMode === "map" && { backgroundColor: colors.primary }]}
+            onPress={() => setViewMode("map")}
+          >
+            <Text style={[s.viewToggleTxt, { color: viewMode === "map" ? "#fff" : colors.mutedForeground }]}>
+              🗺
+            </Text>
+          </Pressable>
         </View>
       </View>
 
@@ -209,6 +310,8 @@ export default function DiscoverScreen() {
             <Text style={{ color: "#fff", fontWeight: "700" }}>Retry</Text>
           </Pressable>
         </View>
+      ) : viewMode === "map" ? (
+        <OrgMapView orgs={filtered} />
       ) : filtered.length === 0 ? (
         <View style={s.center}>
           <Text style={[s.emptyText, { color: colors.mutedForeground }]}>No organisations found.</Text>
@@ -244,6 +347,7 @@ const s = StyleSheet.create({
   },
   filtersRow: {
     flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 12,
     paddingVertical: 8,
     gap: 8,
@@ -260,6 +364,17 @@ const s = StyleSheet.create({
     gap: 6,
   },
   dropBtnText: { fontSize: 12, fontWeight: "600", flex: 1 },
+  viewToggle: {
+    flexDirection: "row",
+    borderRadius: 8,
+    borderWidth: 1,
+    overflow: "hidden",
+  },
+  viewToggleBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  viewToggleTxt: { fontSize: 14 },
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.45)",
@@ -323,4 +438,25 @@ const s = StyleSheet.create({
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24, gap: 12 },
   emptyText: { fontSize: 15, textAlign: "center" },
   retryBtn: { borderRadius: 10, paddingHorizontal: 24, paddingVertical: 10 },
+  // Map styles
+  mapPin: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#fff",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+  mapPinText: { color: "#fff", fontWeight: "800", fontSize: 11 },
+  callout: { width: 200, padding: 4 },
+  calloutName: { fontSize: 14, fontWeight: "800", marginBottom: 2 },
+  calloutSub: { fontSize: 12, color: "#666", marginBottom: 2 },
+  calloutCategory: { fontSize: 11, color: "#B50000", fontWeight: "700", marginBottom: 8 },
+  calloutBtn: { borderRadius: 6, paddingVertical: 6, alignItems: "center" },
 });

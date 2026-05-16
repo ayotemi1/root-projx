@@ -46,6 +46,82 @@ async function ensureStripeCustomer(userId: string, email: string, token: string
   return customer.id;
 }
 
+// ── Guest customer helper — find or create by email (no Firebase uid) ─────────
+async function ensureGuestStripeCustomer(email: string): Promise<string> {
+  const stripe = await getUncachableStripeClient();
+  const existing = await stripe.customers.search({
+    query: `email:"${email}"`,
+    limit: 1,
+  });
+  if (existing.data.length > 0) {
+    return existing.data[0]!.id;
+  }
+  const customer = await stripe.customers.create({
+    email,
+    metadata: { type: "guest" },
+  });
+  return customer.id;
+}
+
+// ── POST /donations/guest-payment-intent — one-time donation for unauthenticated users ──
+router.post("/donations/guest-payment-intent", async (req, res) => {
+  try {
+    const { orgId, amountGbp, guestEmail, note } = req.body as {
+      orgId: string;
+      amountGbp: number;
+      guestEmail: string;
+      note?: string;
+    };
+
+    if (!orgId || !amountGbp || amountGbp <= 0) {
+      res.status(400).json({ error: "orgId and a positive amountGbp are required" });
+      return;
+    }
+    if (!guestEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestEmail)) {
+      res.status(400).json({ error: "A valid email address is required" });
+      return;
+    }
+
+    const serverToken = await getServerToken();
+    const org = await fsGet("organisations", orgId, serverToken);
+    if (!org) {
+      res.status(404).json({ error: "Organisation not found" });
+      return;
+    }
+
+    const customerId = await ensureGuestStripeCustomer(guestEmail);
+    const stripe = await getUncachableStripeClient();
+    const amountPence = Math.round(amountGbp * 100);
+    const feePence = platformFee(amountGbp);
+
+    const intent = await stripe.paymentIntents.create({
+      amount: amountPence,
+      currency: "gbp",
+      customer: customerId,
+      application_fee_amount: feePence,
+      receipt_email: guestEmail,
+      metadata: {
+        guestEmail,
+        orgId,
+        orgName: (org["name"] as string) ?? "",
+        note: note ?? "",
+        type: "guest_one_time",
+      },
+      automatic_payment_methods: { enabled: true },
+    });
+
+    res.json({
+      clientSecret: intent.client_secret,
+      paymentIntentId: intent.id,
+      amountGbp,
+      feePence,
+    });
+  } catch (err) {
+    req.log.error({ err }, "POST /donations/guest-payment-intent error");
+    res.status(500).json({ error: "Failed to create payment intent" });
+  }
+});
+
 // ── GET /donations/publishable-key — return public Stripe key for client ───────
 router.get("/donations/publishable-key", async (_req, res) => {
   try {
