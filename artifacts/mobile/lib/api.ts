@@ -295,6 +295,16 @@ export const createSubscription = (
 export const getMyDonations = (token: string) =>
   req<Donation[]>("/donations/my", {}, token);
 
+// ── Shop ──────────────────────────────────────────────────────────────────────
+
+export const createShopPaymentIntent = (
+  items: Array<{ id: string; qty: number; size?: string }>,
+) =>
+  req<{ clientSecret: string; amountGbp: number }>("/shop/payment-intent", {
+    method: "POST",
+    body: JSON.stringify({ items }),
+  });
+
 // ── Newsletter ─────────────────────────────────────────────────────────────────
 
 export const subscribeNewsletter = (data: { email: string; name?: string }) =>

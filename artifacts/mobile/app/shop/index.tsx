@@ -267,22 +267,32 @@ function ShopContent() {
       );
       return;
     }
-
-    const total = cart.reduce((sum, item) => sum + item.product.price * item.qty, 0);
-    if (total <= 0) return;
+    if (cart.length === 0) return;
 
     setIsCheckingOut(true);
     try {
-      const key = await api.getStripePublishableKey();
+      const cartItems = cart.map((item) => ({
+        id: item.product.id,
+        qty: item.qty,
+        size: item.size,
+      }));
+
+      const { clientSecret, amountGbp } = await api.createShopPaymentIntent(cartItems);
+
+      if (!clientSecret) {
+        Alert.alert("Checkout unavailable", "Please try again later.");
+        return;
+      }
+
       const { error: initErr } = await initPaymentSheet({
-        paymentIntentClientSecret: "",
+        paymentIntentClientSecret: clientSecret,
         merchantDisplayName: "Root ProjX Shop",
         style: "alwaysLight",
-        primaryButtonLabel: `Pay £${total.toFixed(2)}`,
+        primaryButtonLabel: `Pay £${amountGbp.toFixed(2)}`,
       });
 
       if (initErr) {
-        Alert.alert("Checkout unavailable", "Please try again later.");
+        Alert.alert("Checkout failed", initErr.message);
         return;
       }
 
@@ -291,9 +301,11 @@ function ShopContent() {
         setCart([]);
         setCartVisible(false);
         setSuccess(true);
+      } else if (presentErr.code !== "Canceled") {
+        Alert.alert("Payment failed", presentErr.message);
       }
-    } catch {
-      Alert.alert("Error", "Something went wrong. Please try again.");
+    } catch (err) {
+      Alert.alert("Error", err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {
       setIsCheckingOut(false);
     }

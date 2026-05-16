@@ -114,9 +114,14 @@ export default function OrgProfileScreen() {
       ? isFollowing
       : (followsQ.data ?? []).some((o) => o._id === id);
 
-  const followMut = useMutation({
-    mutationFn: () =>
-      (followed ? api.unfollowOrg(id!, token!) : api.followOrg(id!, token!)) as Promise<{ _id: string; userId: string; orgId: string }>,
+  const followMut = useMutation<void, Error>({
+    mutationFn: async () => {
+      if (followed) {
+        await api.unfollowOrg(id!, token!);
+      } else {
+        await api.followOrg(id!, token!);
+      }
+    },
     onSuccess: () => {
       setIsFollowing(!followed);
       queryClient.invalidateQueries({ queryKey: ["follows", "my"] });

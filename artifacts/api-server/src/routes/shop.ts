@@ -95,6 +95,54 @@ router.post("/shop/checkout", async (req, res) => {
   }
 });
 
+// POST /shop/payment-intent — create a Stripe PaymentIntent for in-app checkout (mobile)
+router.post("/shop/payment-intent", async (req, res) => {
+  try {
+    const { items } = req.body as {
+      items: Array<{ id: string; qty: number; size?: string }>;
+    };
+
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      res.status(400).json({ error: "items array is required" });
+      return;
+    }
+
+    let totalPence = 0;
+    const description: string[] = [];
+
+    for (const { id, qty } of items) {
+      const product = PRODUCTS.find((p) => p.id === id);
+      if (!product) {
+        res.status(400).json({ error: `Unknown product: ${id}` });
+        return;
+      }
+      if (!qty || qty < 1) continue;
+      totalPence += product.price * qty;
+      description.push(`${qty}× ${product.name}`);
+    }
+
+    if (totalPence <= 0) {
+      res.status(400).json({ error: "No valid items in cart" });
+      return;
+    }
+
+    const stripe = await getUncachableStripeClient();
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: totalPence,
+      currency: "gbp",
+      description: description.join(", "),
+    });
+
+    res.json({
+      clientSecret: paymentIntent.client_secret,
+      amountGbp: totalPence / 100,
+    });
+  } catch (err) {
+    console.error("[shop] payment-intent error:", err);
+    res.status(500).json({ error: "Could not create payment intent" });
+  }
+});
+
 // GET /shop/success — confirmation endpoint (frontend uses this path for redirect)
 router.get("/shop/success", (_req, res) => {
   res.json({ status: "success" });
