@@ -6,6 +6,7 @@ import {
   FlatList,
   Image,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -16,6 +17,14 @@ import { useAuth } from "@/context/AuthContext";
 import * as api from "@/lib/api";
 import type { FeedUpdate } from "@/lib/api";
 import { useColors } from "@/hooks/useColors";
+
+/** Detect video by file extension embedded in the Firebase Storage URL. */
+function isVideoUrl(url: string): boolean {
+  const lower = url.toLowerCase();
+  return [".mp4", ".mov", ".webm", ".avi", ".m4v", ".ogv"].some((ext) =>
+    lower.includes(ext),
+  );
+}
 
 const TYPE_CONFIG: Record<string, { bg: string; text: string; label: string }> = {
   milestone: { bg: "#E8F4E8", text: "#2E7D32", label: "Milestone" },
@@ -39,6 +48,18 @@ function PostCard({ item }: { item: FeedUpdate }) {
   const typeConfig = TYPE_CONFIG[item.type] ?? TYPE_CONFIG.update!;
   const initials = item.orgName.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
 
+  const mediaUrls = item.mediaUrls ?? [];
+  // First photo to use as full-width hero; fall back to legacy imageUrl
+  const heroPhoto = mediaUrls.find((u) => !isVideoUrl(u)) ?? item.imageUrl ?? null;
+  // First video — shown as a dedicated hero block when no photo is available
+  const firstVideo = mediaUrls.find((u) => isVideoUrl(u)) ?? null;
+  const showVideoHero = !heroPhoto && !!firstVideo;
+  // Extra thumbnails: everything except the item already shown as hero
+  const extraMedia = mediaUrls.filter(
+    (u) => u !== heroPhoto && !(showVideoHero && u === firstVideo),
+  );
+  const hasMedia = mediaUrls.length > 0;
+
   return (
     <Pressable
       style={[s.card, { backgroundColor: colors.card, borderColor: colors.border }]}
@@ -57,19 +78,59 @@ function PostCard({ item }: { item: FeedUpdate }) {
         </View>
       </View>
 
-      {item.imageUrl ? (
-        <Image source={{ uri: item.imageUrl }} style={s.postImage} resizeMode="cover" />
+      {/* Hero: first photo, full width */}
+      {heroPhoto ? (
+        <Image source={{ uri: heroPhoto }} style={s.postImage} resizeMode="cover" />
       ) : null}
+
+      {/* Hero: video-only post — prominent play area */}
+      {showVideoHero && (
+        <View style={[s.videoHero, { backgroundColor: colors.secondary }]}>
+          <Text style={s.videoHeroIcon}>🎬</Text>
+          <Text style={[s.videoHeroLabel, { color: colors.mutedForeground }]}>Video update</Text>
+        </View>
+      )}
 
       <View style={s.cardBody}>
         <Text style={[s.postTitle, { color: colors.foreground }]}>{item.title}</Text>
         <Text style={[s.postContent, { color: colors.foreground }]} numberOfLines={3}>
           {item.content}
         </Text>
+
+        {/* Scrollable thumbnail strip for additional media */}
+        {extraMedia.length > 0 && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={{ marginTop: 10 }}
+            contentContainerStyle={{ gap: 6 }}
+          >
+            {extraMedia.map((url, i) =>
+              isVideoUrl(url) ? (
+                <View
+                  key={i}
+                  style={[s.mediaThumbnail, { backgroundColor: colors.secondary, borderColor: colors.border }]}
+                >
+                  <Text style={{ fontSize: 22 }}>🎬</Text>
+                </View>
+              ) : (
+                <Image
+                  key={i}
+                  source={{ uri: url }}
+                  style={[s.mediaThumbnail, { borderColor: colors.border }]}
+                  resizeMode="cover"
+                />
+              ),
+            )}
+          </ScrollView>
+        )}
       </View>
 
       <View style={[s.cardFooter, { borderTopColor: colors.border }]}>
-        <Text style={[s.likes, { color: colors.mutedForeground }]}>♥ {item.likes ?? 0} likes</Text>
+        <Text style={[s.likes, { color: colors.mutedForeground }]}>
+          ♥ {item.likes ?? 0} likes
+          {hasMedia ? `  ·  📷 ${mediaUrls.length}` : ""}
+        </Text>
         <Text style={[s.readMore, { color: colors.primary }]}>View org →</Text>
       </View>
     </Pressable>
@@ -231,4 +292,22 @@ const s = StyleSheet.create({
   readMore: { fontSize: 13, fontWeight: "600" },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24, gap: 12 },
   retryBtn: { borderRadius: 10, paddingHorizontal: 24, paddingVertical: 10 },
+  mediaThumbnail: {
+    width: 64,
+    height: 64,
+    borderRadius: 8,
+    borderWidth: 1,
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  videoHero: {
+    width: "100%",
+    height: 140,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  videoHeroIcon: { fontSize: 40 },
+  videoHeroLabel: { fontSize: 13, fontWeight: "600" },
 });

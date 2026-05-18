@@ -1,5 +1,9 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { assertStorageBucketConfigured } from "./lib/firebase-storage.js";
+
+// Validate required configuration before accepting requests
+assertStorageBucketConfigured();
 
 const rawPort = process.env["PORT"];
 

@@ -1,12 +1,20 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/context/AuthContext";
 import * as api from "@/lib/api";
 import type { FeedUpdate } from "@/lib/api";
+
+/** Detect video by file extension embedded in the Firebase Storage URL. */
+function isVideoUrl(url: string): boolean {
+  const lower = url.toLowerCase();
+  return [".mp4", ".mov", ".webm", ".avi", ".m4v", ".ogv"].some((ext) =>
+    lower.includes(ext),
+  );
+}
 
 const TYPE_CONFIG: Record<string, { label: string; className: string }> = {
   milestone: {
@@ -34,10 +42,57 @@ function timeAgo(iso: string): string {
 }
 
 function UpdateCard({ item }: { item: FeedUpdate }) {
+  const [, navigate] = useLocation();
   const config = TYPE_CONFIG[item.type] ?? TYPE_CONFIG.update!;
+  const mediaUrls = item.mediaUrls ?? [];
+
+  // First photo to use as full-width hero; fall back to legacy imageUrl
+  const heroPhoto = mediaUrls.find((u) => !isVideoUrl(u)) ?? item.imageUrl ?? null;
+  // First video (shown as hero block when there's no photo at all)
+  const firstVideo = mediaUrls.find((u) => isVideoUrl(u)) ?? null;
+  const showVideoHero = !heroPhoto && !!firstVideo;
+  // Extra thumbnails: every media item that isn't the hero photo/video shown above
+  const extraMedia = mediaUrls.filter((u) => u !== heroPhoto && !(showVideoHero && u === firstVideo));
+  const hasMedia = mediaUrls.length > 0;
+
+  function handleCardClick() {
+    navigate(`/organisations/${item.orgId}`);
+  }
+
   return (
-    <Link href={`/organisations/${item.orgId}`}>
-      <div className="bg-card border border-border rounded-xl p-5 hover:shadow-md transition-shadow cursor-pointer hover:border-primary/30">
+    <div
+      role="link"
+      tabIndex={0}
+      onClick={handleCardClick}
+      onKeyDown={(e) => e.key === "Enter" && handleCardClick()}
+      className="bg-card border border-border rounded-xl overflow-hidden hover:shadow-md transition-shadow cursor-pointer hover:border-primary/30"
+    >
+      {/* Hero: first photo, full width */}
+      {heroPhoto && (
+        <div className="w-full h-48 overflow-hidden bg-secondary">
+          <img
+            src={heroPhoto}
+            alt="update media"
+            className="w-full h-full object-cover"
+          />
+        </div>
+      )}
+
+      {/* Hero: video-only post — show a prominent play block */}
+      {showVideoHero && (
+        <a
+          href={firstVideo!}
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="flex items-center justify-center gap-3 w-full h-40 bg-secondary border-b border-border text-foreground/70 hover:text-foreground transition-colors"
+        >
+          <span className="text-4xl">🎬</span>
+          <span className="text-sm font-semibold">Watch video</span>
+        </a>
+      )}
+
+      <div className="p-5">
         <div className="flex items-center justify-between gap-2 mb-3">
           <span className="font-bold text-primary text-sm truncate max-w-xs">
             {item.orgName}
@@ -55,11 +110,40 @@ function UpdateCard({ item }: { item: FeedUpdate }) {
         <p className="text-foreground/70 text-sm leading-relaxed line-clamp-3">
           {item.content}
         </p>
+
+        {/* Extra media thumbnails */}
+        {extraMedia.length > 0 && (
+          <div className="flex gap-2 mt-3 flex-wrap">
+            {extraMedia.map((url, i) =>
+              isVideoUrl(url) ? (
+                <a
+                  key={i}
+                  href={url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-14 h-14 bg-secondary rounded-lg flex items-center justify-center text-lg border border-border flex-shrink-0"
+                >
+                  🎬
+                </a>
+              ) : (
+                <img
+                  key={i}
+                  src={url}
+                  alt="media"
+                  className="w-14 h-14 object-cover rounded-lg border border-border flex-shrink-0"
+                />
+              ),
+            )}
+          </div>
+        )}
+
         <div className="mt-3 text-sm text-muted-foreground">
           ♥ {item.likes ?? 0}
+          {hasMedia && <span className="ml-3">📷 {mediaUrls.length}</span>}
         </div>
       </div>
-    </Link>
+    </div>
   );
 }
 
