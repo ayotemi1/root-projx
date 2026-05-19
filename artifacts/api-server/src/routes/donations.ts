@@ -418,6 +418,25 @@ router.get("/donations/confirm", async (req, res) => {
   }
 });
 
+// ── POST /donations/portal — create Stripe billing portal session ──────────────
+router.post("/donations/portal", requireAuth, async (req, res) => {
+  try {
+    const uid = req.user!.userId;
+    const email = req.user!.email ?? "";
+    const token = req.headers.authorization!.slice(7);
+    const customerId = await ensureStripeCustomer(uid, email, token);
+    const stripe = await getUncachableStripeClient();
+    const session = await stripe.billingPortal.sessions.create({
+      customer: customerId,
+      return_url: `${DOMAIN}/account`,
+    });
+    res.json({ url: session.url });
+  } catch (err) {
+    req.log.error({ err }, "POST /donations/portal error");
+    res.status(500).json({ error: "Failed to create portal session" });
+  }
+});
+
 // ── GET /donations/my — authenticated user's donation history ──────────────────
 router.get("/donations/my", requireAuth, async (req, res) => {
   try {

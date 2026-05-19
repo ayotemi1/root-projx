@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
+import { Linking } from "react-native";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -112,6 +113,27 @@ export default function AccountScreen() {
     enabled: isAuthenticated,
   });
 
+  const donationsQ = useQuery({
+    queryKey: ["donations", "my"],
+    queryFn: () => api.getMyDonations(token!),
+    enabled: isAuthenticated,
+  });
+
+  const [portalLoading, setPortalLoading] = useState(false);
+
+  async function handleManageSubscriptions() {
+    if (!token) return;
+    setPortalLoading(true);
+    try {
+      const { url } = await api.createPortalSession(token);
+      await Linking.openURL(url);
+    } catch {
+      Alert.alert("Error", "Could not open subscription management.");
+    } finally {
+      setPortalLoading(false);
+    }
+  }
+
   async function handleLogout() {
     Alert.alert("Sign out", "Are you sure you want to sign out?", [
       { text: "Cancel", style: "cancel" },
@@ -218,6 +240,69 @@ export default function AccountScreen() {
           </View>
         )}
 
+        {profile?.accountType !== "organisation" && (
+          <View style={s.section}>
+            <Text style={[s.sectionTitle, { color: colors.mutedForeground }]}>MY DONATIONS</Text>
+            {donationsQ.isLoading ? (
+              <View style={[s.donationRow, { borderBottomColor: colors.border }]}>
+                <Text style={{ color: colors.mutedForeground, fontSize: 13 }}>Loading…</Text>
+              </View>
+            ) : (donationsQ.data ?? []).length === 0 ? (
+              <Text style={{ color: colors.mutedForeground, fontSize: 13, paddingVertical: 8 }}>
+                No donations yet. Support an organisation to see your history here.
+              </Text>
+            ) : (
+              <>
+                {(donationsQ.data ?? []).map((d) => {
+                  const date = new Date(d.createdAt).toLocaleDateString("en-GB", {
+                    day: "numeric", month: "short", year: "numeric",
+                  });
+                  return (
+                    <View key={d._id} style={[s.donationRow, { borderBottomColor: colors.border }]}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[s.donationOrg, { color: colors.foreground }]} numberOfLines={1}>{d.orgName}</Text>
+                        <Text style={[s.donationDate, { color: colors.mutedForeground }]}>{date}</Text>
+                      </View>
+                      <View style={{ alignItems: "flex-end", gap: 4 }}>
+                        <Text style={[s.donationAmount, { color: colors.foreground }]}>
+                          £{d.amountGbp.toFixed(2)}
+                        </Text>
+                        <View style={[
+                          s.typePill,
+                          d.type === "recurring"
+                            ? { backgroundColor: "rgba(245,184,0,0.15)" }
+                            : { backgroundColor: colors.secondary },
+                        ]}>
+                          <Text style={{
+                            fontSize: 10, fontWeight: "700",
+                            color: d.type === "recurring" ? "#F5B800" : colors.mutedForeground,
+                          }}>
+                            {d.type === "recurring" ? "Monthly" : "One-time"}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  );
+                })}
+                {(donationsQ.data ?? []).some((d) => d.type === "recurring") && (
+                  <Pressable
+                    style={[s.manageBtn, { borderColor: colors.border }]}
+                    onPress={handleManageSubscriptions}
+                    disabled={portalLoading}
+                  >
+                    {portalLoading
+                      ? <ActivityIndicator size="small" color={colors.mutedForeground} />
+                      : <Text style={{ color: colors.foreground, fontSize: 13, fontWeight: "600" }}>
+                          Manage recurring donations ›
+                        </Text>
+                    }
+                  </Pressable>
+                )}
+              </>
+            )}
+          </View>
+        )}
+
         <View style={[s.menuSection, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Pressable style={[s.menuItem, { borderBottomColor: colors.border }]} onPress={() => setEditVisible(true)}>
             <Text style={[s.menuLabel, { color: colors.foreground }]}>Edit Profile</Text>
@@ -304,6 +389,17 @@ const s = StyleSheet.create({
   },
   followName: { fontSize: 14, fontWeight: "600" },
   followLocation: { fontSize: 12, marginTop: 1 },
+  donationRow: {
+    flexDirection: "row", alignItems: "center", paddingVertical: 12, borderBottomWidth: 1,
+  },
+  donationOrg: { fontSize: 14, fontWeight: "600" },
+  donationDate: { fontSize: 12, marginTop: 2 },
+  donationAmount: { fontSize: 14, fontWeight: "700" },
+  typePill: { borderRadius: 20, paddingHorizontal: 8, paddingVertical: 2 },
+  manageBtn: {
+    marginTop: 10, borderWidth: 1, borderRadius: 8,
+    paddingVertical: 10, alignItems: "center",
+  },
   menuSection: {
     margin: 16, borderRadius: 12, borderWidth: 1, overflow: "hidden",
   },

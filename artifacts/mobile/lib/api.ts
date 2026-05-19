@@ -298,6 +298,9 @@ export const createSubscription = (
 export const getMyDonations = (token: string) =>
   req<Donation[]>("/donations/my", {}, token);
 
+export const createPortalSession = (token: string) =>
+  req<{ url: string }>("/donations/portal", { method: "POST" }, token);
+
 // ── Shop ──────────────────────────────────────────────────────────────────────
 
 export interface ShopProduct {
