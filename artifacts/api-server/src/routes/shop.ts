@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { optionalAuth } from "../lib/auth.js";
 import { getUncachableStripeClient } from "../lib/stripeClient.js";
 
 const router = Router();
@@ -52,119 +53,164 @@ const PRODUCTS = [
   },
 ];
 
+// Compact serialisation for Stripe metadata — omits name/unitPricePence to stay
+// well within the 500-char per-value limit even for large carts.
+interface CompactItem {
+  p: string; // productId
+  q: number; // qty
+  s: string; // size
+}
+
+function buildItemsMeta(
+  items: Array<{ productId: string; qty: number; size: string }>,
+): string {
+  const compact: CompactItem[] = items.map(({ productId, qty, size }) => ({
+    p: productId,
+    q: qty,
+    s: size,
+  }));
+  return JSON.stringify(compact);
+}
+
 // GET /shop/products — list available products
 router.get("/shop/products", (_req, res) => {
   res.json({ products: PRODUCTS });
 });
 
-// POST /shop/checkout — create Stripe Checkout session
-router.post("/shop/checkout", async (req, res) => {
+// ── POST /shop/checkout ───────────────────────────────────────────────────────
+// Web redirect flow — creates a Stripe Checkout Session and returns { url }.
+// Body: { items: { id, quantity }[] }
+router.post("/shop/checkout", optionalAuth, async (req, res) => {
   try {
     const { items } = req.body as {
-      items: Array<{ id: string; quantity: number }>;
+      items: Array<{ id?: string; productId?: string; quantity?: number; qty?: number; size?: string }>;
     };
 
-    if (!items || !Array.isArray(items) || items.length === 0) {
-      res.status(400).json({ error: "items array is required" });
+    if (!Array.isArray(items) || items.length === 0) {
+      res.status(400).json({ error: "items array is required and must not be empty" });
       return;
     }
 
     const lineItems: import("stripe").Stripe.Checkout.SessionCreateParams.LineItem[] = [];
+    const itemsMeta: Array<{ productId: string; qty: number; size: string }> = [];
 
-    for (const { id, quantity } of items) {
-      const product = PRODUCTS.find((p) => p.id === id);
+    for (const item of items) {
+      const productId = (item.id ?? item.productId ?? "").toString();
+      const product = PRODUCTS.find((p) => p.id === productId);
       if (!product) {
-        res.status(400).json({ error: `Unknown product: ${id}` });
+        res.status(400).json({ error: `Product not found: ${productId}` });
         return;
       }
-      if (!quantity || quantity < 1) continue;
+      const quantity = Math.max(1, Math.floor(Number(item.quantity ?? item.qty ?? 1)));
       lineItems.push({
         price_data: {
           currency: product.currency,
           unit_amount: product.price,
-          product_data: {
-            name: product.name,
-            description: product.description,
-          },
+          product_data: { name: product.name, description: product.description },
         },
         quantity,
       });
+      itemsMeta.push({ productId: product.id, qty: quantity, size: item.size ?? "One Size" });
     }
 
-    if (lineItems.length === 0) {
-      res.status(400).json({ error: "No valid items in cart" });
-      return;
-    }
-
+    const uid = req.user?.userId;
     const stripe = await getUncachableStripeClient();
+
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
       line_items: lineItems,
+      payment_intent_data: {
+        metadata: {
+          type: "shop_order",
+          ...(uid ? { userId: uid } : {}),
+          itemCount: String(itemsMeta.length),
+          itemsJson: buildItemsMeta(itemsMeta),
+        },
+      },
       success_url: `${DOMAIN}/shop/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${DOMAIN}/shop/cancel`,
+      cancel_url: `${DOMAIN}/shop`,
     });
 
+    req.log.info({ sessionId: session.id, uid: uid ?? "guest" }, "Shop checkout session created");
     res.json({ url: session.url });
   } catch (err) {
-    console.error("[shop] checkout error:", err);
-    res.status(500).json({ error: "Could not create checkout session" });
+    req.log.error({ err }, "POST /shop/checkout error");
+    res.status(500).json({ error: "Failed to create checkout session" });
   }
 });
 
-// POST /shop/payment-intent — create a Stripe PaymentIntent for in-app checkout (mobile)
-router.post("/shop/payment-intent", async (req, res) => {
+// ── POST /shop/payment-intent ─────────────────────────────────────────────────
+// Mobile payment-sheet flow — creates a Stripe PaymentIntent and returns
+// { clientSecret, paymentIntentId, amountGbp }.
+// Body: { items: { id | productId, qty, size? }[] }
+router.post("/shop/payment-intent", optionalAuth, async (req, res) => {
   try {
     const { items } = req.body as {
-      items: Array<{ id: string; qty: number; size?: string }>;
+      items: Array<{ id?: string; productId?: string; qty?: number; size?: string }>;
     };
 
-    if (!items || !Array.isArray(items) || items.length === 0) {
-      res.status(400).json({ error: "items array is required" });
+    if (!Array.isArray(items) || items.length === 0) {
+      res.status(400).json({ error: "items array is required and must not be empty" });
       return;
     }
 
     let totalPence = 0;
-    const description: string[] = [];
+    const itemsMeta: Array<{ productId: string; qty: number; size: string }> = [];
 
-    for (const { id, qty } of items) {
-      const product = PRODUCTS.find((p) => p.id === id);
+    for (const item of items) {
+      const productId = (item.id ?? item.productId ?? "").toString();
+      const product = PRODUCTS.find((p) => p.id === productId);
       if (!product) {
-        res.status(400).json({ error: `Unknown product: ${id}` });
+        res.status(400).json({ error: `Product not found: ${productId}` });
         return;
       }
-      if (!qty || qty < 1) continue;
+      const qty = Math.max(1, Math.floor(Number(item.qty ?? 1)));
       totalPence += product.price * qty;
-      description.push(`${qty}× ${product.name}`);
+      itemsMeta.push({ productId: product.id, qty, size: item.size ?? "One Size" });
     }
 
-    if (totalPence <= 0) {
-      res.status(400).json({ error: "No valid items in cart" });
+    if (totalPence < 50) {
+      res.status(400).json({ error: "Order total is too low (minimum 50p)" });
       return;
     }
 
+    const uid = req.user?.userId;
     const stripe = await getUncachableStripeClient();
-    const paymentIntent = await stripe.paymentIntents.create({
+
+    const intent = await stripe.paymentIntents.create({
       amount: totalPence,
       currency: "gbp",
-      description: description.join(", "),
+      automatic_payment_methods: { enabled: true },
+      metadata: {
+        type: "shop_order",
+        ...(uid ? { userId: uid } : {}),
+        itemCount: String(itemsMeta.length),
+        itemsJson: buildItemsMeta(itemsMeta),
+      },
     });
 
+    req.log.info(
+      { paymentIntentId: intent.id, totalPence, uid: uid ?? "guest" },
+      "Shop payment intent created",
+    );
+
     res.json({
-      clientSecret: paymentIntent.client_secret,
+      clientSecret: intent.client_secret,
+      paymentIntentId: intent.id,
       amountGbp: totalPence / 100,
     });
   } catch (err) {
-    console.error("[shop] payment-intent error:", err);
-    res.status(500).json({ error: "Could not create payment intent" });
+    req.log.error({ err }, "POST /shop/payment-intent error");
+    res.status(500).json({ error: "Failed to create payment intent" });
   }
 });
 
-// GET /shop/success — confirmation endpoint (frontend uses this path for redirect)
+// GET /shop/success — stub for redirect confirmation pages
 router.get("/shop/success", (_req, res) => {
   res.json({ status: "success" });
 });
 
-// GET /shop/cancel — cancel endpoint
+// GET /shop/cancel — stub
 router.get("/shop/cancel", (_req, res) => {
   res.json({ status: "cancelled" });
 });

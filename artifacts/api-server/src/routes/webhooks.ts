@@ -73,12 +73,18 @@ async function handlePaymentSuccess(
       subscription_details?: { metadata?: Record<string, string> };
     };
     metadata = invoice.subscription_details?.metadata ?? {};
-    amountGbp = (invoice.amount_paid - (invoice.application_fee_amount ?? 0)) / 100;
+    amountGbp = (invoice.amount_paid - ((invoice as Stripe.Invoice & { application_fee_amount?: number }).application_fee_amount ?? 0)) / 100;
     currency = invoice.currency ?? "gbp";
     stripeRef = invoice.id;
   }
 
   const { userId, orgId, orgName, note, type, guestEmail } = metadata;
+
+  // ── Shop order — record in `orders` collection and return early ──────────────
+  if (type === "shop_order") {
+    await handleShopOrder({ metadata, amountGbp, currency, stripeRef, log });
+    return;
+  }
 
   // Must have at least orgId to process; userId OR guestEmail identifies the donor
   if (!orgId) {
@@ -171,6 +177,50 @@ async function handlePaymentSuccess(
     await fsPatch("organisations", orgId, { ...org, totalRaised: currentRaised + amountGbp }, serverToken);
     log.info({ orgId, totalRaised: currentRaised + amountGbp }, "Updated org totalRaised");
   }
+}
+
+// ── Shop order handler ────────────────────────────────────────────────────────
+// Called when a payment_intent.succeeded event has metadata.type === "shop_order".
+// Records the order in the `orders` Firestore collection.
+async function handleShopOrder({
+  metadata,
+  amountGbp,
+  currency,
+  stripeRef,
+  log,
+}: {
+  metadata: Record<string, string>;
+  amountGbp: number;
+  currency: string;
+  stripeRef: string;
+  log: { info: (obj: unknown, msg: string) => void; error: (obj: unknown, msg: string) => void };
+}): Promise<void> {
+  const serverToken = await getServerToken();
+  const { userId, itemsJson, itemCount } = metadata;
+
+  let items: unknown = [];
+  try {
+    items = itemsJson ? JSON.parse(itemsJson) : [];
+  } catch {
+    log.error({ itemsJson }, "Shop order: failed to parse itemsJson");
+  }
+
+  const orderId = await fsCreate(
+    "orders",
+    {
+      ...(userId ? { userId } : {}),
+      amountGbp,
+      currency,
+      stripeRef,
+      itemCount: itemCount ? Number(itemCount) : 0,
+      items,
+      status: "paid",
+      createdAt: new Date().toISOString(),
+    },
+    serverToken,
+  );
+
+  log.info({ orderId, userId: userId ?? "guest", amountGbp }, "Shop order recorded in Firestore");
 }
 
 export default router;
