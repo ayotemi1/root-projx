@@ -11,10 +11,33 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  TurboModuleRegistry,
   View,
 } from "react-native";
-import MapView, { Callout, Marker, Region } from "react-native-maps";
 import { SafeAreaView } from "react-native-safe-area-context";
+
+// react-native-maps requires a custom native build — not available in Expo Go.
+// We check at runtime and simply disable the map toggle when the module is absent.
+const MAPS_AVAILABLE = TurboModuleRegistry.get("RNMapsAirModule") !== null;
+
+// Only import MapView when the native module is present to avoid the crash.
+type MapViewType = typeof import("react-native-maps").default;
+type MarkerType = typeof import("react-native-maps").Marker;
+type CalloutType = typeof import("react-native-maps").Callout;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let MapView: MapViewType | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let Marker: MarkerType | null = null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let Callout: CalloutType | null = null;
+if (MAPS_AVAILABLE) {
+  // Dynamic require only runs when the native module actually exists
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const maps = require("react-native-maps");
+  MapView = maps.default;
+  Marker = maps.Marker;
+  Callout = maps.Callout;
+}
 
 import * as api from "@/lib/api";
 import type { Org } from "@/lib/api";
@@ -185,27 +208,27 @@ function OrgMapView({ orgs }: { orgs: Org[] }) {
   const colors = useColors();
   const router = useRouter();
 
-  const initialRegion: Region = {
-    latitude: 22,
-    longitude: -55,
-    latitudeDelta: 70,
-    longitudeDelta: 90,
-  };
-
   const markers = useMemo(
     () => orgs.map((org, i) => ({ org, coord: orgCoord(org, i) })),
     [orgs],
   );
 
+  // Should never render when MAPS_AVAILABLE is false, but guard just in case
+  if (!MapView || !Marker || !Callout) return null;
+
+  const MV = MapView;
+  const Mk = Marker;
+  const CL = Callout;
+
   return (
-    <MapView
+    <MV
       style={{ flex: 1 }}
-      initialRegion={initialRegion}
+      initialRegion={{ latitude: 22, longitude: -55, latitudeDelta: 70, longitudeDelta: 90 }}
       showsUserLocation={false}
       showsCompass={false}
     >
       {markers.map(({ org, coord }) => (
-        <Marker
+        <Mk
           key={org._id}
           coordinate={coord}
           pinColor="#B50000"
@@ -217,7 +240,7 @@ function OrgMapView({ orgs }: { orgs: Org[] }) {
               {org.name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()}
             </Text>
           </View>
-          <Callout onPress={() => router.push(`/organisations/${org._id}`)}>
+          <CL onPress={() => router.push(`/organisations/${org._id}` as never)}>
             <View style={s.callout}>
               <Text style={s.calloutName}>{org.name}</Text>
               <Text style={s.calloutSub}>{[org.city, org.country].filter(Boolean).join(", ")}</Text>
@@ -226,10 +249,10 @@ function OrgMapView({ orgs }: { orgs: Org[] }) {
                 <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}>View profile →</Text>
               </View>
             </View>
-          </Callout>
-        </Marker>
+          </CL>
+        </Mk>
       ))}
-    </MapView>
+    </MV>
   );
 }
 
@@ -280,25 +303,27 @@ export default function DiscoverScreen() {
         <View style={{ flex: 1 }}>
           <Dropdown value={country} options={COUNTRIES} onChange={setCountry} />
         </View>
-        {/* List / Map toggle */}
-        <View style={[s.viewToggle, { borderColor: colors.border, backgroundColor: colors.secondary }]}>
-          <Pressable
-            style={[s.viewToggleBtn, viewMode === "list" && { backgroundColor: colors.primary }]}
-            onPress={() => setViewMode("list")}
-          >
-            <Text style={[s.viewToggleTxt, { color: viewMode === "list" ? "#fff" : colors.mutedForeground }]}>
-              ☰
-            </Text>
-          </Pressable>
-          <Pressable
-            style={[s.viewToggleBtn, viewMode === "map" && { backgroundColor: colors.primary }]}
-            onPress={() => setViewMode("map")}
-          >
-            <Text style={[s.viewToggleTxt, { color: viewMode === "map" ? "#fff" : colors.mutedForeground }]}>
-              🗺
-            </Text>
-          </Pressable>
-        </View>
+        {/* List / Map toggle — only shown when native maps module is available */}
+        {MAPS_AVAILABLE && (
+          <View style={[s.viewToggle, { borderColor: colors.border, backgroundColor: colors.secondary }]}>
+            <Pressable
+              style={[s.viewToggleBtn, viewMode === "list" && { backgroundColor: colors.primary }]}
+              onPress={() => setViewMode("list")}
+            >
+              <Text style={[s.viewToggleTxt, { color: viewMode === "list" ? "#fff" : colors.mutedForeground }]}>
+                ☰
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[s.viewToggleBtn, viewMode === "map" && { backgroundColor: colors.primary }]}
+              onPress={() => setViewMode("map")}
+            >
+              <Text style={[s.viewToggleTxt, { color: viewMode === "map" ? "#fff" : colors.mutedForeground }]}>
+                🗺
+              </Text>
+            </Pressable>
+          </View>
+        )}
       </View>
 
       {isLoading ? (
