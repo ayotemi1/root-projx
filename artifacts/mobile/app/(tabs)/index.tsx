@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
   FlatList,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -16,9 +17,15 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-// react-native-maps requires a custom native build — not available in Expo Go.
-// We check at runtime and simply disable the map toggle when the module is absent.
-const MAPS_AVAILABLE = TurboModuleRegistry.get("RNMapsAirModule") !== null;
+// react-native-maps needs a native binary — not available in Expo Go or web.
+// Guard with Platform.OS first (TurboModuleRegistry.get doesn't exist on web).
+const MAPS_AVAILABLE = Platform.OS !== "web" && (() => {
+  try {
+    return TurboModuleRegistry.get("RNMapsAirModule") !== null;
+  } catch {
+    return false;
+  }
+})();
 
 // Only import MapView when the native module is present to avoid the crash.
 type MapViewType = typeof import("react-native-maps").default;
