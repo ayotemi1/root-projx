@@ -5,6 +5,7 @@ import React, { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -146,7 +147,11 @@ export default function AccountScreen() {
       <View style={[s.guestContainer, { backgroundColor: "#B50000" }]}>
         <SafeAreaView style={s.guestSafe} edges={[]}>
           <View style={s.guestContent}>
-            <Text style={s.guestTitle}>Root ProjX</Text>
+            <Image
+              source={require("../../assets/images/logo.png")}
+              style={s.guestLogo}
+              resizeMode="contain"
+            />
             <Text style={s.guestSubtitle}>
               Sign in to follow organisations, track donations, and more.
             </Text>
@@ -161,6 +166,12 @@ export default function AccountScreen() {
               onPress={() => router.push("/(auth)/register")}
             >
               <Text style={s.guestSecondaryBtnText}>Join as supporter</Text>
+            </Pressable>
+            <Pressable
+              style={s.guestSecondaryBtn}
+              onPress={() => router.push("/(auth)/register-org")}
+            >
+              <Text style={s.guestSecondaryBtnText}>Join as organisation</Text>
             </Pressable>
           </View>
           <View style={s.guestLinks}>
@@ -351,7 +362,7 @@ const s = StyleSheet.create({
   guestContainer: { flex: 1 },
   guestSafe: { flex: 1, justifyContent: "space-between", alignItems: "center", paddingHorizontal: 32 },
   guestContent: { flex: 1, justifyContent: "center", alignItems: "center", gap: 16, width: "100%" },
-  guestTitle: { fontFamily: "DancingScript_700Bold", fontSize: 42, color: "#FFFFFF" },
+  guestLogo: { width: 160, height: 160, marginBottom: 8 },
   guestSubtitle: { fontSize: 15, color: "rgba(255,255,255,0.8)", textAlign: "center", lineHeight: 22 },
   guestPrimaryBtn: {
     backgroundColor: "#F5B800", borderRadius: 10, paddingVertical: 15,
