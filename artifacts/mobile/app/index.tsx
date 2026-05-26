@@ -26,7 +26,7 @@ export default function LandingScreen() {
 
   return (
     <View style={s.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#7A0000" />
+      <StatusBar barStyle="light-content" backgroundColor="#B50000" />
 
       <SafeAreaView style={s.safe}>
         <View style={s.centerBlock}>

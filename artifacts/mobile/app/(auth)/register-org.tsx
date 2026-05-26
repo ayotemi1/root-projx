@@ -159,7 +159,7 @@ export default function RegisterOrgScreen() {
 
   return (
     <View style={s.root}>
-      <StatusBar barStyle="light-content" backgroundColor="#7A0000" />
+      <StatusBar barStyle="light-content" backgroundColor="#B50000" />
       <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
         <KeyboardAvoidingView
           style={{ flex: 1 }}
@@ -373,10 +373,10 @@ export default function RegisterOrgScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#7A0000" },
+  root: { flex: 1, backgroundColor: "#B50000" },
   scroll: { flexGrow: 1 },
   header: {
-    backgroundColor: "#7A0000",
+    backgroundColor: "#B50000",
     alignItems: "center",
     paddingVertical: 24,
     paddingHorizontal: 24,

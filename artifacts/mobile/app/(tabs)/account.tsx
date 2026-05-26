@@ -165,13 +165,7 @@ export default function AccountScreen() {
               style={s.guestSecondaryBtn}
               onPress={() => router.push("/(auth)/register")}
             >
-              <Text style={s.guestSecondaryBtnText}>Join as supporter</Text>
-            </Pressable>
-            <Pressable
-              style={s.guestSecondaryBtn}
-              onPress={() => router.push("/(auth)/register-org")}
-            >
-              <Text style={s.guestSecondaryBtnText}>Join as organisation</Text>
+              <Text style={s.guestSecondaryBtnText}>Join Root ProjX</Text>
             </Pressable>
           </View>
           <View style={s.guestLinks}>

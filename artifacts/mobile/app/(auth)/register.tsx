@@ -70,7 +70,7 @@ export default function RegisterScreen() {
 
   return (
     <View style={s.root}>
-      <StatusBar barStyle="light-content" backgroundColor="#7A0000" />
+      <StatusBar barStyle="light-content" backgroundColor="#B50000" />
       <SafeAreaView style={{ flex: 1 }} edges={["top"]}>
         <KeyboardAvoidingView
           style={{ flex: 1 }}
@@ -78,6 +78,9 @@ export default function RegisterScreen() {
         >
           <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
             <View style={s.header}>
+              <Pressable style={s.backBtn} onPress={() => router.back()}>
+                <Text style={s.backBtnText}>← Back</Text>
+              </Pressable>
               <Image
                 source={require("../../assets/images/logo.png")}
                 style={s.logo}
@@ -221,10 +224,12 @@ export default function RegisterScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#7A0000" },
+  root: { flex: 1, backgroundColor: "#B50000" },
   scroll: { flexGrow: 1 },
+  backBtn: { alignSelf: "flex-start", paddingVertical: 4, paddingHorizontal: 2, marginBottom: 8 },
+  backBtnText: { color: "rgba(255,255,255,0.8)", fontSize: 15, fontWeight: "500" },
   header: {
-    backgroundColor: "#7A0000",
+    backgroundColor: "#B50000",
     alignItems: "center",
     paddingVertical: 24,
     paddingHorizontal: 24,

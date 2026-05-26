@@ -22,7 +22,7 @@ const colors = {
     primary: "#B50000",
     primaryForeground: "#FFFFFF",
 
-    navBackground: "#7A0000",
+    navBackground: "#B50000",
     navForeground: "#FFFFFF",
 
     redMid: "#9E0000",
@@ -49,7 +49,7 @@ const colors = {
     success: "#2E7D32",
     successForeground: "#FFFFFF",
 
-    tabBarBackground: "#7A0000",
+    tabBarBackground: "#B50000",
     tabBarActive: "#F5B800",
     tabBarInactive: "#FFFFFF",
 
