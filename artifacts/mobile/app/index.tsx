@@ -11,7 +11,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAuth } from "@/context/AuthContext";
-import { Heading } from "@/components/Typography";
 
 export default function LandingScreen() {
   const router = useRouter();
@@ -37,10 +36,6 @@ export default function LandingScreen() {
             resizeMode="contain"
           />
 
-          <Heading size={28} color="#FFFFFF" style={s.tagline}>
-            Root ProjX
-          </Heading>
-
           <View style={s.divider} />
 
           <Text style={s.subtitle}>RESTORATION. CULTURE. ACCESS.</Text>
@@ -56,14 +51,18 @@ export default function LandingScreen() {
           </Pressable>
 
           <View style={s.authRow}>
-            <Pressable onPress={() => router.push("/(auth)/login")}>
-              <Text style={s.authLink}>Sign in</Text>
-            </Pressable>
-            <Text style={s.authSep}>·</Text>
             <Pressable onPress={() => router.push("/(auth)/register")}>
               <Text style={s.authLink}>Join as supporter</Text>
             </Pressable>
+            <Text style={s.authSep}>·</Text>
+            <Pressable onPress={() => router.push("/(auth)/register-org")}>
+              <Text style={s.authLink}>Join as organisation</Text>
+            </Pressable>
           </View>
+
+          <Pressable onPress={() => router.push("/(auth)/login")}>
+            <Text style={s.signInLink}>Already a member? Sign in</Text>
+          </Pressable>
         </View>
       </SafeAreaView>
     </View>
@@ -145,10 +144,15 @@ const s = StyleSheet.create({
   authLink: {
     color: "rgba(255,255,255,0.85)",
     fontSize: 14,
-    fontWeight: "500",
+    fontWeight: "600",
   },
   authSep: {
     color: "rgba(255,255,255,0.4)",
     fontSize: 16,
+  },
+  signInLink: {
+    color: "rgba(255,255,255,0.5)",
+    fontSize: 13,
+    fontWeight: "400",
   },
 });

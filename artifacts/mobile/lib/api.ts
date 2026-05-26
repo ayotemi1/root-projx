@@ -109,6 +109,22 @@ export const register = (data: {
     body: JSON.stringify(data),
   });
 
+export const createOrgProfile = (
+  token: string,
+  data: {
+    name: string;
+    country: string;
+    category: string;
+    description: string;
+    city?: string;
+    mission?: string;
+  },
+) =>
+  req<{ _id: string }>("/organisations", {
+    method: "POST",
+    body: JSON.stringify(data),
+  }, token);
+
 export const login = (email: string, password: string) =>
   req<{ token: string; user: ApiUser }>("/auth/login", {
     method: "POST",
