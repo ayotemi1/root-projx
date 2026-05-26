@@ -159,7 +159,7 @@ export default function FeedScreen() {
   const { data: updates = [], isLoading, isError, refetch } = active;
 
   return (
-    <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]} edges={["top"]}>
+    <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]} edges={[]}>
       <View style={[s.toggleBar, { backgroundColor: colors.secondary, borderBottomColor: colors.border }]}>
         {(["public", "mine"] as const).map((m) => {
           const disabled = m === "mine" && !isAuthenticated;

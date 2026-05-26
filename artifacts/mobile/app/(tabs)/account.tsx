@@ -144,7 +144,7 @@ export default function AccountScreen() {
   if (!isAuthenticated) {
     return (
       <View style={[s.guestContainer, { backgroundColor: "#B50000" }]}>
-        <SafeAreaView style={s.guestSafe} edges={["top"]}>
+        <SafeAreaView style={s.guestSafe} edges={[]}>
           <View style={s.guestContent}>
             <Text style={s.guestTitle}>Root ProjX</Text>
             <Text style={s.guestSubtitle}>
@@ -181,7 +181,7 @@ export default function AccountScreen() {
   const follows = followsQ.data ?? [];
 
   return (
-    <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]} edges={["top"]}>
+    <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]} edges={[]}>
       <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
         <View style={[s.profileHeader, { backgroundColor: colors.navBackground }]}>
           <Avatar initials={profile?.avatarInitials ?? "??"} size={72} />

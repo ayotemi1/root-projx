@@ -289,7 +289,7 @@ export default function DiscoverScreen() {
     : orgs;
 
   return (
-    <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]} edges={["top"]}>
+    <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]} edges={[]}>
       {/* Search bar */}
       <View style={[s.searchRow, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
         <TextInput

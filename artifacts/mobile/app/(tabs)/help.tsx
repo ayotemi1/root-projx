@@ -168,7 +168,7 @@ export default function HelpScreen() {
   });
 
   return (
-    <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]} edges={["top"]}>
+    <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]} edges={[]}>
       <View style={[s.filtersRow, { backgroundColor: colors.background, borderBottomColor: colors.border }]}>
         <View style={{ flex: 1 }}>
           <Dropdown value={category} options={CATEGORIES} onChange={setCategory} colors={colors} />

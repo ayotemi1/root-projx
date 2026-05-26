@@ -1,8 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { Tabs } from "expo-router";
-import { SymbolView } from "expo-symbols";
 import React from "react";
-import { Image, Platform } from "react-native";
+import { Image } from "react-native";
 
 const LogoWordmark = () => (
   <Image
@@ -16,7 +15,6 @@ const TAB_BAR_BG = "#7A0000";
 const TAB_ACTIVE = "#F5B800";
 const TAB_INACTIVE = "rgba(255,255,255,0.65)";
 const NAV_BG = "#7A0000";
-const isIOS = Platform.OS === "ios";
 
 export default function TabLayout() {
   return (
@@ -33,8 +31,8 @@ export default function TabLayout() {
           borderTopWidth: 0,
           elevation: 0,
           shadowOpacity: 0,
-          height: isIOS ? 84 : 64,
-          paddingBottom: isIOS ? 24 : 8,
+          height: 64,
+          paddingBottom: 8,
           paddingTop: 8,
         },
         tabBarLabelStyle: {
@@ -47,51 +45,38 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "Discover",
-          tabBarIcon: ({ color, size }) =>
-            isIOS ? (
-              <SymbolView name="safari" tintColor={color} size={size} />
-            ) : (
-              <Feather name="compass" size={size} color={color} />
-            ),
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="compass" size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="feed"
         options={{
           title: "Feed",
-          tabBarIcon: ({ color, size }) =>
-            isIOS ? (
-              <SymbolView name="newspaper" tintColor={color} size={size} />
-            ) : (
-              <Feather name="activity" size={size} color={color} />
-            ),
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="activity" size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="help"
         options={{
           title: "Help",
-          tabBarIcon: ({ color, size }) =>
-            isIOS ? (
-              <SymbolView name="lifepreserver" tintColor={color} size={size} />
-            ) : (
-              <Feather name="life-buoy" size={size} color={color} />
-            ),
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="life-buoy" size={size} color={color} />
+          ),
         }}
       />
       <Tabs.Screen
         name="account"
         options={{
           title: "Account",
-          tabBarIcon: ({ color, size }) =>
-            isIOS ? (
-              <SymbolView name="person" tintColor={color} size={size} />
-            ) : (
-              <Feather name="user" size={size} color={color} />
-            ),
+          tabBarIcon: ({ color, size }) => (
+            <Feather name="user" size={size} color={color} />
+          ),
         }}
       />
     </Tabs>
   );
 }
-
