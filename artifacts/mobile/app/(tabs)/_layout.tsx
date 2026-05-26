@@ -9,7 +9,7 @@ import { HamburgerMenu } from "@/components/HamburgerMenu";
 const LogoWordmark = () => (
   <Image
     source={require("../../assets/images/logo.png")}
-    style={{ height: 34, width: 34, resizeMode: "contain", marginLeft: 12 }}
+    style={{ height: 68, width: 68, resizeMode: "contain", marginLeft: 12 }}
     accessibilityLabel="Root ProjX"
   />
 );
