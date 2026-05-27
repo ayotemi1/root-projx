@@ -5,6 +5,16 @@ import { assertStorageBucketConfigured } from "./lib/firebase-storage.js";
 // Validate required configuration before accepting requests
 assertStorageBucketConfigured();
 
+// Remind operators that Firebase Storage security rules must be deployed so
+// that logged-out visitors can read update media from the public feed.
+// Rules live in storage.rules at the project root.
+// Deploy with: pnpm --filter @workspace/scripts run deploy-storage-rules
+// Or paste storage.rules into Firebase Console → Storage → Rules.
+logger.info(
+  "Firebase Storage rules: ensure storage.rules is deployed so updates/** is publicly readable. " +
+  "Run: pnpm --filter @workspace/scripts run deploy-storage-rules",
+);
+
 const rawPort = process.env["PORT"];
 
 if (!rawPort) {
