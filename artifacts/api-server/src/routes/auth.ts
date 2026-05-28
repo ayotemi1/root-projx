@@ -204,7 +204,7 @@ router.get("/auth/me", requireAuth, async (req, res) => {
       res.status(404).json({ error: "User not found" });
       return;
     }
-    res.json({
+    const payload: Record<string, unknown> = {
       id: uid,
       name: userData.name,
       email: userData.email,
@@ -212,7 +212,12 @@ router.get("/auth/me", requireAuth, async (req, res) => {
       accountType: userData.accountType,
       avatarInitials: userData.avatarInitials,
       createdAt: userData.createdAt ?? null,
-    });
+    };
+    if (userData.accountType === "organisation") {
+      payload.orgName = userData.orgName ?? null;
+      payload.country = userData.country ?? null;
+    }
+    res.json(payload);
   } catch (err) {
     req.log.error({ err }, "me error");
     res.status(500).json({ error: "Internal server error" });

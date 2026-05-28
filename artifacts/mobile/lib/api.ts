@@ -11,6 +11,8 @@ export interface ApiUser {
   accountType: "supporter" | "organisation";
   avatarInitials: string;
   createdAt: string | null;
+  orgName?: string | null;
+  country?: string | null;
 }
 
 export interface Org {

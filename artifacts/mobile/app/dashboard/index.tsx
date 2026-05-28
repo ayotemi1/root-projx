@@ -223,6 +223,22 @@ export default function DashboardScreen() {
           </View>
         </View>
 
+        {/* Incomplete profile banner — shown when org doc is missing */}
+        {orgQ.isFetched && !org && (
+          <Pressable
+            style={s.incompleteBanner}
+            onPress={() => router.push("/(auth)/complete-org-profile")}
+          >
+            <View style={{ flex: 1 }}>
+              <Text style={s.incompleteBannerTitle}>⚠️ Profile not set up</Text>
+              <Text style={s.incompleteBannerSub}>
+                Tap here to complete your organisation profile so supporters can find you.
+              </Text>
+            </View>
+            <Text style={{ color: "#fff", fontSize: 20 }}>›</Text>
+          </Pressable>
+        )}
+
         {/* Post update form toggle */}
         <View style={s.section}>
           <Pressable
@@ -483,4 +499,11 @@ const styles = (c: ReturnType<typeof useColors>) =>
       backgroundColor: c.secondary, alignItems: "center", justifyContent: "center",
     },
     empty: { color: c.mutedForeground, fontSize: 14, textAlign: "center", padding: 20 },
+    incompleteBanner: {
+      flexDirection: "row", alignItems: "center", gap: 12,
+      backgroundColor: "#9E0000", marginHorizontal: 16, marginTop: 12,
+      borderRadius: 10, padding: 14,
+    },
+    incompleteBannerTitle: { color: "#fff", fontWeight: "700", fontSize: 14, marginBottom: 2 },
+    incompleteBannerSub: { color: "rgba(255,255,255,0.85)", fontSize: 12, lineHeight: 17 },
   });

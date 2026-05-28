@@ -49,10 +49,14 @@ router.post("/organisations", requireAuth, async (req, res) => {
       return;
     }
     const uid = req.user!.userId;
-    const token = req.headers.authorization!.slice(7);
-    const existing = await fsGet("organisations", uid, token);
+    // Use server token for Firestore writes — user tokens are subject to client-side
+    // security rules that may block writes to the organisations collection.
+    const serverToken = await getServerToken();
+    const existing = await fsGet("organisations", uid, serverToken);
     if (existing) {
-      res.status(409).json({ error: "An organisation profile already exists for this account" });
+      // Profile already exists — return it instead of erroring so the mobile
+      // onboarding flow can re-call this idempotently after a network retry.
+      res.status(200).json({ _id: uid, ...existing });
       return;
     }
     const { name, country, city, category, description, mission, contact, socialLinks } =
@@ -68,7 +72,7 @@ router.post("/organisations", requireAuth, async (req, res) => {
       verified: false, followerCount: 0, totalRaised: 0, impactScore: 0,
       createdAt: new Date().toISOString(),
     };
-    await fsPatch("organisations", uid, data, token);
+    await fsPatch("organisations", uid, data, serverToken);
     res.status(201).json({ _id: uid, ...data });
   } catch (err) {
     req.log.error({ err }, "POST /organisations error");
@@ -81,12 +85,12 @@ router.patch("/organisations/:id", requireAuth, async (req, res) => {
   try {
     const uid = req.user!.userId;
     const orgId = req.params.id!;
-    const token = req.headers.authorization!.slice(7);
     if (uid !== orgId) {
       res.status(403).json({ error: "You can only update your own organisation profile" });
       return;
     }
-    const existing = await fsGet("organisations", orgId, token);
+    const serverToken = await getServerToken();
+    const existing = await fsGet("organisations", orgId, serverToken);
     if (!existing) {
       res.status(404).json({ error: "Organisation not found" });
       return;
@@ -100,7 +104,7 @@ router.patch("/organisations/:id", requireAuth, async (req, res) => {
       }
     }
     const merged = { ...existing, ...updates };
-    await fsPatch("organisations", orgId, merged, token);
+    await fsPatch("organisations", orgId, merged, serverToken);
     res.json({ _id: orgId, ...merged });
   } catch (err) {
     req.log.error({ err }, "PATCH /organisations/:id error");
