@@ -31,11 +31,10 @@ function orArr(val: unknown, fallback: string[]): string[] {
   return fallback;
 }
 
-// Extend Org with the about-specific fields (may or may not be present)
+// Extend Org with about-specific fields not in the base Org type
 interface OrgAbout extends Org {
   aboutText?: string | null;
   featuredImageUrl?: string | null;
-  mission?: string | null;
   vision?: string | null;
   values?: string[] | null;
   website?: string | null;

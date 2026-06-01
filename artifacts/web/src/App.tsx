@@ -18,6 +18,7 @@ import OrgCampaignsPage from "@/pages/org-campaigns";
 import OrgUpdatesPage from "@/pages/org-updates";
 import OrgVolunteerPage from "@/pages/org-volunteer";
 import OrgAboutPage from "@/pages/org-about";
+import OrgDashboardPage from "@/pages/org-dashboard";
 import DonatePage from "@/pages/donate";
 import DonateSuccessPage from "@/pages/donate-success";
 import DashboardPage from "@/pages/dashboard";
@@ -74,6 +75,9 @@ function AppRoutes() {
               <Route path="/help" component={HelpPage} />
               <Route path="/account">
                 {() => <ProtectedRoute component={AccountPage} />}
+              </Route>
+              <Route path="/org-dashboard">
+                {() => <ProtectedRoute component={OrgDashboardPage} />}
               </Route>
               <Route path="/organisations/:id/campaigns" component={OrgCampaignsPage} />
               <Route path="/organisations/:id/updates" component={OrgUpdatesPage} />
