@@ -1,0 +1,63 @@
+Revamp the Organisation Profile screen in the React Native 
+mobile app to match the following design spec exactly. 
+This is for the mobile app only — do not touch the website.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HEADER / NAV
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Red header bar with:
+  - Back arrow (left)
+  - Root ProjX gold logo centred
+  - Three dot menu icon (right)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HERO SECTION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Full width banner image at the top
+- Org avatar overlapping the bottom of the banner:
+  - Circular, red background, white initials (e.g. "CY")
+  - Sits bottom left of the banner
+- Org name in bold large text next to avatar
+- Gold "✓ VERIFIED" badge next to org name
+- Location below name (pin icon + city, country)
+- Category tag below location (e.g. "Youth Empowerment")
+- Short bio/description below (2-3 lines, grey text)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ACTION BUTTONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Two full width buttons side by side:
+  - "Follow" — red outline, heart icon, red text
+  - "Donate" — red filled, heart icon, white text
+- Rounded corners, equal width, sits below the bio
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STATS ROW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Four stats in a horizontal row:
+  - Followers (people icon)
+  - Projects (grid icon)
+  - Volunteers (person icon)
+  - Raised (currency/stack icon)
+- Each stat: icon above, bold number, label below
+- Evenly spaced, centred, no borders
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TABS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Four tabs in a scrollable horizontal row:
+  Updates | Campaigns | Volunteer | About
+- Active tab: red underline + red text
+- Inactive: grey text, no underline
+- Default active: Updates
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+UPDATES TAB CONTENT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Section heading "Latest Updates" with 
+  "View all" in red on the right
+- Vertical list of update cards, each containing:
+  - Timestamp top left (e.g. "2 days ago")
+  - Location top right (pin icon + city)
+  - Headline in bold
+  - Body text (2 lines, trunca
