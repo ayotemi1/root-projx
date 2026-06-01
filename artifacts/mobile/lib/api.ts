@@ -388,7 +388,29 @@ export const getOrgCampaigns = (orgId: string) =>
   req<Campaign[]>(`/organisations/${orgId}/campaigns`);
 
 export const getOrgVolunteerRoles = (orgId: string) =>
-  req<VolunteerRole[]>(`/organisations/${orgId}/volunteer-roles`);
+  req<VolunteerRole[]>(`/organisations/${orgId}/volunteerRoles`);
+
+export const postVolunteerApplication = (
+  orgId: string,
+  data: { roleId: string; roleTitle: string; motivation: string; experience: string },
+  token: string,
+) =>
+  req<{ id: string }>(
+    `/organisations/${orgId}/volunteerApplications`,
+    { method: "POST", body: JSON.stringify(data) },
+    token,
+  );
+
+export const postSkillSuggestion = (
+  orgId: string,
+  data: { skill: string; availability: string; locationPreference: string },
+  token: string,
+) =>
+  req<{ id: string }>(
+    `/organisations/${orgId}/skillSuggestions`,
+    { method: "POST", body: JSON.stringify(data) },
+    token,
+  );
 
 // ── Newsletter ─────────────────────────────────────────────────────────────────
 
