@@ -27,6 +27,8 @@ export interface Org {
   followerCount: number;
   totalRaised: number;
   impactScore: number;
+  coverImage: string | null;
+  logo: string | null;
   contact: { email?: string; phone?: string; website?: string } | null;
   socialLinks: Record<string, string> | null;
   createdAt: string;
@@ -353,6 +355,35 @@ export const createShopPaymentIntent = (
     method: "POST",
     body: JSON.stringify({ items }),
   });
+
+// ── Campaigns / Volunteer roles ───────────────────────────────────────────────
+
+export interface Campaign {
+  _id: string;
+  title: string;
+  description: string;
+  goal: number;
+  raised: number;
+  status: "active" | "completed";
+  deadline?: string;
+  createdAt: string;
+}
+
+export interface VolunteerRole {
+  _id: string;
+  title: string;
+  description: string;
+  location: string;
+  commitment: string;
+  skills: string[];
+  createdAt: string;
+}
+
+export const getOrgCampaigns = (orgId: string) =>
+  req<Campaign[]>(`/organisations/${orgId}/campaigns`);
+
+export const getOrgVolunteerRoles = (orgId: string) =>
+  req<VolunteerRole[]>(`/organisations/${orgId}/volunteer-roles`);
 
 // ── Newsletter ─────────────────────────────────────────────────────────────────
 

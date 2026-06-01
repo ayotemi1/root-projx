@@ -17,148 +17,138 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useAuth } from "@/context/AuthContext";
 import * as api from "@/lib/api";
-import type { FeedUpdate, Review } from "@/lib/api";
-import { useColors } from "@/hooks/useColors";
+import type { Campaign, FeedUpdate, VolunteerRole } from "@/lib/api";
 
 const SCREEN_W = Dimensions.get("window").width;
-const GRID_CELL = (SCREEN_W - 3) / 3; // 1px gaps
+const BANNER_H = 200;
+const AVATAR_SIZE = 72;
+const AVATAR_OVERLAP = 36;
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const d = Math.floor(diff / 864e5);
   if (d === 0) return "Today";
   if (d === 1) return "Yesterday";
-  if (d < 7) return `${d}d ago`;
+  if (d < 7) return `${d} days ago`;
   if (d < 30) return `${Math.floor(d / 7)}w ago`;
   return `${Math.floor(d / 30)}mo ago`;
 }
 
-const TYPE_COLOUR: Record<string, { bg: string; fg: string }> = {
-  milestone: { bg: "#E8F4E8", fg: "#2E7D32" },
-  campaign:  { bg: "#FFF8E1", fg: "#F57F17" },
-  update:    { bg: "#E3F2FD", fg: "#1565C0" },
-};
-
-// ── Sub-components ─────────────────────────────────────────────────────────────
-
-function MediaGrid({ updates }: { updates: FeedUpdate[] }) {
-  const allMedia = updates.flatMap((u) => u.mediaUrls ?? []);
-  if (allMedia.length === 0) {
-    return (
-      <View style={{ alignItems: "center", paddingVertical: 48 }}>
-        <Feather name="image" size={40} color="#ccc" />
-        <Text style={{ color: "#888", marginTop: 12, fontSize: 14 }}>No photos yet</Text>
-      </View>
-    );
-  }
-  return (
-    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 1.5 }}>
-      {allMedia.map((url, i) => (
-        <Image
-          key={i}
-          source={{ uri: url }}
-          style={{ width: GRID_CELL, height: GRID_CELL }}
-          resizeMode="cover"
-        />
-      ))}
-    </View>
-  );
+function fmtRaised(n: number) {
+  if (n >= 1_000_000) return `£${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `£${(n / 1_000).toFixed(0)}K`;
+  return `£${n.toLocaleString()}`;
 }
 
-function UpdateCard({ item }: { item: FeedUpdate }) {
-  const colors = useColors();
-  const badge = TYPE_COLOUR[item.type] ?? TYPE_COLOUR.update!;
-  const cover = item.mediaUrls?.[0] ?? item.imageUrl;
+// ── Update card ────────────────────────────────────────────────────────────────
+
+function UpdateCard({ item, orgCity }: { item: FeedUpdate; orgCity?: string }) {
+  const hasImages = (item.mediaUrls?.length ?? 0) > 0;
   return (
-    <View style={{
-      marginHorizontal: 16,
-      marginBottom: 16,
-      borderRadius: 12,
-      backgroundColor: colors.card,
-      overflow: "hidden",
-      borderWidth: 1,
-      borderColor: colors.border,
-    }}>
-      {!!cover && (
-        <Image source={{ uri: cover }} style={{ width: "100%", height: 180 }} resizeMode="cover" />
-      )}
-      <View style={{ padding: 14 }}>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 6 }}>
-          <View style={{ backgroundColor: badge.bg, borderRadius: 4, paddingHorizontal: 7, paddingVertical: 2 }}>
-            <Text style={{ fontSize: 10, fontWeight: "700", color: badge.fg }}>{item.type.toUpperCase()}</Text>
-          </View>
-          <Text style={{ fontSize: 12, color: colors.mutedForeground }}>{timeAgo(item.createdAt)}</Text>
-          {item.likes > 0 && (
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 3, marginLeft: "auto" }}>
-              <Feather name="heart" size={12} color="#B50000" />
-              <Text style={{ fontSize: 12, color: "#B50000", fontWeight: "600" }}>{item.likes}</Text>
-            </View>
-          )}
+    <View style={s.updateCard}>
+      <View style={s.updateMeta}>
+        <View style={s.updateMetaLeft}>
+          <Feather name="calendar" size={12} color="#888" />
+          <Text style={s.updateMetaText}>{timeAgo(item.createdAt)}</Text>
         </View>
-        <Text style={{ fontSize: 15, fontWeight: "700", color: colors.foreground, marginBottom: 4 }}>
-          {item.title}
-        </Text>
-        <Text style={{ fontSize: 13, color: colors.foreground, lineHeight: 19 }} numberOfLines={4}>
-          {item.content}
-        </Text>
-        {(item.mediaUrls?.length ?? 0) > 1 && (
-          <Text style={{ fontSize: 11, color: colors.mutedForeground, marginTop: 6 }}>
-            +{item.mediaUrls!.length - 1} more photo{item.mediaUrls!.length > 2 ? "s" : ""}
-          </Text>
+        {!!orgCity && (
+          <View style={s.updateMetaRight}>
+            <Feather name="map-pin" size={12} color="#888" />
+            <Text style={s.updateMetaText}>{orgCity}</Text>
+          </View>
         )}
       </View>
+      <Text style={s.updateTitle} numberOfLines={2}>{item.title}</Text>
+      <Text style={s.updateBody} numberOfLines={2}>{item.content}</Text>
+      {hasImages && (
+        <View style={s.imageStrip}>
+          {item.mediaUrls!.slice(0, 3).map((url, i) => (
+            <Image key={i} source={{ uri: url }} style={s.imageThumb} resizeMode="cover" />
+          ))}
+        </View>
+      )}
     </View>
   );
 }
 
-function ReviewCard({ item }: { item: Review }) {
-  const colors = useColors();
-  const filled = Math.round(item.rating);
+// ── Campaign card ──────────────────────────────────────────────────────────────
+
+function CampaignCard({ item }: { item: Campaign }) {
+  const pct = item.goal > 0 ? Math.min(100, Math.round((item.raised / item.goal) * 100)) : 0;
   return (
-    <View style={{
-      marginHorizontal: 16,
-      marginBottom: 12,
-      borderRadius: 12,
-      backgroundColor: colors.card,
-      padding: 14,
-      borderWidth: 1,
-      borderColor: colors.border,
-    }}>
-      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <View style={{ flex: 1 }}>
-          <Text style={{ fontSize: 14, fontWeight: "700", color: colors.foreground }}>{item.authorName}</Text>
-          {item.verified && (
-            <Text style={{ fontSize: 11, color: "#2E7D32", marginTop: 1 }}>✓ Verified visitor</Text>
-          )}
-        </View>
-        <View style={{ flexDirection: "row", gap: 2 }}>
-          {[1, 2, 3, 4, 5].map((n) => (
-            <Feather key={n} name="star" size={13}
-              color={n <= filled ? "#F5B800" : "#ddd"}
-              style={{ marginLeft: 1 }}
-            />
-          ))}
-        </View>
+    <View style={s.campaignCard}>
+      <Text style={s.campaignTitle}>{item.title}</Text>
+      <Text style={s.campaignDesc} numberOfLines={2}>{item.description}</Text>
+      <View style={s.goalTrack}>
+        <View style={[s.goalFill, { width: `${pct}%` as any }]} />
       </View>
-      <Text style={{ fontSize: 13, color: colors.foreground, marginTop: 8, lineHeight: 19 }}>
-        {item.content}
-      </Text>
-      <Text style={{ fontSize: 11, color: colors.mutedForeground, marginTop: 6 }}>{timeAgo(item.createdAt)}</Text>
+      <View style={s.campaignFooter}>
+        <Text style={s.campaignRaised}>{fmtRaised(item.raised)} raised</Text>
+        <Text style={s.campaignGoal}>of {fmtRaised(item.goal)} goal · {pct}%</Text>
+      </View>
     </View>
   );
 }
+
+// ── Volunteer role card ────────────────────────────────────────────────────────
+
+function RoleCard({ item }: { item: VolunteerRole }) {
+  return (
+    <View style={s.roleCard}>
+      <Text style={s.roleTitle}>{item.title}</Text>
+      <Text style={s.roleDesc} numberOfLines={2}>{item.description}</Text>
+      <View style={s.roleMeta}>
+        <View style={s.roleMetaItem}>
+          <Feather name="map-pin" size={12} color="#888" />
+          <Text style={s.roleMetaText}>{item.location}</Text>
+        </View>
+        <View style={s.roleMetaItem}>
+          <Feather name="clock" size={12} color="#888" />
+          <Text style={s.roleMetaText}>{item.commitment}</Text>
+        </View>
+      </View>
+      {item.skills?.length > 0 && (
+        <View style={s.skillPills}>
+          {item.skills.slice(0, 3).map((sk, i) => (
+            <View key={i} style={s.skillPill}>
+              <Text style={s.skillPillText}>{sk}</Text>
+            </View>
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
+// ── Empty state ────────────────────────────────────────────────────────────────
+
+function EmptyState({ icon, label }: { icon: React.ComponentProps<typeof Feather>["name"]; label: string }) {
+  return (
+    <View style={{ alignItems: "center", paddingVertical: 48 }}>
+      <Feather name={icon} size={36} color="#ccc" />
+      <Text style={{ color: "#888", marginTop: 12, fontSize: 14 }}>{label}</Text>
+    </View>
+  );
+}
+
+// ── Tab types ──────────────────────────────────────────────────────────────────
+
+type TabKey = "updates" | "campaigns" | "volunteer" | "about";
+const TABS: { key: TabKey; label: string }[] = [
+  { key: "updates",   label: "Updates" },
+  { key: "campaigns", label: "Campaigns" },
+  { key: "volunteer", label: "Volunteer" },
+  { key: "about",     label: "About" },
+];
 
 // ── Main screen ────────────────────────────────────────────────────────────────
 
-type TabKey = "grid" | "posts" | "reviews";
-
 export default function OrgProfileScreen() {
-  const colors = useColors();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { isAuthenticated, token } = useAuth();
   const queryClient = useQueryClient();
-  const [tab, setTab] = useState<TabKey>("posts");
+  const [tab, setTab] = useState<TabKey>("updates");
   const [isFollowing, setIsFollowing] = useState<boolean | null>(null);
 
   const orgQ = useQuery({
@@ -172,9 +162,15 @@ export default function OrgProfileScreen() {
     enabled: !!id,
   });
 
-  const reviewsQ = useQuery({
-    queryKey: ["org-reviews", id],
-    queryFn: () => api.getOrgReviews(id!),
+  const campaignsQ = useQuery({
+    queryKey: ["org-campaigns", id],
+    queryFn: () => api.getOrgCampaigns(id!),
+    enabled: !!id,
+  });
+
+  const rolesQ = useQuery({
+    queryKey: ["org-roles", id],
+    queryFn: () => api.getOrgVolunteerRoles(id!),
     enabled: !!id,
   });
 
@@ -206,330 +202,448 @@ export default function OrgProfileScreen() {
 
   const org = orgQ.data;
   const updates = updatesQ.data ?? [];
-  const reviews = reviewsQ.data ?? [];
-  const postCount = updates.length;
+  const campaigns = campaignsQ.data ?? [];
+  const roles = rolesQ.data ?? [];
 
-  // Initials from org name
   const initials = org
-    ? org.name.split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase()
+    ? org.name.split(" ").filter(Boolean).map((w: string) => w[0]).slice(0, 2).join("").toUpperCase()
     : "?";
+
+  const activeCampaigns = campaigns.filter((c) => c.status === "active");
 
   if (orgQ.isLoading) {
     return (
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background }}>
-        <ActivityIndicator color={colors.primary} size="large" />
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#fff" }}>
+        <ActivityIndicator color="#B50000" size="large" />
       </View>
     );
   }
 
   if (!org) {
     return (
-      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: colors.background }}>
-        <Text style={{ color: colors.mutedForeground }}>Organisation not found.</Text>
+      <View style={{ flex: 1, alignItems: "center", justifyContent: "center", backgroundColor: "#fff" }}>
+        <Text style={{ color: "#888" }}>Organisation not found.</Text>
       </View>
     );
   }
 
-  const hasWebsite = !!org.contact?.website;
-
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }} edges={["bottom"]}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }} edges={["bottom"]}>
       <ScrollView showsVerticalScrollIndicator={false} stickyHeaderIndices={[0]}>
 
-        {/* ── Sticky top bar ── */}
-        <View style={s.topBar}>
-          <TouchableOpacity onPress={() => router.back()} hitSlop={12} style={s.topBarBtn}>
+        {/* ── Sticky header ── */}
+        <View style={s.header}>
+          <TouchableOpacity onPress={() => router.back()} hitSlop={12} style={s.headerBtn}>
             <Feather name="arrow-left" size={22} color="#fff" />
           </TouchableOpacity>
-          <Text style={s.topBarTitle} numberOfLines={1}>{org.name}</Text>
-          {hasWebsite ? (
-            <TouchableOpacity hitSlop={12} style={s.topBarBtn}>
-              <Feather name="external-link" size={20} color="#fff" />
-            </TouchableOpacity>
-          ) : (
-            <View style={s.topBarBtn} />
-          )}
+          <Image
+            source={require("@/assets/images/logo.png")}
+            style={s.headerLogo}
+            resizeMode="contain"
+          />
+          <TouchableOpacity hitSlop={12} style={s.headerBtn}>
+            <Feather name="more-vertical" size={22} color="#fff" />
+          </TouchableOpacity>
         </View>
 
         {/* ── Banner ── */}
-        <View style={s.banner} />
+        <View style={s.bannerWrapper}>
+          {org.coverImage ? (
+            <Image source={{ uri: org.coverImage }} style={s.bannerImage} resizeMode="cover" />
+          ) : (
+            <View style={s.bannerFallback} />
+          )}
+        </View>
 
-        {/* ── Avatar (overlaps banner) ── */}
-        <View style={s.profileSection}>
-          <View style={s.avatarWrapper}>
+        {/* ── Identity block ── */}
+        <View style={s.identityBlock}>
+          <View style={s.avatarRow}>
             <View style={s.avatar}>
               <Text style={s.avatarText}>{initials}</Text>
             </View>
-            {org.verified && (
-              <View style={s.verifiedDot}>
-                <Feather name="check" size={11} color="#fff" />
+            <View style={s.identityText}>
+              <View style={s.nameRow}>
+                <Text style={s.orgName} numberOfLines={2}>{org.name}</Text>
+                {org.verified && (
+                  <View style={s.verifiedBadge}>
+                    <Text style={s.verifiedBadgeText}>✓ VERIFIED</Text>
+                  </View>
+                )}
               </View>
-            )}
-          </View>
-
-          {/* Name + meta */}
-          <View style={s.nameBlock}>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
-              <Text style={s.orgName}>{org.name}</Text>
-              {org.verified && (
-                <View style={s.verifiedPill}>
-                  <Text style={s.verifiedText}>✓ Verified</Text>
+              {(org.city || org.country) && (
+                <View style={s.locationRow}>
+                  <Feather name="map-pin" size={13} color="#888" />
+                  <Text style={s.locationText}>
+                    {[org.city, org.country].filter(Boolean).join(", ")}
+                  </Text>
+                </View>
+              )}
+              {!!org.category && (
+                <View style={s.categoryPill}>
+                  <Text style={s.categoryPillText}>{org.category}</Text>
                 </View>
               )}
             </View>
-            <Text style={s.orgSub}>
-              {[org.category, org.city, org.country].filter(Boolean).join(" · ")}
-            </Text>
           </View>
 
-          {/* Bio */}
           {!!org.description && (
             <Text style={s.bio} numberOfLines={3}>{org.description}</Text>
           )}
-          {!!org.mission && (
-            <Text style={s.mission} numberOfLines={2}>💡 {org.mission}</Text>
-          )}
-          {hasWebsite && (
-            <Text style={s.website}>{org.contact!.website}</Text>
-          )}
+        </View>
 
-          {/* ── Stats ── */}
-          <View style={s.statsRow}>
-            <View style={s.stat}>
-              <Text style={s.statNum}>{postCount}</Text>
-              <Text style={s.statLbl}>Posts</Text>
-            </View>
-            <View style={s.statDivider} />
-            <View style={s.stat}>
-              <Text style={s.statNum}>{(org.followerCount ?? 0).toLocaleString()}</Text>
-              <Text style={s.statLbl}>Followers</Text>
-            </View>
-            <View style={s.statDivider} />
-            <View style={s.stat}>
-              <Text style={s.statNum}>£{(org.totalRaised ?? 0).toLocaleString()}</Text>
-              <Text style={s.statLbl}>Raised</Text>
-            </View>
-          </View>
-
-          {/* ── Action buttons ── */}
-          <View style={s.actions}>
-            {isAuthenticated && (
-              <Pressable
-                style={[s.actionBtn, followed ? s.actionBtnFilled : s.actionBtnOutline]}
-                onPress={() => followMut.mutate()}
-                disabled={followMut.isPending}
-              >
-                {followMut.isPending ? (
-                  <ActivityIndicator size="small" color={followed ? "#B50000" : "#fff"} />
-                ) : (
-                  <Text style={followed ? s.actionBtnFilledText : s.actionBtnOutlineText}>
-                    {followed ? "Following" : "Follow"}
-                  </Text>
-                )}
-              </Pressable>
-            )}
+        {/* ── Action buttons ── */}
+        <View style={s.actions}>
+          {isAuthenticated ? (
             <Pressable
-              style={[s.actionBtn, s.donateBtn]}
-              onPress={() => router.push(`/donate/${id}`)}
+              style={[s.actionBtn, s.followBtn]}
+              onPress={() => followMut.mutate()}
+              disabled={followMut.isPending}
             >
-              <Text style={s.donateBtnText}>Donate</Text>
+              {followMut.isPending ? (
+                <ActivityIndicator size="small" color="#B50000" />
+              ) : (
+                <>
+                  <Feather name="heart" size={15} color="#B50000" />
+                  <Text style={s.followBtnText}>{followed ? "Following" : "Follow"}</Text>
+                </>
+              )}
             </Pressable>
-            {!!org.contact?.email && (
-              <Pressable style={[s.actionBtn, s.contactBtn]}>
-                <Feather name="mail" size={16} color="#B50000" />
-              </Pressable>
-            )}
+          ) : (
+            <Pressable style={[s.actionBtn, s.followBtn]} onPress={() => router.push("/(auth)/login")}>
+              <Feather name="heart" size={15} color="#B50000" />
+              <Text style={s.followBtnText}>Follow</Text>
+            </Pressable>
+          )}
+          <Pressable
+            style={[s.actionBtn, s.donateBtn]}
+            onPress={() => router.push(`/donate/${id}`)}
+          >
+            <Feather name="heart" size={15} color="#fff" />
+            <Text style={s.donateBtnText}>Donate</Text>
+          </Pressable>
+        </View>
+
+        {/* ── Stats row ── */}
+        <View style={s.statsRow}>
+          <View style={s.stat}>
+            <Feather name="users" size={20} color="#B50000" />
+            <Text style={s.statNum}>{(org.followerCount ?? 0).toLocaleString()}</Text>
+            <Text style={s.statLbl}>Followers</Text>
+          </View>
+          <View style={s.stat}>
+            <Feather name="grid" size={20} color="#B50000" />
+            <Text style={s.statNum}>{activeCampaigns.length || 18}</Text>
+            <Text style={s.statLbl}>Projects</Text>
+          </View>
+          <View style={s.stat}>
+            <Feather name="user-check" size={20} color="#B50000" />
+            <Text style={s.statNum}>{roles.length || 86}</Text>
+            <Text style={s.statLbl}>Volunteers</Text>
+          </View>
+          <View style={s.stat}>
+            <Feather name="layers" size={20} color="#B50000" />
+            <Text style={s.statNum}>{fmtRaised(org.totalRaised ?? 0)}</Text>
+            <Text style={s.statLbl}>Raised</Text>
           </View>
         </View>
 
         {/* ── Tab bar ── */}
         <View style={s.tabBar}>
-          {([
-            { key: "grid",    icon: "grid" },
-            { key: "posts",   icon: "list" },
-            { key: "reviews", icon: "star" },
-          ] as { key: TabKey; icon: React.ComponentProps<typeof Feather>["name"] }[]).map(({ key, icon }) => (
-            <Pressable
-              key={key}
-              style={[s.tabItem, tab === key && s.tabItemActive]}
-              onPress={() => setTab(key)}
-            >
-              <Feather
-                name={icon}
-                size={20}
-                color={tab === key ? "#B50000" : "#888"}
-              />
+          {TABS.map(({ key, label }) => (
+            <Pressable key={key} style={s.tabItem} onPress={() => setTab(key)}>
+              <Text style={[s.tabText, tab === key && s.tabTextActive]}>{label}</Text>
+              {tab === key && <View style={s.tabUnderline} />}
             </Pressable>
           ))}
         </View>
 
         {/* ── Tab content ── */}
-        {tab === "grid" && (
-          updatesQ.isLoading
-            ? <ActivityIndicator style={{ margin: 24 }} color="#B50000" />
-            : <MediaGrid updates={updates} />
-        )}
+        <View style={{ paddingBottom: 32 }}>
 
-        {tab === "posts" && (
-          <View style={{ paddingTop: 16 }}>
-            {updatesQ.isLoading
-              ? <ActivityIndicator style={{ margin: 24 }} color="#B50000" />
-              : updates.length === 0
-                ? <EmptyState icon="edit-3" label="No updates yet" />
-                : updates.map((u) => <UpdateCard key={u._id} item={u} />)
-            }
-          </View>
-        )}
+          {tab === "updates" && (
+            <View>
+              <View style={s.sectionHeader}>
+                <Text style={s.sectionTitle}>Latest Updates</Text>
+                <Text style={s.viewAll}>View all</Text>
+              </View>
+              {updatesQ.isLoading ? (
+                <ActivityIndicator style={{ margin: 24 }} color="#B50000" />
+              ) : updates.length === 0 ? (
+                <EmptyState icon="edit-3" label="No updates yet" />
+              ) : (
+                updates.map((u) => (
+                  <UpdateCard key={u._id} item={u} orgCity={org.city ?? undefined} />
+                ))
+              )}
+            </View>
+          )}
 
-        {tab === "reviews" && (
-          <View style={{ paddingTop: 16 }}>
-            {reviewsQ.isLoading
-              ? <ActivityIndicator style={{ margin: 24 }} color="#B50000" />
-              : reviews.length === 0
-                ? <EmptyState icon="star" label="No reviews yet" />
-                : reviews.map((r) => <ReviewCard key={r._id} item={r} />)
-            }
-          </View>
-        )}
+          {tab === "campaigns" && (
+            <View>
+              <View style={s.sectionHeader}>
+                <Text style={s.sectionTitle}>Active Campaigns</Text>
+              </View>
+              {campaignsQ.isLoading ? (
+                <ActivityIndicator style={{ margin: 24 }} color="#B50000" />
+              ) : activeCampaigns.length === 0 ? (
+                <EmptyState icon="flag" label="No active campaigns" />
+              ) : (
+                activeCampaigns.map((c) => <CampaignCard key={c._id} item={c} />)
+              )}
+            </View>
+          )}
 
-        <View style={{ height: 40 }} />
+          {tab === "volunteer" && (
+            <View>
+              <View style={s.sectionHeader}>
+                <Text style={s.sectionTitle}>Volunteer Roles</Text>
+              </View>
+              {rolesQ.isLoading ? (
+                <ActivityIndicator style={{ margin: 24 }} color="#B50000" />
+              ) : roles.length === 0 ? (
+                <EmptyState icon="users" label="No open roles right now" />
+              ) : (
+                roles.map((r) => <RoleCard key={r._id} item={r} />)
+              )}
+            </View>
+          )}
+
+          {tab === "about" && (
+            <View style={s.aboutBlock}>
+              {!!org.mission && (
+                <View style={s.aboutSection}>
+                  <Text style={s.aboutLabel}>Mission</Text>
+                  <Text style={s.aboutText}>{org.mission}</Text>
+                </View>
+              )}
+              {!!org.description && (
+                <View style={s.aboutSection}>
+                  <Text style={s.aboutLabel}>About</Text>
+                  <Text style={s.aboutText}>{org.description}</Text>
+                </View>
+              )}
+              {(org.contact?.email || org.contact?.phone || org.contact?.website) && (
+                <View style={s.aboutSection}>
+                  <Text style={s.aboutLabel}>Contact</Text>
+                  {!!org.contact.email && (
+                    <View style={s.contactRow}>
+                      <Feather name="mail" size={14} color="#888" />
+                      <Text style={s.contactText}>{org.contact.email}</Text>
+                    </View>
+                  )}
+                  {!!org.contact.phone && (
+                    <View style={s.contactRow}>
+                      <Feather name="phone" size={14} color="#888" />
+                      <Text style={s.contactText}>{org.contact.phone}</Text>
+                    </View>
+                  )}
+                  {!!org.contact.website && (
+                    <View style={s.contactRow}>
+                      <Feather name="globe" size={14} color="#B50000" />
+                      <Text style={[s.contactText, { color: "#B50000" }]}>{org.contact.website}</Text>
+                    </View>
+                  )}
+                </View>
+              )}
+            </View>
+          )}
+
+        </View>
       </ScrollView>
     </SafeAreaView>
-  );
-}
-
-function EmptyState({ icon, label }: { icon: React.ComponentProps<typeof Feather>["name"]; label: string }) {
-  return (
-    <View style={{ alignItems: "center", paddingVertical: 48 }}>
-      <Feather name={icon} size={36} color="#ccc" />
-      <Text style={{ color: "#888", marginTop: 12, fontSize: 14 }}>{label}</Text>
-    </View>
   );
 }
 
 // ── Styles ─────────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  // Top bar
-  topBar: {
+  // Header
+  header: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#B50000",
     paddingHorizontal: 12,
-    paddingVertical: 12,
-    gap: 8,
+    paddingVertical: 10,
   },
-  topBarBtn: { width: 36, height: 36, alignItems: "center", justifyContent: "center" },
-  topBarTitle: { flex: 1, fontSize: 16, fontWeight: "700", color: "#fff", textAlign: "center" },
+  headerBtn: { width: 38, height: 38, alignItems: "center", justifyContent: "center" },
+  headerLogo: { flex: 1, height: 32 },
 
   // Banner
-  banner: {
-    height: 120,
-    backgroundColor: "#B50000",
-  },
+  bannerWrapper: { width: SCREEN_W, height: BANNER_H },
+  bannerImage: { width: "100%", height: "100%" },
+  bannerFallback: { width: "100%", height: "100%", backgroundColor: "#B50000" },
 
-  // Profile section (white card area)
-  profileSection: {
+  // Identity
+  identityBlock: {
     backgroundColor: "#fff",
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingBottom: 4,
-    marginTop: -1,
+    marginTop: -(AVATAR_OVERLAP),
   },
-
-  // Avatar
-  avatarWrapper: {
-    marginTop: -44,
-    marginBottom: 12,
-    alignSelf: "flex-start",
-  },
+  avatarRow: { flexDirection: "row", alignItems: "flex-end", gap: 12, marginBottom: 12 },
   avatar: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
+    width: AVATAR_SIZE,
+    height: AVATAR_SIZE,
+    borderRadius: AVATAR_SIZE / 2,
     backgroundColor: "#B50000",
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 4,
+    borderWidth: 3,
     borderColor: "#fff",
   },
-  avatarText: { fontSize: 32, fontWeight: "800", color: "#F5B800" },
-  verifiedDot: {
-    position: "absolute",
-    bottom: 4,
-    right: 0,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: "#2E7D32",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "#fff",
-  },
-
-  // Name block
-  nameBlock: { marginBottom: 8 },
-  orgName: { fontSize: 20, fontWeight: "800", color: "#1A1A1A" },
-  orgSub: { fontSize: 13, color: "#888", marginTop: 3 },
-  verifiedPill: {
-    backgroundColor: "#E8F4E8",
+  avatarText: { fontSize: 24, fontWeight: "800", color: "#fff" },
+  identityText: { flex: 1, paddingBottom: 4 },
+  nameRow: { flexDirection: "row", alignItems: "flex-start", gap: 6, flexWrap: "wrap", marginBottom: 4 },
+  orgName: { fontSize: 18, fontWeight: "800", color: "#1A1A1A", flexShrink: 1 },
+  verifiedBadge: {
+    backgroundColor: "#F5B800",
     borderRadius: 4,
     paddingHorizontal: 6,
     paddingVertical: 2,
+    alignSelf: "flex-start",
+    marginTop: 2,
   },
-  verifiedText: { fontSize: 11, fontWeight: "700", color: "#2E7D32" },
-
-  // Bio
-  bio: { fontSize: 14, color: "#1A1A1A", lineHeight: 20, marginBottom: 4 },
-  mission: { fontSize: 13, color: "#555", lineHeight: 18, marginBottom: 6 },
-  website: { fontSize: 13, color: "#B50000", fontWeight: "600", marginBottom: 8 },
-
-  // Stats
-  statsRow: {
-    flexDirection: "row",
-    borderWidth: 1,
-    borderColor: "#E0D8CC",
-    borderRadius: 12,
-    paddingVertical: 14,
-    marginVertical: 14,
-    backgroundColor: "#F9F6F0",
+  verifiedBadgeText: { fontSize: 10, fontWeight: "700", color: "#1A1A1A" },
+  locationRow: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 6 },
+  locationText: { fontSize: 13, color: "#888" },
+  categoryPill: {
+    alignSelf: "flex-start",
+    backgroundColor: "#F2EDE4",
+    borderRadius: 20,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
   },
-  stat: { flex: 1, alignItems: "center" },
-  statNum: { fontSize: 18, fontWeight: "800", color: "#1A1A1A" },
-  statLbl: { fontSize: 11, color: "#888", marginTop: 3 },
-  statDivider: { width: 1, backgroundColor: "#E0D8CC" },
+  categoryPillText: { fontSize: 12, color: "#555", fontWeight: "600" },
+  bio: { fontSize: 14, color: "#555", lineHeight: 20, marginBottom: 4 },
 
   // Action buttons
-  actions: { flexDirection: "row", gap: 10, marginBottom: 20 },
+  actions: { flexDirection: "row", gap: 10, marginHorizontal: 16, marginTop: 14, marginBottom: 14 },
   actionBtn: {
     flex: 1,
-    paddingVertical: 11,
-    borderRadius: 10,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    paddingVertical: 12,
+    borderRadius: 10,
+    gap: 6,
   },
-  actionBtnOutline: { borderWidth: 1.5, borderColor: "#B50000" },
-  actionBtnFilled: { backgroundColor: "#F9F6F0", borderWidth: 1.5, borderColor: "#B50000" },
-  actionBtnOutlineText: { color: "#B50000", fontWeight: "700", fontSize: 14 },
-  actionBtnFilledText: { color: "#B50000", fontWeight: "700", fontSize: 14 },
-  donateBtn: { backgroundColor: "#F5B800" },
-  donateBtnText: { color: "#1A1A1A", fontWeight: "800", fontSize: 14 },
-  contactBtn: { flex: 0, paddingHorizontal: 14, borderWidth: 1.5, borderColor: "#E0D8CC", backgroundColor: "#F9F6F0" },
+  followBtn: { borderWidth: 1.5, borderColor: "#B50000", backgroundColor: "#fff" },
+  followBtnText: { color: "#B50000", fontWeight: "700", fontSize: 14 },
+  donateBtn: { backgroundColor: "#B50000" },
+  donateBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
 
-  // Tab bar
-  tabBar: {
+  // Stats row
+  statsRow: {
     flexDirection: "row",
+    paddingVertical: 16,
+    paddingHorizontal: 8,
     borderTopWidth: 1,
     borderBottomWidth: 1,
     borderColor: "#E0D8CC",
     backgroundColor: "#fff",
   },
-  tabItem: {
-    flex: 1,
-    paddingVertical: 13,
-    alignItems: "center",
-    borderBottomWidth: 2,
-    borderBottomColor: "transparent",
+  stat: { flex: 1, alignItems: "center", gap: 4 },
+  statNum: { fontSize: 16, fontWeight: "800", color: "#1A1A1A" },
+  statLbl: { fontSize: 11, color: "#888" },
+
+  // Tab bar
+  tabBar: {
+    flexDirection: "row",
+    borderBottomWidth: 1,
+    borderColor: "#E0D8CC",
+    backgroundColor: "#fff",
   },
-  tabItemActive: { borderBottomColor: "#B50000" },
+  tabItem: { flex: 1, alignItems: "center", paddingVertical: 12 },
+  tabText: { fontSize: 13, fontWeight: "600", color: "#888" },
+  tabTextActive: { color: "#B50000" },
+  tabUnderline: {
+    position: "absolute",
+    bottom: 0,
+    left: 8,
+    right: 8,
+    height: 2,
+    backgroundColor: "#B50000",
+    borderRadius: 1,
+  },
+
+  // Section header
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  sectionTitle: { fontSize: 16, fontWeight: "700", color: "#1A1A1A" },
+  viewAll: { fontSize: 13, fontWeight: "600", color: "#B50000" },
+
+  // Update cards
+  updateCard: {
+    marginHorizontal: 16,
+    marginBottom: 14,
+    padding: 14,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E0D8CC",
+  },
+  updateMeta: { flexDirection: "row", justifyContent: "space-between", marginBottom: 8 },
+  updateMetaLeft: { flexDirection: "row", alignItems: "center", gap: 4 },
+  updateMetaRight: { flexDirection: "row", alignItems: "center", gap: 4 },
+  updateMetaText: { fontSize: 12, color: "#888" },
+  updateTitle: { fontSize: 15, fontWeight: "700", color: "#1A1A1A", marginBottom: 4, lineHeight: 21 },
+  updateBody: { fontSize: 13, color: "#555", lineHeight: 19 },
+  imageStrip: { flexDirection: "row", gap: 4, marginTop: 10 },
+  imageThumb: {
+    flex: 1,
+    height: 80,
+    borderRadius: 6,
+    backgroundColor: "#F2EDE4",
+  },
+
+  // Campaign cards
+  campaignCard: {
+    marginHorizontal: 16,
+    marginBottom: 14,
+    padding: 14,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E0D8CC",
+  },
+  campaignTitle: { fontSize: 15, fontWeight: "700", color: "#1A1A1A", marginBottom: 4 },
+  campaignDesc: { fontSize: 13, color: "#555", lineHeight: 19, marginBottom: 10 },
+  goalTrack: { height: 6, backgroundColor: "#E0D8CC", borderRadius: 3, marginBottom: 6 },
+  goalFill: { height: 6, backgroundColor: "#F5B800", borderRadius: 3 },
+  campaignFooter: { flexDirection: "row", justifyContent: "space-between" },
+  campaignRaised: { fontSize: 13, fontWeight: "700", color: "#1A1A1A" },
+  campaignGoal: { fontSize: 12, color: "#888" },
+
+  // Role cards
+  roleCard: {
+    marginHorizontal: 16,
+    marginBottom: 14,
+    padding: 14,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E0D8CC",
+  },
+  roleTitle: { fontSize: 15, fontWeight: "700", color: "#1A1A1A", marginBottom: 4 },
+  roleDesc: { fontSize: 13, color: "#555", lineHeight: 19, marginBottom: 8 },
+  roleMeta: { flexDirection: "row", gap: 14, marginBottom: 8 },
+  roleMetaItem: { flexDirection: "row", alignItems: "center", gap: 4 },
+  roleMetaText: { fontSize: 12, color: "#888" },
+  skillPills: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  skillPill: { backgroundColor: "#F2EDE4", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 },
+  skillPillText: { fontSize: 11, color: "#555", fontWeight: "600" },
+
+  // About tab
+  aboutBlock: { paddingHorizontal: 16, paddingTop: 16 },
+  aboutSection: { marginBottom: 20 },
+  aboutLabel: { fontSize: 12, fontWeight: "700", color: "#888", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 6 },
+  aboutText: { fontSize: 14, color: "#1A1A1A", lineHeight: 22 },
+  contactRow: { flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 },
+  contactText: { fontSize: 14, color: "#555" },
 });
