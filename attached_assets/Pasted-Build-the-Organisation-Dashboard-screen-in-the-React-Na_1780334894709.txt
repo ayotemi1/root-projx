@@ -1,0 +1,140 @@
+Build the Organisation Dashboard screen in the React Native 
+mobile app to match the following design spec exactly. 
+This is for the mobile app only — do not touch the website.
+Only visible to logged in users whose accountType 
+is "organisation".
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HEADER / NAV
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Red header bar with:
+  - Back arrow (left)
+  - Root ProjX gold logo centred
+  - Bell notification icon (right) with red 
+    badge showing unread count
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ORG IDENTITY ROW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Circular org avatar (red background, 
+  white initials e.g. "CY")
+- Right of avatar:
+  - "Welcome back," in grey small text
+  - Org name in bold
+- "View Public Profile" gold filled pill 
+  button on the far right
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STATS ROW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Four stat cards in a 2x2 grid or horizontal 
+  scroll row:
+  - Projects (grid icon) — total count
+  - Volunteers (people icon) — total count
+  - Followers (person+ icon) — total count
+  - Donations (currency stack icon) — £ total
+- Each card: red icon top left, large bold number,
+  label below in grey
+- White card background, subtle shadow, 
+  rounded corners
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CREATE & MANAGE SECTION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Section heading "Create & Manage" in bold
+- 2x2 grid of action buttons, each containing:
+  - Icon on the left (coloured — red or gold)
+  - Label text in bold
+  - Right chevron arrow
+
+  Buttons:
+  - Create Update (pencil icon, red)
+  - Add Campaign (plus icon, gold)
+  - Manage Volunteers (people icon, red)
+  - Manage Projects (folder icon, gold)
+
+- White card background, subtle shadow
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ANALYTICS OVERVIEW SECTION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Section heading "Analytics Overview" with 
+  "View full analytics" in red on the right
+- Three metric cards in a horizontal row:
+  - Profile Views — number + green trend 
+    percentage (e.g. "+18%")
+  - Engagement — number + green trend percentage
+  - Donations — £ amount + green trend percentage
+- Small green line chart/sparkline below each 
+  metric showing upward trend
+- White card background
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+RECENT UPDATES SECTION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Section heading "Recent Updates" with 
+  "View all" in red on the right
+- Vertical list of recent update rows, 
+  each containing:
+  - Small thumbnail image on the left 
+    (square, rounded corners)
+  - Centre: post headline in bold (1 line, 
+    truncated), timestamp below in grey
+  - Right: "Published" green badge or 
+    "Draft" grey badge
+- Maximum 5 items shown
+- White background, subtle divider between rows
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+NOTIFICATIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Tapping the bell icon in the header opens 
+  a slide-down or modal notifications panel:
+  - List of recent notifications:
+    - New follower
+    - New donation received
+    - New volunteer application
+  - Each notification: icon, description, 
+    timestamp
+  - "Mark all as read" link at the top right
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BOTTOM NAV BAR
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Fixed bottom navigation with 4 items:
+  - Home (house icon)
+  - Discover (compass icon)
+  - Get Help (life ring icon)
+  - Account (person icon)
+- Active item: red icon + red label
+- Inactive: grey icon + grey label
+- White background with subtle top border
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DATA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- All data from Firebase Firestore for the 
+  logged in org:
+  - Stats: projectsCount, volunteersCount, 
+    followersCount, totalRaised from org document
+  - Recent updates: latest 5 from 
+    organisations/{orgId}/posts
+  - Analytics: from 
+    organisations/{orgId}/analytics document,
+    use placeholder data if not exists:
+    Profile Views: 1,245 (+18%)
+    Engagement: 532 (+24%)
+    Donations: £3,210 (+18%)
+  - Notifications: 
+    organisations/{orgId}/notifications collection
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STYLING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Brand colours: Red #CC0000, Gold #F5C000, White
+- Use React Native StyleSheet — no web CSS
+- ScrollView for full page content
+- FlatList for recent updates list
+- Fully compatible with iOS
+- Safe area insets applied top and bottom
+- Consistent with the rest of the mobile app

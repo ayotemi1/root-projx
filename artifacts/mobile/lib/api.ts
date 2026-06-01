@@ -33,6 +33,8 @@ export interface Org {
   vision?: string | null;
   values?: string[] | null;
   address?: string | null;
+  projectsCount?: number | null;
+  volunteersCount?: number | null;
   contact: { email?: string; phone?: string; website?: string } | null;
   socialLinks: Record<string, string> | null;
   createdAt: string;
@@ -402,6 +404,36 @@ export const postVolunteerApplication = (
   req<{ id: string }>(
     `/organisations/${orgId}/volunteerApplications`,
     { method: "POST", body: JSON.stringify(data) },
+    token,
+  );
+
+export interface OrgAnalytics {
+  profileViews: number;
+  profileViewsTrend: number;
+  engagement: number;
+  engagementTrend: number;
+  donations: number;
+  donationsTrend: number;
+}
+
+export interface OrgNotification {
+  _id: string;
+  type: "follower" | "donation" | "volunteer" | string;
+  message: string;
+  read: boolean;
+  createdAt: string;
+}
+
+export const getOrgAnalytics = (orgId: string, token: string) =>
+  req<OrgAnalytics>(`/organisations/${orgId}/analytics`, {}, token);
+
+export const getOrgNotifications = (orgId: string, token: string) =>
+  req<OrgNotification[]>(`/organisations/${orgId}/notifications`, {}, token);
+
+export const markNotificationsRead = (orgId: string, token: string) =>
+  req<{ ok: boolean }>(
+    `/organisations/${orgId}/notifications/read-all`,
+    { method: "PATCH" },
     token,
   );
 

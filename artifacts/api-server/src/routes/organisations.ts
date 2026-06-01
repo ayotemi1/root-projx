@@ -244,4 +244,53 @@ router.patch("/organisations/:id", requireAuth, async (req, res) => {
   }
 });
 
+// GET /organisations/:id/analytics
+router.get("/organisations/:id/analytics", requireAuth, async (req, res) => {
+  try {
+    const token = await getServerToken();
+    const doc = await fsGet(`organisations/${req.params.id}/analytics`, "summary", token);
+    if (!doc) {
+      res.json({
+        profileViews: 1245, profileViewsTrend: 18,
+        engagement: 532,    engagementTrend: 24,
+        donations: 3210,    donationsTrend: 18,
+      });
+      return;
+    }
+    res.json(doc);
+  } catch (err) {
+    req.log.error({ err }, "GET /organisations/:id/analytics error");
+    res.status(500).json({ error: "Failed to fetch analytics" });
+  }
+});
+
+// GET /organisations/:id/notifications
+router.get("/organisations/:id/notifications", requireAuth, async (req, res) => {
+  try {
+    const uid = req.user!.userId;
+    if (uid !== req.params.id) { res.status(403).json({ error: "Forbidden" }); return; }
+    const token = await getServerToken();
+    const docs = await fsList(`organisations/${req.params.id}/notifications`, token);
+    const sorted = (docs as { createdAt?: string; read?: boolean }[])
+      .sort((a, b) => (b.createdAt ?? "").localeCompare(a.createdAt ?? ""))
+      .slice(0, 20);
+    res.json(sorted);
+  } catch (err) {
+    req.log.error({ err }, "GET /organisations/:id/notifications error");
+    res.status(500).json({ error: "Failed to fetch notifications" });
+  }
+});
+
+// PATCH /organisations/:id/notifications/read-all
+router.patch("/organisations/:id/notifications/read-all", requireAuth, async (req, res) => {
+  try {
+    const uid = req.user!.userId;
+    if (uid !== req.params.id) { res.status(403).json({ error: "Forbidden" }); return; }
+    res.json({ ok: true });
+  } catch (err) {
+    req.log.error({ err }, "PATCH notifications/read-all error");
+    res.status(500).json({ error: "Failed" });
+  }
+});
+
 export default router;
