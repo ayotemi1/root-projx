@@ -1,0 +1,111 @@
+Build the Organisation Dashboard page (org view — only 
+visible to the logged in organisation) to match the 
+following design spec exactly. Do not touch any other pages.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PAGE LAYOUT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Full page dashboard with left sidebar navigation 
+  and main content area
+- Only accessible to users whose accountType is 
+  "organisation" and whose orgId matches the profile
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LEFT SIDEBAR
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Org avatar (circular, initials fallback) + org name 
+  + "Welcome back" greeting at the top
+- "View Public Profile" link in red below the name
+- Navigation items with icons:
+  MANAGE:
+  - Dashboard (active state: red text + red left border)
+  - Campaigns
+  - Volunteers
+  - Projects
+
+  ANALYTICS:
+  - Overview
+  - Reports
+
+  SETTINGS:
+  - Profile
+  - Settings
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MAIN CONTENT — TOP STATS ROW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Four stat cards in a row:
+  - Projects (grid icon) — total count
+  - Volunteers (people icon) — total count
+  - Followers (person+ icon) — total count
+  - Raised (currency icon) — total £ raised
+- Each card: icon + large number + label
+- Clean white card with subtle shadow
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MAIN CONTENT — TWO COLUMN SECTION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LEFT COLUMN — Create & Manage:
+- Section heading "Create & Manage"
+- Four action buttons in a 2x2 grid:
+  - "Create Update" (edit icon, red)
+  - "Add Campaign" (plus icon, red)
+  - "Manage Volunteers" (people icon, red)
+  - "Manage Projects" (folder icon, red)
+- Each button: icon on left, label, right arrow chevron
+
+RIGHT COLUMN — Analytics Overview:
+- Section heading "Analytics Overview" with 
+  "View full analytics" link in red
+- Three metric cards in a row:
+  - Profile Views — number + trend indicator
+  - Engagement — number + trend indicator  
+  - Donations — £ amount + trend indicator
+- Small line chart below the metrics showing 
+  activity over the last 30 days
+  (use recharts LineChart, mock data if no real data)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MAIN CONTENT — RECENT UPDATES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Section heading "Recent Updates" with "View all" 
+  link in red
+- List of recent posts/updates, each showing:
+  - Post headline (bold)
+  - Timestamp (e.g. "2 days ago")
+  - Status badge: "Published" in green or 
+    "Draft" in grey
+- Maximum 5 items shown
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+NOTIFICATION BELL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Bell icon in the top right of the dashboard header
+- Red badge showing unread notification count
+- Clicking opens a dropdown of recent notifications:
+  new followers, new donations, new volunteer applications
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DATA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- All data pulled from Firestore for the logged in org:
+  - Stats: count of campaigns, volunteers, followers, 
+    total donations
+  - Recent updates: latest 5 from 
+    organisations/{orgId}/posts
+  - Analytics: pull from organisations/{orgId}/analytics 
+    document if exists, otherwise show placeholder data
+  - Notifications: organisations/{orgId}/notifications 
+    collection
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STYLING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Brand colours: Red #CC0000, Gold #F5C000, White
+- White cards with subtle shadow throughout
+- Sidebar: light grey background
+- Active sidebar item: red left border + red text
+- Clean, professional, data-forward feel
+- Responsive — sidebar collapses to bottom tab bar 
+  on mobile
+- Consistent with existing site nav

@@ -1,0 +1,73 @@
+Revamp the Organisation About page for organisation profiles 
+to match the following design spec exactly. 
+Do not touch any other pages.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PAGE HEADER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Page heading: "About [Organisation Name]"
+- Two column layout below the heading:
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+LEFT COLUMN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Large featured image (rectangular, rounded corners)
+  showing the organisation's work/community
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+RIGHT COLUMN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Organisation founding/background paragraph
+  (pulled from Firestore org document: aboutText field)
+
+THREE INFO CARDS below the paragraph, each with:
+  - Icon on the left (use Lucide icons)
+  - Bold label (e.g. "Our Mission")
+  - Body text below the label
+
+  Card 1 — Our Mission (target/bullseye icon)
+  Card 2 — Our Vision (eye icon)  
+  Card 3 — Our Values (heart icon)
+  - Values displayed as tags/chips 
+    (e.g. "Empowerment · Integrity · Inclusion · Growth")
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONTACT FOOTER STRIP
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Full width strip at the bottom of the page
+- Light grey background
+- Four contact items displayed in a row:
+  - Globe icon + Website URL (clickable link)
+  - Email icon + Email address (clickable mailto)
+  - Phone icon + Phone number
+  - Map pin icon + Full address
+- On mobile: stack into 2x2 grid
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DATA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Pull all content from Firestore org document:
+  - aboutText — founding/background paragraph
+  - featuredImageUrl — hero image
+  - mission — mission statement text
+  - vision — vision statement text
+  - values — array of value strings
+  - website, email, phone, address — contact details
+- Use realistic placeholder content if fields are empty:
+  - Example org: "Cornerstone Youth Foundation"
+  - Mission: "Empowering young people through skills, 
+    mentorship, and community."
+  - Vision: "A future where every young person has the 
+    tools to build a better life."
+  - Values: Empowerment, Integrity, Inclusion, Growth
+  - Address: 123 Eastwood Park Road, Kingston, Jamaica
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STYLING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Brand colours: Red #CC0000, Gold #F5C000, White
+- Clean, trustworthy, professional feel
+- Info cards with subtle border or shadow
+- Values displayed as red outline chips/tags
+- Fully responsive — single column on mobile
+- Consistent with existing site nav and footer
