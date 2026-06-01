@@ -1,0 +1,104 @@
+Revamp the Updates screen in the React Native mobile app 
+to match the following design spec exactly. 
+This is for the mobile app only — do not touch the website.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HEADER / NAV
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Red header bar with:
+  - Back arrow (left)
+  - Root ProjX gold logo centred
+  - Three dot menu icon (right)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TOGGLE TABS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Two toggle tabs below the header:
+  - "All Updates" (default) — red filled, white text,
+    rounded pill shape
+  - "Media" — white background, grey text,
+    rounded pill shape
+- Sits in a light grey pill container
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ALL UPDATES TAB
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Vertical scrollable list of update cards,
+  each containing:
+
+  TOP ROW:
+  - Timestamp on the left (calendar icon + 
+    e.g. "2 days ago")
+  - Location on the right (pin icon + city,
+    e.g. "Kingston")
+
+  CONTENT:
+  - Headline in bold (e.g. "50 young people 
+    complete our carpentry programme")
+  - Body text below (2-3 lines, grey text,
+    truncated with ellipsis)
+
+  IMAGE SECTION:
+  - Support multiple image layouts:
+    - Single image: full width
+    - Multiple images: 3-image layout —
+      1 large image left, 2 smaller stacked right
+    - All images rounded corners
+
+  ENGAGEMENT ROW:
+  - Heart icon + like count (e.g. "87")
+  - Comment bubble icon + count (e.g. "12")
+  - Share icon on the right
+  - "View Details" red filled button far right
+
+- White card background, subtle shadow
+- Spacing between cards
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MEDIA TAB
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- 3 column grid of square image/video thumbnails
+- Instagram-style layout
+- Tapping a thumbnail opens the full update post
+  in a modal or new screen
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BOTTOM NAV BAR
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Fixed bottom navigation with 4 items:
+  - Home (house icon)
+  - Discover (compass icon)
+  - Get Help (life ring icon)
+  - Account (person icon)
+- Active item: red icon + red label
+- Inactive: grey icon + grey label
+- White background with subtle top border
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DATA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Pull updates from Firebase Firestore:
+  organisations/{orgId}/posts collection
+- Each post document: headline, body, imageUrls 
+  (array), timestamp, location, likesCount, 
+  commentsCount
+- Use placeholder update data if empty:
+  - "50 young people complete our carpentry 
+    programme" — 2 days ago — Kingston — 
+    87 likes, 12 comments
+  - "Community garden project update" — 1 week 
+    ago — Kingston — 45 likes, 8 comments
+  - "Guest speaker session" — 2 weeks ago — 
+    Kingston — 60 likes, 5 comments
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STYLING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Brand colours: Red #CC0000, Gold #F5C000, White
+- Use React Native StyleSheet — no web CSS
+- ScrollView for full page
+- FlatList for updates list
+- White cards with subtle shadow
+- Fully compatible with iOS
+- Safe area insets applied top and bottom
+- Consistent with the rest of the mobile app

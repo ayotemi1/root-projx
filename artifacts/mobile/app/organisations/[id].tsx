@@ -382,6 +382,9 @@ export default function OrgProfileScreen() {
             <View>
               <View style={s.sectionHeader}>
                 <Text style={s.sectionTitle}>Active Campaigns</Text>
+                <Pressable onPress={() => router.push(`/campaigns/${id}`)}>
+                  <Text style={s.viewAll}>See all</Text>
+                </Pressable>
               </View>
               {campaignsQ.isLoading ? (
                 <ActivityIndicator style={{ margin: 24 }} color="#B50000" />
@@ -390,6 +393,12 @@ export default function OrgProfileScreen() {
               ) : (
                 activeCampaigns.map((c) => <CampaignCard key={c._id} item={c} />)
               )}
+              <Pressable
+                style={s.seeAllBtn}
+                onPress={() => router.push(`/campaigns/${id}`)}
+              >
+                <Text style={s.seeAllBtnText}>See All Campaigns</Text>
+              </Pressable>
             </View>
           )}
 
@@ -638,6 +647,18 @@ const s = StyleSheet.create({
   skillPills: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
   skillPill: { backgroundColor: "#F2EDE4", borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3 },
   skillPillText: { fontSize: 11, color: "#555", fontWeight: "600" },
+
+  // See all campaigns button
+  seeAllBtn: {
+    marginHorizontal: 16,
+    marginTop: 8,
+    marginBottom: 4,
+    backgroundColor: "#B50000",
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  seeAllBtnText: { fontSize: 14, fontWeight: "700", color: "#fff" },
 
   // About tab
   aboutBlock: { paddingHorizontal: 16, paddingTop: 16 },

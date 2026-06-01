@@ -365,6 +365,9 @@ export interface Campaign {
   goal: number;
   raised: number;
   status: "active" | "completed";
+  type?: "fundraising" | "volunteer";
+  volunteersNeeded?: number;
+  imageUrl?: string;
   deadline?: string;
   createdAt: string;
 }
