@@ -24,6 +24,8 @@ export interface Org {
   followerCount: number;
   totalRaised: number;
   impactScore: number;
+  coverImage: string | null;
+  logo: string | null;
   contact: { email?: string; phone?: string; website?: string } | null;
   socialLinks: Record<string, string> | null;
   createdAt: string;
