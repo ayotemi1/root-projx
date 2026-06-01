@@ -24,16 +24,7 @@ import { useAuth } from "@/context/AuthContext";
 import * as api from "@/lib/api";
 import type { VolunteerRole } from "@/lib/api";
 
-// ── Placeholder roles ──────────────────────────────────────────────────────────
 
-const PLACEHOLDERS: VolunteerRole[] = [
-  { _id: "ph_r1", title: "Graphic Designer",       description: "Create visual content for campaigns.", location: "Remote", commitment: "Flexible hours", skills: ["Design"], createdAt: "" },
-  { _id: "ph_r2", title: "Mentorship Support",     description: "Work one-on-one with young people.",   location: "Local",  commitment: "Weekly",         skills: ["Coaching"], createdAt: "" },
-  { _id: "ph_r3", title: "Event Support",           description: "Help run community events.",           location: "Local",  commitment: "Occasional",     skills: ["Events"], createdAt: "" },
-  { _id: "ph_r4", title: "Social Media Assistant", description: "Grow our online presence.",            location: "Remote", commitment: "Flexible hours", skills: ["Social media"], createdAt: "" },
-  { _id: "ph_r5", title: "Fundraising Support",    description: "Help plan fundraising drives.",        location: "Remote", commitment: "Flexible hours", skills: ["Fundraising"], createdAt: "" },
-  { _id: "ph_r6", title: "Administrative Support", description: "Keep operations running smoothly.",    location: "Remote", commitment: "Flexible hours", skills: ["Admin"], createdAt: "" },
-];
 
 function roleIcon(title: string): React.ComponentProps<typeof Feather>["name"] {
   const t = title.toLowerCase();
@@ -441,7 +432,7 @@ export default function VolunteerScreen() {
     enabled: !!orgId,
   });
 
-  const allRoles = rolesQ.data?.length ? rolesQ.data : PLACEHOLDERS;
+  const allRoles = rolesQ.data ?? [];
   const shown = allRoles.filter((r) => matchesFilter(r, activeFilter));
 
   function openApply(role: VolunteerRole) {
@@ -504,10 +495,18 @@ export default function VolunteerScreen() {
         <View style={s.rolesList}>
           {rolesQ.isLoading ? (
             <ActivityIndicator style={{ marginVertical: 32 }} color="#B50000" size="large" />
+          ) : allRoles.length === 0 ? (
+            <View style={s.emptyState}>
+              <View style={s.emptyIcon}>
+                <Feather name="users" size={36} color="#B50000" />
+              </View>
+              <Text style={s.emptyHeading}>No volunteer roles listed</Text>
+              <Text style={s.emptySubtext}>This organisation hasn't listed any volunteer opportunities yet.</Text>
+            </View>
           ) : shown.length === 0 ? (
-            <View style={s.empty}>
-              <Feather name="users" size={32} color="#ccc" />
-              <Text style={s.emptyText}>No roles match this filter</Text>
+            <View style={s.emptyState}>
+              <Feather name="filter" size={28} color="#ccc" />
+              <Text style={s.emptySubtext}>No roles match this filter. Try "All".</Text>
             </View>
           ) : (
             shown.map((role, i) => (
@@ -677,6 +676,8 @@ const s = StyleSheet.create({
   skillRowTitle: { fontSize: 14, fontWeight: "700", color: "#1A1A1A" },
   skillRowSub: { fontSize: 12, color: "#888", marginTop: 2 },
 
-  empty: { alignItems: "center", paddingVertical: 40, gap: 10 },
-  emptyText: { fontSize: 14, color: "#888" },
+  emptyState: { alignItems: "center", paddingVertical: 40, gap: 12, minHeight: 200, justifyContent: "center" },
+  emptyIcon: { width: 80, height: 80, borderRadius: 40, backgroundColor: "rgba(181,0,0,0.08)", alignItems: "center", justifyContent: "center" },
+  emptyHeading: { fontSize: 18, fontWeight: "700", color: "#1A1A1A", textAlign: "center" },
+  emptySubtext: { fontSize: 14, color: "#888", textAlign: "center", lineHeight: 20, paddingHorizontal: 24 },
 });

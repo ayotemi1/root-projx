@@ -1,0 +1,117 @@
+Make the following improvements across the entire mobile app.
+Do not add any new features — only fix what is listed below.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. REMOVE ALL PLACEHOLDER CONTENT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Remove all hardcoded placeholder data from every screen.
+This includes:
+- Placeholder org names, descriptions, locations
+- Placeholder campaign names, amounts, progress bars
+- Placeholder volunteer roles
+- Placeholder update posts and captions
+- Placeholder analytics numbers
+- Any hardcoded "Lorem ipsum" or example text
+
+All content must come exclusively from Firebase Firestore.
+If a collection is empty, show the empty state 
+(see section 2 below) — never show fake data.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. IMPROVE EMPTY STATE STYLING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+When a screen or section has no real data to show,
+display a beautiful, on-brand empty state instead of
+grey boxes, "Photo / video" text, or blank space.
+
+Each empty state should have:
+- A relevant icon (use a Lucide or vector icon, 
+  large size, in light red or gold)
+- A short bold heading
+- A one-line subtext in grey
+- Optional: a red CTA button where relevant
+
+Empty state copy per screen:
+
+HOME FEED (no posts):
+- Icon: newspaper or sparkles
+- Heading: "Nothing here yet"
+- Subtext: "Follow organisations to see their 
+  updates here."
+- Button: "Discover Organisations" → goes to 
+  Discover screen
+
+DISCOVER (no orgs):
+- Icon: compass
+- Heading: "No organisations found"
+- Subtext: "Try adjusting your search or filters."
+
+ORG PROFILE — UPDATES TAB (no posts):
+- Icon: camera or image
+- Heading: "No updates yet"
+- Subtext: "This organisation hasn't posted 
+  any updates yet."
+
+ORG PROFILE — CAMPAIGNS TAB (no campaigns):
+- Icon: target
+- Heading: "No active campaigns"
+- Subtext: "Check back soon for new campaigns 
+  from this organisation."
+
+ORG PROFILE — VOLUNTEER TAB (no roles):
+- Icon: hands helping or people
+- Heading: "No volunteer roles listed"
+- Subtext: "This organisation hasn't listed 
+  any volunteer opportunities yet."
+
+MERCH SHOP (no products):
+- Icon: shopping bag
+- Heading: "Shop coming soon"
+- Subtext: "Check back soon for Root ProjX merch."
+
+ORG DASHBOARD — RECENT UPDATES (no posts):
+- Icon: edit/pencil
+- Heading: "No updates posted yet"
+- Subtext: "Share your first update with 
+  your supporters."
+- Button: "Create Update"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. DISCOVER PAGE — BUTTON COLOUR FIX
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+The "Donate" button on org cards in the Discover 
+screen is showing gold. Change it to red #CC0000 
+with white text to match the rest of the app.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+4. ORG PROFILE — STATS LABEL FIX
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+The stats row on the org profile screen is showing 
+"Updates" and "Impact" as labels. Change these to 
+match the design spec:
+- Followers
+- Projects
+- Volunteers
+- Raised
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+5. POST IMAGE PLACEHOLDERS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Where a post exists in Firestore but has no image,
+do not show a grey "Photo / video" box. Instead:
+- Show just the text content of the post
+- Or show a subtle light grey background with 
+  the org's initials avatar centred
+- Never show the "Photo / video" label text
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STYLING RULES FOR EMPTY STATES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Centre everything vertically and horizontally
+- Icon size: 64px, colour: #CC0000 at 30% opacity
+- Heading: bold, 18px, dark grey #1a1a1a
+- Subtext: regular, 14px, light grey #888888
+- CTA button: red #CC0000, white text, 
+  rounded corners, full width max 280px
+- Minimum height of empty state container: 200px
+- Consistent across all screens

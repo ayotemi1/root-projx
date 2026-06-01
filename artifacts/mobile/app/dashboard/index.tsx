@@ -160,11 +160,6 @@ const NOTIF_COLOR: Record<string, string> = {
   volunteer: "#1565C0",
 };
 
-const PH_NOTIFS: OrgNotification[] = [
-  { _id: "n1", type: "follower",  message: "Sarah M. started following your organisation.", read: false, createdAt: new Date(Date.now() - 36e5).toISOString() },
-  { _id: "n2", type: "donation",  message: "A £50 donation was received from James T.",     read: false, createdAt: new Date(Date.now() - 72e5).toISOString() },
-  { _id: "n3", type: "volunteer", message: "New volunteer application for Graphic Designer.", read: true,  createdAt: new Date(Date.now() - 864e5).toISOString() },
-];
 
 function NotifRow({ item }: { item: OrgNotification }) {
   const type  = item.type in NOTIF_ICON ? item.type : "follower";
@@ -208,7 +203,7 @@ function NotificationsPanel({
   onMarkRead: () => void;
 }) {
   const insets = useSafeAreaInsets();
-  const items  = notifs.length ? notifs : PH_NOTIFS;
+  const items  = notifs;
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={onClose}>
@@ -523,7 +518,7 @@ export default function OrgDashboard() {
     donations: 3210,    donationsTrend: 18,
   };
   const notifs      = notifsQ.data ?? [];
-  const unreadCount = notifs.filter((n) => !n.read).length || PH_NOTIFS.filter((n) => !n.read).length;
+  const unreadCount = notifs.filter((n) => !n.read).length;
   const orgName     = org?.name ?? user?.orgName ?? "Your Organisation";
 
   const ACTIONS = [
@@ -628,8 +623,14 @@ export default function OrgDashboard() {
               <ActivityIndicator style={{ padding: 20 }} color="#B50000" />
             ) : updates.length === 0 ? (
               <View style={s.emptyBox}>
-                <Feather name="file-text" size={28} color="#ddd" />
-                <Text style={s.emptyText}>No updates yet. Tap Create Update to get started.</Text>
+                <View style={s.emptyBoxIcon}>
+                  <Feather name="edit-2" size={32} color="#B50000" />
+                </View>
+                <Text style={s.emptyBoxHeading}>No updates posted yet</Text>
+                <Text style={s.emptyBoxSub}>Share your first update with your supporters.</Text>
+                <Pressable style={s.emptyBoxBtn} onPress={() => setShowCreate(true)}>
+                  <Text style={s.emptyBoxBtnText}>Create Update</Text>
+                </Pressable>
               </View>
             ) : (
               updates.map((item, i) => (
@@ -781,6 +782,10 @@ const s = StyleSheet.create({
     elevation: 2,
   },
   updatesDivider: { height: 1, backgroundColor: "#F2EDE4", marginLeft: 76 },
-  emptyBox: { alignItems: "center", padding: 28, gap: 8 },
-  emptyText: { fontSize: 13, color: "#888", textAlign: "center" },
+  emptyBox: { alignItems: "center", padding: 28, gap: 12, minHeight: 200, justifyContent: "center" },
+  emptyBoxIcon: { width: 72, height: 72, borderRadius: 36, backgroundColor: "rgba(181,0,0,0.08)", alignItems: "center", justifyContent: "center" },
+  emptyBoxHeading: { fontSize: 16, fontWeight: "700", color: "#1A1A1A", textAlign: "center" },
+  emptyBoxSub: { fontSize: 13, color: "#888", textAlign: "center", lineHeight: 18 },
+  emptyBoxBtn: { backgroundColor: "#B50000", borderRadius: 10, paddingHorizontal: 24, paddingVertical: 11, marginTop: 4 },
+  emptyBoxBtnText: { fontSize: 14, fontWeight: "700", color: "#fff" },
 });

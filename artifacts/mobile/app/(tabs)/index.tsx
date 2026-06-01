@@ -207,6 +207,13 @@ function OrgCard({ org }: { org: Org }) {
           </Text>
         )}
       </View>
+
+      <Pressable
+        style={s.donateBtn}
+        onPress={(e) => { e.stopPropagation?.(); router.push(`/donate/${org._id}`); }}
+      >
+        <Text style={s.donateBtnText}>Donate</Text>
+      </Pressable>
     </Pressable>
   );
 }
@@ -346,7 +353,11 @@ export default function DiscoverScreen() {
         <OrgMapView orgs={filtered} />
       ) : filtered.length === 0 ? (
         <View style={s.center}>
-          <Text style={[s.emptyText, { color: colors.mutedForeground }]}>No organisations found.</Text>
+          <View style={s.emptyIcon}>
+            <Text style={{ fontSize: 36 }}>🧭</Text>
+          </View>
+          <Text style={[s.emptyHeading, { color: colors.foreground }]}>No organisations found</Text>
+          <Text style={[s.emptyText, { color: colors.mutedForeground }]}>Try adjusting your search or filters.</Text>
         </View>
       ) : (
         <FlatList
@@ -467,8 +478,12 @@ const s = StyleSheet.create({
   orgDesc: { fontSize: 13, lineHeight: 19, marginBottom: 10 },
   cardFooter: { flexDirection: "row", gap: 16 },
   stat: { fontSize: 12 },
+  donateBtn: { backgroundColor: "#B50000", borderRadius: 10, paddingVertical: 11, alignItems: "center", marginTop: 8 },
+  donateBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24, gap: 12 },
-  emptyText: { fontSize: 15, textAlign: "center" },
+  emptyIcon: { width: 80, height: 80, borderRadius: 40, backgroundColor: "rgba(181,0,0,0.08)", alignItems: "center", justifyContent: "center" },
+  emptyHeading: { fontSize: 18, fontWeight: "700", textAlign: "center" },
+  emptyText: { fontSize: 14, textAlign: "center" },
   retryBtn: { borderRadius: 10, paddingHorizontal: 24, paddingVertical: 10 },
   // Map styles
   mapPin: {

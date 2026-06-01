@@ -24,55 +24,7 @@ const IMG_FULL_H = 200;
 const IMG_MULTI_H = 100;
 const GRID_CELL = (SCREEN_W - 4) / 3;
 
-// ── Placeholder data ───────────────────────────────────────────────────────────
 
-const PLACEHOLDERS: FeedUpdate[] = [
-  {
-    _id: "ph_u1",
-    orgId: "",
-    orgName: "",
-    type: "milestone",
-    title: "50 young people complete our carpentry programme",
-    content:
-      "We are proud to announce that 50 graduates from our 12-week carpentry and joinery programme received their certificates last Friday. This milestone represents months of hard work, dedication, and community support.",
-    mediaUrls: [],
-    imageUrl: null,
-    likes: 87,
-    comments: 12,
-    location: "Kingston",
-    createdAt: new Date(Date.now() - 2 * 864e5).toISOString(),
-  },
-  {
-    _id: "ph_u2",
-    orgId: "",
-    orgName: "",
-    type: "update",
-    title: "Community garden project update",
-    content:
-      "Our community garden in Spanish Town has produced its first full harvest of the season. Families across the neighbourhood have been collecting fresh produce every weekend.",
-    mediaUrls: [],
-    imageUrl: null,
-    likes: 45,
-    comments: 8,
-    location: "Kingston",
-    createdAt: new Date(Date.now() - 7 * 864e5).toISOString(),
-  },
-  {
-    _id: "ph_u3",
-    orgId: "",
-    orgName: "",
-    type: "update",
-    title: "Guest speaker session — Dr. Patricia Brown",
-    content:
-      "Last Tuesday we hosted Dr. Patricia Brown, a leading education advocate, for an inspiring talk on youth empowerment and building resilience. Over 120 young people attended.",
-    mediaUrls: [],
-    imageUrl: null,
-    likes: 60,
-    comments: 5,
-    location: "Kingston",
-    createdAt: new Date(Date.now() - 14 * 864e5).toISOString(),
-  },
-];
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -183,7 +135,7 @@ function MediaGrid({ updates }: { updates: FeedUpdate[] }) {
     return (
       <View style={s.empty}>
         <Feather name="image" size={36} color="#ccc" />
-        <Text style={s.emptyText}>No media yet</Text>
+        <Text style={s.emptySubtext}>No media yet</Text>
       </View>
     );
   }
@@ -214,8 +166,7 @@ export default function UpdatesScreen() {
     enabled: !!orgId,
   });
 
-  const updates =
-    updatesQ.data && updatesQ.data.length > 0 ? updatesQ.data : PLACEHOLDERS;
+  const updates = updatesQ.data ?? [];
 
   return (
     <SafeAreaView style={s.screen} edges={["top", "bottom"]}>
@@ -260,6 +211,14 @@ export default function UpdatesScreen() {
       <ScrollView style={s.scroll} showsVerticalScrollIndicator={false}>
         {updatesQ.isLoading ? (
           <ActivityIndicator style={{ marginVertical: 48 }} color="#B50000" size="large" />
+        ) : updates.length === 0 ? (
+          <View style={s.empty}>
+            <View style={s.emptyIcon}>
+              <Feather name="camera" size={36} color="#B50000" />
+            </View>
+            <Text style={s.emptyHeading}>No updates yet</Text>
+            <Text style={s.emptySubtext}>This organisation hasn't posted any updates yet.</Text>
+          </View>
         ) : activeTab === "all" ? (
           <View style={s.list}>
             {updates.map((u) => <UpdateCard key={u._id} item={u} />)}
@@ -368,6 +327,8 @@ const s = StyleSheet.create({
   grid: { flexDirection: "row", flexWrap: "wrap", gap: 2 },
 
   // Empty
-  empty: { alignItems: "center", paddingVertical: 56, gap: 12 },
-  emptyText: { fontSize: 14, color: "#888" },
+  empty: { alignItems: "center", paddingVertical: 56, gap: 12, minHeight: 200, justifyContent: "center" },
+  emptyIcon: { width: 80, height: 80, borderRadius: 40, backgroundColor: "rgba(181,0,0,0.08)", alignItems: "center", justifyContent: "center" },
+  emptyHeading: { fontSize: 18, fontWeight: "700", color: "#1A1A1A", textAlign: "center" },
+  emptySubtext: { fontSize: 14, color: "#888", textAlign: "center", lineHeight: 20, paddingHorizontal: 24 },
 });

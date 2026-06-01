@@ -315,6 +315,14 @@ function ShopContent() {
             <Text style={{ color: "#fff", fontWeight: "700" }}>Retry</Text>
           </Pressable>
         </View>
+      ) : products.length === 0 ? (
+        <View style={s.center}>
+          <View style={s.emptyIcon}>
+            <Text style={{ fontSize: 36 }}>🛍️</Text>
+          </View>
+          <Text style={[s.emptyHeading, { color: colors.foreground }]}>Shop coming soon</Text>
+          <Text style={[s.emptySubtext, { color: colors.mutedForeground }]}>Check back soon for Root ProjX merch.</Text>
+        </View>
       ) : (
         <FlatList
           data={products}
@@ -369,6 +377,9 @@ export default function ShopScreen() {
 const s = StyleSheet.create({
   safe: { flex: 1 },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24, gap: 12 },
+  emptyIcon: { width: 80, height: 80, borderRadius: 40, backgroundColor: "rgba(181,0,0,0.08)", alignItems: "center", justifyContent: "center" },
+  emptyHeading: { fontSize: 18, fontWeight: "700", textAlign: "center" },
+  emptySubtext: { fontSize: 14, textAlign: "center", lineHeight: 20 },
   retryBtn: { borderRadius: 10, paddingHorizontal: 24, paddingVertical: 10 },
   shopHeader: { padding: 20, paddingTop: 28, paddingBottom: 20 },
   shopTitle: { fontFamily: "DancingScript_700Bold", fontSize: 28, color: "#FFFFFF" },

@@ -22,44 +22,7 @@ const SCREEN_W = Dimensions.get("window").width;
 const CARD_IMG_W = Math.round(SCREEN_W * 0.36);
 const CARD_IMG_H = 110;
 
-// ── Placeholder data shown when Firestore has no campaigns yet ────────────────
 
-const PLACEHOLDERS: Campaign[] = [
-  {
-    _id: "ph_1",
-    title: "School Supplies Drive",
-    description:
-      "Help us provide school supplies to 200 underserved children in Kingston.",
-    goal: 10000,
-    raised: 6500,
-    status: "active",
-    type: "fundraising",
-    createdAt: new Date(Date.now() - 5 * 864e5).toISOString(),
-  },
-  {
-    _id: "ph_2",
-    title: "Youth Mentorship Programme",
-    description:
-      "We need mentors to support youth in their personal and professional growth.",
-    goal: 0,
-    raised: 0,
-    status: "active",
-    type: "volunteer",
-    volunteersNeeded: 42,
-    createdAt: new Date(Date.now() - 10 * 864e5).toISOString(),
-  },
-  {
-    _id: "ph_3",
-    title: "Tools for Training",
-    description:
-      "Help us purchase modern tools and equipment for our carpentry students.",
-    goal: 6000,
-    raised: 2100,
-    status: "active",
-    type: "fundraising",
-    createdAt: new Date(Date.now() - 15 * 864e5).toISOString(),
-  },
-];
 
 function fmtGbp(n: number) {
   if (n >= 1_000_000) return `£${(n / 1_000_000).toFixed(1)}M`;
@@ -173,10 +136,7 @@ export default function CampaignsScreen() {
     enabled: !!orgId,
   });
 
-  const allCampaigns =
-    campaignsQ.data && campaignsQ.data.length > 0
-      ? campaignsQ.data
-      : PLACEHOLDERS;
+  const allCampaigns = campaignsQ.data ?? [];
 
   const shown = allCampaigns.filter((c) =>
     activeTab === "active" ? c.status === "active" : c.status === "completed"
@@ -256,11 +216,16 @@ export default function CampaignsScreen() {
           />
         ) : shown.length === 0 ? (
           <View style={s.empty}>
-            <Feather name="flag" size={36} color="#ccc" />
-            <Text style={s.emptyText}>
+            <View style={s.emptyIcon}>
+              <Feather name="target" size={36} color="#B50000" />
+            </View>
+            <Text style={s.emptyHeading}>
+              {activeTab === "active" ? "No active campaigns" : "No completed campaigns yet"}
+            </Text>
+            <Text style={s.emptySubtext}>
               {activeTab === "active"
-                ? "No active campaigns"
-                : "No completed campaigns yet"}
+                ? "Check back soon for new campaigns from this organisation."
+                : "This organisation hasn't completed any campaigns yet."}
             </Text>
           </View>
         ) : (
@@ -483,6 +448,17 @@ const s = StyleSheet.create({
   seeAllText: { fontSize: 15, fontWeight: "700", color: "#fff" },
 
   // Empty state
+  emptyIcon: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: "rgba(181,0,0,0.08)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 4,
+  },
+  emptyHeading: { fontSize: 18, fontWeight: "700", color: "#1A1A1A", textAlign: "center" },
+  emptySubtext: { fontSize: 14, color: "#888", textAlign: "center", lineHeight: 20, paddingHorizontal: 24 },
   empty: {
     alignItems: "center",
     paddingVertical: 56,

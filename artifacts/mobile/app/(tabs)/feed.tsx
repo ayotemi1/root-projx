@@ -201,11 +201,23 @@ export default function FeedScreen() {
         </View>
       ) : updates.length === 0 ? (
         <View style={s.center}>
-          <Text style={{ color: colors.mutedForeground, textAlign: "center", fontSize: 15 }}>
+          <View style={s.emptyIcon}>
+            <Text style={{ fontSize: 36 }}>📣</Text>
+          </View>
+          <Text style={[s.emptyHeading, { color: colors.foreground }]}>Nothing here yet</Text>
+          <Text style={[s.emptySubtext, { color: colors.mutedForeground }]}>
             {mode === "mine"
               ? "Follow organisations to see their updates here."
-              : "No updates yet."}
+              : "No community updates yet. Check back soon."}
           </Text>
+          {mode === "mine" && (
+            <Pressable
+              style={[s.emptyBtn, { backgroundColor: colors.primary }]}
+              onPress={() => router.push("/")}
+            >
+              <Text style={s.emptyBtnText}>Discover Organisations</Text>
+            </Pressable>
+          )}
         </View>
       ) : (
         <FlatList
@@ -291,6 +303,11 @@ const s = StyleSheet.create({
   likes: { fontSize: 13 },
   readMore: { fontSize: 13, fontWeight: "600" },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24, gap: 12 },
+  emptyIcon: { width: 80, height: 80, borderRadius: 40, backgroundColor: "rgba(181,0,0,0.08)", alignItems: "center", justifyContent: "center" },
+  emptyHeading: { fontSize: 18, fontWeight: "700", textAlign: "center" },
+  emptySubtext: { fontSize: 14, textAlign: "center", lineHeight: 20 },
+  emptyBtn: { borderRadius: 10, paddingHorizontal: 24, paddingVertical: 11, marginTop: 4 },
+  emptyBtnText: { color: "#fff", fontWeight: "700", fontSize: 14 },
   retryBtn: { borderRadius: 10, paddingHorizontal: 24, paddingVertical: 10 },
   mediaThumbnail: {
     width: 64,
