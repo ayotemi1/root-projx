@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { fsGet, fsPatch, fsList, fsQuery, getServerToken } from "../lib/firebase-rest.js";
+import { fsGet, fsPatch, fsList, fsQuery, fsCreate, getServerToken } from "../lib/firebase-rest.js";
 import { requireAuth } from "../lib/auth.js";
 
 const router = Router();
@@ -88,6 +88,62 @@ const PLACEHOLDER_CAMPAIGNS = [
     createdAt: new Date(Date.now() - 300 * 86400000).toISOString(),
   },
 ];
+
+// Placeholder volunteer roles returned when the subcollection is empty
+const PLACEHOLDER_ROLES = [
+  { _id: "vr_001", title: "Graphic Designer",        locationType: "remote", frequency: "Flexible hours", term: "short", iconType: "palette",    description: "Create graphics and visual content for our programmes and social media." },
+  { _id: "vr_002", title: "Mentorship Support",      locationType: "local",  frequency: "Weekly",         term: "long",  iconType: "users",      description: "Mentor young people on their personal and professional development journey." },
+  { _id: "vr_003", title: "Event Support",           locationType: "local",  frequency: "Occasional",     term: "short", iconType: "calendar",   description: "Help plan and run our community events and graduation ceremonies." },
+  { _id: "vr_004", title: "Social Media Assistant",  locationType: "remote", frequency: "Flexible hours", term: "short", iconType: "smartphone", description: "Manage and grow our social media presence across platforms." },
+  { _id: "vr_005", title: "Fundraising Support",     locationType: "remote", frequency: "Flexible hours", term: "long",  iconType: "heart",      description: "Support grant writing, donor outreach, and fundraising campaigns." },
+  { _id: "vr_006", title: "Administrative Support",  locationType: "remote", frequency: "Flexible hours", term: "short", iconType: "briefcase",  description: "Help with data entry, communications, and general admin tasks." },
+];
+
+// GET /organisations/:id/volunteerRoles
+router.get("/organisations/:id/volunteerRoles", async (req, res) => {
+  try {
+    const token = await getServerToken();
+    const roles = await fsList(`organisations/${req.params.id}/volunteerRoles`, token);
+    res.json(roles.length > 0 ? roles : PLACEHOLDER_ROLES);
+  } catch (err) {
+    req.log.error({ err }, "GET /organisations/:id/volunteerRoles error");
+    res.status(500).json({ error: "Failed to fetch volunteer roles" });
+  }
+});
+
+// POST /organisations/:id/skillSuggestions
+router.post("/organisations/:id/skillSuggestions", requireAuth, async (req, res) => {
+  try {
+    const { skill, availability, locationPreference } = req.body as Record<string, unknown>;
+    if (!skill) { res.status(400).json({ error: "skill is required" }); return; }
+    const token = await getServerToken();
+    const id = await fsCreate(`organisations/${req.params.id}/skillSuggestions`, {
+      skill, availability: availability ?? "flexible", locationPreference: locationPreference ?? "remote",
+      userId: req.user!.userId, createdAt: new Date().toISOString(),
+    }, token);
+    res.status(201).json({ id });
+  } catch (err) {
+    req.log.error({ err }, "POST /organisations/:id/skillSuggestions error");
+    res.status(500).json({ error: "Failed to save skill suggestion" });
+  }
+});
+
+// POST /organisations/:id/volunteerApplications
+router.post("/organisations/:id/volunteerApplications", requireAuth, async (req, res) => {
+  try {
+    const { roleId, roleTitle, motivation, experience } = req.body as Record<string, unknown>;
+    if (!roleId || !motivation) { res.status(400).json({ error: "roleId and motivation are required" }); return; }
+    const token = await getServerToken();
+    const id = await fsCreate(`organisations/${req.params.id}/volunteerApplications`, {
+      roleId, roleTitle: roleTitle ?? "", motivation, experience: experience ?? "",
+      userId: req.user!.userId, createdAt: new Date().toISOString(),
+    }, token);
+    res.status(201).json({ id });
+  } catch (err) {
+    req.log.error({ err }, "POST /organisations/:id/volunteerApplications error");
+    res.status(500).json({ error: "Failed to save application" });
+  }
+});
 
 // GET /organisations/:id/campaigns — list campaigns subcollection
 router.get("/organisations/:id/campaigns", async (req, res) => {

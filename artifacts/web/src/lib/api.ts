@@ -226,6 +226,14 @@ export interface Campaign {
 
 export const getCampaigns = (orgId: string) => req<Campaign[]>(`/organisations/${orgId}/campaigns`);
 
+export function apiFetch<T = unknown>(
+  path: string,
+  options: RequestInit & { token?: string | null } = {},
+): Promise<T> {
+  const { token, ...rest } = options;
+  return req<T>(path, rest, token);
+}
+
 export const postReview = (
   data: { orgId: string; rating: number; content: string },
   token: string,

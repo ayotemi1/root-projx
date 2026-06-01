@@ -1,0 +1,87 @@
+Revamp the Volunteer page for organisation profiles to match 
+the following design spec exactly. Do not touch any other pages.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PAGE HEADER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Page heading: "Ways to Volunteer"
+- Subheading: "Your time and skills can make a real difference 
+  in the lives of young people."
+- Filter chips in a row below the heading:
+  All | Local | Remote | Short Term | Long Term
+  - Active chip: red filled, white text
+  - Inactive chip: outline, grey text
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+VOLUNTEER ROLES LIST
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Vertical list of volunteer role cards, each containing:
+
+  LEFT SIDE:
+  - Coloured circular icon (each role has a different 
+    accent colour — use brand red, gold, green, blue, 
+    purple to vary them)
+  - Role icon inside the circle (person, heart, calendar, 
+    chat bubble etc — use relevant Lucide icons)
+
+  MIDDLE:
+  - Role title in bold (e.g. "Graphic Designer")
+  - Two tags below: location type (e.g. "Remote") and 
+    frequency (e.g. "Flexible hours")
+
+  RIGHT SIDE:
+  - "Apply" button in red outline style
+
+- Below the list: 
+  - "Have a skill not listed?" text in grey
+  - "Suggest Your Skills" red outline button centred below
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SUGGEST YOUR SKILLS MODAL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- When "Suggest Your Skills" is clicked, open a modal with:
+  - Heading: "Suggest a Skill"
+  - Text input: "What skill can you offer?"
+  - Dropdown: Availability (Flexible / Weekly / Occasional)
+  - Dropdown: Location preference (Remote / Local / Either)
+  - Submit button in red: "Send Suggestion"
+  - Submission saves to Firestore: 
+    organisations/{orgId}/skillSuggestions
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+APPLY FLOW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- When "Apply" is clicked on a role:
+  - If user is not logged in: prompt to sign up or log in
+  - If user is logged in: open a simple application modal:
+    - Role name at the top
+    - Text area: "Why do you want to volunteer for this role?"
+    - Text area: "Relevant experience or skills"
+    - Submit button in red: "Submit Application"
+    - Submission saves to Firestore:
+      organisations/{orgId}/volunteerApplications
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DATA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Pull volunteer roles from Firestore:
+  organisations/{orgId}/volunteerRoles collection
+- Each role document: title, locationType 
+  (remote/local/either), frequency, term (short/long),
+  iconType, description
+- Use placeholder roles if collection is empty:
+  Graphic Designer (Remote, Flexible hours),
+  Mentorship Support (Local, Weekly),
+  Event Support (Local, Occasional),
+  Social Media Assistant (Remote, Flexible hours),
+  Fundraising Support (Remote, Flexible hours),
+  Administrative Support (Remote, Flexible hours)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STYLING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Brand colours: Red #CC0000, Gold #F5C000, White
+- Light grey backgrounds for role cards
+- Clean, welcoming, community feel
+- Fully responsive — stacks cleanly on mobile
+- Consistent with existing site nav and footer

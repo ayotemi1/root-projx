@@ -16,6 +16,7 @@ import AccountPage from "@/pages/account";
 import OrgProfilePage from "@/pages/org-profile";
 import OrgCampaignsPage from "@/pages/org-campaigns";
 import OrgUpdatesPage from "@/pages/org-updates";
+import OrgVolunteerPage from "@/pages/org-volunteer";
 import DonatePage from "@/pages/donate";
 import DonateSuccessPage from "@/pages/donate-success";
 import DashboardPage from "@/pages/dashboard";
@@ -75,6 +76,7 @@ function AppRoutes() {
               </Route>
               <Route path="/organisations/:id/campaigns" component={OrgCampaignsPage} />
               <Route path="/organisations/:id/updates" component={OrgUpdatesPage} />
+              <Route path="/organisations/:id/volunteer" component={OrgVolunteerPage} />
               <Route path="/organisations/:id" component={OrgProfilePage} />
               <Route path="/donate/success" component={DonateSuccessPage} />
               <Route path="/donate/:orgId" component={DonatePage} />
