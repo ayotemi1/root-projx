@@ -364,7 +364,9 @@ export default function OrgProfileScreen() {
             <View>
               <View style={s.sectionHeader}>
                 <Text style={s.sectionTitle}>Latest Updates</Text>
-                <Text style={s.viewAll}>View all</Text>
+                <Pressable onPress={() => router.push(`/updates/${id}`)}>
+                  <Text style={s.viewAll}>View all</Text>
+                </Pressable>
               </View>
               {updatesQ.isLoading ? (
                 <ActivityIndicator style={{ margin: 24 }} color="#B50000" />
@@ -406,6 +408,9 @@ export default function OrgProfileScreen() {
             <View>
               <View style={s.sectionHeader}>
                 <Text style={s.sectionTitle}>Volunteer Roles</Text>
+                <Pressable onPress={() => router.push(`/volunteer/${id}`)}>
+                  <Text style={s.viewAll}>See all</Text>
+                </Pressable>
               </View>
               {rolesQ.isLoading ? (
                 <ActivityIndicator style={{ margin: 24 }} color="#B50000" />
@@ -414,6 +419,12 @@ export default function OrgProfileScreen() {
               ) : (
                 roles.map((r) => <RoleCard key={r._id} item={r} />)
               )}
+              <Pressable
+                style={s.seeAllBtn}
+                onPress={() => router.push(`/volunteer/${id}`)}
+              >
+                <Text style={s.seeAllBtnText}>See All Roles</Text>
+              </Pressable>
             </View>
           )}
 

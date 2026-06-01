@@ -44,6 +44,8 @@ export interface FeedUpdate {
   mediaUrls: string[];
   imageUrl: string | null;
   likes: number;
+  comments?: number;
+  location?: string | null;
   createdAt: string;
 }
 

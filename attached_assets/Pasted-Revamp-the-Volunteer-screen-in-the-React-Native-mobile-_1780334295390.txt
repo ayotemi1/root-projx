@@ -1,0 +1,128 @@
+Revamp the Volunteer screen in the React Native mobile app 
+to match the following design spec exactly. 
+This is for the mobile app only — do not touch the website.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HEADER / NAV
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Red header bar with:
+  - Back arrow (left)
+  - Root ProjX gold logo centred
+  - Three dot menu icon (right)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PAGE HEADER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Heading: "Ways to Volunteer" in bold
+- Subheading: "Your time and skills can make a real 
+  difference in the lives of young people." in grey
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FILTER CHIPS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Horizontally scrollable row of filter chips:
+  All | Local | Remote | Short Term | Long Term
+- Active chip: red filled, white text, 
+  rounded pill shape
+- Inactive chip: white background, grey text, 
+  grey border, rounded pill shape
+- Default active: All
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+VOLUNTEER ROLES LIST
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Vertical scrollable list of role rows,
+  each containing:
+
+  LEFT:
+  - Circular icon container with coloured background
+    (vary colours: red, gold, green, blue, purple)
+  - Relevant icon inside (person, heart, calendar, 
+    chat, megaphone, folder — use Expo vector icons
+    or react-native-vector-icons)
+
+  MIDDLE:
+  - Role title in bold (e.g. "Graphic Designer")
+  - Two detail tags below in grey:
+    - Location type (e.g. "Remote")
+    - Bullet separator
+    - Frequency (e.g. "Flexible hours")
+
+  RIGHT:
+  - Right chevron arrow in grey
+
+- Subtle divider line between each row
+- White background for the list
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+APPLY TO VOLUNTEER BUTTON
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Full width red button at the bottom of the list
+- Label: "Apply to Volunteer"
+- Tapping opens a bottom sheet modal with:
+  - Role name at the top in bold
+  - Text area: "Why do you want to volunteer 
+    for this role?"
+  - Text area: "Relevant experience or skills"
+  - Red submit button: "Submit Application"
+  - If not logged in: redirect to login screen
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SUGGEST YOUR SKILLS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Below the volunteer list:
+  - Small "+" icon on the left
+  - Text: "Have a skill not listed?"
+  - Subtext: "Tell us how you'd like to help."
+  - Tapping opens a bottom sheet modal:
+    - Heading: "Suggest a Skill"
+    - Text input: "What skill can you offer?"
+    - Picker: Availability 
+      (Flexible / Weekly / Occasional)
+    - Picker: Location preference 
+      (Remote / Local / Either)
+    - Red submit button: "Send Suggestion"
+    - Saves to Firestore:
+      organisations/{orgId}/skillSuggestions
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BOTTOM NAV BAR
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Fixed bottom navigation with 4 items:
+  - Home (house icon)
+  - Discover (compass icon)
+  - Get Help (life ring icon)
+  - Account (person icon)
+- Active item: red icon + red label
+- Inactive: grey icon + grey label
+- White background with subtle top border
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DATA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Pull volunteer roles from Firebase Firestore:
+  organisations/{orgId}/volunteerRoles collection
+- Each role document: title, locationType, 
+  frequency, term, iconType, description
+- Use placeholder roles if empty:
+  - Graphic Designer (Remote, Flexible hours)
+  - Mentorship Support (Local, Weekly)
+  - Event Support (Local, Occasional)
+  - Social Media Assistant (Remote, Flexible hours)
+  - Fundraising Support (Remote, Flexible hours)
+  - Administrative Support (Remote, Flexible hours)
+- Volunteer applications save to Firestore:
+  organisations/{orgId}/volunteerApplications
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STYLING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Brand colours: Red #CC0000, Gold #F5C000, White
+- Use React Native StyleSheet — no web CSS
+- ScrollView for full page
+- FlatList for roles list
+- Bottom sheet modals using react-native modal 
+  or @gorhom/bottom-sheet if available
+- Fully compatible with iOS
+- Safe area insets applied top and bottom
+- Consistent with the rest of the mobile app
