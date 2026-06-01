@@ -430,6 +430,12 @@ export default function OrgProfileScreen() {
 
           {tab === "about" && (
             <View style={s.aboutBlock}>
+              <Pressable
+                style={s.seeAllBtn}
+                onPress={() => router.push(`/about/${id}`)}
+              >
+                <Text style={s.seeAllBtnText}>View Full About Page</Text>
+              </Pressable>
               {!!org.mission && (
                 <View style={s.aboutSection}>
                   <Text style={s.aboutLabel}>Mission</Text>

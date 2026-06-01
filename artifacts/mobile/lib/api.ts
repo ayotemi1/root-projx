@@ -29,6 +29,10 @@ export interface Org {
   impactScore: number;
   coverImage: string | null;
   logo: string | null;
+  featuredImageUrl?: string | null;
+  vision?: string | null;
+  values?: string[] | null;
+  address?: string | null;
   contact: { email?: string; phone?: string; website?: string } | null;
   socialLinks: Record<string, string> | null;
   createdAt: string;

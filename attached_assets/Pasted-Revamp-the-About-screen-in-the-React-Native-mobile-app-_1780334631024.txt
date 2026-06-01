@@ -1,0 +1,115 @@
+Revamp the About screen in the React Native mobile app 
+to match the following design spec exactly. 
+This is for the mobile app only — do not touch the website.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HEADER / NAV
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Red header bar with:
+  - Back arrow (left)
+  - Root ProjX gold logo centred
+  - Three dot menu icon (right)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HERO IMAGE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Full width featured image at the top
+- Rounded bottom corners
+- Shows the organisation's community/work
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ABOUT SECTION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Heading: "About [Organisation Name]" in bold
+- Background paragraph below the heading:
+  - 3-4 lines of founding/background text
+  - Grey text, readable font size
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MISSION, VISION & VALUES CARDS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Three info rows, each containing:
+
+  LEFT:
+  - Circular icon container in red
+  - White icon inside:
+    - Our Mission — target/bullseye icon
+    - Our Vision — eye icon
+    - Our Values — heart icon
+
+  RIGHT:
+  - Bold label (e.g. "Our Mission")
+  - Body text below in grey
+
+  For Our Values specifically:
+  - Display values as horizontal chips/tags
+  - Red outline, red text
+  - (e.g. "Empowerment" "Integrity" 
+    "Inclusion" "Growth")
+
+- White background rows with subtle divider 
+  between each
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONTACT DETAILS SECTION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Section heading: "Contact" in bold
+- Vertical list of contact rows, each containing:
+  - Icon on the left in red (globe, email, 
+    phone, map pin)
+  - Contact detail on the right
+  - Website and email are tappable links
+  - Phone is tappable (opens dialler)
+  - Address is tappable (opens maps)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BOTTOM NAV BAR
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Fixed bottom navigation with 4 items:
+  - Home (house icon)
+  - Discover (compass icon)
+  - Get Help (life ring icon)
+  - Account (person icon)
+- Active item: red icon + red label
+- Inactive: grey icon + grey label
+- White background with subtle top border
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DATA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Pull all content from Firebase Firestore 
+  org document:
+  - aboutText — background paragraph
+  - featuredImageUrl — hero image
+  - mission — mission statement
+  - vision — vision statement
+  - values — array of value strings
+  - website, email, phone, address
+- Use placeholder data if fields are empty:
+  - Org: Cornerstone Youth Foundation
+  - About: "Cornerstone Youth Foundation was 
+    established in 2016 to address youth 
+    unemployment and lack of opportunity in 
+    Kingston's inner-city communities."
+  - Mission: "Empowering young people through 
+    skills, mentorship, and community."
+  - Vision: "A future where every young person 
+    has the tools to build a better life."
+  - Values: Empowerment, Integrity, 
+    Inclusion, Growth
+  - Website: www.cornerstoneyouth.org
+  - Email: info@cornerstoneyouth.org
+  - Phone: (876) 555-0198
+  - Address: 123 Eastwood Park Road, 
+    Kingston, Jamaica
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STYLING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Brand colours: Red #CC0000, Gold #F5C000, White
+- Use React Native StyleSheet — no web CSS
+- ScrollView for full page
+- Linking API for tappable contact details
+- Fully compatible with iOS
+- Safe area insets applied top and bottom
+- Consistent with the rest of the mobile app
