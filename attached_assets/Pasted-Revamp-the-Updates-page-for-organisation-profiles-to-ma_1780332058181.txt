@@ -1,0 +1,63 @@
+Revamp the Updates page for organisation profiles to match 
+the following design spec exactly. Do not touch any other pages.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PAGE HEADER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Page heading: "Updates"
+- Subheading: "Stay informed about our latest activities 
+  and achievements."
+- Two toggle tabs: "All Updates" (default, red filled) 
+  and "Media" (outline)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+UPDATES GRID
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- 2-column grid of update cards on desktop, 
+  single column on mobile
+- Each update card contains:
+  - Timestamp at top left (e.g. "2 days ago")
+  - Location tag at top right (pin icon + city, 
+    e.g. "Kingston")
+  - Headline in bold (e.g. "50 young people complete 
+    our carpentry programme")
+  - Body text (2-3 lines, truncated with ellipsis)
+  - Image grid below the text — supports:
+    - Single image (full width)
+    - 2x2 grid for multiple images
+  - Bottom row: heart icon + like count, comment icon + 
+    count, share icon
+  - "View Details" button in red at bottom right
+
+FEATURED/LARGE CARD
+- One card in the grid can be a full width CTA card 
+  in brand red background:
+  - White text: "Want to see more?"
+  - Subtext: "Check out all updates and stories."
+  - "View All Updates" white outline button
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MEDIA TAB
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- When "Media" tab is selected show a photo/video 
+  grid (Instagram-style 3 columns)
+- Each tile is square, clicking opens the full post
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DATA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Pull updates from Firestore: 
+  organisations/{orgId}/posts collection
+- Each post document should have: headline, body, 
+  imageUrls (array), timestamp, location, likes, 
+  comments count
+- Use realistic placeholder update data if empty
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STYLING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Brand colours: Red #CC0000, Gold #F5C000, White
+- Light grey card backgrounds with subtle shadow
+- Clean, editorial feel — like a community newspaper
+- Fully responsive — stacks to single column on mobile
+- Consistent with existing site nav and footer
