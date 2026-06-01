@@ -211,6 +211,21 @@ export const getResources = (params?: { category?: string; country?: string }) =
 
 export const getOrgReviews = (orgId: string) => req<Review[]>(`/help/reviews/${orgId}`);
 
+export interface Campaign {
+  _id: string;
+  name: string;
+  description: string;
+  imageUrl: string | null;
+  amountRaised: number;
+  goal: number;
+  status: "active" | "completed";
+  type: "fundraising" | "volunteer";
+  volunteersNeeded: number;
+  createdAt: string;
+}
+
+export const getCampaigns = (orgId: string) => req<Campaign[]>(`/organisations/${orgId}/campaigns`);
+
 export const postReview = (
   data: { orgId: string; rating: number; content: string },
   token: string,

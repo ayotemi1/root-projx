@@ -25,6 +25,82 @@ router.get("/organisations", async (req, res) => {
   }
 });
 
+// Placeholder campaigns returned when the subcollection is empty
+const PLACEHOLDER_CAMPAIGNS = [
+  {
+    _id: "camp_001",
+    name: "School Supplies Drive",
+    description: "Help us provide school supplies to 200 underserved children in Kingston.",
+    imageUrl: null,
+    amountRaised: 6500,
+    goal: 10000,
+    status: "active",
+    type: "fundraising",
+    volunteersNeeded: 0,
+    createdAt: new Date(Date.now() - 14 * 86400000).toISOString(),
+  },
+  {
+    _id: "camp_002",
+    name: "Youth Mentorship Programme",
+    description: "We need mentors to support youth in their personal and professional growth.",
+    imageUrl: null,
+    amountRaised: 0,
+    goal: 0,
+    status: "active",
+    type: "volunteer",
+    volunteersNeeded: 42,
+    createdAt: new Date(Date.now() - 7 * 86400000).toISOString(),
+  },
+  {
+    _id: "camp_003",
+    name: "Tools for Training",
+    description: "Help us purchase modern tools and equipment for our carpentry students.",
+    imageUrl: null,
+    amountRaised: 2100,
+    goal: 6000,
+    status: "active",
+    type: "fundraising",
+    volunteersNeeded: 0,
+    createdAt: new Date(Date.now() - 30 * 86400000).toISOString(),
+  },
+  {
+    _id: "camp_004",
+    name: "2023 Back-to-School Drive",
+    description: "Supplied stationery and bags to 150 children across Kingston parishes.",
+    imageUrl: null,
+    amountRaised: 8200,
+    goal: 8000,
+    status: "completed",
+    type: "fundraising",
+    volunteersNeeded: 0,
+    createdAt: new Date(Date.now() - 365 * 86400000).toISOString(),
+  },
+  {
+    _id: "camp_005",
+    name: "Community Clean-Up 2023",
+    description: "Mobilised 80 volunteers to clean and restore three inner-city parks.",
+    imageUrl: null,
+    amountRaised: 0,
+    goal: 0,
+    status: "completed",
+    type: "volunteer",
+    volunteersNeeded: 0,
+    createdAt: new Date(Date.now() - 300 * 86400000).toISOString(),
+  },
+];
+
+// GET /organisations/:id/campaigns — list campaigns subcollection
+router.get("/organisations/:id/campaigns", async (req, res) => {
+  try {
+    const token = await getServerToken();
+    const campaigns = await fsList(`organisations/${req.params.id}/campaigns`, token);
+    res.json(campaigns.length > 0 ? campaigns : PLACEHOLDER_CAMPAIGNS);
+  } catch (err) {
+    req.log.error({ err }, "GET /organisations/:id/campaigns error");
+    res.status(500).json({ error: "Failed to fetch campaigns" });
+  }
+});
+
 // GET /organisations/:id — single org profile
 router.get("/organisations/:id", async (req, res) => {
   try {

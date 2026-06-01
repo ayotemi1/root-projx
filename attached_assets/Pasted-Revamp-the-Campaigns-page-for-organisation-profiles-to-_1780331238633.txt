@@ -1,0 +1,63 @@
+Revamp the Campaigns page for organisation profiles to match 
+the following design spec exactly. Do not touch any other pages.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PAGE HEADER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Page heading: "Campaigns"
+- Subheading: "Support our ongoing initiatives and help us 
+  make a greater impact."
+- Two toggle tabs below: "Active" (default, red filled) 
+  and "Completed" (outline)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ACTIVE CAMPAIGNS SECTION
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Section heading: "Active Campaigns"
+- Vertical list of campaign cards, each containing:
+
+  LEFT SIDE:
+  - Campaign thumbnail image (rectangular, rounded corners)
+  
+  RIGHT SIDE:
+  - Campaign name in bold, large font
+  - Short description (2 lines max)
+  - Progress bar: red fill showing % raised, with % label 
+    on the right (e.g. "65%")
+  - Amount raised in bold red (e.g. "£6,500 raised")
+  - Goal amount in grey (e.g. "£10,000 goal")
+  - Status tag if applicable (e.g. "Ongoing") or volunteer 
+    count needed
+  - Action button: "Donate" in red for fundraising campaigns,
+    "Get Involved" in red for volunteer campaigns
+
+- "See All Campaigns" full width red button at the bottom 
+  of the list
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+COMPLETED CAMPAIGNS TAB
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- When "Completed" tab is selected, show the same card 
+  layout but with:
+  - A "Completed" badge instead of progress bar
+  - Final amount raised shown
+  - No donate/get involved button
+  - Greyed out slightly to distinguish from active
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DATA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Pull campaigns from Firestore: 
+  organisations/{orgId}/campaigns collection
+- Each campaign document should have: name, description, 
+  imageUrl, amountRaised, goal, status (active/completed), 
+  type (fundraising/volunteer), volunteersNeeded
+- Use placeholder campaign data if collection is empty
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STYLING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Brand colours: Red #CC0000, Gold #F5C000, White
+- Light grey card backgrounds
+- Clean, minimal, consistent with the rest of the site
+- Accessible on mobile — cards stack cleanly on small screens

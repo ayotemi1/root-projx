@@ -774,13 +774,13 @@ export default function OrgProfilePage() {
             </div>
 
             <div className="px-5 pb-5">
-              <button
-                className="w-full py-2.5 rounded-xl font-bold text-white text-sm hover:opacity-90 transition-opacity"
+              <Link
+                href={`/organisations/${id}/campaigns`}
+                className="block w-full py-2.5 rounded-xl font-bold text-white text-sm text-center hover:opacity-90 transition-opacity"
                 style={{ backgroundColor: RED }}
-                onClick={() => setTab("campaigns")}
               >
                 See All Campaigns
-              </button>
+              </Link>
             </div>
           </div>
 
