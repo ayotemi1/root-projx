@@ -7,29 +7,6 @@ import type { FeedUpdate, Org } from "@/lib/api";
 
 const RED = "#B50000";
 
-// ── Placeholder posts shown when the org has no feed updates ──────────────────
-
-const PLACEHOLDER_UPDATES: FeedUpdate[] = [
-  {
-    _id: "ph_001", orgId: "", orgName: "",
-    type: "milestone", title: "50 young people complete our carpentry programme",
-    content: "We are proud to announce that 50 graduates from our 12-week carpentry and joinery programme received their certificates last Friday.",
-    mediaUrls: [], imageUrl: null, likes: 87, createdAt: new Date(Date.now() - 2 * 86400000).toISOString(),
-  },
-  {
-    _id: "ph_002", orgId: "", orgName: "",
-    type: "update", title: "Community garden project update",
-    content: "The garden is coming along! Thanks to our volunteers and local businesses for the support.",
-    mediaUrls: [], imageUrl: null, likes: 45, createdAt: new Date(Date.now() - 7 * 86400000).toISOString(),
-  },
-  {
-    _id: "ph_003", orgId: "", orgName: "",
-    type: "update", title: "Guest speaker session",
-    content: "We had an amazing session with entrepreneur David Clarke who shared insights with our youth about business and resilience.",
-    mediaUrls: [], imageUrl: null, likes: 60, createdAt: new Date(Date.now() - 14 * 86400000).toISOString(),
-  },
-];
-
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function timeAgo(iso: string) {
@@ -192,7 +169,7 @@ export default function OrgUpdatesPage() {
     queryFn: () => api.getOrgFeed(orgId),
   });
 
-  const updates = rawUpdates.length > 0 ? rawUpdates : PLACEHOLDER_UPDATES;
+  const updates = rawUpdates;
   const location = [org?.city, org?.country].filter(Boolean).join(", ");
 
   // Inject the CTA card at position 4 (index 3) in the grid
@@ -249,6 +226,14 @@ export default function OrgUpdatesPage() {
           {[1, 2, 3, 4].map((i) => (
             <div key={i} className="h-64 rounded-2xl bg-[#F2EDE4] animate-pulse" />
           ))}
+        </div>
+      ) : updates.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-4 text-center">
+          <div className="w-20 h-20 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(181,0,0,0.08)" }}>
+            <Heart size={36} style={{ color: RED }} />
+          </div>
+          <h3 className="text-lg font-bold text-[#1A1A1A]">No updates yet</h3>
+          <p className="text-sm text-[#888] max-w-xs">This organisation hasn't posted any updates yet. Check back soon.</p>
         </div>
       ) : tab === "media" ? (
         <MediaGrid updates={updates} />

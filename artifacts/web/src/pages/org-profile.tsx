@@ -5,7 +5,7 @@ import {
   CheckCircle, ArrowLeft, Heart, HeartOff, X,
   MapPin, Tag, Users, TrendingUp, Zap, DollarSign,
   ThumbsUp, MessageCircle, Share2, ChevronRight,
-  Monitor, HelpingHand, Calendar, Smartphone, Gift,
+
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { useAuth } from "@/context/AuthContext";
 import * as api from "@/lib/api";
-import type { FeedUpdate, Review, Org } from "@/lib/api";
+import type { FeedUpdate, Review, Org, VolunteerRole } from "@/lib/api";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -175,15 +175,6 @@ function ReviewRow({ item }: { item: Review }) {
   );
 }
 
-// ── Placeholder volunteer roles ───────────────────────────────────────────────
-
-const VOLUNTEER_PLACEHOLDER = [
-  { Icon: Monitor,      title: "Digital & Content",       type: "Remote",  freq: "Flexible hours" },
-  { Icon: HelpingHand,  title: "Community Outreach",       type: "Local",   freq: "Weekly" },
-  { Icon: Calendar,     title: "Events & Coordination",    type: "Local",   freq: "Occasional" },
-  { Icon: Smartphone,   title: "Social Media Support",     type: "Remote",  freq: "Flexible hours" },
-  { Icon: Gift,         title: "Fundraising & Partnerships", type: "Remote", freq: "Project-based" },
-];
 
 // ── Guest donate modal ────────────────────────────────────────────────────────
 
@@ -310,6 +301,11 @@ export default function OrgProfilePage() {
     queryKey: ["org-reviews", id],
     queryFn: () => api.getOrgReviews(id),
     enabled: !!id,
+  });
+
+  const rolesQ = useQuery({
+    queryKey: ["volunteerRoles", id],
+    queryFn: () => api.getOrgVolunteerRoles(id),
   });
 
   const followsQ = useQuery({
@@ -636,28 +632,42 @@ export default function OrgProfilePage() {
                   <p className="text-sm text-muted-foreground mb-5">
                     Help {org.name} make a greater impact.
                   </p>
-                  <div className="space-y-1">
-                    {VOLUNTEER_PLACEHOLDER.map(({ Icon, title, type, freq }) => (
-                      <div
-                        key={title}
-                        className="flex items-center gap-4 p-4 rounded-xl hover:bg-secondary/50 transition-colors cursor-pointer group"
-                      >
-                        <div
-                          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-                          style={{ backgroundColor: GOLD + "33" }}
-                        >
-                          <Icon className="w-5 h-5" style={{ color: "#7A5000" }} />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-bold text-sm text-foreground">{title}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {type} · {freq}
-                          </p>
-                        </div>
-                        <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                  {rolesQ.isLoading ? (
+                    <div className="space-y-2">
+                      {[1,2,3].map(i => <div key={i} className="h-14 rounded-xl bg-secondary animate-pulse" />)}
+                    </div>
+                  ) : (rolesQ.data ?? []).length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
+                      <div className="w-16 h-16 rounded-full flex items-center justify-center" style={{ backgroundColor: "rgba(181,0,0,0.08)" }}>
+                        <Users className="w-7 h-7" style={{ color: RED }} />
                       </div>
-                    ))}
-                  </div>
+                      <p className="font-bold text-foreground">No volunteer roles listed</p>
+                      <p className="text-sm text-muted-foreground max-w-xs">This organisation hasn't listed any volunteer opportunities yet.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-1">
+                      {(rolesQ.data ?? []).map((role: VolunteerRole) => (
+                        <div
+                          key={role._id}
+                          className="flex items-center gap-4 p-4 rounded-xl hover:bg-secondary/50 transition-colors cursor-pointer group"
+                        >
+                          <div
+                            className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                            style={{ backgroundColor: GOLD + "33" }}
+                          >
+                            <Users className="w-5 h-5" style={{ color: "#7A5000" }} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-bold text-sm text-foreground">{role.title}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {role.location} · {role.commitment}
+                            </p>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <button
                     className="w-full mt-5 py-3 rounded-xl font-bold text-white text-sm transition-opacity hover:opacity-90"
                     style={{ backgroundColor: RED }}
@@ -815,24 +825,33 @@ export default function OrgProfilePage() {
             </div>
 
             <div className="px-5 pb-3 space-y-0">
-              {VOLUNTEER_PLACEHOLDER.map(({ Icon, title, type, freq }) => (
-                <div
-                  key={title}
-                  className="flex items-center gap-3 py-3 border-b border-border last:border-0 cursor-pointer hover:bg-secondary/30 -mx-1 px-1 rounded-lg transition-colors"
-                >
-                  <div
-                    className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: GOLD + "33" }}
-                  >
-                    <Icon className="w-4 h-4" style={{ color: "#7A5000" }} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-sm text-foreground leading-snug">{title}</p>
-                    <p className="text-xs text-muted-foreground">{type} · {freq}</p>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+              {rolesQ.isLoading ? (
+                <div className="space-y-2 py-2">
+                  {[1,2].map(i => <div key={i} className="h-12 rounded-lg bg-secondary animate-pulse" />)}
                 </div>
-              ))}
+              ) : (rolesQ.data ?? []).length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-6">No volunteer roles listed yet.</p>
+              ) : (
+                (rolesQ.data ?? []).slice(0, 4).map((role: VolunteerRole) => (
+                  <div
+                    key={role._id}
+                    className="flex items-center gap-3 py-3 border-b border-border last:border-0 cursor-pointer hover:bg-secondary/30 -mx-1 px-1 rounded-lg transition-colors"
+                    onClick={() => setTab("volunteer")}
+                  >
+                    <div
+                      className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+                      style={{ backgroundColor: GOLD + "33" }}
+                    >
+                      <Users className="w-4 h-4" style={{ color: "#7A5000" }} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-sm text-foreground leading-snug">{role.title}</p>
+                      <p className="text-xs text-muted-foreground">{role.location} · {role.commitment}</p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                  </div>
+                ))
+              )}
             </div>
 
             <div className="px-5 pb-5">

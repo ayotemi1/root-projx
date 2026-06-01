@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import {
@@ -6,9 +6,6 @@ import {
   User, Settings, ChevronRight, Bell, PencilLine, Plus, TrendingUp,
   TrendingDown, ExternalLink, Heart,
 } from "lucide-react";
-import {
-  LineChart, Line, ResponsiveContainer, Tooltip, XAxis,
-} from "recharts";
 import * as api from "@/lib/api";
 import type { Org, FeedUpdate, Campaign } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
@@ -31,12 +28,6 @@ function initials(name: string) {
   return name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "??";
 }
 
-// Deterministic mock chart data (30 days)
-function makeChartData() {
-  const seed = [42, 55, 38, 61, 73, 48, 52, 69, 77, 44, 58, 63, 71, 49, 53,
-                66, 78, 45, 57, 64, 72, 50, 61, 68, 76, 43, 56, 65, 70, 80];
-  return seed.map((v, i) => ({ day: i + 1, value: v }));
-}
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -70,27 +61,39 @@ function ActionButton({ icon: Icon, label, iconBg, href, onClick }: {
   return href ? <Link href={href}>{inner}</Link> : <div onClick={onClick}>{inner}</div>;
 }
 
-function MetricCard({ label, value, trend }: { label: string; value: string; trend: number }) {
-  const up = trend >= 0;
+function MetricCard({ label, value, trend }: { label: string; value: string | number; trend: number | null }) {
   return (
     <div className="bg-white border border-[#E0D8CC] rounded-xl p-3 flex flex-col gap-1 shadow-sm">
       <p className="text-xs text-[#888] font-medium">{label}</p>
       <p className="text-xl font-extrabold text-[#1A1A1A]">{value}</p>
-      <span className={`text-xs font-semibold flex items-center gap-0.5 ${up ? "text-green-600" : "text-red-500"}`}>
-        {up ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
-        {up ? "+" : ""}{trend}%
-      </span>
+      {trend !== null && (
+        <span className={`text-xs font-semibold flex items-center gap-0.5 ${trend >= 0 ? "text-green-600" : "text-red-500"}`}>
+          {trend >= 0 ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
+          {trend >= 0 ? "+" : ""}{trend}%
+        </span>
+      )}
     </div>
   );
 }
 
-function NotificationBell() {
+function NotificationBell({ orgId, token }: { orgId: string; token: string | null }) {
   const [open, setOpen] = useState(false);
-  const MOCK_NOTIFS = [
-    { id: 1, text: "New follower: Marcus Thompson", time: "2h ago" },
-    { id: 2, text: "Donation received: £150 via Stripe", time: "5h ago" },
-    { id: 3, text: "New volunteer application for Mentorship Support", time: "1d ago" },
-  ];
+  const { data: notifs = [] } = useQuery({
+    queryKey: ["org-notifications", orgId],
+    queryFn: () => api.getOrgNotifications(orgId, token!),
+    enabled: !!orgId && !!token,
+  });
+  const unread = notifs.filter((n) => !n.read).length;
+
+  function timeAgo(iso: string) {
+    const diff = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    return `${Math.floor(hrs / 24)}d ago`;
+  }
+
   return (
     <div className="relative">
       <button
@@ -98,9 +101,11 @@ function NotificationBell() {
         className="relative w-9 h-9 rounded-full flex items-center justify-center bg-[#F9F6F0] border border-[#E0D8CC] hover:bg-[#F2EDE4] transition-colors"
       >
         <Bell size={16} className="text-[#555]" />
-        <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-[9px] font-bold text-white flex items-center justify-center" style={{ background: RED }}>
-          {MOCK_NOTIFS.length}
-        </span>
+        {unread > 0 && (
+          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-[9px] font-bold text-white flex items-center justify-center" style={{ background: RED }}>
+            {unread}
+          </span>
+        )}
       </button>
       {open && (
         <>
@@ -109,12 +114,16 @@ function NotificationBell() {
             <div className="px-4 py-3 border-b border-[#E0D8CC]">
               <p className="font-bold text-sm text-[#1A1A1A]">Notifications</p>
             </div>
-            {MOCK_NOTIFS.map((n) => (
-              <div key={n.id} className="px-4 py-3 border-b border-[#F2EDE4] hover:bg-[#F9F6F0] transition-colors">
-                <p className="text-sm text-[#333]">{n.text}</p>
-                <p className="text-xs text-[#999] mt-0.5">{n.time}</p>
-              </div>
-            ))}
+            {notifs.length === 0 ? (
+              <div className="px-4 py-6 text-center text-sm text-[#999]">No notifications yet</div>
+            ) : (
+              notifs.map((n) => (
+                <div key={n._id} className={`px-4 py-3 border-b border-[#F2EDE4] hover:bg-[#F9F6F0] transition-colors ${!n.read ? "bg-[#FFF8F8]" : ""}`}>
+                  <p className="text-sm text-[#333]">{n.message}</p>
+                  <p className="text-xs text-[#999] mt-0.5">{timeAgo(n.createdAt)}</p>
+                </div>
+              ))
+            )}
           </div>
         </>
       )}
@@ -223,7 +232,6 @@ function MobileTabBar({ orgId }: { orgId: string }) {
 export default function OrgDashboardPage() {
   const { user, token } = useAuth();
   const orgId = user?.id ?? "";
-  const chartData = useMemo(makeChartData, []);
 
   const { data: org } = useQuery<Org>({
     queryKey: ["org", orgId],
@@ -263,7 +271,7 @@ export default function OrgDashboardPage() {
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-extrabold text-[#1A1A1A]">Dashboard</h2>
           <div className="flex items-center gap-2">
-            <NotificationBell />
+            <NotificationBell orgId={orgId} token={token} />
             <div
               className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-extrabold text-white flex-shrink-0"
               style={{ background: RED }}
@@ -299,31 +307,13 @@ export default function OrgDashboardPage() {
           <div className="bg-white border border-[#E0D8CC] rounded-2xl p-5 shadow-sm">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-bold text-[#1A1A1A]">Analytics Overview</h3>
-              <button className="text-xs font-semibold hover:underline" style={{ color: RED }}>
-                View full analytics
-              </button>
             </div>
-            <div className="grid grid-cols-3 gap-2 mb-4">
-              <MetricCard label="Profile Views" value="1,245" trend={2}   />
-              <MetricCard label="Engagement"    value="532"   trend={35}  />
-              <MetricCard label="Donations"     value="£3,210" trend={13} />
+            <div className="grid grid-cols-3 gap-2">
+              <MetricCard label="Active Projects" value={activeCampaigns.length} trend={null} />
+              <MetricCard label="Followers"       value={(org?.followerCount ?? 0).toLocaleString("en-GB")} trend={null} />
+              <MetricCard label="Total Raised"    value={`£${(org?.totalRaised ?? 0).toLocaleString("en-GB")}`} trend={null} />
             </div>
-            <div className="h-24">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData}>
-                  <XAxis dataKey="day" hide />
-                  <Tooltip
-                    contentStyle={{ borderRadius: 8, border: "1px solid #E0D8CC", fontSize: 11 }}
-                    formatter={(v: number) => [v, "Activity"]}
-                    labelFormatter={(l: number) => `Day ${l}`}
-                  />
-                  <Line
-                    type="monotone" dataKey="value" dot={false}
-                    stroke="#2D7A2D" strokeWidth={2}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
+            <p className="text-xs text-[#999] mt-4 text-center">Detailed analytics — coming soon</p>
           </div>
         </div>
 

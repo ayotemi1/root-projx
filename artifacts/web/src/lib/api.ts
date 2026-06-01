@@ -337,3 +337,48 @@ export const createShopCheckout = (items: Array<{ id: string; quantity: number }
     method: "POST",
     body: JSON.stringify({ items }),
   });
+
+// ── Volunteer roles ────────────────────────────────────────────────────────────
+
+export interface VolunteerRole {
+  _id: string;
+  title: string;
+  description: string;
+  commitment: string;
+  location: string;
+  skills: string[];
+  iconType?: string;
+}
+
+export const getOrgVolunteerRoles = (orgId: string) =>
+  req<VolunteerRole[]>(`/organisations/${orgId}/volunteerRoles`);
+
+// ── Org analytics ─────────────────────────────────────────────────────────────
+
+export interface OrgAnalytics {
+  profileViews?: number;
+  profileViewsTrend?: number;
+  engagement?: number;
+  engagementTrend?: number;
+  donations?: number;
+  donationsTrend?: number;
+}
+
+export const getOrgAnalytics = (orgId: string, token: string) =>
+  req<OrgAnalytics>(`/organisations/${orgId}/analytics`, {}, token);
+
+// ── Org notifications ─────────────────────────────────────────────────────────
+
+export interface OrgNotification {
+  _id: string;
+  type: "follower" | "donation" | "volunteer" | "system";
+  message: string;
+  read: boolean;
+  createdAt: string;
+}
+
+export const getOrgNotifications = (orgId: string, token: string) =>
+  req<OrgNotification[]>(`/organisations/${orgId}/notifications`, {}, token);
+
+export const markOrgNotificationsRead = (orgId: string, token: string) =>
+  req<{ updated: number }>(`/organisations/${orgId}/notifications/read-all`, { method: "PATCH" }, token);
