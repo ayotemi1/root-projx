@@ -1,0 +1,239 @@
+Add two legal pages to the Root ProjX website and update 
+the footer. Do not touch any other pages.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. PRIVACY POLICY PAGE — /privacy
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Create a new page at /privacy with the following content:
+
+HEADER SECTION:
+- Small red label: "PRIVACY POLICY"
+- Large heading: "Your Privacy Matters"
+- Subtext: "Last updated: June 2026"
+- ICO badge line: "ICO Registration Reference: ZC152619"
+
+SECTIONS (each with a red bold heading, body text below):
+
+1. Who We Are
+Root ProjX Ltd is a private limited company incorporated 
+in England and Wales. We operate a community giving platform 
+connecting diaspora supporters to verified grassroots 
+organisations worldwide.
+Registered address: 51 Russell Row, Lewes, East Sussex, 
+BN7 2EE | Email: info@rootprojx.com
+ICO Registration: ZC152619 | Registered: 20 May 2026 
+| Expires: 19 May 2027
+
+2. What Data We Collect
+Account data: full name, email, phone (optional), 
+encrypted password, account type.
+Organisation data: org name, contact name, country, 
+registration number (optional). Bank details collected 
+by Stripe only.
+Donation data: amount, recipient, timestamp, donor email. 
+Payment details stored by Stripe only.
+Usage data: pages visited, search queries, device type, 
+IP address.
+Communications: newsletter subscriptions, support messages.
+
+3. How We Use Your Data
+To create and manage your account. To process donations 
+and send receipts. To connect supporters with organisations. 
+To send newsletters and impact updates (opt-in only). 
+To improve the platform. To comply with legal obligations 
+including the Charities Act 2011 and UK GDPR. To detect 
+and prevent fraud.
+We do not sell your data. We do not use your data 
+for advertising.
+
+4. Legal Basis for Processing
+Contract, legitimate interests, consent (newsletters), 
+legal obligation.
+
+5. Data Storage & Security
+Data stored on Google Firebase (Google Cloud EU/UK servers, 
+UK GDPR compliant). Data Processing Agreement in place 
+with Google LLC. Payments handled by Stripe (PCI DSS 
+Level 1) — Data Processing Agreement in place with Stripe. 
+Email via Brevo — Data Processing Agreement in place.
+We never store card numbers or bank credentials.
+
+6. Data Retention
+Account data: active period plus 2 years after closure.
+Donation records: 7 years (UK financial regulations).
+Usage data: 12 months then anonymised.
+Newsletters: until unsubscribed.
+Support communications: 2 years.
+
+7. Your Rights Under UK GDPR
+Access, rectification, erasure, restrict processing, 
+data portability, object to processing, withdraw consent.
+Contact info@rootprojx.com. We respond within 30 days.
+
+8. Age Policy
+13+ to use the platform. 18+ to donate independently.
+13–17 with parental consent only.
+Under 13s: email info@rootprojx.com to remove account.
+
+9. Cookies & Tracking
+Essential cookies: authentication and session management. 
+Cannot be disabled.
+Analytics cookies: anonymised usage data.
+Preference cookies: settings and preferences.
+Manage via browser settings. Visit aboutcookies.org 
+for guidance.
+
+10. Third Party Data Processors
+Stripe (payments) — stripe.com/privacy
+Google Firebase — firebase.google.com/support/privacy
+Brevo — brevo.com/legal/privacypolicy
+Apple App Store / Google Play Store
+All processors operate under Data Processing Agreements 
+with Root ProjX.
+
+11. International Data Transfers
+Where data is transferred outside the UK (e.g. Stripe 
+in the US), we ensure appropriate safeguards including 
+Standard Contractual Clauses under UK GDPR.
+
+12. Changes to This Policy
+Material changes notified by email 14 days in advance. 
+Latest version always at www.rootprojx.com/privacy.
+
+13. Contact & Complaints
+Root ProjX Ltd, 51 Russell Row, Lewes, BN7 2EE
+info@rootprojx.com
+ICO complaints: ico.org.uk | 0303 123 1113
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. FUNDRAISING TERMS PAGE — /terms
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Create a new page at /terms with the following content:
+
+HEADER SECTION:
+- Small red label: "FUNDRAISING TERMS"
+- Large heading: "How Giving Works on Root ProjX"
+- Subtext: "Last updated: June 2026"
+
+Display this notice in a highlighted red-bordered box 
+at the top:
+"Financial Promotion Notice: Root ProjX facilitates 
+charitable giving. Any communication from Root ProjX 
+encouraging donations is made in good faith and in 
+compliance with applicable UK fundraising regulations. 
+Root ProjX is not authorised or regulated by the FCA 
+for investment purposes. Donations are gifts and do not 
+constitute investments."
+
+SECTIONS:
+
+1. About Root ProjX
+Root ProjX Ltd (51 Russell Row, Lewes, BN7 2EE) operates 
+a community giving platform. We are not a registered charity. 
+We operate as a third-party fundraiser under the Charities 
+Act 2011. Organisations are independently verified but 
+not required to be registered charities.
+
+2. Third-Party Fundraiser Status
+Root ProjX operates as a third-party fundraiser under 
+the Charities Act 2011. We collect donations on behalf 
+of listed organisations. Each organisation has agreed 
+to our Organisation Terms. We maintain transparent records 
+of all donations and fees.
+
+3. How Donations Work
+95% of every donation goes directly to the organisation 
+via Stripe Connect.
+5% is retained by Root ProjX as a platform fee.
+Payments processed by Stripe (PCI DSS Level 1).
+Root ProjX does not hold donor funds.
+Donors receive email confirmation for every donation.
+
+4. Platform Fee Disclosure
+Display as a clean styled table:
+Donation | To Organisation (95%) | Platform Fee (5%)
+£10.00   | £9.50                 | £0.50
+£25.00   | £23.75                | £1.25
+£50.00   | £47.50                | £2.50
+£100.00  | £95.00                | £5.00
+Note below table: Stripe's payment processing fees 
+(approx. 1.4–2.9% + 20–30p per transaction) are 
+absorbed by Root ProjX and not passed on to donors 
+or organisations.
+
+5. Organisation Verification
+Document review, contact confirmation, and Stripe 
+identity verification required before any organisation 
+can receive donations. Verification is not endorsement.
+
+6. Refund Policy
+All donations are final and non-refundable.
+Discretionary refunds considered only for: technical 
+duplicate charges, fraud, or org account suspension.
+Request within 48 hours at info@rootprojx.com with 
+your transaction reference. Approved refunds returned 
+within 5–10 business days.
+
+7. Age Requirements
+18+ to donate independently. 13–17 with parental consent.
+
+8. Organisation Responsibilities
+Use funds for stated purposes, post regular updates, 
+comply with local laws, notify Root ProjX of any changes, 
+complete Stripe Connect onboarding, not misrepresent 
+activities or impact.
+
+9. Gift Aid
+Not currently available. We intend to apply for Gift Aid 
+intermediary status and will notify users when available.
+
+10. VAT
+Donations are not subject to VAT. Root ProjX's platform 
+fee may be subject to VAT where applicable. If annual 
+taxable turnover from platform fees exceeds £90,000, 
+Root ProjX will register for VAT in accordance with 
+HMRC requirements.
+
+11. Limitation of Liability
+Root ProjX is a technology platform only. Not responsible 
+for how organisations use funds or accuracy of their 
+profile information. Total liability capped at the 
+donation amount. Nothing limits liability for fraud, 
+death, or personal injury caused by negligence.
+
+12. Data & Privacy
+Governed by our Privacy Policy at www.rootprojx.com/privacy.
+ICO Registration: ZC152619.
+
+13. Governing Law
+England and Wales.
+
+14. Changes to These Terms
+Material changes notified by email. Continued use 
+constitutes acceptance.
+
+15. Contact
+Root ProjX Ltd, 51 Russell Row, Lewes, BN7 2EE
+info@rootprojx.com | www.rootprojx.com
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. FOOTER UPDATE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Add to the website footer:
+- "Privacy Policy" link → /privacy
+- "Fundraising Terms" link → /terms  
+- "Contact" link → mailto:info@rootprojx.com
+- "ICO Registered: ZC152619" as small grey text
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STYLING FOR BOTH PAGES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Max width 800px, centred
+- Section headings: bold, brand red #CC0000
+- Body text: dark grey #1a1a1a, 16px, line height 1.7
+- Financial promotion box: red border #CC0000, 
+  light red background #FFF5F5, italic text
+- Fee table: red header row, alternating row shading
+- Subtle divider between sections
+- Consistent with existing site nav and footer
+- Fully responsive on mobile
