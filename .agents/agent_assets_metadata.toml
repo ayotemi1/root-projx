@@ -1,0 +1,38 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "iiThPnfqTFXppgxiwNE73"
+uri = "file://artifacts/web/public/screenshots/screenshot_1.png"
+type = "image"
+title = "Screenshot 1 – Give Directly"
+
+[[outputs]]
+id = "9aUNg8QvIxv41tKAi6CEB"
+uri = "file://artifacts/web/public/screenshots/screenshot_2.png"
+type = "image"
+title = "Screenshot 2 – No Middlemen"
+
+[[outputs]]
+id = "AY-jJ4kQIPCLBE9Ykc_rl"
+uri = "file://artifacts/web/public/screenshots/screenshot_3.png"
+type = "image"
+title = "Screenshot 3 – Watch Progress"
+
+[[outputs]]
+id = "vYnGjM15m6XpoDqNuKw7E"
+uri = "file://artifacts/web/public/screenshots/screenshot_4.png"
+type = "image"
+title = "Screenshot 4 – See Where"
+
+[[outputs]]
+id = "HPkKaTzaNmOPlYEUxxHMC"
+uri = "file://artifacts/web/public/screenshots/screenshot_5.png"
+type = "image"
+title = "Screenshot 5 – Follow The Causes"
+
+[[outputs]]
+id = "UrNwrcD9z-1SxZjfOZ8e9"
+uri = "file://artifacts/web/public/screenshots/screenshot_6.png"
+type = "image"
+title = "Screenshot 6 – For The Diaspora"

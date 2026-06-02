@@ -1,0 +1,96 @@
+Generate 6 App Store screenshot images for Root ProjX.
+These are marketing screenshots for the Apple App Store 
+and Google Play Store — they must look premium, 
+on-brand, and visually stunning.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DIMENSIONS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Each screenshot must be exactly 1290 x 2796px 
+(iPhone 6.7" Pro Max size — required by Apple).
+Export as PNG files named screenshot_1.png through 
+screenshot_6.png.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DESIGN SYSTEM
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Each screenshot has the same structure:
+- Top section (40% of height): bold headline text 
+  on a deep red background (#CC0000)
+- Bottom section (60% of height): a framed iPhone 
+  mockup showing the relevant app screen, on a 
+  slightly darker red background (#A00000) or white
+- Gold (#F5C000) used for accent text and highlights
+- Font: bold, clean, large — use system fonts or 
+  embed a bold sans-serif
+- Root ProjX gold logo at the very top of each 
+  screenshot, small, centred
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SCREENSHOT 1
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Headline: "Give Directly."
+Subheadline: "See The Impact."
+Accent text in gold: "No middlemen. Ever."
+App screen shown: Donation flow / org profile 
+with Donate button visible
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SCREENSHOT 2
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Headline: "No Middlemen."
+Subheadline: "Your donation goes straight to the source."
+Accent text in gold: "95% reaches the organisation."
+App screen shown: Donation confirmation / 
+success screen
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SCREENSHOT 3
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Headline: "Watch Progress"
+Subheadline: "In Real Time."
+Accent text in gold: "Live updates from the ground."
+App screen shown: Organisation profile Updates tab 
+with posts and images visible
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SCREENSHOT 4
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Headline: "See Where"
+Subheadline: "Your Money Goes."
+Accent text in gold: "Verified. Transparent. Real."
+App screen shown: Campaigns page with progress 
+bars and amounts raised visible
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SCREENSHOT 5
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Headline: "Follow The Causes"
+Subheadline: "You Support."
+Accent text in gold: "Discover grassroots 
+organisations worldwide."
+App screen shown: Discover page with org cards visible
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SCREENSHOT 6
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Headline: "For The Diaspora."
+Subheadline: "By The Diaspora."
+Accent text in gold: "Restoration. Culture. Access."
+App screen shown: Home feed with org posts visible
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TECHNICAL REQUIREMENTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Generate using HTML canvas or a Node.js image 
+  generation library (sharp, canvas, or jimp)
+- Each file saved to /public/screenshots/ folder
+- Exactly 1290 x 2796px, PNG format
+- No rounded corners on the outer image 
+  (App Store adds these)
+- The iPhone mockup frame inside should have 
+  rounded corners and a subtle drop shadow
+- Text must be crisp and anti-aliased
+- Gold (#F5C000) used sparingly for maximum impact
+- Overall feel: premium, bold, trustworthy, 
+  culturally resonant
