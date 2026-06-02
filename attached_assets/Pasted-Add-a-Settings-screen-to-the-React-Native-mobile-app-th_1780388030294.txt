@@ -1,0 +1,77 @@
+Add a Settings screen to the React Native mobile app 
+that includes links to the Privacy Policy and 
+Fundraising Terms. This is for the mobile app only 
+— do not touch the website.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. SETTINGS SCREEN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Create a Settings screen accessible from the Account 
+tab in the bottom navigation bar.
+
+HEADER:
+- Red header bar with Root ProjX gold logo centred
+- "Settings" as the screen title below the header
+
+SECTIONS:
+
+ACCOUNT SECTION:
+- Edit Profile (chevron right)
+- Change Password (chevron right)
+- Notification Preferences (chevron right)
+
+LEGAL SECTION (heading: "Legal"):
+- Privacy Policy → opens www.rootprojx.com/privacy 
+  in an in-app WebView
+- Fundraising Terms → opens www.rootprojx.com/terms 
+  in an in-app WebView
+- ICO Registration: ZC152619 (non-tappable, 
+  small grey text)
+
+SUPPORT SECTION (heading: "Support"):
+- Contact Us → opens mailto:info@rootprojx.com
+- Get Help → navigates to the Get Help screen
+
+ABOUT SECTION (heading: "About"):
+- About Root ProjX → opens www.rootprojx.com/about 
+  in an in-app WebView
+- App Version → shows current version number 
+  (pull from app.json)
+
+DANGER ZONE (heading: "Account", red text):
+- Log Out → logs user out and returns to splash screen
+- Delete Account → confirmation modal before deleting
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. IN-APP WEBVIEW
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+When a user taps Privacy Policy or Fundraising Terms:
+- Open a WebView screen within the app
+- Show the URL in a simple top bar with a back button
+- Use expo-web-browser or React Native WebView
+- The WebView loads the live rootprojx.com page
+- Back button returns to Settings
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. ACCOUNT TAB UPDATE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Update the Account tab in the bottom navigation to:
+- Show the user's name and avatar at the top 
+  when logged in
+- Show a "Settings" row with gear icon that 
+  navigates to the Settings screen
+- Show a "Sign Out" button at the bottom
+- If not logged in: show Sign In and Join buttons
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STYLING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Brand colours: Red #CC0000, Gold #F5C000, White
+- Use React Native StyleSheet — no web CSS
+- Section headings: small caps, grey #888888
+- Row items: white background, subtle divider, 
+  chevron on the right
+- Danger zone rows: red text
+- Consistent with the rest of the mobile app
+- Safe area insets applied top and bottom
+- Fully compatible with iOS and Android

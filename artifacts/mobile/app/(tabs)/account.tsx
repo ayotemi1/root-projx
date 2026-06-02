@@ -1,3 +1,4 @@
+import { Feather } from "@expo/vector-icons";
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "expo-router";
 import { Linking } from "react-native";
@@ -326,8 +327,11 @@ export default function AccountScreen() {
             <Text style={{ color: colors.mutedForeground, fontSize: 18 }}>›</Text>
           </Pressable>
 
-          <Pressable style={[s.menuItem, { borderBottomColor: colors.border }]} onPress={() => router.push("/about" as never)}>
-            <Text style={[s.menuLabel, { color: colors.foreground }]}>About Root ProjX</Text>
+          <Pressable style={[s.menuItem, { borderBottomColor: colors.border }]} onPress={() => router.push("/settings" as never)}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+              <Feather name="settings" size={16} color={colors.mutedForeground} />
+              <Text style={[s.menuLabel, { color: colors.foreground }]}>Settings</Text>
+            </View>
             <Text style={{ color: colors.mutedForeground, fontSize: 18 }}>›</Text>
           </Pressable>
 
