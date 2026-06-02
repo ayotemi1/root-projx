@@ -1,72 +1,109 @@
 import React from "react";
 
 export function PhoneFrame({ children }: { children: React.ReactNode }) {
+  const PW = 280;
+  const PH = 570;
+  const BR = 44;
+  const PAD = 10;
+  const SCR = 36;
+
   return (
     <div style={{
-      width: 230,
-      height: 470,
-      borderRadius: 36,
-      backgroundColor: "#1A1A1A",
-      padding: 8,
-      boxShadow: "0 32px 64px rgba(0,0,0,0.55), 0 8px 24px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(255,255,255,0.12)",
       position: "relative",
+      width: PW,
+      height: PH,
       flexShrink: 0,
     }}>
-      {/* Screen area */}
+      {/* Glow behind phone */}
       <div style={{
-        width: "100%",
-        height: "100%",
-        borderRadius: 28,
+        position: "absolute",
+        inset: -30,
+        background: "radial-gradient(ellipse at center, rgba(245,192,0,0.18) 0%, transparent 70%)",
+        borderRadius: "50%",
+        pointerEvents: "none",
+      }} />
+
+      {/* Phone shadow */}
+      <div style={{
+        position: "absolute",
+        inset: 0,
+        borderRadius: BR,
+        boxShadow: "0 40px 80px rgba(0,0,0,0.65), 0 16px 40px rgba(0,0,0,0.5), 0 4px 12px rgba(0,0,0,0.3)",
+      }} />
+
+      {/* Phone body */}
+      <div style={{
+        position: "absolute",
+        inset: 0,
+        borderRadius: BR,
+        background: "linear-gradient(160deg, #2a2a2a 0%, #111 60%, #1a1a1a 100%)",
+        border: "1.5px solid rgba(255,255,255,0.13)",
         overflow: "hidden",
-        backgroundColor: "#fff",
-        position: "relative",
       }}>
-        {/* Dynamic island */}
+        {/* Screen area */}
         <div style={{
           position: "absolute",
-          top: 8,
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: 72,
-          height: 22,
-          backgroundColor: "#1A1A1A",
-          borderRadius: 100,
-          zIndex: 10,
-        }} />
-        {/* Status bar */}
-        <div style={{
-          position: "absolute",
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 36,
-          zIndex: 5,
-          display: "flex",
-          alignItems: "flex-end",
-          justifyContent: "space-between",
-          padding: "0 14px 4px",
+          top: PAD,
+          left: PAD,
+          right: PAD,
+          bottom: PAD,
+          borderRadius: SCR,
+          overflow: "hidden",
+          background: "#fff",
         }}>
-          <span style={{ fontSize: 9, fontWeight: 700, color: "transparent" }}>9:41</span>
-          <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-            {/* Signal bars */}
-            <svg width="14" height="9" viewBox="0 0 14 9" fill="rgba(255,255,255,0.0)">
-              <rect x="0" y="6" width="2" height="3" rx="0.5" fill="transparent"/>
-              <rect x="3" y="4" width="2" height="5" rx="0.5" fill="transparent"/>
-              <rect x="6" y="2" width="2" height="7" rx="0.5" fill="transparent"/>
-              <rect x="9" y="0" width="2" height="9" rx="0.5" fill="transparent"/>
-            </svg>
+          {/* App content */}
+          <div style={{ position: "absolute", top: 0, left: 0, right: 0, bottom: 0 }}>
+            {children}
+          </div>
+
+          {/* Dynamic island overlay */}
+          <div style={{
+            position: "absolute",
+            top: 10,
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: 80,
+            height: 24,
+            background: "#111",
+            borderRadius: 100,
+            zIndex: 20,
+          }} />
+
+          {/* Status bar */}
+          <div style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            height: 44,
+            display: "flex",
+            alignItems: "flex-end",
+            justifyContent: "space-between",
+            padding: "0 16px 4px",
+            zIndex: 15,
+            pointerEvents: "none",
+          }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: "#fff", opacity: 0 }}>9:41</span>
+            <div style={{ display: "flex", gap: 3, alignItems: "center" }} />
           </div>
         </div>
-        {/* Content */}
-        <div style={{ position: "absolute", top: 36, left: 0, right: 0, bottom: 0 }}>
-          {children}
-        </div>
+
+        {/* Shine overlay on phone body */}
+        <div style={{
+          position: "absolute",
+          top: 0, left: 0, right: 0,
+          height: "50%",
+          background: "linear-gradient(180deg, rgba(255,255,255,0.07) 0%, transparent 100%)",
+          borderRadius: `${BR}px ${BR}px 0 0`,
+          pointerEvents: "none",
+        }} />
       </div>
+
       {/* Side buttons */}
-      <div style={{ position: "absolute", right: -3, top: 90, width: 3, height: 24, backgroundColor: "#333", borderRadius: "0 2px 2px 0" }} />
-      <div style={{ position: "absolute", left: -3, top: 80, width: 3, height: 18, backgroundColor: "#333", borderRadius: "2px 0 0 2px" }} />
-      <div style={{ position: "absolute", left: -3, top: 106, width: 3, height: 28, backgroundColor: "#333", borderRadius: "2px 0 0 2px" }} />
-      <div style={{ position: "absolute", left: -3, top: 142, width: 3, height: 28, backgroundColor: "#333", borderRadius: "2px 0 0 2px" }} />
+      <div style={{ position: "absolute", right: -4, top: 100, width: 4, height: 28, background: "#333", borderRadius: "0 3px 3px 0" }} />
+      <div style={{ position: "absolute", left: -4, top: 88, width: 4, height: 20, background: "#333", borderRadius: "3px 0 0 3px" }} />
+      <div style={{ position: "absolute", left: -4, top: 116, width: 4, height: 36, background: "#333", borderRadius: "3px 0 0 3px" }} />
+      <div style={{ position: "absolute", left: -4, top: 160, width: 4, height: 36, background: "#333", borderRadius: "3px 0 0 3px" }} />
     </div>
   );
 }
