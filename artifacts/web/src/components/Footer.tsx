@@ -93,9 +93,13 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-border mt-10 pt-6 text-center text-xs text-muted-foreground">
-          &copy; {new Date().getFullYear()} Root ProjX. All rights reserved.
-          &nbsp;·&nbsp; Secured by Stripe &nbsp;·&nbsp; Powered by Firebase
+        <div className="border-t border-border mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
+          <span>&copy; {new Date().getFullYear()} Root ProjX Ltd. All rights reserved. &nbsp;·&nbsp; Secured by Stripe &nbsp;·&nbsp; Powered by Firebase</span>
+          <span className="flex items-center gap-4">
+            <a href="/privacy" className="hover:text-primary transition-colors">Privacy Policy</a>
+            <a href="/terms" className="hover:text-primary transition-colors">Fundraising Terms</a>
+            <a href="mailto:info@rootprojx.com" className="hover:text-primary transition-colors">Contact</a>
+          </span>
         </div>
       </div>
     </footer>

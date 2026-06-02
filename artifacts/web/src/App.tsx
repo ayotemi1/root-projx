@@ -28,6 +28,8 @@ import ShopPage from "@/pages/shop";
 import ShopSuccessPage from "@/pages/shop-success";
 import ShopCancelPage from "@/pages/shop-cancel";
 import AboutPage from "@/pages/about";
+import PrivacyPage from "@/pages/privacy";
+import TermsPage from "@/pages/terms";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -72,6 +74,8 @@ function AppRoutes() {
               <Route path="/shop/cancel" component={ShopCancelPage} />
               <Route path="/shop" component={ShopPage} />
               <Route path="/about" component={AboutPage} />
+              <Route path="/privacy" component={PrivacyPage} />
+              <Route path="/terms" component={TermsPage} />
               <Route path="/help" component={HelpPage} />
               <Route path="/account">
                 {() => <ProtectedRoute component={AccountPage} />}

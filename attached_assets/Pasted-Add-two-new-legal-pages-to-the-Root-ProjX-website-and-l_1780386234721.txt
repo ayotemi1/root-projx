@@ -1,0 +1,178 @@
+Add two new legal pages to the Root ProjX website and link 
+them in the footer. Do not touch any other pages.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+1. PRIVACY POLICY PAGE — /privacy
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Create a new page at /privacy with the following content 
+formatted cleanly in the Root ProjX brand style:
+
+HEADER:
+- Red "PRIVACY POLICY" label (small caps, brand red)
+- Heading: "Your Privacy Matters"
+- Subtext: "Last updated: June 2026"
+
+CONTENT SECTIONS (use the following headings and body text):
+
+1. Who We Are
+Root ProjX Ltd is a private limited company incorporated 
+in England and Wales. We operate the Root ProjX platform 
+— a community giving platform connecting diaspora supporters 
+to verified grassroots organisations worldwide.
+Registered address: 51 Russell Row, Lewes, BN7 2EE
+Contact: info@rootprojx.com | www.rootprojx.com
+Root ProjX Ltd is registered with the ICO as a data 
+controller under UK GDPR.
+
+2. What Data We Collect
+Account data: full name, email, phone (optional), 
+password (encrypted), account type.
+Organisation data: org name, contact name, country, 
+registration number (optional). Bank details are 
+collected by Stripe only — not Root ProjX.
+Donation data: amount, recipient org, timestamp, 
+donor email. Payment details stored by Stripe only.
+Usage data: pages visited, orgs followed, search 
+queries, device type, IP address.
+Communications: newsletter subscriptions, support 
+messages.
+
+3. How We Use Your Data
+To create and manage your account. To process donations 
+and send receipts. To connect supporters with 
+organisations. To send newsletters and impact updates 
+(opt-in only). To improve the platform. To comply with 
+legal obligations. To detect and prevent fraud.
+We do not sell your data. We do not use your data 
+for advertising.
+
+4. Legal Basis for Processing
+Contract, legitimate interests, consent (newsletters), 
+legal obligation.
+
+5. Data Storage & Security
+Data stored on Google Firebase (Google Cloud EU/UK 
+servers, UK GDPR compliant). Payments handled by 
+Stripe (PCI DSS Level 1). We never store card numbers 
+or bank credentials.
+
+6. Data Retention
+Account data: active period plus 2 years after closure.
+Donation records: 7 years (UK financial regulations).
+Usage data: 12 months then anonymised.
+Newsletters: until you unsubscribe.
+
+7. Your Rights
+Access, rectification, erasure, restrict processing, 
+data portability, object to processing, withdraw consent.
+Contact info@rootprojx.com to exercise any right. 
+We respond within 30 days.
+
+8. Age Policy
+13+ to use the platform. 18+ to donate independently.
+13-17 year olds may donate with parental consent.
+Under 13s: contact info@rootprojx.com to remove account.
+
+9. Cookies
+Essential cookies for authentication and sessions. 
+Analytics cookies to understand platform usage. 
+Control via browser settings.
+
+10. Third Party Services
+Stripe (payments), Google Firebase (storage), 
+Brevo (email), Apple App Store / Google Play (distribution).
+
+11. Changes to This Policy
+Material changes notified by email. Latest version 
+always at www.rootprojx.com/privacy.
+
+12. Contact & Complaints
+Email: info@rootprojx.com
+ICO complaints: ico.org.uk or 0303 123 1113
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+2. FUNDRAISING TERMS PAGE — /terms
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Create a new page at /terms with the following content:
+
+HEADER:
+- Red "FUNDRAISING TERMS" label (small caps, brand red)
+- Heading: "How Giving Works on Root ProjX"
+- Subtext: "Last updated: June 2026"
+
+CONTENT SECTIONS:
+
+1. About Root ProjX
+Root ProjX Ltd is a private limited company (51 Russell 
+Row, Lewes, BN7 2EE) operating a community giving platform. 
+We are not a registered charity. Organisations on the 
+platform are independently verified but not required to 
+be registered charities.
+
+2. How Donations Work
+95% of every donation goes directly to the organisation.
+5% is retained by Root ProjX as a platform fee.
+Payments processed securely by Stripe.
+Root ProjX does not hold donor funds — all funds flow 
+directly to organisations via Stripe Connect.
+
+3. Platform Fee Disclosure
+Display this as a clean table:
+£10.00 donated → £9.50 to org / £0.50 to Root ProjX
+£25.00 donated → £23.75 to org / £1.25 to Root ProjX
+£100.00 donated → £95.00 to org / £5.00 to Root ProjX
+
+4. Organisation Verification
+Organisations verified before receiving donations via 
+document review, contact confirmation, and Stripe 
+identity verification. Verification is not endorsement.
+
+5. Refund Policy
+All donations are final and non-refundable.
+Discretionary refunds considered only for: technical 
+duplicate charges, fraud, or org account suspension.
+Request within 48 hours at info@rootprojx.com.
+
+6. Age Requirements
+18+ to donate independently. 13-17 with parental consent.
+
+7. Gift Aid
+Not currently available. We intend to apply for Gift Aid 
+intermediary status and will notify donors when available.
+
+8. Organisation Responsibilities
+Use funds for stated purposes, post regular updates, 
+comply with local laws, notify Root ProjX of any changes, 
+complete Stripe Connect onboarding.
+
+9. Limitation of Liability
+Root ProjX is a technology platform only. Not responsible 
+for how organisations use funds or accuracy of their 
+profile information. Total liability capped at the 
+donation amount.
+
+10. Governing Law
+England and Wales.
+
+11. Contact
+Root ProjX Ltd, 51 Russell Row, Lewes, BN7 2EE
+info@rootprojx.com | www.rootprojx.com
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+3. FOOTER LINKS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Add the following links to the website footer:
+- "Privacy Policy" → /privacy
+- "Fundraising Terms" → /terms
+- "Contact" → mailto:info@rootprojx.com
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STYLING FOR BOTH PAGES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+- Clean, readable, legal document feel
+- Max width 800px centred on the page
+- Section headings in brand red #CC0000, bold
+- Body text dark grey #1a1a1a, 16px line height 1.7
+- Subtle divider line between sections
+- Consistent with existing site nav and footer
+- Fully responsive on mobile
