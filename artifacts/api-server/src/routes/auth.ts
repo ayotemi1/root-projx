@@ -1,4 +1,5 @@
 import { Router } from "express";
+import type { Request, Response, NextFunction } from "express";
 import {
   firebaseSignUp,
   firebaseSignIn,
@@ -11,6 +12,35 @@ import { brevoAddContact, brevoSendEmail, welcomeEmailHtml } from "../lib/brevo.
 
 const router = Router();
 
+// ── Simple in-memory rate limiter ─────────────────────────────────────────────
+// Limits repeated attempts from a single IP to prevent brute-force attacks.
+// State is per-process; a restart clears it (acceptable for our scale).
+interface RateBucket { count: number; resetAt: number }
+const rateBuckets = new Map<string, RateBucket>();
+
+function makeRateLimiter(maxRequests: number, windowMs: number) {
+  return function rateLimiter(req: Request, res: Response, next: NextFunction): void {
+    const ip = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim()
+      ?? req.socket.remoteAddress
+      ?? "unknown";
+    const now = Date.now();
+    let bucket = rateBuckets.get(ip);
+    if (!bucket || now > bucket.resetAt) {
+      bucket = { count: 0, resetAt: now + windowMs };
+      rateBuckets.set(ip, bucket);
+    }
+    bucket.count++;
+    if (bucket.count > maxRequests) {
+      res.status(429).json({ error: "Too many attempts — please try again later" });
+      return;
+    }
+    next();
+  };
+}
+
+// 10 attempts per 15 minutes on auth endpoints
+const authRateLimit = makeRateLimiter(10, 15 * 60 * 1000);
+
 function avatarInitials(name: string): string {
   return name
     .split(" ")
@@ -21,7 +51,7 @@ function avatarInitials(name: string): string {
 }
 
 // POST /auth/register
-router.post("/auth/register", async (req, res) => {
+router.post("/auth/register", authRateLimit, async (req, res) => {
   try {
     const { name, email, phone, password, accountType, orgName, country, registrationNumber } = req.body as {
       name: string;
@@ -133,7 +163,7 @@ router.post("/auth/register", async (req, res) => {
 });
 
 // POST /auth/login
-router.post("/auth/login", async (req, res) => {
+router.post("/auth/login", authRateLimit, async (req, res) => {
   try {
     const { email, password } = req.body as { email: string; password: string };
     if (!email || !password) {

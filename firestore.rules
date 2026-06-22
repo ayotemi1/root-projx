@@ -1,0 +1,97 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── helpers ────────────────────────────────────────────────────────────
+    // The API server signs in as this Firebase account for privileged ops.
+    // Change this if FIREBASE_SERVER_EMAIL is overridden in your env vars.
+    function isServer() {
+      return request.auth != null &&
+             request.auth.token.email == "seeder@rootprojx.internal";
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // ── users ──────────────────────────────────────────────────────────────
+    // Each user reads/writes only their own doc. Server can access all.
+    // No client can delete user docs.
+    match /users/{userId} {
+      allow read:   if isOwner(userId) || isServer();
+      allow create: if isOwner(userId) || isServer();
+      allow update: if isOwner(userId) || isServer();
+      allow delete: if false;
+    }
+
+    // ── organisations ───────────────────────────────────────────────────────
+    // Public read. Org owner or server may write.
+    // The org document ID is always the owner's Firebase UID.
+    match /organisations/{orgId} {
+      allow read:   if true;
+      allow create: if isOwner(orgId) || isServer();
+      allow update: if isOwner(orgId) || isServer();
+      allow delete: if false;
+    }
+
+    // ── updates (impact feed posts) ─────────────────────────────────────────
+    // Public read. Org that owns the post (orgId == uid) or server may write.
+    match /updates/{updateId} {
+      allow read: if true;
+      allow create: if isServer() ||
+        (isSignedIn() && request.resource.data.orgId == request.auth.uid);
+      allow update: if isServer() ||
+        (isSignedIn() && resource.data.orgId == request.auth.uid);
+      allow delete: if isServer() ||
+        (isSignedIn() && resource.data.orgId == request.auth.uid);
+    }
+
+    // ── follows ─────────────────────────────────────────────────────────────
+    // Users can only see and manage their own follows.
+    // Query for "my follows" works because the filter mirrors the rule.
+    match /follows/{followId} {
+      allow read:   if isServer() ||
+        (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow create: if isServer() ||
+        (isSignedIn() && request.resource.data.userId == request.auth.uid);
+      allow delete: if isServer() ||
+        (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow update: if false;
+    }
+
+    // ── donations ───────────────────────────────────────────────────────────
+    // Users can read their own donations (query WHERE userId == uid is safe
+    // because the filter mirrors this rule). Only the server may write —
+    // donations are created exclusively by Stripe webhooks / confirm endpoint.
+    match /donations/{donationId} {
+      allow read:  if isServer() ||
+        (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow write: if isServer();
+    }
+
+    // ── reviews ─────────────────────────────────────────────────────────────
+    // Public read. Any authenticated user may create a review (one-shot).
+    // Only server may update or delete.
+    match /reviews/{reviewId} {
+      allow read:          if true;
+      allow create:        if isSignedIn();
+      allow update, delete: if isServer();
+    }
+
+    // ── help_entries ────────────────────────────────────────────────────────
+    // Public read. Only server may write (entries are managed via admin tools).
+    match /help_entries/{entryId} {
+      allow read:  if true;
+      allow write: if isServer();
+    }
+
+    // ── catch-all: deny anything not explicitly matched ────────────────────
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

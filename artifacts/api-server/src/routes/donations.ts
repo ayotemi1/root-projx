@@ -143,8 +143,8 @@ router.post("/donations/payment-intent", requireAuth, async (req, res) => {
       note?: string;
     };
 
-    if (!orgId || !amountGbp || amountGbp <= 0) {
-      res.status(400).json({ error: "orgId and a positive amountGbp are required" });
+    if (!orgId || !amountGbp || amountGbp < 1) {
+      res.status(400).json({ error: "orgId and a minimum amountGbp of £1 are required" });
       return;
     }
 
@@ -201,8 +201,8 @@ router.post("/donations/subscription", requireAuth, async (req, res) => {
       note?: string;
     };
 
-    if (!orgId || !amountGbp || amountGbp <= 0) {
-      res.status(400).json({ error: "orgId and a positive amountGbp are required" });
+    if (!orgId || !amountGbp || amountGbp < 1) {
+      res.status(400).json({ error: "orgId and a minimum amountGbp of £1 are required" });
       return;
     }
 

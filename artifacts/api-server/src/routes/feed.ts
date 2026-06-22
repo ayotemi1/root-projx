@@ -100,20 +100,32 @@ router.post("/feed", requireAuth, async (req, res) => {
       res.status(400).json({ error: "title and content are required" });
       return;
     }
+    if (typeof title !== "string" || title.trim().length === 0 || title.length > 200) {
+      res.status(400).json({ error: "title must be between 1 and 200 characters" });
+      return;
+    }
+    if (typeof content !== "string" || content.trim().length === 0 || content.length > 5000) {
+      res.status(400).json({ error: "content must be between 1 and 5000 characters" });
+      return;
+    }
+    const ALLOWED_TYPES = ["update", "milestone", "campaign", "before", "during", "after"];
+    const resolvedType = typeof type === "string" && ALLOWED_TYPES.includes(type) ? type : "update";
 
     // Fetch the org name for denormalisation
     const org = await fsGet("organisations", uid, token);
     const orgName = (org?.["name"] as string) ?? "";
 
-    // Validate mediaUrls if provided
+    // Validate mediaUrls if provided — cap at 10 items, string URLs only
     const urls: string[] = Array.isArray(mediaUrls)
-      ? (mediaUrls as unknown[]).filter((u): u is string => typeof u === "string")
+      ? (mediaUrls as unknown[])
+          .filter((u): u is string => typeof u === "string")
+          .slice(0, 10)
       : [];
 
     const data: Record<string, unknown> = {
       orgId: uid,
       orgName,
-      type: type ?? "update",
+      type: resolvedType,
       title,
       content,
       mediaUrls: urls,
