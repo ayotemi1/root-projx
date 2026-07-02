@@ -37,20 +37,27 @@ export default function LandingPage() {
 
       </div>
 
-      {/* Bottom links */}
-      <div
-        className="pb-16 flex flex-row items-center gap-5 text-sm text-center"
-        style={{ color: "rgba(255,255,255,0.75)" }}
-      >
-        <Link href="/login">
-          <span className="underline cursor-pointer hover:text-white/60 transition-colors">
-            Sign in
-          </span>
+      {/* Bottom join links */}
+      <div className="pb-14 w-full max-w-sm flex flex-col items-center gap-3">
+        <Link href="/onboarding" className="w-full">
+          <button
+            className="w-full py-3 rounded-xl text-sm font-bold tracking-wide transition-opacity hover:opacity-90 active:scale-95 border-2"
+            style={{ borderColor: "rgba(255,255,255,0.55)", color: "#fff", background: "transparent" }}
+          >
+            Join as an organisation
+          </button>
         </Link>
-        <span className="opacity-40">·</span>
-        <Link href="/register">
-          <span className="underline cursor-pointer hover:text-white/60 transition-colors">
+        <Link href="/register" className="w-full">
+          <button
+            className="w-full py-3 rounded-xl text-sm font-bold tracking-wide transition-opacity hover:opacity-90 active:scale-95 border-2"
+            style={{ borderColor: "rgba(255,255,255,0.55)", color: "#fff", background: "transparent" }}
+          >
             Join as supporter
+          </button>
+        </Link>
+        <Link href="/login">
+          <span className="text-xs cursor-pointer transition-colors" style={{ color: "rgba(255,255,255,0.45)" }}>
+            Already have an account? <span className="underline">Sign in</span>
           </span>
         </Link>
       </div>

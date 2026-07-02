@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useLocation, useSearch } from "wouter";
+import { useLocation } from "wouter";
 import { useAuth } from "@/context/AuthContext";
 import * as api from "@/lib/api";
 import { CheckCircle2, ChevronRight, ChevronLeft, ArrowRight } from "lucide-react";
@@ -25,7 +25,8 @@ const YEARS_OPTIONS = [
   "Less than 1 year", "1–3 years", "3–5 years", "5–10 years", "Over 10 years",
 ];
 
-const TOTAL_FORM_STEPS = 6;
+// Steps 1–7 are the actual form; 0 = welcome, 8 = complete
+const TOTAL_FORM_STEPS = 7;
 
 function ProgressBar({ step }: { step: number }) {
   const pct = Math.round(((step - 1) / TOTAL_FORM_STEPS) * 100);
@@ -34,7 +35,7 @@ function ProgressBar({ step }: { step: number }) {
       <div
         style={{
           height: "100%", background: GOLD, borderRadius: 2,
-          width: `${pct}%`, transition: "width 0.4s ease",
+          width: `${Math.max(pct, 2)}%`, transition: "width 0.4s ease",
         }}
       />
     </div>
@@ -43,11 +44,14 @@ function ProgressBar({ step }: { step: number }) {
 
 function TopBar({ step }: { step: number }) {
   const isWelcome = step === 0;
-  const isDone = step === 7;
+  const isDone = step === 8;
   return (
-    <div style={{ background: RED_DEEP, padding: "14px 24px" }}>
+    <div style={{ background: RED_DEEP, padding: "14px 24px", position: "sticky", top: 0, zIndex: 10 }}>
       <div style={{ maxWidth: 720, margin: "0 auto" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: isWelcome || isDone ? 0 : 10 }}>
+        <div style={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          marginBottom: isWelcome || isDone ? 0 : 10,
+        }}>
           <img src="/logo-stylised.png" alt="Root ProjX" style={{ height: 36, objectFit: "contain" }} />
           {!isWelcome && !isDone && (
             <span style={{ color: "rgba(255,255,255,0.7)", fontSize: 13 }}>
@@ -103,7 +107,6 @@ function FieldGroup({ label, optional, children }: { label: string; optional?: b
 const inputStyle: React.CSSProperties = {
   width: "100%", padding: "10px 14px", fontSize: 15, border: "1.5px solid #e0d8cc",
   borderRadius: 8, outline: "none", background: "#fafaf8", boxSizing: "border-box",
-  transition: "border-color 0.2s",
 };
 
 const textareaStyle: React.CSSProperties = {
@@ -129,8 +132,7 @@ function NavButtons({
           style={{
             display: "flex", alignItems: "center", gap: 6,
             background: "none", border: "1.5px solid #e0d8cc", borderRadius: 8,
-            padding: "9px 18px", fontSize: 14, fontWeight: 600, color: "#666",
-            cursor: "pointer",
+            padding: "10px 20px", fontSize: 14, color: "#666", cursor: "pointer",
           }}
         >
           <ChevronLeft size={16} /> Back
@@ -221,40 +223,47 @@ function LegalSection({
 }
 
 export default function OnboardingPage() {
-  const { user, token } = useAuth();
+  const { user, token, register } = useAuth();
   const [, navigate] = useLocation();
-  const search = useSearch();
-  const params = new URLSearchParams(search);
 
   const [step, setStep] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState("");
 
-  // Form data
-  const [orgName, setOrgName] = useState(params.get("org") ?? "");
+  // ── Step 1: Account ──────────────────────────────────────────────────────────
+  const [contactName, setContactName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [accountError, setAccountError] = useState("");
+
+  // ── Step 2: Org Identity ─────────────────────────────────────────────────────
+  const [orgName, setOrgName] = useState("");
   const [category, setCategory] = useState("");
-  const [country, setCountry] = useState(params.get("country") ?? "");
+  const [country, setCountry] = useState("");
   const [city, setCity] = useState("");
   const [regNumber, setRegNumber] = useState("");
+
+  // ── Step 3: Your Work ────────────────────────────────────────────────────────
   const [description, setDescription] = useState("");
   const [mission, setMission] = useState("");
   const [whoYouServe, setWhoYouServe] = useState("");
   const [yearsOperating, setYearsOperating] = useState("");
+
+  // ── Step 4: Contact & Links ──────────────────────────────────────────────────
   const [website, setWebsite] = useState("");
   const [instagram, setInstagram] = useState("");
   const [facebook, setFacebook] = useState("");
   const [twitter, setTwitter] = useState("");
+
+  // ── Legal steps ──────────────────────────────────────────────────────────────
   const [agreedTerms, setAgreedTerms] = useState(false);
   const [agreedPrivacy, setAgreedPrivacy] = useState(false);
   const [agreedMou, setAgreedMou] = useState(false);
-  const [mouName, setMouName] = useState(params.get("cn") ?? user?.name ?? "");
+  const [mouName, setMouName] = useState("");
   const [mouDate] = useState(new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }));
 
-  useEffect(() => {
-    if (user?.name && !mouName) setMouName(user.name);
-  }, [user]);
-
-  // Redirect if org profile already exists
+  // Redirect if already fully onboarded
   useEffect(() => {
     if (user?.accountType === "organisation" && token) {
       api.getOrg(user.id).then((org) => {
@@ -263,8 +272,23 @@ export default function OnboardingPage() {
     }
   }, [user, token]);
 
+  // Pre-fill mouName from contactName
+  useEffect(() => {
+    if (contactName && !mouName) setMouName(contactName);
+  }, [contactName]);
+
+  function validateAccount() {
+    if (!contactName.trim()) return "Please enter your full name.";
+    if (!email.trim() || !email.includes("@")) return "Please enter a valid email address.";
+    if (password.length < 6) return "Password must be at least 6 characters.";
+    if (password !== confirmPassword) return "Passwords do not match.";
+    return "";
+  }
+
+  const next = () => setStep((s) => s + 1);
+  const back = () => setStep((s) => s - 1);
+
   async function handleSubmit() {
-    if (!token) return;
     setSubmitting(true);
     setSubmitError("");
     try {
@@ -273,8 +297,17 @@ export default function OnboardingPage() {
       if (facebook) socialLinks["facebook"] = facebook;
       if (twitter) socialLinks["twitter"] = twitter;
 
+      const newToken = await register({
+        name: contactName.trim(),
+        email: email.trim().toLowerCase(),
+        password,
+        accountType: "organisation",
+        orgName: orgName.trim(),
+        country,
+      });
+
       await api.createOrgProfile({
-        name: orgName,
+        name: orgName.trim(),
         country,
         city: city || undefined,
         category,
@@ -285,16 +318,14 @@ export default function OnboardingPage() {
         registrationNumber: regNumber || undefined,
         contact: website ? { website } : undefined,
         socialLinks: Object.keys(socialLinks).length ? socialLinks : undefined,
-      }, token);
-      setStep(7);
+      }, newToken);
+
+      setStep(8);
     } catch (err: unknown) {
       setSubmitError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
       setSubmitting(false);
     }
   }
-
-  const next = () => setStep((s) => s + 1);
-  const back = () => setStep((s) => s - 1);
 
   return (
     <div style={{ minHeight: "100vh", background: "#F9F6F0", display: "flex", flexDirection: "column" }}>
@@ -303,15 +334,13 @@ export default function OnboardingPage() {
       <div style={{ flex: 1, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "48px 24px 80px" }}>
         <div style={{ width: "100%", maxWidth: 680 }}>
 
-          {/* ── STEP 0: WELCOME ───────────────────────────────────────────── */}
+          {/* ── STEP 0: WELCOME ─────────────────────────────────────────────── */}
           {step === 0 && (
             <div style={{ textAlign: "center" }}>
-              <div
-                style={{
-                  background: RED_DEEP, borderRadius: 20, padding: "64px 48px",
-                  marginBottom: 32, color: "#fff",
-                }}
-              >
+              <div style={{
+                background: RED_DEEP, borderRadius: 20, padding: "64px 48px",
+                marginBottom: 32, color: "#fff",
+              }}>
                 <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.18em", color: GOLD, textTransform: "uppercase", marginBottom: 16 }}>
                   Partner Onboarding
                 </p>
@@ -323,32 +352,90 @@ export default function OnboardingPage() {
                   community-powered platform connecting grassroots organisations with
                   visibility, fundraising opportunities and meaningful support.
                 </p>
-                <p style={{ fontSize: 15, lineHeight: 1.7, color: "rgba(255,255,255,0.75)", maxWidth: 480, margin: "0 auto 40px" }}>
-                  This onboarding pack has been designed to make joining simple and
-                  transparent. We'll collect some details about your organisation, then
-                  ask you to review and agree to a few short documents.
+                <p style={{ fontSize: 14, color: "rgba(255,255,255,0.6)", maxWidth: 440, margin: "0 auto 40px" }}>
+                  This form takes around 5–10 minutes. You'll set up your account,
+                  tell us about your organisation, and agree to our partnership terms.
                 </p>
-                <div style={{ borderTop: "1px solid rgba(255,255,255,0.15)", paddingTop: 32, fontStyle: "italic", color: GOLD, fontSize: 17 }}>
-                  "Together, we can grow roots of change."
-                </div>
+                <button
+                  onClick={next}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 10,
+                    background: GOLD, color: RED_DEEP, border: "none", borderRadius: 10,
+                    padding: "15px 40px", fontSize: 16, fontWeight: 700, cursor: "pointer",
+                  }}
+                >
+                  Begin <ArrowRight size={18} />
+                </button>
               </div>
-              <button
-                onClick={next}
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: 10,
-                  background: RED, color: "#fff", border: "none", borderRadius: 10,
-                  padding: "15px 40px", fontSize: 16, fontWeight: 700, cursor: "pointer",
-                }}
-              >
-                Begin <ArrowRight size={18} />
-              </button>
             </div>
           )}
 
-          {/* ── STEP 1: ORGANISATION IDENTITY ─────────────────────────────── */}
+          {/* ── STEP 1: ACCOUNT SETUP ───────────────────────────────────────── */}
           {step === 1 && (
             <Card>
-              <StepLabel>Section 1 of 3 — Organisation Details</StepLabel>
+              <StepLabel>Step 1 of 7 — Your Account</StepLabel>
+              <StepHeading>Create your account</StepHeading>
+
+              <FieldGroup label="Your full name">
+                <input
+                  style={inputStyle} value={contactName}
+                  onChange={(e) => setContactName(e.target.value)}
+                  placeholder="e.g. Marcus Williams"
+                  autoComplete="name"
+                />
+              </FieldGroup>
+
+              <FieldGroup label="Email address">
+                <input
+                  style={inputStyle} value={email} type="email"
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@yourorg.com"
+                  autoComplete="email"
+                />
+              </FieldGroup>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                <FieldGroup label="Password">
+                  <input
+                    style={inputStyle} value={password} type="password"
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Min. 6 characters"
+                    autoComplete="new-password"
+                  />
+                </FieldGroup>
+                <FieldGroup label="Confirm password">
+                  <input
+                    style={inputStyle} value={confirmPassword} type="password"
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Repeat password"
+                    autoComplete="new-password"
+                  />
+                </FieldGroup>
+              </div>
+
+              {accountError && (
+                <p style={{ color: RED, fontSize: 14, background: "#fff0f0", padding: "10px 14px", borderRadius: 8, marginBottom: 8 }}>
+                  {accountError}
+                </p>
+              )}
+
+              <NavButtons
+                hideBack
+                onNext={() => {
+                  const err = validateAccount();
+                  if (err) { setAccountError(err); return; }
+                  setAccountError("");
+                  next();
+                }}
+                nextDisabled={!contactName.trim() || !email.trim() || !password || !confirmPassword}
+              />
+            </Card>
+          )}
+
+          {/* ── STEP 2: ORGANISATION IDENTITY ───────────────────────────────── */}
+          {step === 2 && (
+            <Card>
+              <StepLabel>Step 2 of 7 — Organisation Details</StepLabel>
               <StepHeading>Tell us about your organisation</StepHeading>
 
               <FieldGroup label="Organisation name">
@@ -391,50 +478,49 @@ export default function OnboardingPage() {
               </FieldGroup>
 
               <NavButtons
-                hideBack
+                onBack={back}
                 onNext={next}
                 nextDisabled={!orgName.trim() || !category || !country}
               />
             </Card>
           )}
 
-          {/* ── STEP 2: YOUR WORK ─────────────────────────────────────────── */}
-          {step === 2 && (
+          {/* ── STEP 3: YOUR WORK ───────────────────────────────────────────── */}
+          {step === 3 && (
             <Card>
-              <StepLabel>Section 2 of 3 — Your Work</StepLabel>
-              <StepHeading>Tell us about the work you do</StepHeading>
+              <StepLabel>Step 3 of 7 — Your Work</StepLabel>
+              <StepHeading>What do you do?</StepHeading>
 
-              <FieldGroup label="Describe your organisation's work">
+              <FieldGroup label="Describe your organisation">
                 <textarea
                   style={textareaStyle} value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Briefly describe what your organisation does and the community you serve…"
+                  placeholder="Tell supporters what your organisation does and why it matters…"
                 />
               </FieldGroup>
 
-              <FieldGroup label="Mission statement" optional>
+              <FieldGroup label="Your mission statement" optional>
                 <textarea
                   style={{ ...textareaStyle, minHeight: 80 }} value={mission}
                   onChange={(e) => setMission(e.target.value)}
-                  placeholder="e.g. To empower young people in West Kingston through education and mentorship."
+                  placeholder="In one or two sentences, what is your mission?"
                 />
               </FieldGroup>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                <FieldGroup label="Who do you primarily serve?" optional>
-                  <input
-                    style={inputStyle} value={whoYouServe}
-                    onChange={(e) => setWhoYouServe(e.target.value)}
-                    placeholder="e.g. Young people aged 14–25"
-                  />
-                </FieldGroup>
-                <FieldGroup label="How long have you been operating?" optional>
-                  <select style={selectStyle} value={yearsOperating} onChange={(e) => setYearsOperating(e.target.value)}>
-                    <option value="">Select…</option>
-                    {YEARS_OPTIONS.map((y) => <option key={y} value={y}>{y}</option>)}
-                  </select>
-                </FieldGroup>
-              </div>
+              <FieldGroup label="Who do you serve?" optional>
+                <input
+                  style={inputStyle} value={whoYouServe}
+                  onChange={(e) => setWhoYouServe(e.target.value)}
+                  placeholder="e.g. Young people aged 12–25 in inner-city communities"
+                />
+              </FieldGroup>
+
+              <FieldGroup label="How long have you been operating?" optional>
+                <select style={selectStyle} value={yearsOperating} onChange={(e) => setYearsOperating(e.target.value)}>
+                  <option value="">Select…</option>
+                  {YEARS_OPTIONS.map((y) => <option key={y} value={y}>{y}</option>)}
+                </select>
+              </FieldGroup>
 
               <NavButtons
                 onBack={back} onNext={next}
@@ -443,17 +529,17 @@ export default function OnboardingPage() {
             </Card>
           )}
 
-          {/* ── STEP 3: CONTACT & LINKS ───────────────────────────────────── */}
-          {step === 3 && (
+          {/* ── STEP 4: CONTACT & LINKS ──────────────────────────────────────── */}
+          {step === 4 && (
             <Card>
-              <StepLabel>Section 3 of 3 — Contact & Online Presence</StepLabel>
+              <StepLabel>Step 4 of 7 — Contact & Links</StepLabel>
               <StepHeading>How can supporters find you?</StepHeading>
 
               <FieldGroup label="Website" optional>
                 <input
                   style={inputStyle} value={website} type="url"
                   onChange={(e) => setWebsite(e.target.value)}
-                  placeholder="https://yourorg.org"
+                  placeholder="https://yourorg.com"
                 />
               </FieldGroup>
 
@@ -486,10 +572,10 @@ export default function OnboardingPage() {
             </Card>
           )}
 
-          {/* ── STEP 4: TERMS & CONDITIONS ───────────────────────────────── */}
-          {step === 4 && (
+          {/* ── STEP 5: TERMS & CONDITIONS ───────────────────────────────────── */}
+          {step === 5 && (
             <Card>
-              <StepLabel>Legal — Step 1 of 3</StepLabel>
+              <StepLabel>Step 5 of 7 — Legal</StepLabel>
               <LegalSection
                 title="Terms & Conditions"
                 agreed={agreedTerms}
@@ -506,7 +592,7 @@ export default function OnboardingPage() {
                 <br />
                 <p><strong>3. Campaigns</strong><br />Campaigns must accurately describe how donations will be used. Root ProjX may request clarification or supporting evidence.</p>
                 <br />
-                <p><strong>4. Donations & Fees</strong><br />A 5% platform fee is deducted before funds are transferred to the organisation.</p>
+                <p><strong>4. Donations & Fees</strong><br />A platform fee is deducted before funds are transferred to the organisation.</p>
                 <br />
                 <p><strong>5. Campaign Updates</strong><br />Organisations agree to provide reasonable updates on funded campaigns so donors can see the impact created.</p>
                 <br />
@@ -519,10 +605,10 @@ export default function OnboardingPage() {
             </Card>
           )}
 
-          {/* ── STEP 5: PRIVACY POLICY ───────────────────────────────────── */}
-          {step === 5 && (
+          {/* ── STEP 6: PRIVACY POLICY ───────────────────────────────────────── */}
+          {step === 6 && (
             <Card>
-              <StepLabel>Legal — Step 2 of 3</StepLabel>
+              <StepLabel>Step 6 of 7 — Legal</StepLabel>
               <LegalSection
                 title="Privacy Policy"
                 agreed={agreedPrivacy}
@@ -548,10 +634,10 @@ export default function OnboardingPage() {
             </Card>
           )}
 
-          {/* ── STEP 6: MOU ──────────────────────────────────────────────── */}
-          {step === 6 && (
+          {/* ── STEP 7: MOU ──────────────────────────────────────────────────── */}
+          {step === 7 && (
             <Card>
-              <StepLabel>Legal — Step 3 of 3</StepLabel>
+              <StepLabel>Step 7 of 7 — Legal</StepLabel>
               <StepHeading>Memorandum of Understanding</StepHeading>
               <div
                 style={{
@@ -621,8 +707,8 @@ export default function OnboardingPage() {
             </Card>
           )}
 
-          {/* ── STEP 7: COMPLETE ─────────────────────────────────────────── */}
-          {step === 7 && (
+          {/* ── STEP 8: COMPLETE ─────────────────────────────────────────────── */}
+          {step === 8 && (
             <div style={{ textAlign: "center" }}>
               <div style={{ background: RED_DEEP, borderRadius: 20, padding: "64px 48px", color: "#fff" }}>
                 <CheckCircle2 size={64} style={{ color: GOLD, margin: "0 auto 24px" }} />
@@ -650,6 +736,7 @@ export default function OnboardingPage() {
               </div>
             </div>
           )}
+
         </div>
       </div>
     </div>

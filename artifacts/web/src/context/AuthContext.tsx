@@ -26,7 +26,7 @@ interface AuthContextValue {
     orgName?: string;
     country?: string;
     registrationNumber?: string;
-  }) => Promise<void>;
+  }) => Promise<string>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -69,6 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       localStorage.setItem(TOKEN_KEY, res.token);
       setToken(res.token);
       setUser(res.user);
+      return res.token;
     },
     [],
   );

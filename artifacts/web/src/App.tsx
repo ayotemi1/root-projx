@@ -63,10 +63,8 @@ function AppRoutes() {
       {/* Landing page — no navbar or footer */}
       <Route path="/" component={LandingPage} />
 
-      {/* Org onboarding — standalone, no navbar or footer */}
-      <Route path="/onboarding">
-        {() => <ProtectedRoute component={OnboardingPage} />}
-      </Route>
+      {/* Org onboarding — standalone, handles its own registration */}
+      <Route path="/onboarding" component={OnboardingPage} />
 
       {/* All other pages — wrapped in navbar + footer */}
       <Route>
