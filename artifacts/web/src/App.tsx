@@ -30,6 +30,7 @@ import ShopCancelPage from "@/pages/shop-cancel";
 import AboutPage from "@/pages/about";
 import PrivacyPage from "@/pages/privacy";
 import TermsPage from "@/pages/terms";
+import OnboardingPage from "@/pages/onboarding";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -61,6 +62,11 @@ function AppRoutes() {
     <Switch>
       {/* Landing page — no navbar or footer */}
       <Route path="/" component={LandingPage} />
+
+      {/* Org onboarding — standalone, no navbar or footer */}
+      <Route path="/onboarding">
+        {() => <ProtectedRoute component={OnboardingPage} />}
+      </Route>
 
       {/* All other pages — wrapped in navbar + footer */}
       <Route>

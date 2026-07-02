@@ -146,6 +146,25 @@ export const getOrganisations = (params?: { category?: string; country?: string 
 export const getOrganisation = (id: string, token?: string | null) =>
   req<Org>(`/organisations/${id}`, {}, token);
 
+export const getOrg = getOrganisation;
+
+export interface CreateOrgProfileInput {
+  name: string;
+  country: string;
+  city?: string;
+  category: string;
+  description: string;
+  mission?: string;
+  whoYouServe?: string;
+  yearsOperating?: string;
+  registrationNumber?: string;
+  contact?: { email?: string; phone?: string; website?: string };
+  socialLinks?: Record<string, string>;
+}
+
+export const createOrgProfile = (data: CreateOrgProfileInput, token: string) =>
+  req<Org>("/organisations", { method: "POST", body: JSON.stringify(data) }, token);
+
 export const updateOrganisation = (id: string, data: Partial<Org>, token: string) =>
   req<Org>(`/organisations/${id}`, { method: "PATCH", body: JSON.stringify(data) }, token);
 

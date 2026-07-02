@@ -90,7 +90,9 @@ export default function RegisterPage() {
           country,
           registrationNumber: regNumber.trim() || undefined,
         });
-        navigate("/dashboard");
+        navigate(
+          `/onboarding?org=${encodeURIComponent(orgName.trim())}&country=${encodeURIComponent(country)}&cn=${encodeURIComponent(contactName.trim())}`
+        );
       } catch (err: unknown) {
         setError(err instanceof Error ? err.message : "Registration failed.");
       } finally {

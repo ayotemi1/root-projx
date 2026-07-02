@@ -185,27 +185,36 @@ router.post("/organisations", requireAuth, async (req, res) => {
     // security rules that may block writes to the organisations collection.
     const serverToken = await getServerToken();
     const existing = await fsGet("organisations", uid, serverToken);
-    if (existing) {
-      // Profile already exists — return it instead of erroring so the mobile
-      // onboarding flow can re-call this idempotently after a network retry.
-      res.status(200).json({ _id: uid, ...existing });
-      return;
-    }
-    const { name, country, city, category, description, mission, contact, socialLinks } =
+    const { name, country, city, category, description, mission, contact, socialLinks,
+            whoYouServe, yearsOperating, registrationNumber } =
       req.body as Record<string, unknown>;
     if (!name || !country || !category || !description) {
       res.status(400).json({ error: "name, country, category and description are required" });
       return;
     }
-    const data: Record<string, unknown> = {
-      name, country, city: city ?? null, category, description, mission: mission ?? null,
-      contact: contact ?? null, socialLinks: socialLinks ?? null,
+    if (existing?.category) {
+      // Fully onboarded already — idempotent return so mobile retries are safe.
+      res.status(200).json({ _id: uid, ...existing });
+      return;
+    }
+    // Create or update (upsert) — merges onboarding data into any existing stub.
+    const base: Record<string, unknown> = existing ?? {
       coverImage: null, logo: null,
       verified: false, followerCount: 0, totalRaised: 0, impactScore: 0,
       createdAt: new Date().toISOString(),
     };
+    const data: Record<string, unknown> = {
+      ...base,
+      name, country, city: city ?? null, category, description,
+      mission: mission ?? null,
+      contact: contact ?? null,
+      socialLinks: socialLinks ?? null,
+      whoYouServe: whoYouServe ?? null,
+      yearsOperating: yearsOperating ?? null,
+      registrationNumber: registrationNumber ?? null,
+    };
     await fsPatch("organisations", uid, data, serverToken);
-    res.status(201).json({ _id: uid, ...data });
+    res.status(existing ? 200 : 201).json({ _id: uid, ...data });
   } catch (err) {
     req.log.error({ err }, "POST /organisations error");
     res.status(500).json({ error: "Failed to create organisation profile" });
