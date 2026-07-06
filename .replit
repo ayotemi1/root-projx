@@ -54,5 +54,4 @@ channel = "stable-25_05"
 [userenv]
 
 [userenv.shared]
-JWT_SECRET = "6f9a67b704104d2ae1be281ba66b9e15f8c3118847c80360affd9d87f7c67502f9a7960c31e2405f77ab2e1af85ddd7cf7eb87601de71539b3c03988516b97f3"
 STRIPE_PLATFORM_FEE_PERCENT = "5"

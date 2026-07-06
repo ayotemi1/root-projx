@@ -4,12 +4,20 @@ const IDENTITY = "https://identitytoolkit.googleapis.com/v1/accounts";
 const FIRESTORE = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
 
 // Server-side token cache — used for server-initiated Firestore reads (no user token available)
+// SECURITY: the server password must come from the environment. Never hardcode a
+// fallback here — a committed password grants full database access to anyone
+// who has ever read this repository.
 const SERVER_EMAIL = process.env.FIREBASE_SERVER_EMAIL ?? "seeder@rootprojx.internal";
-const SERVER_PASS  = process.env.FIREBASE_SERVER_PASSWORD ?? "RootSeed2024!";
+const SERVER_PASS = process.env.FIREBASE_SERVER_PASSWORD;
 let _serverToken: string | null = null;
 let _serverTokenExpiry = 0;
 
 export async function getServerToken(): Promise<string> {
+  if (!SERVER_PASS) {
+    throw new Error(
+      "FIREBASE_SERVER_PASSWORD is not set. Privileged Firestore operations are disabled until it is configured in Replit Secrets.",
+    );
+  }
   if (_serverToken && Date.now() < _serverTokenExpiry) return _serverToken;
   const res = await fetch(`${IDENTITY}:signInWithPassword?key=${API_KEY}`, {
     method: "POST",
@@ -255,6 +263,50 @@ export async function fsDelete(
   if (!res.ok && res.status !== 404) {
     const text = await res.text();
     throw new Error(`Firestore DELETE ${collection}/${docId} failed ${res.status}: ${text.slice(0, 200)}`);
+  }
+}
+
+// Atomically increment one or more numeric fields on a document using Firestore's
+// server-side `increment` transform. Unlike read-modify-write (fsGet + fsPatch),
+// this is safe under concurrency: two simultaneous donations both land correctly,
+// and no other fields on the document are touched or overwritten.
+export async function fsIncrement(
+  collection: string,
+  docId: string,
+  increments: Record<string, number>,
+  idToken?: string,
+): Promise<void> {
+  const docPath = `projects/${PROJECT_ID}/databases/(default)/documents/${collection}/${docId}`;
+  const fieldTransforms = Object.entries(increments).map(([fieldPath, amount]) => ({
+    fieldPath,
+    increment: Number.isInteger(amount)
+      ? { integerValue: String(amount) }
+      : { doubleValue: amount },
+  }));
+
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (idToken) headers["Authorization"] = `Bearer ${idToken}`;
+
+  const res = await fetch(
+    `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents:commit`,
+    {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        writes: [
+          {
+            transform: { document: docPath, fieldTransforms },
+            // Only apply to existing documents — never create a phantom org/user
+            // doc as a side effect of an increment.
+            currentDocument: { exists: true },
+          },
+        ],
+      }),
+    },
+  );
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Firestore INCREMENT ${collection}/${docId} failed ${res.status}: ${text.slice(0, 200)}`);
   }
 }
 

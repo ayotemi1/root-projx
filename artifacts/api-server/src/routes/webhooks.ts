@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { fsCreate, fsGet, fsPatch, fsQuery, getServerToken } from "../lib/firebase-rest.js";
+import { fsCreate, fsGet, fsIncrement, fsPatch, fsQuery, getServerToken } from "../lib/firebase-rest.js";
 import { getUncachableStripeClient } from "../lib/stripeClient.js";
 import { brevoSendEmail, donationConfirmationHtml } from "../lib/brevo.js";
 import type Stripe from "stripe";
@@ -21,15 +21,36 @@ router.post(
     try {
       const stripe = await getUncachableStripeClient();
       const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+      // SECURITY: signature verification is mandatory. Without it, anyone who can
+      // reach this endpoint can fabricate payment_intent.succeeded events and
+      // create fake donation records / inflate totalRaised. The ONLY exception is
+      // local development with an explicit double opt-in that can never be
+      // satisfied in a production deployment.
+      const allowUnverified =
+        process.env.NODE_ENV !== "production" &&
+        process.env.REPLIT_DEPLOYMENT !== "1" &&
+        process.env.ALLOW_UNVERIFIED_STRIPE_WEBHOOKS === "true";
+
       if (webhookSecret) {
         event = stripe.webhooks.constructEvent(
           req.body as Buffer,
           Array.isArray(sig) ? sig[0]! : sig,
           webhookSecret,
         );
-      } else {
-        // Dev mode — parse raw JSON without signature verification
+      } else if (allowUnverified) {
+        req.log.warn(
+          {},
+          "STRIPE WEBHOOK RUNNING UNVERIFIED (dev-only opt-in). Never enable ALLOW_UNVERIFIED_STRIPE_WEBHOOKS outside local development.",
+        );
         event = JSON.parse((req.body as Buffer).toString()) as Stripe.Event;
+      } else {
+        req.log.error(
+          {},
+          "STRIPE_WEBHOOK_SECRET is not configured — rejecting webhook. Set it in Replit Secrets (from the Stripe dashboard webhook endpoint settings).",
+        );
+        res.status(500).json({ error: "Webhook not configured" });
+        return;
       }
     } catch (err) {
       req.log.error({ err }, "Stripe webhook signature error");
@@ -79,6 +100,25 @@ async function handlePaymentSuccess(
   }
 
   const { userId, orgId, orgName, note, type, guestEmail } = metadata;
+
+  // ── Idempotency guard ─────────────────────────────────────────────────────────
+  // Stripe retries webhook deliveries (network blips, non-2xx responses, manual
+  // resends). Without this check, every retry creates a duplicate donation doc
+  // AND increments the org's totalRaised again — silently corrupting the
+  // transparency numbers this platform exists to protect.
+  if (stripeRef) {
+    const dedupCollection = type === "shop_order" ? "orders" : "donations";
+    const existing = await fsQuery(
+      dedupCollection,
+      [{ field: "stripeRef", op: "EQUAL", value: stripeRef }],
+      serverToken,
+      { limit: 1 },
+    );
+    if (existing.length > 0) {
+      log.info({ stripeRef, type: type ?? "one_time" }, "Webhook: event already processed — skipping (idempotent)");
+      return;
+    }
+  }
 
   // ── Shop order — record in `orders` collection and return early ──────────────
   if (type === "shop_order") {
@@ -160,22 +200,25 @@ async function handlePaymentSuccess(
         { userId, orgId, createdAt: new Date().toISOString(), autoFollowed: true },
         serverToken,
       );
-      // Increment followerCount
-      const orgDoc = await fsGet("organisations", orgId, serverToken);
-      if (orgDoc) {
-        const currentCount = (orgDoc["followerCount"] as number) ?? 0;
-        await fsPatch("organisations", orgId, { ...orgDoc, followerCount: currentCount + 1 }, serverToken);
+      // Atomic increment — safe under concurrent webhooks, and never overwrites
+      // other fields on the org document.
+      try {
+        await fsIncrement("organisations", orgId, { followerCount: 1 }, serverToken);
+      } catch (incErr) {
+        log.error({ incErr, orgId }, "followerCount increment failed (non-fatal)");
       }
       log.info({ userId, orgId }, "Auto-followed org after donation");
     }
   }
 
   // 3. Update org totalRaised (applies for both authenticated and guest donations)
-  const org = await fsGet("organisations", orgId, serverToken);
-  if (org) {
-    const currentRaised = (org["totalRaised"] as number) ?? 0;
-    await fsPatch("organisations", orgId, { ...org, totalRaised: currentRaised + amountGbp }, serverToken);
-    log.info({ orgId, totalRaised: currentRaised + amountGbp }, "Updated org totalRaised");
+  // Atomic server-side increment: two donations landing at the same moment both
+  // count, and a concurrent profile edit is never clobbered by a stale full-doc write.
+  try {
+    await fsIncrement("organisations", orgId, { totalRaised: amountGbp }, serverToken);
+    log.info({ orgId, amountGbp }, "Incremented org totalRaised");
+  } catch (incErr) {
+    log.error({ incErr, orgId, amountGbp }, "totalRaised increment failed — investigate: donation recorded but org total not updated");
   }
 }
 
