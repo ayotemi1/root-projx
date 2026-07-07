@@ -102,6 +102,7 @@ export default function Footer() {
           <span className="flex items-center gap-4">
             <a href="/privacy" className="hover:text-primary transition-colors">Privacy Policy</a>
             <a href="/terms" className="hover:text-primary transition-colors">Fundraising Terms</a>
+            <a href="/support" className="hover:text-primary transition-colors">Support</a>
             <a href="mailto:info@rootprojx.com" className="hover:text-primary transition-colors">Contact</a>
           </span>
         </div>

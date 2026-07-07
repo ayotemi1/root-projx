@@ -30,6 +30,7 @@ import ShopCancelPage from "@/pages/shop-cancel";
 import AboutPage from "@/pages/about";
 import PrivacyPage from "@/pages/privacy";
 import TermsPage from "@/pages/terms";
+import SupportPage from "@/pages/support";
 import OnboardingPage from "@/pages/onboarding";
 import NotFound from "@/pages/not-found";
 
@@ -79,6 +80,7 @@ function AppRoutes() {
               <Route path="/shop" component={ShopPage} />
               <Route path="/about" component={AboutPage} />
               <Route path="/privacy" component={PrivacyPage} />
+              <Route path="/support" component={SupportPage} />
               <Route path="/terms" component={TermsPage} />
               <Route path="/help" component={HelpPage} />
               <Route path="/account">
