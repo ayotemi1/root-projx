@@ -122,6 +122,67 @@ router.post("/donations/guest-payment-intent", async (req, res) => {
   }
 });
 
+// ── POST /donations/anonymous-checkout — one-time donation, no login required ──
+// Stripe Checkout handles email collection during payment itself.
+router.post("/donations/anonymous-checkout", async (req, res) => {
+  try {
+    const { orgId, amountPence } = req.body as {
+      orgId?: string;
+      amountPence?: number;
+    };
+
+    if (!orgId || !amountPence || amountPence < 100) {
+      res.status(400).json({ error: "orgId and amountPence (≥100) are required" });
+      return;
+    }
+
+    const serverToken = await getServerToken();
+    const org = await fsGet("organisations", orgId, serverToken);
+    if (!org) {
+      res.status(404).json({ error: "Organisation not found" });
+      return;
+    }
+
+    const stripe = await getUncachableStripeClient();
+    const feePence = platformFee(amountPence / 100);
+
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      line_items: [
+        {
+          price_data: {
+            currency: "gbp",
+            unit_amount: amountPence,
+            product_data: {
+              name: `Donation to ${org["name"] as string}`,
+              description: "Support straight to the source — Root ProjX",
+            },
+          },
+          quantity: 1,
+        },
+      ],
+      payment_intent_data: {
+        metadata: {
+          userId: "anonymous",
+          orgId,
+          orgName: (org["name"] as string) ?? "",
+          amountPence: String(amountPence),
+          feePence: String(feePence),
+          type: "anonymous_one_time",
+          platform: "rootprojx",
+        },
+      },
+      success_url: `${DOMAIN}/donate/success?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${DOMAIN}/`,
+    });
+
+    res.json({ url: session.url, sessionId: session.id });
+  } catch (err) {
+    req.log.error({ err }, "POST /donations/anonymous-checkout error");
+    res.status(500).json({ error: "Failed to create checkout session" });
+  }
+});
+
 // ── GET /donations/publishable-key — return public Stripe key for client ───────
 router.get("/donations/publishable-key", async (_req, res) => {
   try {
