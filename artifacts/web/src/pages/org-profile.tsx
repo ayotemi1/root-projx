@@ -1,23 +1,17 @@
 import { useState } from "react";
-import { useRoute, Link, useLocation } from "wouter";
+import { useRoute, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  CheckCircle, ArrowLeft, Heart, HeartOff, X,
+  CheckCircle, ArrowLeft, Heart, HeartOff,
   MapPin, Tag, Users, TrendingUp, Zap, DollarSign,
-  ThumbsUp, MessageCircle, Share2, ChevronRight,
-
+  ThumbsUp, MessageCircle, Share2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { useAuth } from "@/context/AuthContext";
 import * as api from "@/lib/api";
 import type { FeedUpdate, Review, Org, VolunteerRole } from "@/lib/api";
+import { GuestDonateSheet } from "@/components/GuestDonateSheet";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -176,102 +170,6 @@ function ReviewRow({ item }: { item: Review }) {
 }
 
 
-// ── Guest donate modal ────────────────────────────────────────────────────────
-
-function DonateGuestModal({
-  open, onClose, orgId, orgName,
-}: {
-  open: boolean; onClose: () => void; orgId: string; orgName: string;
-}) {
-  const [, navigate] = useLocation();
-  const [showEmail, setShowEmail] = useState(false);
-  const [email, setEmail] = useState("");
-
-  function handleGuestContinue(e: React.FormEvent) {
-    e.preventDefault();
-    if (!email.trim()) return;
-    navigate(`/donate/${orgId}?email=${encodeURIComponent(email.trim())}`);
-    onClose();
-  }
-
-  function handleClose() {
-    setShowEmail(false);
-    setEmail("");
-    onClose();
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
-      <DialogContent className="max-w-sm p-0 overflow-hidden rounded-2xl border-0 shadow-2xl">
-        <div className="px-6 pt-6 pb-5 text-white" style={{ backgroundColor: RED }}>
-          <button
-            onClick={handleClose}
-            className="absolute top-4 right-4 text-white/60 hover:text-white transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-          <DialogTitle className="text-lg font-extrabold text-white leading-snug">
-            Join Root ProjX to support<br />
-            <span style={{ color: GOLD }}>{orgName}</span>
-          </DialogTitle>
-          <p className="text-white/70 text-sm mt-1">Your support goes straight to the source.</p>
-        </div>
-        <div className="px-6 py-5 space-y-3 bg-white">
-          <Link href="/register" onClick={handleClose}>
-            <Button className="w-full font-bold text-black h-11" style={{ backgroundColor: GOLD }}>
-              Create an account
-            </Button>
-          </Link>
-          <Link href={`/login?next=${encodeURIComponent(`/donate/${orgId}`)}`} onClick={handleClose}>
-            <Button
-              variant="outline"
-              className="w-full font-semibold h-11 border-2"
-              style={{ borderColor: RED, color: RED }}
-            >
-              Sign in
-            </Button>
-          </Link>
-          <div className="relative flex items-center gap-3 py-1">
-            <div className="flex-1 h-px bg-border" />
-            <span className="text-xs text-muted-foreground">or</span>
-            <div className="flex-1 h-px bg-border" />
-          </div>
-          {!showEmail ? (
-            <button
-              className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors py-1"
-              onClick={() => setShowEmail(true)}
-            >
-              Continue as guest →
-            </button>
-          ) : (
-            <form onSubmit={handleGuestContinue} className="space-y-2">
-              <Input
-                type="email"
-                placeholder="Your email address"
-                value={email}
-                autoFocus
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="h-10"
-              />
-              <Button
-                type="submit"
-                variant="outline"
-                className="w-full text-sm font-semibold"
-                disabled={!email.trim()}
-              >
-                Continue as guest
-              </Button>
-              <p className="text-xs text-center text-muted-foreground">
-                No account needed — your email is only used for your receipt.
-              </p>
-            </form>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 
@@ -385,7 +283,7 @@ export default function OrgProfilePage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
-      <DonateGuestModal
+      <GuestDonateSheet
         open={donateModalOpen}
         onClose={() => setDonateModalOpen(false)}
         orgId={id}

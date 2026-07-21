@@ -1,9 +1,11 @@
 import { useState } from "react";
-import { useParams, Link } from "wouter";
+import { useParams, Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Users } from "lucide-react";
 import * as api from "@/lib/api";
 import type { Campaign, Org } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
+import { GuestDonateSheet } from "@/components/GuestDonateSheet";
 
 const RED = "#B50000";
 
@@ -11,7 +13,11 @@ function fmt(n: number) {
   return "£" + n.toLocaleString("en-GB");
 }
 
-function CampaignCard({ c, orgId, completed }: { c: Campaign; orgId: string; completed: boolean }) {
+function CampaignCard({
+  c, orgId, completed, onGuestDonate,
+}: {
+  c: Campaign; orgId: string; completed: boolean; onGuestDonate: () => void;
+}) {
   const pct = c.goal > 0 ? Math.min(100, Math.round((c.amountRaised / c.goal) * 100)) : 0;
 
   return (
@@ -92,13 +98,13 @@ function CampaignCard({ c, orgId, completed }: { c: Campaign; orgId: string; com
         {!completed && (
           <div className="flex justify-end mt-auto pt-1">
             {c.type === "fundraising" ? (
-              <Link
-                href={`/donate/${orgId}`}
+              <button
+                onClick={onGuestDonate}
                 className="px-5 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
                 style={{ background: RED }}
               >
                 Donate
-              </Link>
+              </button>
             ) : (
               <button
                 className="px-5 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
@@ -117,7 +123,10 @@ function CampaignCard({ c, orgId, completed }: { c: Campaign; orgId: string; com
 export default function OrgCampaignsPage() {
   const params = useParams<{ id: string }>();
   const orgId = params.id!;
+  const [, navigate] = useLocation();
+  const { isAuthenticated } = useAuth();
   const [tab, setTab] = useState<"active" | "completed">("active");
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   const { data: org } = useQuery<Org>({
     queryKey: ["org", orgId],
@@ -133,8 +142,22 @@ export default function OrgCampaignsPage() {
   const completed = campaigns.filter((c) => c.status === "completed");
   const shown = tab === "active" ? active : completed;
 
+  function handleDonate() {
+    if (isAuthenticated) {
+      navigate(`/donate/${orgId}`);
+    } else {
+      setSheetOpen(true);
+    }
+  }
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
+      <GuestDonateSheet
+        open={sheetOpen}
+        onClose={() => setSheetOpen(false)}
+        orgId={orgId}
+        orgName={org?.name ?? "this organisation"}
+      />
       {/* Back link */}
       <Link
         href={`/organisations/${orgId}`}
@@ -197,7 +220,7 @@ export default function OrgCampaignsPage() {
       ) : (
         <div className="space-y-4">
           {shown.map((c) => (
-            <CampaignCard key={c._id} c={c} orgId={orgId} completed={tab === "completed"} />
+            <CampaignCard key={c._id} c={c} orgId={orgId} completed={tab === "completed"} onGuestDonate={handleDonate} />
           ))}
         </div>
       )}
@@ -205,13 +228,13 @@ export default function OrgCampaignsPage() {
       {/* Full-width CTA */}
       {tab === "active" && shown.length > 0 && (
         <div className="mt-6">
-          <Link
-            href={`/donate/${orgId}`}
+          <button
+            onClick={handleDonate}
             className="block w-full py-3.5 rounded-xl text-center text-white font-semibold text-sm transition-opacity hover:opacity-90"
             style={{ background: RED }}
           >
-            See All Campaigns
-          </Link>
+            Donate to {org?.name ?? "this organisation"}
+          </button>
         </div>
       )}
     </div>
