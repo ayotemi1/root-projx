@@ -8,7 +8,9 @@ import {
   fsPatch,
 } from "../lib/firebase-rest.js";
 import { requireAuth } from "../lib/auth.js";
-import { brevoAddContact, brevoSendEmail, welcomeEmailHtml } from "../lib/brevo.js";
+import { brevoAddContact, brevoSendEmail, welcomeEmailHtml, internalNotificationHtml } from "../lib/brevo.js";
+
+const TEAM_EMAIL = process.env.TEAM_EMAIL ?? "info@rootprojx.com";
 
 const router = Router();
 
@@ -138,6 +140,16 @@ router.post("/auth/register", authRateLimit, async (req, res) => {
         to: [{ email: email.toLowerCase(), name }],
         subject: "Welcome to Root ProjX 🌱",
         htmlContent: welcomeEmailHtml(name),
+      }),
+      // Internal notification to team for tracking
+      brevoSendEmail({
+        to: [{ email: TEAM_EMAIL, name: "Root ProjX Team" }],
+        subject: `New supporter signed up: ${name}`,
+        htmlContent: internalNotificationHtml({
+          type: "supporter_signup",
+          name,
+          email: email.toLowerCase(),
+        }),
       }),
     ]).catch((err) => {
       // Log but never throw — registration already succeeded

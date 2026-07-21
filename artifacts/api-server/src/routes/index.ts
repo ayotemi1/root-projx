@@ -11,9 +11,11 @@ import newsletterRouter from "./newsletter.js";
 import uploadsRouter from "./uploads.js";
 import shopRouter from "./shop.js";
 import stripeConnectRouter from "./stripe-connect.js";
+import applicationsRouter from "./applications.js";
 
 const router: IRouter = Router();
 
+router.use(applicationsRouter);
 router.use(healthRouter);
 router.use(authRouter);
 router.use(organisationsRouter);

@@ -1,41 +1,40 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useLocation } from "wouter";
-import { useAuth } from "@/context/AuthContext";
-import * as api from "@/lib/api";
-import { CheckCircle2, ChevronRight, ChevronLeft, ArrowRight } from "lucide-react";
+import { CheckCircle2, ChevronRight, ChevronLeft } from "lucide-react";
 
 const RED_DEEP = "#7A0000";
 const RED = "#B50000";
 const GOLD = "#F5B800";
 
-const CATEGORIES = [
-  "Education", "Health & Wellbeing", "Environment", "Community Development",
-  "Arts & Culture", "Economic Empowerment", "Youth", "Sport & Recreation",
-  "Housing & Homelessness", "Faith & Spirituality", "Other",
+const SECTORS = [
+  "Education",
+  "Health & Wellbeing",
+  "Environment",
+  "Community Development",
+  "Arts & Culture",
+  "Economic Empowerment",
+  "Youth",
+  "Sport & Recreation",
+  "Housing & Homelessness",
+  "Disaster Relief",
+  "Faith & Spirituality",
+  "Other",
 ];
 
-const COUNTRIES = [
-  "Jamaica", "United Kingdom", "United States", "Canada", "Trinidad and Tobago",
-  "Barbados", "Guyana", "Grenada", "St Lucia", "Antigua and Barbuda",
-  "Bahamas", "Belize", "Dominica", "Haiti", "Nigeria", "Ghana",
-  "Kenya", "South Africa", "Other",
-];
-
-const YEARS_OPTIONS = [
-  "Less than 1 year", "1–3 years", "3–5 years", "5–10 years", "Over 10 years",
-];
-
-// Steps 1–7 are the actual form; 0 = welcome, 8 = complete
-const TOTAL_FORM_STEPS = 7;
+// 0 = welcome, 1 = org details, 2 = sectors, 3 = complete
+const TOTAL_STEPS = 2;
 
 function ProgressBar({ step }: { step: number }) {
-  const pct = Math.round(((step - 1) / TOTAL_FORM_STEPS) * 100);
+  const pct = Math.round(((step - 1) / TOTAL_STEPS) * 100);
   return (
     <div style={{ height: 4, background: "rgba(255,255,255,0.2)", borderRadius: 2 }}>
       <div
         style={{
-          height: "100%", background: GOLD, borderRadius: 2,
-          width: `${Math.max(pct, 2)}%`, transition: "width 0.4s ease",
+          height: "100%",
+          background: GOLD,
+          borderRadius: 2,
+          width: `${Math.max(pct, 4)}%`,
+          transition: "width 0.4s ease",
         }}
       />
     </div>
@@ -43,23 +42,19 @@ function ProgressBar({ step }: { step: number }) {
 }
 
 function TopBar({ step }: { step: number }) {
-  const isWelcome = step === 0;
-  const isDone = step === 8;
+  const isEdge = step === 0 || step === 3;
   return (
     <div style={{ background: RED_DEEP, padding: "14px 24px", position: "sticky", top: 0, zIndex: 10 }}>
-      <div style={{ maxWidth: 720, margin: "0 auto" }}>
-        <div style={{
-          display: "flex", alignItems: "center", justifyContent: "space-between",
-          marginBottom: isWelcome || isDone ? 0 : 10,
-        }}>
+      <div style={{ maxWidth: 680, margin: "0 auto" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: isEdge ? 0 : 10 }}>
           <img src="/logo-stylised.png" alt="Root ProjX" style={{ height: 36, objectFit: "contain" }} />
-          {!isWelcome && !isDone && (
+          {!isEdge && (
             <span style={{ color: "rgba(255,255,255,0.7)", fontSize: 13 }}>
-              Step {step} of {TOTAL_FORM_STEPS}
+              Step {step} of {TOTAL_STEPS}
             </span>
           )}
         </div>
-        {!isWelcome && !isDone && <ProgressBar step={step} />}
+        {!isEdge && <ProgressBar step={step} />}
       </div>
     </div>
   );
@@ -67,37 +62,33 @@ function TopBar({ step }: { step: number }) {
 
 function Card({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{
-      background: "#fff", borderRadius: 16, boxShadow: "0 4px 24px rgba(0,0,0,0.10)",
-      padding: "40px 48px", width: "100%",
-    }}>
+    <div style={{ background: "#fff", borderRadius: 16, boxShadow: "0 4px 24px rgba(0,0,0,0.10)", padding: "40px 48px", width: "100%" }}>
       {children}
     </div>
   );
 }
 
-function StepLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <p style={{ fontSize: 12, fontWeight: 700, letterSpacing: "0.1em", color: RED, textTransform: "uppercase", marginBottom: 8 }}>
-      {children}
-    </p>
-  );
-}
-
 function StepHeading({ children }: { children: React.ReactNode }) {
   return (
-    <h2 style={{ fontSize: 26, fontWeight: 800, color: "#1a1a1a", marginBottom: 24, lineHeight: 1.3 }}>
+    <h2 style={{ fontSize: 26, fontWeight: 800, color: "#1a1a1a", marginBottom: 8, lineHeight: 1.3 }}>
       {children}
     </h2>
   );
 }
 
-function FieldGroup({ label, optional, children }: { label: string; optional?: boolean; children: React.ReactNode }) {
+function StepSub({ children }: { children: React.ReactNode }) {
+  return (
+    <p style={{ fontSize: 15, color: "#666", marginBottom: 32, lineHeight: 1.6 }}>
+      {children}
+    </p>
+  );
+}
+
+function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 20 }}>
       <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#444", marginBottom: 6 }}>
         {label}
-        {optional && <span style={{ fontWeight: 400, color: "#999", marginLeft: 4 }}>(optional)</span>}
       </label>
       {children}
     </div>
@@ -105,24 +96,31 @@ function FieldGroup({ label, optional, children }: { label: string; optional?: b
 }
 
 const inputStyle: React.CSSProperties = {
-  width: "100%", padding: "10px 14px", fontSize: 15, border: "1.5px solid #e0d8cc",
-  borderRadius: 8, outline: "none", background: "#fafaf8", boxSizing: "border-box",
-};
-
-const textareaStyle: React.CSSProperties = {
-  ...inputStyle, minHeight: 100, resize: "vertical", lineHeight: 1.6,
-};
-
-const selectStyle: React.CSSProperties = {
-  ...inputStyle, appearance: "none", cursor: "pointer",
+  width: "100%",
+  padding: "11px 14px",
+  fontSize: 15,
+  border: "1.5px solid #e0d8cc",
+  borderRadius: 8,
+  outline: "none",
+  background: "#fafaf8",
+  boxSizing: "border-box",
+  fontFamily: "inherit",
 };
 
 function NavButtons({
-  onBack, onNext, nextLabel = "Continue", nextDisabled = false, loading = false,
+  onBack,
+  onNext,
+  nextLabel = "Continue",
+  nextDisabled = false,
+  loading = false,
   hideBack = false,
 }: {
-  onBack?: () => void; onNext?: () => void; nextLabel?: string;
-  nextDisabled?: boolean; loading?: boolean; hideBack?: boolean;
+  onBack?: () => void;
+  onNext?: () => void;
+  nextLabel?: string;
+  nextDisabled?: boolean;
+  loading?: boolean;
+  hideBack?: boolean;
 }) {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 32 }}>
@@ -150,594 +148,257 @@ function NavButtons({
           transition: "background 0.2s",
         }}
       >
-        {loading ? "Saving…" : nextLabel}
+        {loading ? "Submitting…" : nextLabel}
         {!loading && <ChevronRight size={16} />}
       </button>
     </div>
   );
 }
 
-function LegalSection({
-  title, children, agreed, onAgree, agreeLabel, onBack, onNext, loading,
-}: {
-  title: string; children: React.ReactNode; agreed: boolean;
-  onAgree: (v: boolean) => void; agreeLabel: string;
-  onBack: () => void; onNext: () => void; loading?: boolean;
-}) {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [canAgree, setCanAgree] = useState(false);
-
-  useEffect(() => {
-    setCanAgree(false);
-    if (scrollRef.current) scrollRef.current.scrollTop = 0;
-  }, [title]);
-
-  function handleScroll(e: React.UIEvent<HTMLDivElement>) {
-    const el = e.currentTarget;
-    if (el.scrollHeight - el.scrollTop <= el.clientHeight + 40) setCanAgree(true);
-  }
-
-  return (
-    <>
-      <StepHeading>{title}</StepHeading>
-      <div
-        ref={scrollRef}
-        onScroll={handleScroll}
-        style={{
-          maxHeight: 340, overflowY: "auto", border: "1.5px solid #e0d8cc",
-          borderRadius: 10, padding: "20px 24px", background: "#fafaf8",
-          fontSize: 14, lineHeight: 1.8, color: "#333",
-        }}
-      >
-        {children}
-        {!canAgree && (
-          <p style={{ textAlign: "center", color: "#aaa", fontSize: 13, marginTop: 12 }}>
-            ↓ Scroll to continue
-          </p>
-        )}
-      </div>
-      <label
-        style={{
-          display: "flex", alignItems: "flex-start", gap: 12, marginTop: 20,
-          cursor: canAgree ? "pointer" : "not-allowed", opacity: canAgree ? 1 : 0.4,
-        }}
-      >
-        <input
-          type="checkbox"
-          checked={agreed}
-          disabled={!canAgree}
-          onChange={(e) => canAgree && onAgree(e.target.checked)}
-          style={{ marginTop: 2, accentColor: RED, width: 18, height: 18, flexShrink: 0 }}
-        />
-        <span style={{ fontSize: 14, color: "#333" }}>{agreeLabel}</span>
-      </label>
-      <NavButtons
-        onBack={onBack}
-        onNext={onNext}
-        nextDisabled={!agreed}
-        loading={loading}
-        nextLabel="I agree, continue"
-      />
-    </>
-  );
-}
-
 export default function OnboardingPage() {
-  const { user, token, register } = useAuth();
-  const [, navigate] = useLocation();
-
+  const [, setLocation] = useLocation();
   const [step, setStep] = useState(0);
-  const [submitting, setSubmitting] = useState(false);
-  const [submitError, setSubmitError] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  // ── Step 1: Account ──────────────────────────────────────────────────────────
+  const [orgName, setOrgName] = useState("");
   const [contactName, setContactName] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [accountError, setAccountError] = useState("");
+  const [sectors, setSectors] = useState<string[]>([]);
 
-  // ── Step 2: Org Identity ─────────────────────────────────────────────────────
-  const [orgName, setOrgName] = useState("");
-  const [category, setCategory] = useState("");
-  const [country, setCountry] = useState("");
-  const [city, setCity] = useState("");
-  const [regNumber, setRegNumber] = useState("");
-
-  // ── Step 3: Your Work ────────────────────────────────────────────────────────
-  const [description, setDescription] = useState("");
-  const [mission, setMission] = useState("");
-  const [whoYouServe, setWhoYouServe] = useState("");
-  const [yearsOperating, setYearsOperating] = useState("");
-
-  // ── Step 4: Contact & Links ──────────────────────────────────────────────────
-  const [website, setWebsite] = useState("");
-  const [instagram, setInstagram] = useState("");
-  const [facebook, setFacebook] = useState("");
-  const [twitter, setTwitter] = useState("");
-
-  // ── Legal steps ──────────────────────────────────────────────────────────────
-  const [agreedTerms, setAgreedTerms] = useState(false);
-  const [agreedPrivacy, setAgreedPrivacy] = useState(false);
-  const [agreedMou, setAgreedMou] = useState(false);
-  const [mouName, setMouName] = useState("");
-  const [mouDate] = useState(new Date().toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" }));
-
-  // Redirect if already fully onboarded
-  useEffect(() => {
-    if (user?.accountType === "organisation" && token) {
-      api.getOrg(user.id).then((org) => {
-        if (org?.category) navigate("/org-dashboard");
-      }).catch(() => {});
-    }
-  }, [user, token]);
-
-  // Pre-fill mouName from contactName
-  useEffect(() => {
-    if (contactName && !mouName) setMouName(contactName);
-  }, [contactName]);
-
-  function validateAccount() {
-    if (!contactName.trim()) return "Please enter your full name.";
-    if (!email.trim() || !email.includes("@")) return "Please enter a valid email address.";
-    if (password.length < 6) return "Password must be at least 6 characters.";
-    if (password !== confirmPassword) return "Passwords do not match.";
-    return "";
+  function toggleSector(s: string) {
+    setSectors((prev) => prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]);
   }
 
-  const next = () => setStep((s) => s + 1);
-  const back = () => setStep((s) => s - 1);
-
   async function handleSubmit() {
-    setSubmitting(true);
-    setSubmitError("");
+    setError("");
+    setLoading(true);
     try {
-      const socialLinks: Record<string, string> = {};
-      if (instagram) socialLinks["instagram"] = instagram;
-      if (facebook) socialLinks["facebook"] = facebook;
-      if (twitter) socialLinks["twitter"] = twitter;
-
-      const newToken = await register({
-        name: contactName.trim(),
-        email: email.trim().toLowerCase(),
-        password,
-        accountType: "organisation",
-        orgName: orgName.trim(),
-        country,
+      const res = await fetch("/api/applications/org", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orgName, contactName, email: email.trim().toLowerCase(), sectors }),
       });
-
-      await api.createOrgProfile({
-        name: orgName.trim(),
-        country,
-        city: city || undefined,
-        category,
-        description,
-        mission: mission || undefined,
-        whoYouServe: whoYouServe || undefined,
-        yearsOperating: yearsOperating || undefined,
-        registrationNumber: regNumber || undefined,
-        contact: website ? { website } : undefined,
-        socialLinks: Object.keys(socialLinks).length ? socialLinks : undefined,
-      }, newToken);
-
-      setStep(8);
-    } catch (err: unknown) {
-      setSubmitError(err instanceof Error ? err.message : "Something went wrong. Please try again.");
-      setSubmitting(false);
+      const data = await res.json() as { error?: string };
+      if (!res.ok) {
+        setError(data.error ?? "Something went wrong. Please try again.");
+        setLoading(false);
+        return;
+      }
+      setStep(3);
+    } catch {
+      setError("Network error — please check your connection and try again.");
+    } finally {
+      setLoading(false);
     }
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#F9F6F0", display: "flex", flexDirection: "column" }}>
+    <div style={{ minHeight: "100vh", background: "#f2ede4" }}>
       <TopBar step={step} />
 
-      <div style={{ flex: 1, display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "48px 24px 80px" }}>
-        <div style={{ width: "100%", maxWidth: 680 }}>
+      <div style={{ maxWidth: 680, margin: "0 auto", padding: "40px 24px 80px" }}>
 
-          {/* ── STEP 0: WELCOME ─────────────────────────────────────────────── */}
-          {step === 0 && (
-            <div style={{ textAlign: "center" }}>
+        {/* ── Step 0: Welcome ─────────────────────────────────────────── */}
+        {step === 0 && (
+          <Card>
+            <div style={{ textAlign: "center", marginBottom: 40 }}>
               <div style={{
-                background: RED_DEEP, borderRadius: 20, padding: "64px 48px",
-                marginBottom: 32, color: "#fff",
+                width: 72, height: 72, borderRadius: "50%", background: RED_DEEP,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                margin: "0 auto 20px",
               }}>
-                <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.18em", color: GOLD, textTransform: "uppercase", marginBottom: 16 }}>
-                  Partner Onboarding
-                </p>
-                <h1 style={{ fontSize: 36, fontWeight: 900, margin: "0 0 24px", lineHeight: 1.2 }}>
-                  Welcome to Root ProjX
-                </h1>
-                <p style={{ fontSize: 16, lineHeight: 1.8, color: "rgba(255,255,255,0.85)", maxWidth: 480, margin: "0 auto 32px" }}>
-                  Thank you for your interest in becoming a Root ProjX partner. We're a
-                  community-powered platform connecting grassroots organisations with
-                  visibility, fundraising opportunities and meaningful support.
-                </p>
-                <p style={{ fontSize: 14, color: "rgba(255,255,255,0.6)", maxWidth: 440, margin: "0 auto 40px" }}>
-                  This form takes around 5–10 minutes. You'll set up your account,
-                  tell us about your organisation, and agree to our partnership terms.
-                </p>
-                <button
-                  onClick={next}
-                  style={{
-                    display: "inline-flex", alignItems: "center", gap: 10,
-                    background: GOLD, color: RED_DEEP, border: "none", borderRadius: 10,
-                    padding: "15px 40px", fontSize: 16, fontWeight: 700, cursor: "pointer",
-                  }}
-                >
-                  Begin <ArrowRight size={18} />
-                </button>
+                <span style={{ fontSize: 34 }}>🌱</span>
               </div>
+              <h1 style={{ fontSize: 30, fontWeight: 900, color: "#1a1a1a", marginBottom: 12 }}>
+                List your organisation on Root ProjX
+              </h1>
+              <p style={{ fontSize: 16, color: "#555", lineHeight: 1.7, maxWidth: 480, margin: "0 auto 32px" }}>
+                Connect with diaspora supporters, receive donations, and share your impact with a growing global community.
+              </p>
             </div>
-          )}
 
-          {/* ── STEP 1: ACCOUNT SETUP ───────────────────────────────────────── */}
-          {step === 1 && (
-            <Card>
-              <StepLabel>Step 1 of 7 — Your Account</StepLabel>
-              <StepHeading>Create your account</StepHeading>
+            <div style={{ display: "grid", gap: 12, marginBottom: 36 }}>
+              {[
+                ["📋", "Fill in a short questionnaire", "Takes about 2 minutes"],
+                ["🔍", "We review your application", "Within 5 business days"],
+                ["🚀", "Get listed and start receiving support", "Access granted on approval"],
+              ].map(([icon, title, sub]) => (
+                <div key={title} style={{ display: "flex", alignItems: "flex-start", gap: 16, background: "#f9f6f0", borderRadius: 10, padding: "16px 20px" }}>
+                  <span style={{ fontSize: 22, lineHeight: 1 }}>{icon}</span>
+                  <div>
+                    <p style={{ margin: 0, fontWeight: 700, fontSize: 15, color: "#1a1a1a" }}>{title}</p>
+                    <p style={{ margin: "2px 0 0", fontSize: 13, color: "#888" }}>{sub}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
 
-              <FieldGroup label="Your full name">
-                <input
-                  style={inputStyle} value={contactName}
-                  onChange={(e) => setContactName(e.target.value)}
-                  placeholder="e.g. Marcus Williams"
-                  autoComplete="name"
-                />
-              </FieldGroup>
-
-              <FieldGroup label="Email address">
-                <input
-                  style={inputStyle} value={email} type="email"
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@yourorg.com"
-                  autoComplete="email"
-                />
-              </FieldGroup>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                <FieldGroup label="Password">
-                  <input
-                    style={inputStyle} value={password} type="password"
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Min. 6 characters"
-                    autoComplete="new-password"
-                  />
-                </FieldGroup>
-                <FieldGroup label="Confirm password">
-                  <input
-                    style={inputStyle} value={confirmPassword} type="password"
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="Repeat password"
-                    autoComplete="new-password"
-                  />
-                </FieldGroup>
-              </div>
-
-              {accountError && (
-                <p style={{ color: RED, fontSize: 14, background: "#fff0f0", padding: "10px 14px", borderRadius: 8, marginBottom: 8 }}>
-                  {accountError}
-                </p>
-              )}
-
-              <NavButtons
-                hideBack
-                onNext={() => {
-                  const err = validateAccount();
-                  if (err) { setAccountError(err); return; }
-                  setAccountError("");
-                  next();
-                }}
-                nextDisabled={!contactName.trim() || !email.trim() || !password || !confirmPassword}
-              />
-            </Card>
-          )}
-
-          {/* ── STEP 2: ORGANISATION IDENTITY ───────────────────────────────── */}
-          {step === 2 && (
-            <Card>
-              <StepLabel>Step 2 of 7 — Organisation Details</StepLabel>
-              <StepHeading>Tell us about your organisation</StepHeading>
-
-              <FieldGroup label="Organisation name">
-                <input
-                  style={inputStyle} value={orgName}
-                  onChange={(e) => setOrgName(e.target.value)}
-                  placeholder="e.g. Trench Town Futures"
-                />
-              </FieldGroup>
-
-              <FieldGroup label="Category — what type of work do you do?">
-                <select style={selectStyle} value={category} onChange={(e) => setCategory(e.target.value)}>
-                  <option value="">Select a category…</option>
-                  {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </FieldGroup>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                <FieldGroup label="Country of operation">
-                  <select style={selectStyle} value={country} onChange={(e) => setCountry(e.target.value)}>
-                    <option value="">Select country…</option>
-                    {COUNTRIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </FieldGroup>
-                <FieldGroup label="City / Town" optional>
-                  <input
-                    style={inputStyle} value={city}
-                    onChange={(e) => setCity(e.target.value)}
-                    placeholder="e.g. Kingston"
-                  />
-                </FieldGroup>
-              </div>
-
-              <FieldGroup label="Charity / registration number" optional>
-                <input
-                  style={inputStyle} value={regNumber}
-                  onChange={(e) => setRegNumber(e.target.value)}
-                  placeholder="e.g. 1234567"
-                />
-              </FieldGroup>
-
-              <NavButtons
-                onBack={back}
-                onNext={next}
-                nextDisabled={!orgName.trim() || !category || !country}
-              />
-            </Card>
-          )}
-
-          {/* ── STEP 3: YOUR WORK ───────────────────────────────────────────── */}
-          {step === 3 && (
-            <Card>
-              <StepLabel>Step 3 of 7 — Your Work</StepLabel>
-              <StepHeading>What do you do?</StepHeading>
-
-              <FieldGroup label="Describe your organisation">
-                <textarea
-                  style={textareaStyle} value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Tell supporters what your organisation does and why it matters…"
-                />
-              </FieldGroup>
-
-              <FieldGroup label="Your mission statement" optional>
-                <textarea
-                  style={{ ...textareaStyle, minHeight: 80 }} value={mission}
-                  onChange={(e) => setMission(e.target.value)}
-                  placeholder="In one or two sentences, what is your mission?"
-                />
-              </FieldGroup>
-
-              <FieldGroup label="Who do you serve?" optional>
-                <input
-                  style={inputStyle} value={whoYouServe}
-                  onChange={(e) => setWhoYouServe(e.target.value)}
-                  placeholder="e.g. Young people aged 12–25 in inner-city communities"
-                />
-              </FieldGroup>
-
-              <FieldGroup label="How long have you been operating?" optional>
-                <select style={selectStyle} value={yearsOperating} onChange={(e) => setYearsOperating(e.target.value)}>
-                  <option value="">Select…</option>
-                  {YEARS_OPTIONS.map((y) => <option key={y} value={y}>{y}</option>)}
-                </select>
-              </FieldGroup>
-
-              <NavButtons
-                onBack={back} onNext={next}
-                nextDisabled={!description.trim()}
-              />
-            </Card>
-          )}
-
-          {/* ── STEP 4: CONTACT & LINKS ──────────────────────────────────────── */}
-          {step === 4 && (
-            <Card>
-              <StepLabel>Step 4 of 7 — Contact & Links</StepLabel>
-              <StepHeading>How can supporters find you?</StepHeading>
-
-              <FieldGroup label="Website" optional>
-                <input
-                  style={inputStyle} value={website} type="url"
-                  onChange={(e) => setWebsite(e.target.value)}
-                  placeholder="https://yourorg.com"
-                />
-              </FieldGroup>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                <FieldGroup label="Instagram" optional>
-                  <input
-                    style={inputStyle} value={instagram}
-                    onChange={(e) => setInstagram(e.target.value)}
-                    placeholder="@yourhandle"
-                  />
-                </FieldGroup>
-                <FieldGroup label="Facebook" optional>
-                  <input
-                    style={inputStyle} value={facebook}
-                    onChange={(e) => setFacebook(e.target.value)}
-                    placeholder="facebook.com/yourpage"
-                  />
-                </FieldGroup>
-              </div>
-
-              <FieldGroup label="X / Twitter" optional>
-                <input
-                  style={inputStyle} value={twitter}
-                  onChange={(e) => setTwitter(e.target.value)}
-                  placeholder="@yourhandle"
-                />
-              </FieldGroup>
-
-              <NavButtons onBack={back} onNext={next} />
-            </Card>
-          )}
-
-          {/* ── STEP 5: TERMS & CONDITIONS ───────────────────────────────────── */}
-          {step === 5 && (
-            <Card>
-              <StepLabel>Step 5 of 7 — Legal</StepLabel>
-              <LegalSection
-                title="Terms & Conditions"
-                agreed={agreedTerms}
-                onAgree={setAgreedTerms}
-                agreeLabel="I have read and agree to the Root ProjX Terms & Conditions."
-                onBack={back}
-                onNext={next}
-              >
-                <p>These Terms & Conditions govern your organisation's use of the Root ProjX platform.</p>
-                <br />
-                <p><strong>1. Eligibility</strong><br />Organisations must have a genuine community purpose and provide accurate registration information.</p>
-                <br />
-                <p><strong>2. Accuracy of Information</strong><br />All information supplied must be true and kept up to date.</p>
-                <br />
-                <p><strong>3. Campaigns</strong><br />Campaigns must accurately describe how donations will be used. Root ProjX may request clarification or supporting evidence.</p>
-                <br />
-                <p><strong>4. Donations & Fees</strong><br />A platform fee is deducted before funds are transferred to the organisation.</p>
-                <br />
-                <p><strong>5. Campaign Updates</strong><br />Organisations agree to provide reasonable updates on funded campaigns so donors can see the impact created.</p>
-                <br />
-                <p><strong>6. Suspension</strong><br />Root ProjX reserves the right to pause or remove campaigns that contain misleading information or breach these terms.</p>
-                <br />
-                <p><strong>7. Intellectual Property</strong><br />Organisations retain ownership of their content while granting Root ProjX permission to display submitted material to promote campaigns and the platform.</p>
-                <br />
-                <p><strong>8. Acceptance</strong><br />Submitting a registration confirms acceptance of these Terms & Conditions.</p>
-              </LegalSection>
-            </Card>
-          )}
-
-          {/* ── STEP 6: PRIVACY POLICY ───────────────────────────────────────── */}
-          {step === 6 && (
-            <Card>
-              <StepLabel>Step 6 of 7 — Legal</StepLabel>
-              <LegalSection
-                title="Privacy Policy"
-                agreed={agreedPrivacy}
-                onAgree={setAgreedPrivacy}
-                agreeLabel="I have read and understand the Root ProjX Privacy Policy."
-                onBack={back}
-                onNext={next}
-              >
-                <p>Root ProjX respects your privacy and is committed to protecting your information.</p>
-                <br />
-                <p><strong>Information we collect</strong><br />Organisation details, contact information, campaign information, uploaded media and supporting documents.</p>
-                <br />
-                <p><strong>Why we collect it</strong><br />For verification, communication, platform administration and safeguarding purposes.</p>
-                <br />
-                <p><strong>How information is stored</strong><br />In secure systems with access limited to authorised personnel only.</p>
-                <br />
-                <p><strong>Information sharing</strong><br />Your information is never sold. Public campaign information may be displayed on the platform where relevant to promote your work.</p>
-                <br />
-                <p><strong>Your rights</strong><br />You may request access, correction or deletion of your data where legally applicable.</p>
-                <br />
-                <p><strong>Contact us</strong><br />Email: info@rootprojx.com<br />Website: www.rootprojx.com</p>
-              </LegalSection>
-            </Card>
-          )}
-
-          {/* ── STEP 7: MOU ──────────────────────────────────────────────────── */}
-          {step === 7 && (
-            <Card>
-              <StepLabel>Step 7 of 7 — Legal</StepLabel>
-              <StepHeading>Memorandum of Understanding</StepHeading>
-              <div
-                style={{
-                  maxHeight: 260, overflowY: "auto", border: "1.5px solid #e0d8cc",
-                  borderRadius: 10, padding: "20px 24px", background: "#fafaf8",
-                  fontSize: 14, lineHeight: 1.8, color: "#333", marginBottom: 24,
-                }}
-              >
-                <p>This Memorandum of Understanding sets out the shared intentions between Root ProjX and the Partner Organisation. It reflects a commitment to collaboration, transparency and community impact.</p>
-                <br />
-                <p><strong>Root ProjX will:</strong></p>
-                <ul style={{ paddingLeft: 20 }}>
-                  <li>Provide access to the platform.</li>
-                  <li>Promote approved campaigns where appropriate.</li>
-                  <li>Communicate openly and professionally.</li>
-                  <li>Support partners throughout the fundraising journey where possible.</li>
-                </ul>
-                <br />
-                <p><strong>Partner Organisation will:</strong></p>
-                <ul style={{ paddingLeft: 20 }}>
-                  <li>Provide accurate information.</li>
-                  <li>Use funds for the stated campaign purposes.</li>
-                  <li>Keep supporters informed through campaign updates.</li>
-                  <li>Notify Root ProjX of any significant organisational changes.</li>
-                </ul>
-                <br />
-                <p><em>This MoU reflects the spirit of partnership and does not replace any legal obligations required under applicable law.</em></p>
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 20 }}>
-                <FieldGroup label="Your full name">
-                  <input
-                    style={inputStyle} value={mouName}
-                    onChange={(e) => setMouName(e.target.value)}
-                    placeholder="Full name"
-                  />
-                </FieldGroup>
-                <FieldGroup label="Date">
-                  <input style={{ ...inputStyle, background: "#f0ece4", color: "#666" }} value={mouDate} readOnly />
-                </FieldGroup>
-              </div>
-
-              <label style={{ display: "flex", alignItems: "flex-start", gap: 12, cursor: "pointer" }}>
-                <input
-                  type="checkbox" checked={agreedMou}
-                  onChange={(e) => setAgreedMou(e.target.checked)}
-                  style={{ marginTop: 2, accentColor: RED, width: 18, height: 18, flexShrink: 0 }}
-                />
-                <span style={{ fontSize: 14, color: "#333" }}>
-                  I agree to the terms of this Memorandum of Understanding on behalf of my organisation.
-                </span>
-              </label>
-
-              {submitError && (
-                <p style={{ color: RED, fontSize: 14, marginTop: 16, background: "#fff0f0", padding: "10px 14px", borderRadius: 8 }}>
-                  {submitError}
-                </p>
-              )}
-
-              <NavButtons
-                onBack={back}
-                onNext={handleSubmit}
-                nextDisabled={!agreedMou || !mouName.trim()}
-                loading={submitting}
-                nextLabel="Submit & complete"
-              />
-            </Card>
-          )}
-
-          {/* ── STEP 8: COMPLETE ─────────────────────────────────────────────── */}
-          {step === 8 && (
             <div style={{ textAlign: "center" }}>
-              <div style={{ background: RED_DEEP, borderRadius: 20, padding: "64px 48px", color: "#fff" }}>
-                <CheckCircle2 size={64} style={{ color: GOLD, margin: "0 auto 24px" }} />
-                <h1 style={{ fontSize: 32, fontWeight: 900, margin: "0 0 16px" }}>
-                  You're all set!
-                </h1>
-                <p style={{ fontSize: 16, lineHeight: 1.7, color: "rgba(255,255,255,0.85)", maxWidth: 460, margin: "0 auto 16px" }}>
-                  Welcome to the Root ProjX family. Your organisation profile has been created
-                  and is pending verification.
-                </p>
-                <p style={{ fontSize: 14, color: "rgba(255,255,255,0.6)", maxWidth: 440, margin: "0 auto 40px" }}>
-                  Our team will review your application and be in touch. In the meantime,
-                  you can set up your profile, create campaigns and start sharing your story.
-                </p>
-                <button
-                  onClick={() => navigate("/org-dashboard")}
-                  style={{
-                    display: "inline-flex", alignItems: "center", gap: 10,
-                    background: GOLD, color: RED_DEEP, border: "none", borderRadius: 10,
-                    padding: "15px 40px", fontSize: 16, fontWeight: 800, cursor: "pointer",
-                  }}
-                >
-                  Go to your dashboard <ArrowRight size={18} />
-                </button>
-              </div>
+              <button
+                onClick={() => setStep(1)}
+                style={{
+                  background: RED, color: "#fff", border: "none", borderRadius: 10,
+                  padding: "14px 40px", fontSize: 16, fontWeight: 800, cursor: "pointer",
+                  display: "inline-flex", alignItems: "center", gap: 10,
+                }}
+              >
+                Begin application <ChevronRight size={18} />
+              </button>
+              <p style={{ marginTop: 16, fontSize: 13, color: "#999" }}>
+                Already a supporter?{" "}
+                <a href="/register" style={{ color: RED, textDecoration: "none", fontWeight: 600 }}>Create a supporter account</a>
+              </p>
             </div>
-          )}
+          </Card>
+        )}
 
-        </div>
+        {/* ── Step 1: Organisation details ────────────────────────────── */}
+        {step === 1 && (
+          <Card>
+            <StepHeading>Tell us about your organisation</StepHeading>
+            <StepSub>We'll use these details to review your application and get in touch.</StepSub>
+
+            <FieldGroup label="Organisation name">
+              <input
+                style={inputStyle}
+                type="text"
+                placeholder="e.g. Kingston Youth Foundation"
+                value={orgName}
+                onChange={(e) => setOrgName(e.target.value)}
+                autoFocus
+              />
+            </FieldGroup>
+
+            <FieldGroup label="Point of contact (your name)">
+              <input
+                style={inputStyle}
+                type="text"
+                placeholder="e.g. Maria Campbell"
+                value={contactName}
+                onChange={(e) => setContactName(e.target.value)}
+              />
+            </FieldGroup>
+
+            <FieldGroup label="Email address">
+              <input
+                style={inputStyle}
+                type="email"
+                placeholder="e.g. hello@yourorg.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </FieldGroup>
+
+            {error && (
+              <p style={{ color: RED, fontSize: 14, marginTop: -8, marginBottom: 8 }}>{error}</p>
+            )}
+
+            <NavButtons
+              hideBack
+              nextLabel="Next"
+              nextDisabled={!orgName.trim() || !contactName.trim() || !email.trim() || !email.includes("@")}
+              onNext={() => { setError(""); setStep(2); }}
+            />
+          </Card>
+        )}
+
+        {/* ── Step 2: Sectors ──────────────────────────────────────────── */}
+        {step === 2 && (
+          <Card>
+            <StepHeading>What sectors does your organisation work in?</StepHeading>
+            <StepSub>Select all that apply — many organisations span more than one area.</StepSub>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 8 }}>
+              {SECTORS.map((s) => {
+                const selected = sectors.includes(s);
+                return (
+                  <button
+                    key={s}
+                    onClick={() => toggleSector(s)}
+                    style={{
+                      padding: "12px 16px",
+                      borderRadius: 10,
+                      border: selected ? `2px solid ${RED}` : "2px solid #e0d8cc",
+                      background: selected ? "#fff0f0" : "#fafaf8",
+                      color: selected ? RED : "#333",
+                      fontWeight: selected ? 700 : 400,
+                      fontSize: 14,
+                      cursor: "pointer",
+                      textAlign: "left",
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    {selected && "✓ "}{s}
+                  </button>
+                );
+              })}
+            </div>
+
+            {sectors.length > 0 && (
+              <p style={{ fontSize: 13, color: "#888", marginTop: 8 }}>
+                {sectors.length} selected
+              </p>
+            )}
+
+            {error && (
+              <p style={{ color: RED, fontSize: 14, marginTop: 8 }}>{error}</p>
+            )}
+
+            <NavButtons
+              onBack={() => setStep(1)}
+              nextLabel="Submit application"
+              nextDisabled={sectors.length === 0}
+              loading={loading}
+              onNext={handleSubmit}
+            />
+          </Card>
+        )}
+
+        {/* ── Step 3: Confirmation ─────────────────────────────────────── */}
+        {step === 3 && (
+          <Card>
+            <div style={{ textAlign: "center" }}>
+              <CheckCircle2 size={64} color="#22c55e" style={{ margin: "0 auto 20px" }} />
+              <h2 style={{ fontSize: 26, fontWeight: 800, color: "#1a1a1a", marginBottom: 12 }}>
+                Application submitted!
+              </h2>
+              <p style={{ fontSize: 15, color: "#555", lineHeight: 1.7, maxWidth: 440, margin: "0 auto 32px" }}>
+                Thank you, <strong>{contactName}</strong>. We've sent a confirmation email to <strong>{email}</strong>.
+                Our team will review <strong>{orgName}</strong>'s application and get back to you within 5 business days.
+              </p>
+
+              <div style={{ background: "#f9f6f0", borderRadius: 12, padding: "24px 28px", marginBottom: 32, textAlign: "left" }}>
+                <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.05em" }}>What happens next</p>
+                {[
+                  "Our team reviews your application",
+                  "You receive an acceptance or decline email",
+                  "If approved, you get access to your organisation profile",
+                ].map((item, i) => (
+                  <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: i < 2 ? 10 : 0 }}>
+                    <span style={{ width: 22, height: 22, borderRadius: "50%", background: RED_DEEP, color: GOLD, fontSize: 12, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>{i + 1}</span>
+                    <p style={{ margin: 0, fontSize: 14, color: "#444" }}>{item}</p>
+                  </div>
+                ))}
+              </div>
+
+              <p style={{ fontSize: 13, color: "#999", marginBottom: 24 }}>
+                Questions? Email us at{" "}
+                <a href="mailto:info@rootprojx.com" style={{ color: RED }}>info@rootprojx.com</a>
+              </p>
+
+              <button
+                onClick={() => setLocation("/")}
+                style={{
+                  background: RED_DEEP, color: "#fff", border: "none", borderRadius: 10,
+                  padding: "12px 32px", fontSize: 15, fontWeight: 700, cursor: "pointer",
+                }}
+              >
+                Back to home
+              </button>
+            </div>
+          </Card>
+        )}
       </div>
     </div>
   );

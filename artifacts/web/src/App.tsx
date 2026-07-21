@@ -32,6 +32,8 @@ import PrivacyPage from "@/pages/privacy";
 import TermsPage from "@/pages/terms";
 import SupportPage from "@/pages/support";
 import OnboardingPage from "@/pages/onboarding";
+import AdminLoginPage from "@/pages/admin-login";
+import AdminPage from "@/pages/admin";
 import NotFound from "@/pages/not-found";
 
 const queryClient = new QueryClient({
@@ -64,8 +66,12 @@ function AppRoutes() {
       {/* Landing page — no navbar or footer */}
       <Route path="/" component={LandingPage} />
 
-      {/* Org onboarding — standalone, handles its own registration */}
+      {/* Org onboarding — standalone questionnaire */}
       <Route path="/onboarding" component={OnboardingPage} />
+
+      {/* Admin — standalone, no navbar/footer */}
+      <Route path="/admin/login" component={AdminLoginPage} />
+      <Route path="/admin" component={AdminPage} />
 
       {/* All other pages — wrapped in navbar + footer */}
       <Route>

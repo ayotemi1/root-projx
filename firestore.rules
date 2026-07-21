@@ -89,6 +89,13 @@ service cloud.firestore {
       allow write: if isServer();
     }
 
+    // ── org_applications ────────────────────────────────────────────────────
+    // Only the server (API) may read or write org applications.
+    // Applications are submitted via server-authenticated API routes, not directly by clients.
+    match /org_applications/{appId} {
+      allow read, write: if isServer();
+    }
+
     // ── catch-all: deny anything not explicitly matched ────────────────────
     match /{document=**} {
       allow read, write: if false;
