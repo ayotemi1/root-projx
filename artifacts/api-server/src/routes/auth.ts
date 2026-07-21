@@ -6,6 +6,7 @@ import {
   firebaseUpdateProfile,
   fsGet,
   fsPatch,
+  getServerToken,
 } from "../lib/firebase-rest.js";
 import { requireAuth } from "../lib/auth.js";
 import { brevoAddContact, brevoSendEmail, welcomeEmailHtml, internalNotificationHtml } from "../lib/brevo.js";
@@ -119,6 +120,23 @@ router.post("/auth/register", authRateLimit, async (req, res) => {
       userDoc.registrationNumber = registrationNumber ?? null;
     }
     await fsPatch("users", uid, userDoc, initialToken);
+
+    // Mirror supporters to their own collection for dedicated admin tracking
+    if (accountType === "supporter") {
+      try {
+        const serverToken = await getServerToken();
+        await fsPatch("supporters", uid, {
+          uid,
+          name,
+          email: email.toLowerCase(),
+          phone: phone ?? null,
+          signedUpAt: now,
+          createdAt: now,
+        }, serverToken);
+      } catch (mirrorErr) {
+        req.log.warn({ err: mirrorErr }, "supporters mirror write failed (non-fatal)");
+      }
+    }
 
     // Fire-and-forget: add contact to Brevo + send welcome email
     // Errors here must never block the registration response

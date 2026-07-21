@@ -89,6 +89,13 @@ service cloud.firestore {
       allow write: if isServer();
     }
 
+    // ── supporters ──────────────────────────────────────────────────────────
+    // Supporter profile docs (uid, name, email, phone, signedUpAt).
+    // Written by server on registration. Only server may read or write.
+    match /supporters/{uid} {
+      allow read, write: if isServer();
+    }
+
     // ── org_applications ────────────────────────────────────────────────────
     // Only the server (API) may read or write org applications.
     // Applications are submitted via server-authenticated API routes, not directly by clients.

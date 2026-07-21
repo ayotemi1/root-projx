@@ -303,15 +303,11 @@ router.post("/admin/applications/:id/decline", requireAdmin, async (req, res) =>
 
 // ── Admin: supporters ─────────────────────────────────────────────────────────
 
-// GET /admin/supporters
+// GET /admin/supporters — reads from dedicated supporters collection
 router.get("/admin/supporters", requireAdmin, async (req, res) => {
   try {
     const serverToken = await getServerToken();
-    const supporters = await fsQuery(
-      "users",
-      [{ field: "accountType", op: "EQUAL", value: "supporter" }],
-      serverToken,
-    );
+    const supporters = await fsList("supporters", serverToken);
     supporters.sort((a, b) => {
       const da = typeof a.createdAt === "string" ? a.createdAt : "";
       const db = typeof b.createdAt === "string" ? b.createdAt : "";
@@ -320,6 +316,25 @@ router.get("/admin/supporters", requireAdmin, async (req, res) => {
     res.json(supporters);
   } catch (err) {
     req.log.error({ err }, "GET /admin/supporters error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── Admin: organisations ───────────────────────────────────────────────────────
+
+// GET /admin/organisations — all approved orgs, sorted by name
+router.get("/admin/organisations", requireAdmin, async (req, res) => {
+  try {
+    const serverToken = await getServerToken();
+    const orgs = await fsList("organisations", serverToken);
+    orgs.sort((a, b) => {
+      const na = typeof a.name === "string" ? a.name : "";
+      const nb = typeof b.name === "string" ? b.name : "";
+      return na.localeCompare(nb);
+    });
+    res.json(orgs);
+  } catch (err) {
+    req.log.error({ err }, "GET /admin/organisations error");
     res.status(500).json({ error: "Internal server error" });
   }
 });
