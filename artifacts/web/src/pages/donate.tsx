@@ -50,8 +50,6 @@ export default function DonatePage() {
       setError("Please enter an amount of at least £1.");
       return;
     }
-    // If not authenticated and no guest email was provided, show the inline auth prompt.
-    // If a guest email was pre-filled from the modal, proceed directly to checkout.
     if (!isAuthenticated && !guestEmail) {
       setShowAuthPrompt(true);
       return;
@@ -67,6 +65,33 @@ export default function DonatePage() {
       window.location.href = url;
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Could not start checkout. Please try again.");
+      setRedirecting(false);
+    }
+  }
+
+  async function handleAnonymousDonate() {
+    if (!amountGbp || amountGbp < 1) {
+      setError("Please enter an amount of at least £1.");
+      return;
+    }
+    setError("");
+    setShowAuthPrompt(false);
+    setRedirecting(true);
+    try {
+      const res = await fetch("/api/donations/anonymous-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ orgId, amountPence }),
+      });
+      const data = await res.json() as { url?: string; error?: string };
+      if (!res.ok || !data.url) {
+        setError(data.error ?? "Could not start checkout. Please try again.");
+        setRedirecting(false);
+        return;
+      }
+      window.location.href = data.url;
+    } catch {
+      setError("Network error — please check your connection.");
       setRedirecting(false);
     }
   }
@@ -227,6 +252,13 @@ export default function DonatePage() {
                   </Button>
                 </Link>
               </div>
+              <button
+                onClick={handleAnonymousDonate}
+                disabled={redirecting}
+                className="w-full text-xs text-muted-foreground underline underline-offset-2 hover:text-foreground transition-colors mt-1 disabled:opacity-50"
+              >
+                {redirecting ? "Redirecting…" : "Donate anonymously — no account needed"}
+              </button>
             </div>
           )}
 
