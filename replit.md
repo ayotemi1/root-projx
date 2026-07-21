@@ -99,6 +99,7 @@ All routes prefixed `/api`:
 - [x] Firebase Step 9 — Stripe donation flow (one-time + recurring, web + mobile, webhook handlers, platform fee, auto-follow)
 - [x] Firebase Step 10 — Brevo newsletter (welcome email on register, donation confirmation, subscribe endpoint, web footer with newsletter form)
 - [x] Firebase Step 11 — Firebase Storage for media uploads (init in `lib/firebase-storage.ts` + startup assertion in `index.ts`; feed cards render uploaded photos/videos inline on web and mobile)
+- [x] Firebase Step 12 — Org application flow (questionnaire-only `/onboarding`, `org_applications` Firestore collection, admin dashboard at `/admin` + `/admin/login`, approve/decline with Firebase account creation, 5 Brevo email types, internal team notifications)
 
 ## Key Commands
 
@@ -112,9 +113,34 @@ All routes prefixed `/api`:
 - `BREVO_API_KEY` — Brevo (Sendinblue) API key ✅ configured
 - `SESSION_SECRET` — session signing secret ✅ configured
 
+## Admin Dashboard
+
+- URL: `/admin` (login at `/admin/login`)
+- Password: `ADMIN_PASSWORD` env var (defaults to `rootprojx-admin` — set in Replit Secrets for production)
+- Tabs: **Applications** (pending/approved/declined org applications, approve/decline actions) | **Supporters** (all registered supporters)
+- Approve action: creates Firebase Auth account + org profile, emails temp password to org
+- Decline action: sends decline email
+
+## Brevo Emails (5 types)
+
+1. **Supporter welcome** — sent on supporter registration
+2. **Donation confirmation** — sent after successful payment (via Stripe webhook)
+3. **Org application received** — sent to org on questionnaire submission
+4. **Org accepted** — sent on admin approval (includes temp login password)
+5. **Org declined** — sent on admin decline
+6. **Internal notification** — sent to `TEAM_EMAIL` (or `info@rootprojx.com`) on every new signup (org or supporter)
+
+## Firestore Collections
+
+(See above for full list.) New: `org_applications` — org application submissions with status `pending | approved | declined`.
+
+> ⚠️ The `org_applications` Firestore security rules must be deployed manually if the collection doesn't exist yet. See `firestore.rules` and deploy via Firebase Console → Firestore → Rules.
+
 ## Environment Variables (Non-secret)
 
 - `BREVO_NEWSLETTER_LIST_ID` — Brevo list ID for newsletter subscribers (optional)
 - `BREVO_SENDER_EMAIL` — sender email for transactional emails (optional, defaults to noreply@rootprojx.com)
 - `STRIPE_PLATFORM_FEE_PERCENT` — platform fee % (optional, defaults to 3)
 - `STRIPE_WEBHOOK_SECRET` — Stripe webhook signing secret (set in production for signature verification)
+- `ADMIN_PASSWORD` — password for `/admin` dashboard (set in Replit Secrets; defaults to `rootprojx-admin`)
+- `TEAM_EMAIL` — internal notification recipient (defaults to `info@rootprojx.com`)
