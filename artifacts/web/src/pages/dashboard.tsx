@@ -1,7 +1,11 @@
 import { useRef, useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearch } from "wouter";
-import { CheckCircle, PlusCircle, Image as ImageIcon, X, Banknote, ExternalLink, AlertCircle } from "lucide-react";
+import {
+  CheckCircle, PlusCircle, Image as ImageIcon, X, Banknote, ExternalLink,
+  AlertCircle, Target, Calendar, Users, Trash2, ChevronDown, ChevronUp,
+  Edit3, Check,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,7 +14,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/context/AuthContext";
 import * as api from "@/lib/api";
-import type { FeedUpdate } from "@/lib/api";
+import type { FeedUpdate, Campaign, CampaignPhase } from "@/lib/api";
+
+const RED = "#B50000";
+const GOLD = "#F5B800";
 
 const UPDATE_TYPES = ["update", "milestone", "campaign"] as const;
 
@@ -29,12 +36,595 @@ const TYPE_COLORS: Record<string, string> = {
   update:    "bg-blue-50 text-blue-700 border-blue-200",
 };
 
+// ── Phase row inside campaign form ────────────────────────────────────────────
+
+interface PhaseRow {
+  id: string;
+  title: string;
+  description: string;
+  targetAmount: number | null;
+  completed: boolean;
+}
+
+function newPhase(index: number): PhaseRow {
+  return { id: `phase_${Date.now()}_${index}`, title: "", description: "", targetAmount: null, completed: false };
+}
+
+// ── Campaign progress bar ─────────────────────────────────────────────────────
+
+function ProgressBar({ value, max, color = RED }: { value: number; max: number; color?: string }) {
+  const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0;
+  return (
+    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+      <div
+        className="h-full rounded-full transition-all duration-500"
+        style={{ width: `${pct}%`, backgroundColor: color }}
+      />
+    </div>
+  );
+}
+
+// ── Campaign card in dashboard list ──────────────────────────────────────────
+
+function DashCampaignCard({
+  campaign,
+  orgId,
+  token,
+  onUpdated,
+  onDeleted,
+}: {
+  campaign: Campaign;
+  orgId: string;
+  token: string;
+  onUpdated: () => void;
+  onDeleted: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const [editRaised, setEditRaised] = useState(false);
+  const [raisedInput, setRaisedInput] = useState(String(campaign.amountRaised ?? 0));
+  const [saving, setSaving] = useState(false);
+
+  const pct = campaign.goal > 0
+    ? Math.min(100, Math.round((campaign.amountRaised / campaign.goal) * 100))
+    : 0;
+
+  async function handleSaveRaised() {
+    const val = parseFloat(raisedInput);
+    if (isNaN(val) || val < 0) return;
+    setSaving(true);
+    try {
+      await api.updateCampaign(orgId, campaign._id, { amountRaised: val }, token);
+      onUpdated();
+    } finally {
+      setSaving(false);
+      setEditRaised(false);
+    }
+  }
+
+  async function togglePhase(phase: CampaignPhase) {
+    const newPhases = campaign.phases.map((p) =>
+      p.id === phase.id ? { ...p, completed: !p.completed } : p,
+    );
+    await api.updateCampaign(orgId, campaign._id, { phases: newPhases }, token);
+    onUpdated();
+  }
+
+  async function markComplete() {
+    await api.updateCampaign(orgId, campaign._id, { status: "completed" }, token);
+    onUpdated();
+  }
+
+  async function handleDelete() {
+    if (!confirm(`Delete campaign "${campaign.name}"? This cannot be undone.`)) return;
+    await api.deleteCampaign(orgId, campaign._id, token);
+    onDeleted();
+  }
+
+  const isCompleted = campaign.status === "completed";
+
+  return (
+    <div className="border border-border rounded-xl overflow-hidden bg-white">
+      {/* Cover image */}
+      {campaign.imageUrl && (
+        <img src={campaign.imageUrl} alt={campaign.name} className="w-full h-32 object-cover" />
+      )}
+
+      <div className="p-4 space-y-3">
+        {/* Header */}
+        <div className="flex items-start gap-3">
+          {!campaign.imageUrl && (
+            <div
+              className="w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center"
+              style={{ background: `linear-gradient(135deg, ${RED} 0%, #7A0000 100%)` }}
+            >
+              <Target className="w-5 h-5 text-white" />
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h4 className="font-bold text-sm text-foreground leading-snug">{campaign.name}</h4>
+              <span
+                className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                  isCompleted
+                    ? "bg-gray-100 text-gray-600"
+                    : "bg-green-50 text-green-700"
+                }`}
+              >
+                {isCompleted ? "Completed" : "Active"}
+              </span>
+              <span
+                className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                style={{ backgroundColor: "#FFF7E6", color: "#B45309" }}
+              >
+                {campaign.type}
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+              {campaign.description}
+            </p>
+          </div>
+        </div>
+
+        {/* Progress (fundraising) */}
+        {campaign.type === "fundraising" && campaign.goal > 0 && (
+          <div className="space-y-1.5">
+            <ProgressBar value={campaign.amountRaised} max={campaign.goal} />
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground">
+                £{(campaign.amountRaised ?? 0).toLocaleString()} raised
+              </span>
+              <span className="font-bold" style={{ color: RED }}>
+                {pct}% of £{campaign.goal.toLocaleString()}
+              </span>
+            </div>
+
+            {/* Edit raised amount */}
+            {editRaised ? (
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-sm text-muted-foreground">£</span>
+                <Input
+                  type="number"
+                  min={0}
+                  value={raisedInput}
+                  onChange={(e) => setRaisedInput(e.target.value)}
+                  className="h-8 text-sm flex-1"
+                />
+                <Button size="sm" className="h-8 px-3" onClick={handleSaveRaised} disabled={saving}>
+                  {saving ? "…" : <Check className="w-4 h-4" />}
+                </Button>
+                <Button size="sm" variant="outline" className="h-8 px-3" onClick={() => setEditRaised(false)}>
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+            ) : (
+              <button
+                onClick={() => { setRaisedInput(String(campaign.amountRaised ?? 0)); setEditRaised(true); }}
+                className="text-xs text-muted-foreground underline-offset-2 hover:underline flex items-center gap-1"
+              >
+                <Edit3 className="w-3 h-3" /> Update raised amount
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Volunteer count */}
+        {campaign.type === "volunteer" && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Users className="w-4 h-4" />
+            <span>{campaign.volunteersNeeded} volunteers needed</span>
+          </div>
+        )}
+
+        {/* Deadline */}
+        {campaign.deadline && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Calendar className="w-3.5 h-3.5" />
+            <span>Deadline: {new Date(campaign.deadline).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
+          </div>
+        )}
+
+        {/* Phases */}
+        {campaign.phases && campaign.phases.length > 0 && (
+          <div>
+            <button
+              onClick={() => setExpanded((v) => !v)}
+              className="flex items-center gap-1.5 text-xs font-semibold text-foreground"
+            >
+              {expanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              {campaign.phases.length} phase{campaign.phases.length !== 1 ? "s" : ""}
+              {" · "}
+              {campaign.phases.filter((p) => p.completed).length} completed
+            </button>
+
+            {expanded && (
+              <div className="mt-2 space-y-2">
+                {campaign.phases.map((phase) => (
+                  <div
+                    key={phase.id}
+                    className={`flex items-start gap-3 p-3 rounded-lg border transition-colors ${
+                      phase.completed ? "bg-green-50 border-green-200" : "bg-secondary border-border"
+                    }`}
+                  >
+                    <button
+                      onClick={() => togglePhase(phase)}
+                      className={`w-5 h-5 rounded border-2 flex-shrink-0 flex items-center justify-center mt-0.5 transition-colors ${
+                        phase.completed
+                          ? "bg-green-500 border-green-500"
+                          : "border-gray-300 hover:border-green-400"
+                      }`}
+                    >
+                      {phase.completed && <Check className="w-3 h-3 text-white" />}
+                    </button>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-xs font-semibold ${phase.completed ? "line-through text-muted-foreground" : "text-foreground"}`}>
+                        {phase.title}
+                      </p>
+                      {phase.description && (
+                        <p className="text-xs text-muted-foreground mt-0.5">{phase.description}</p>
+                      )}
+                      {phase.targetAmount != null && (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Target: £{phase.targetAmount.toLocaleString()}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Actions */}
+        {!isCompleted && (
+          <div className="flex gap-2 pt-1">
+            <Button
+              size="sm"
+              variant="outline"
+              className="flex-1 text-xs h-8"
+              onClick={markComplete}
+            >
+              <CheckCircle className="w-3.5 h-3.5 mr-1.5" /> Mark complete
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 px-3 text-destructive border-destructive/30 hover:bg-destructive/5"
+              onClick={handleDelete}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </Button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Campaign creation form ────────────────────────────────────────────────────
+
+function CampaignForm({
+  orgId,
+  token,
+  onSuccess,
+  onCancel,
+}: {
+  orgId: string;
+  token: string;
+  onSuccess: () => void;
+  onCancel: () => void;
+}) {
+  const coverInputRef = useRef<HTMLInputElement>(null);
+  const [campName, setCampName] = useState("");
+  const [campDescription, setCampDescription] = useState("");
+  const [campType, setCampType] = useState<"fundraising" | "volunteer">("fundraising");
+  const [campGoal, setCampGoal] = useState("");
+  const [campVolunteers, setCampVolunteers] = useState("");
+  const [campDeadline, setCampDeadline] = useState("");
+  const [phases, setPhases] = useState<PhaseRow[]>([]);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
+
+  function handleCoverChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCoverFile(file);
+    setCoverPreview(URL.createObjectURL(file));
+  }
+
+  function addPhase() {
+    setPhases((prev) => [...prev, newPhase(prev.length)]);
+  }
+
+  function removePhase(id: string) {
+    setPhases((prev) => prev.filter((p) => p.id !== id));
+  }
+
+  function updatePhaseField(id: string, field: keyof PhaseRow, value: string | number | boolean | null) {
+    setPhases((prev) => prev.map((p) => (p.id === id ? { ...p, [field]: value } : p)));
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!campName.trim()) { setError("Campaign name is required."); return; }
+    if (!campDescription.trim()) { setError("Description is required."); return; }
+    if (campType === "fundraising" && (!campGoal || parseFloat(campGoal) <= 0)) {
+      setError("Please enter a fundraising goal greater than 0.");
+      return;
+    }
+    setError("");
+    setSubmitting(true);
+
+    try {
+      let imageUrl: string | null = null;
+      if (coverFile) {
+        setUploadingCover(true);
+        const urls = await api.uploadMedia([coverFile], token);
+        imageUrl = urls[0] ?? null;
+        setUploadingCover(false);
+      }
+
+      await api.createCampaign(orgId, {
+        name: campName.trim(),
+        description: campDescription.trim(),
+        type: campType,
+        goal: campType === "fundraising" ? parseFloat(campGoal) || 0 : 0,
+        volunteersNeeded: campType === "volunteer" ? parseInt(campVolunteers) || 0 : 0,
+        deadline: campDeadline || null,
+        imageUrl,
+        phases: phases.map((p) => ({
+          title: p.title,
+          description: p.description,
+          targetAmount: p.targetAmount,
+          completed: false,
+        })),
+      }, token);
+
+      onSuccess();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create campaign");
+    } finally {
+      setSubmitting(false);
+      setUploadingCover(false);
+    }
+  }
+
+  const submitLabel = uploadingCover ? "Uploading cover…" : submitting ? "Creating…" : "Create Campaign";
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-5">
+      {error && (
+        <div className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">
+          {error}
+        </div>
+      )}
+
+      {/* Cover image */}
+      <div>
+        <Label className="text-sm font-semibold mb-2 block">Cover Image <span className="text-muted-foreground font-normal">(optional)</span></Label>
+        {coverPreview ? (
+          <div className="relative">
+            <img src={coverPreview} alt="cover" className="w-full h-36 object-cover rounded-xl border border-border" />
+            <button
+              type="button"
+              onClick={() => { setCoverFile(null); setCoverPreview(null); }}
+              className="absolute top-2 right-2 w-7 h-7 bg-black/60 text-white rounded-full flex items-center justify-center"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        ) : (
+          <>
+            <input
+              ref={coverInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              className="hidden"
+              onChange={handleCoverChange}
+            />
+            <button
+              type="button"
+              onClick={() => coverInputRef.current?.click()}
+              className="flex items-center gap-2 px-4 py-3 border-2 border-dashed border-border rounded-xl text-sm text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors w-full"
+            >
+              <ImageIcon className="w-4 h-4" /> Upload a cover photo
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* Name */}
+      <div>
+        <Label htmlFor="camp-name">Campaign Name</Label>
+        <Input
+          id="camp-name"
+          placeholder="e.g. School Supplies Drive 2025"
+          value={campName}
+          onChange={(e) => setCampName(e.target.value)}
+          className="mt-1"
+        />
+      </div>
+
+      {/* Description */}
+      <div>
+        <Label htmlFor="camp-desc">Description</Label>
+        <Textarea
+          id="camp-desc"
+          placeholder="Tell supporters what this campaign is about and what the funds/effort will achieve…"
+          value={campDescription}
+          onChange={(e) => setCampDescription(e.target.value)}
+          rows={4}
+          className="mt-1"
+        />
+      </div>
+
+      {/* Type */}
+      <div>
+        <Label className="text-sm font-semibold mb-2 block">Campaign Type</Label>
+        <div className="grid grid-cols-2 gap-2">
+          {(["fundraising", "volunteer"] as const).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setCampType(t)}
+              className={`py-2.5 text-sm font-semibold rounded-xl border-2 transition-colors capitalize ${
+                campType === t
+                  ? "border-primary bg-primary/10 text-primary"
+                  : "border-border text-muted-foreground hover:border-primary/40"
+              }`}
+            >
+              {t === "fundraising" ? "💰 Fundraising" : "🤝 Volunteer"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Goal (fundraising only) */}
+      {campType === "fundraising" && (
+        <div>
+          <Label htmlFor="camp-goal">Fundraising Goal (£)</Label>
+          <div className="relative mt-1">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">£</span>
+            <Input
+              id="camp-goal"
+              type="number"
+              min={1}
+              placeholder="10000"
+              value={campGoal}
+              onChange={(e) => setCampGoal(e.target.value)}
+              className="pl-7"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Volunteers needed (volunteer only) */}
+      {campType === "volunteer" && (
+        <div>
+          <Label htmlFor="camp-vol">Volunteers Needed</Label>
+          <Input
+            id="camp-vol"
+            type="number"
+            min={1}
+            placeholder="20"
+            value={campVolunteers}
+            onChange={(e) => setCampVolunteers(e.target.value)}
+            className="mt-1"
+          />
+        </div>
+      )}
+
+      {/* Deadline */}
+      <div>
+        <Label htmlFor="camp-deadline">Deadline <span className="text-muted-foreground font-normal">(optional)</span></Label>
+        <Input
+          id="camp-deadline"
+          type="date"
+          value={campDeadline}
+          onChange={(e) => setCampDeadline(e.target.value)}
+          className="mt-1"
+        />
+      </div>
+
+      {/* Phases / milestones */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <Label className="text-sm font-semibold">
+            Phases / Milestones <span className="text-muted-foreground font-normal">(optional)</span>
+          </Label>
+          {phases.length < 10 && (
+            <button
+              type="button"
+              onClick={addPhase}
+              className="text-xs font-semibold flex items-center gap-1 hover:opacity-80 transition-opacity"
+              style={{ color: RED }}
+            >
+              <PlusCircle className="w-3.5 h-3.5" /> Add phase
+            </button>
+          )}
+        </div>
+
+        {phases.length === 0 && (
+          <p className="text-xs text-muted-foreground bg-secondary rounded-lg p-3">
+            Phases help donors follow your progress — e.g. "Phase 1: Purchase supplies", "Phase 2: Distribute to schools". You can mark each phase complete as you go.
+          </p>
+        )}
+
+        <div className="space-y-3 mt-2">
+          {phases.map((phase, i) => (
+            <div key={phase.id} className="border border-border rounded-xl p-3 space-y-2 bg-secondary/30">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-foreground">Phase {i + 1}</span>
+                <button type="button" onClick={() => removePhase(phase.id)} className="text-muted-foreground hover:text-destructive">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+              <Input
+                placeholder="Phase title (e.g. Purchase supplies)"
+                value={phase.title}
+                onChange={(e) => updatePhaseField(phase.id, "title", e.target.value)}
+                className="text-sm h-9"
+              />
+              <Textarea
+                placeholder="Brief description (optional)"
+                value={phase.description}
+                onChange={(e) => updatePhaseField(phase.id, "description", e.target.value)}
+                rows={2}
+                className="text-sm resize-none"
+              />
+              {campType === "fundraising" && (
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-xs">£</span>
+                  <Input
+                    type="number"
+                    min={0}
+                    placeholder="Target amount for this phase (optional)"
+                    value={phase.targetAmount ?? ""}
+                    onChange={(e) =>
+                      updatePhaseField(
+                        phase.id,
+                        "targetAmount",
+                        e.target.value ? parseFloat(e.target.value) : null,
+                      )
+                    }
+                    className="pl-7 text-sm h-9"
+                  />
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="flex gap-3 pt-1">
+        <Button type="button" variant="outline" className="flex-1" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          className="flex-1 font-bold text-black"
+          style={{ backgroundColor: GOLD }}
+          disabled={submitting}
+        >
+          {submitLabel}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+// ── Main dashboard page ───────────────────────────────────────────────────────
+
 export default function DashboardPage() {
   const { user, token } = useAuth();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const search = useSearch();
 
+  // Update form state
   const [showForm, setShowForm] = useState(false);
   const [postTitle, setPostTitle] = useState("");
   const [postContent, setPostContent] = useState("");
@@ -43,6 +633,9 @@ export default function DashboardPage() {
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [uploadProgress, setUploadProgress] = useState<"idle" | "uploading" | "done">("idle");
   const [formError, setFormError] = useState("");
+
+  // Campaign form state
+  const [showCampForm, setShowCampForm] = useState(false);
 
   const orgId = user?.id ?? "";
   const connectComplete = new URLSearchParams(search).get("connect") === "complete";
@@ -60,9 +653,7 @@ export default function DashboardPage() {
   });
 
   useEffect(() => {
-    if (connectComplete) {
-      connectQ.refetch();
-    }
+    if (connectComplete) connectQ.refetch();
   }, [connectComplete]);
 
   const updatesQ = useQuery({
@@ -71,35 +662,29 @@ export default function DashboardPage() {
     enabled: !!orgId,
   });
 
+  const campaignsQ = useQuery({
+    queryKey: ["campaigns", orgId],
+    queryFn: () => api.getCampaigns(orgId),
+    enabled: !!orgId,
+  });
+
   const postMut = useMutation({
     mutationFn: async () => {
-      // 1. Upload any selected files first
       let mediaUrls: string[] = [];
       if (selectedFiles.length > 0) {
         setUploadProgress("uploading");
         mediaUrls = await api.uploadMedia(selectedFiles, token!);
         setUploadProgress("done");
       }
-      // 2. Post the update with media URLs
       return api.postUpdate(
-        {
-          title: postTitle.trim(),
-          content: postContent.trim(),
-          type: postType,
-          mediaUrls,
-        },
+        { title: postTitle.trim(), content: postContent.trim(), type: postType, mediaUrls },
         token!,
       );
     },
     onSuccess: () => {
-      setPostTitle("");
-      setPostContent("");
-      setPostType("update");
-      setSelectedFiles([]);
-      setPreviewUrls([]);
-      setUploadProgress("idle");
-      setShowForm(false);
-      setFormError("");
+      setPostTitle(""); setPostContent(""); setPostType("update");
+      setSelectedFiles([]); setPreviewUrls([]); setUploadProgress("idle");
+      setShowForm(false); setFormError("");
       queryClient.invalidateQueries({ queryKey: ["org-feed", orgId] });
       queryClient.invalidateQueries({ queryKey: ["feed", "public"] });
     },
@@ -111,26 +696,17 @@ export default function DashboardPage() {
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
-    if (files.length + selectedFiles.length > 5) {
-      setFormError("You can attach up to 5 files per update.");
-      return;
-    }
+    if (files.length + selectedFiles.length > 5) { setFormError("You can attach up to 5 files per update."); return; }
     setFormError("");
     const newFiles = [...selectedFiles, ...files].slice(0, 5);
     setSelectedFiles(newFiles);
-    // Generate previews
-    const urls = newFiles.map((f) =>
-      f.type.startsWith("video/") ? "" : URL.createObjectURL(f),
-    );
-    setPreviewUrls(urls);
+    setPreviewUrls(newFiles.map((f) => f.type.startsWith("video/") ? "" : URL.createObjectURL(f)));
   }
 
   function removeFile(index: number) {
     const newFiles = selectedFiles.filter((_, i) => i !== index);
     setSelectedFiles(newFiles);
-    setPreviewUrls(newFiles.map((f) =>
-      f.type.startsWith("video/") ? "" : URL.createObjectURL(f),
-    ));
+    setPreviewUrls(newFiles.map((f) => f.type.startsWith("video/") ? "" : URL.createObjectURL(f)));
   }
 
   function handlePost(e: React.FormEvent) {
@@ -142,44 +718,33 @@ export default function DashboardPage() {
   }
 
   function resetForm() {
-    setShowForm(false);
-    setPostTitle("");
-    setPostContent("");
-    setPostType("update");
-    setSelectedFiles([]);
-    setPreviewUrls([]);
-    setUploadProgress("idle");
-    setFormError("");
+    setShowForm(false); setPostTitle(""); setPostContent(""); setPostType("update");
+    setSelectedFiles([]); setPreviewUrls([]); setUploadProgress("idle"); setFormError("");
   }
 
   const org = orgQ.data;
   const updates = updatesQ.data ?? [];
+  const campaigns = (campaignsQ.data ?? []).filter((c) => c.status !== "deleted");
+  const activeCampaigns = campaigns.filter((c) => c.status === "active");
+  const completedCampaigns = campaigns.filter((c) => c.status === "completed");
+
   const isSubmitting = postMut.isPending;
   const uploadLabel =
-    uploadProgress === "uploading"
-      ? "Uploading media…"
-      : uploadProgress === "done"
-        ? "Publishing…"
-        : "Publish Update";
+    uploadProgress === "uploading" ? "Uploading media…" :
+    uploadProgress === "done" ? "Publishing…" : "Publish Update";
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
+
       {/* Hero */}
       <div className="bg-nav rounded-2xl p-6 text-white">
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 rounded-full bg-accent text-accent-foreground flex items-center justify-center text-xl font-extrabold flex-shrink-0">
-            {(org?.name ?? user?.name ?? "")
-              .split(" ")
-              .map((w: string) => w[0])
-              .slice(0, 2)
-              .join("")
-              .toUpperCase() || "??"}
+            {(org?.name ?? user?.name ?? "").split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase() || "??"}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <h1 className="text-xl font-extrabold text-white">
-                {org?.name ?? user?.name ?? "Your Organisation"}
-              </h1>
+              <h1 className="text-xl font-extrabold text-white">{org?.name ?? user?.name ?? "Your Organisation"}</h1>
               {org?.verified && (
                 <span className="inline-flex items-center gap-1 text-xs font-bold text-accent border border-accent/30 px-2 py-0.5 rounded-full bg-accent/10">
                   <CheckCircle className="w-3 h-3" /> Verified
@@ -187,33 +752,31 @@ export default function DashboardPage() {
               )}
             </div>
             {org && (
-              <p className="text-white/60 text-sm">
-                {[org.city, org.country].filter(Boolean).join(", ")} · {org.category}
-              </p>
+              <p className="text-white/60 text-sm">{[org.city, org.country].filter(Boolean).join(", ")} · {org.category}</p>
             )}
           </div>
         </div>
 
-        <div className="grid grid-cols-3 gap-4 mt-5 bg-white/10 rounded-xl p-4">
+        <div className="grid grid-cols-4 gap-3 mt-5 bg-white/10 rounded-xl p-4">
           {[
-            { label: "Followers", value: org?.followerCount ?? 0 },
-            { label: "Updates", value: updates.length },
-            { label: "Raised", value: `£${(org?.totalRaised ?? 0).toLocaleString()}` },
+            { label: "Followers",  value: org?.followerCount ?? 0 },
+            { label: "Updates",    value: updates.length },
+            { label: "Campaigns",  value: campaigns.length },
+            { label: "Raised",     value: `£${(org?.totalRaised ?? 0).toLocaleString()}` },
           ].map(({ label, value }) => (
             <div key={label} className="text-center">
-              <div className="text-xl font-extrabold text-white">{value}</div>
+              <div className="text-lg font-extrabold text-white">{value}</div>
               <div className="text-xs text-white/60 mt-0.5">{label}</div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Stripe Connect — bank / payouts panel */}
+      {/* Stripe Connect */}
       <Card className="border-border shadow-sm overflow-hidden">
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
-            <Banknote className="w-4 h-4" style={{ color: "#CC0000" }} />
-            Payouts
+            <Banknote className="w-4 h-4" style={{ color: RED }} /> Payouts
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -221,18 +784,13 @@ export default function DashboardPage() {
             <div className="h-8 bg-secondary rounded animate-pulse" />
           ) : connectQ.data?.payouts_enabled ? (
             <div className="space-y-4">
-              {/* Status badge */}
               <div className="flex items-center gap-2">
                 <CheckCircle className="w-5 h-5 text-green-500" />
                 <span className="text-sm font-semibold text-green-700">Payouts enabled</span>
               </div>
-
-              {/* Stats */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-secondary rounded-xl p-4 text-center">
-                  <div className="text-xl font-extrabold text-foreground">
-                    £{(org?.totalRaised ?? 0).toLocaleString()}
-                  </div>
+                  <div className="text-xl font-extrabold text-foreground">£{(org?.totalRaised ?? 0).toLocaleString()}</div>
                   <div className="text-xs text-muted-foreground mt-0.5">Total donations</div>
                 </div>
                 <div className="bg-secondary rounded-xl p-4 text-center">
@@ -240,51 +798,34 @@ export default function DashboardPage() {
                   <div className="text-xs text-muted-foreground mt-0.5">Pending payout</div>
                 </div>
               </div>
-
-              {/* Stripe Express dashboard link */}
-              <Button
-                variant="outline"
-                className="w-full gap-2"
-                onClick={async () => {
-                  try {
-                    const { url } = await api.getConnectDashboardLink(token!);
-                    window.open(url, "_blank", "noopener,noreferrer");
-                  } catch {
-                    alert("Could not open Stripe dashboard. Please try again.");
-                  }
-                }}
-              >
-                <ExternalLink className="w-4 h-4" />
-                View payouts on Stripe
+              <Button variant="outline" className="w-full gap-2" onClick={async () => {
+                try {
+                  const { url } = await api.getConnectDashboardLink(token!);
+                  window.open(url, "_blank", "noopener,noreferrer");
+                } catch { alert("Could not open Stripe dashboard. Please try again."); }
+              }}>
+                <ExternalLink className="w-4 h-4" /> View payouts on Stripe
               </Button>
             </div>
           ) : connectQ.data?.stripe_account_id ? (
-            /* Account created but onboarding not complete */
             <div className="space-y-3">
               <div className="flex items-start gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                 <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
                 Finish setting up your Stripe account to receive donations.
               </div>
               <a href="/api/stripe/connect/onboard">
-                <Button
-                  className="w-full font-bold text-black"
-                  style={{ backgroundColor: "#F5C000" }}
-                >
+                <Button className="w-full font-bold text-black" style={{ backgroundColor: GOLD }}>
                   Complete bank setup
                 </Button>
               </a>
             </div>
           ) : (
-            /* No Stripe account yet */
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
                 Connect your bank account so donors can send money directly to your organisation. Root ProjX takes a 5% platform fee automatically.
               </p>
               <a href="/api/stripe/connect/onboard">
-                <Button
-                  className="w-full font-bold text-black"
-                  style={{ backgroundColor: "#F5C000" }}
-                >
+                <Button className="w-full font-bold text-black" style={{ backgroundColor: GOLD }}>
                   Connect your bank account
                 </Button>
               </a>
@@ -293,16 +834,108 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
-      {/* Post update */}
+      {/* ── Campaigns ─────────────────────────────────────────────────────────── */}
+      <Card className="border-border shadow-sm">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Target className="w-4 h-4" style={{ color: RED }} />
+              Campaigns
+              {campaigns.length > 0 && (
+                <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-secondary text-muted-foreground">
+                  {activeCampaigns.length} active
+                </span>
+              )}
+            </CardTitle>
+            {!showCampForm && (
+              <Button size="sm" variant="default" onClick={() => setShowCampForm(true)}>
+                <PlusCircle className="w-4 h-4 mr-1.5" /> New Campaign
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {showCampForm && (
+            <div className="mb-6 pb-6 border-b border-border">
+              <h3 className="font-bold text-sm text-foreground mb-4">Create New Campaign</h3>
+              <CampaignForm
+                orgId={orgId}
+                token={token!}
+                onSuccess={() => {
+                  setShowCampForm(false);
+                  queryClient.invalidateQueries({ queryKey: ["campaigns", orgId] });
+                }}
+                onCancel={() => setShowCampForm(false)}
+              />
+            </div>
+          )}
+
+          {campaignsQ.isLoading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-32" />
+              <Skeleton className="h-32" />
+            </div>
+          ) : campaigns.length === 0 && !showCampForm ? (
+            <div className="text-center py-8">
+              <div
+                className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3"
+                style={{ backgroundColor: "#FEF2F2" }}
+              >
+                <Target className="w-6 h-6" style={{ color: RED }} />
+              </div>
+              <p className="font-semibold text-foreground mb-1">No campaigns yet</p>
+              <p className="text-sm text-muted-foreground mb-4">
+                Create your first campaign with a fundraising goal, volunteer drive, and progress phases so donors can follow along.
+              </p>
+              <Button onClick={() => setShowCampForm(true)} style={{ backgroundColor: RED }} className="text-white font-bold">
+                <PlusCircle className="w-4 h-4 mr-1.5" /> Create your first campaign
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {activeCampaigns.length > 0 && (
+                <>
+                  {activeCampaigns.length > 0 && campaigns.length > activeCampaigns.length && (
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Active</p>
+                  )}
+                  {activeCampaigns.map((c) => (
+                    <DashCampaignCard
+                      key={c._id}
+                      campaign={c}
+                      orgId={orgId}
+                      token={token!}
+                      onUpdated={() => queryClient.invalidateQueries({ queryKey: ["campaigns", orgId] })}
+                      onDeleted={() => queryClient.invalidateQueries({ queryKey: ["campaigns", orgId] })}
+                    />
+                  ))}
+                </>
+              )}
+              {completedCampaigns.length > 0 && (
+                <>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mt-2">Completed</p>
+                  {completedCampaigns.map((c) => (
+                    <DashCampaignCard
+                      key={c._id}
+                      campaign={c}
+                      orgId={orgId}
+                      token={token!}
+                      onUpdated={() => queryClient.invalidateQueries({ queryKey: ["campaigns", orgId] })}
+                      onDeleted={() => queryClient.invalidateQueries({ queryKey: ["campaigns", orgId] })}
+                    />
+                  ))}
+                </>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Post an Update ────────────────────────────────────────────────────── */}
       <Card className="border-border shadow-sm">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base">Post an Update</CardTitle>
-            <Button
-              variant={showForm ? "outline" : "default"}
-              size="sm"
-              onClick={() => (showForm ? resetForm() : setShowForm(true))}
-            >
+            <Button variant={showForm ? "outline" : "default"} size="sm" onClick={() => (showForm ? resetForm() : setShowForm(true))}>
               <PlusCircle className="w-4 h-4 mr-1.5" />
               {showForm ? "Cancel" : "New Update"}
             </Button>
@@ -313,9 +946,7 @@ export default function DashboardPage() {
           <CardContent>
             <form onSubmit={handlePost} className="space-y-4">
               {formError && (
-                <div className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">
-                  {formError}
-                </div>
+                <div className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">{formError}</div>
               )}
 
               {/* Type */}
@@ -369,7 +1000,6 @@ export default function DashboardPage() {
                   <span className="text-muted-foreground font-normal ml-1">(optional, up to 5)</span>
                 </Label>
 
-                {/* Previews */}
                 {selectedFiles.length > 0 && (
                   <div className="flex flex-wrap gap-2 mb-3">
                     {selectedFiles.map((file, i) => (
@@ -379,11 +1009,7 @@ export default function DashboardPage() {
                             <span className="text-2xl">🎬</span>
                           </div>
                         ) : (
-                          <img
-                            src={previewUrls[i]}
-                            alt="preview"
-                            className="w-20 h-20 object-cover rounded-lg border border-border"
-                          />
+                          <img src={previewUrls[i]} alt="preview" className="w-20 h-20 object-cover rounded-lg border border-border" />
                         )}
                         <button
                           type="button"
@@ -392,9 +1018,7 @@ export default function DashboardPage() {
                         >
                           <X className="w-3 h-3" />
                         </button>
-                        <p className="text-xs text-muted-foreground mt-1 w-20 truncate text-center">
-                          {file.name}
-                        </p>
+                        <p className="text-xs text-muted-foreground mt-1 w-20 truncate text-center">{file.name}</p>
                       </div>
                     ))}
                   </div>
@@ -416,19 +1040,13 @@ export default function DashboardPage() {
                       className="flex items-center gap-2 px-4 py-2.5 border-2 border-dashed border-border rounded-lg text-sm text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors"
                     >
                       <ImageIcon className="w-4 h-4" />
-                      {selectedFiles.length === 0
-                        ? "Add photos or videos"
-                        : `Add more (${selectedFiles.length}/5 selected)`}
+                      {selectedFiles.length === 0 ? "Add photos or videos" : `Add more (${selectedFiles.length}/5 selected)`}
                     </button>
                   </>
                 )}
               </div>
 
-              <Button
-                type="submit"
-                className="w-full bg-accent text-accent-foreground hover:bg-accent/90 font-bold"
-                disabled={isSubmitting}
-              >
+              <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90 font-bold" disabled={isSubmitting}>
                 {isSubmitting ? uploadLabel : "Publish Update"}
               </Button>
             </form>
@@ -436,62 +1054,39 @@ export default function DashboardPage() {
         )}
       </Card>
 
-      {/* Updates list */}
+      {/* ── Recent Updates ────────────────────────────────────────────────────── */}
       <Card className="border-border shadow-sm">
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Recent Updates ({updates.length})</CardTitle>
         </CardHeader>
         <CardContent>
           {updatesQ.isLoading ? (
-            <div className="space-y-4">
-              <Skeleton className="h-20" /><Skeleton className="h-20" />
-            </div>
+            <div className="space-y-4"><Skeleton className="h-20" /><Skeleton className="h-20" /></div>
           ) : updates.length === 0 ? (
-            <p className="text-muted-foreground text-sm text-center py-6">
-              No updates yet. Post your first update above.
-            </p>
+            <p className="text-muted-foreground text-sm text-center py-6">No updates yet. Post your first update above.</p>
           ) : (
             <div className="space-y-4">
               {updates.map((u: FeedUpdate) => (
                 <div key={u._id} className="border border-border rounded-xl p-4 space-y-2">
                   <div className="flex items-center gap-2">
-                    <span
-                      className={`text-xs font-bold px-2 py-0.5 rounded-full border ${
-                        TYPE_COLORS[u.type] ?? TYPE_COLORS.update
-                      }`}
-                    >
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${TYPE_COLORS[u.type] ?? TYPE_COLORS.update}`}>
                       {u.type.toUpperCase()}
                     </span>
                     <span className="text-xs text-muted-foreground">{timeAgo(u.createdAt)}</span>
                   </div>
                   <h4 className="font-bold text-foreground text-sm">{u.title}</h4>
-                  <p className="text-foreground/70 text-sm leading-relaxed line-clamp-2">
-                    {u.content}
-                  </p>
-                  {/* Media thumbnails */}
+                  <p className="text-foreground/70 text-sm leading-relaxed line-clamp-2">{u.content}</p>
                   {u.mediaUrls && u.mediaUrls.length > 0 && (
                     <div className="flex gap-2 mt-2 flex-wrap">
-                      {u.mediaUrls.map((url, i) => (
+                      {u.mediaUrls.map((url, i) =>
                         url.includes("video") ? (
-                          <a
-                            key={i}
-                            href={url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="w-16 h-16 bg-secondary rounded-lg flex items-center justify-center text-xl border border-border"
-                          >
-                            🎬
-                          </a>
+                          <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="w-16 h-16 bg-secondary rounded-lg flex items-center justify-center text-xl border border-border">🎬</a>
                         ) : (
                           <a key={i} href={url} target="_blank" rel="noopener noreferrer">
-                            <img
-                              src={url}
-                              alt="media"
-                              className="w-16 h-16 object-cover rounded-lg border border-border"
-                            />
+                            <img src={url} alt="media" className="w-16 h-16 object-cover rounded-lg border border-border" />
                           </a>
-                        )
-                      ))}
+                        ),
+                      )}
                     </div>
                   )}
                   <p className="text-xs text-muted-foreground">♥ {u.likes ?? 0} likes</p>

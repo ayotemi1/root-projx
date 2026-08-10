@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/context/AuthContext";
 import * as api from "@/lib/api";
-import type { FeedUpdate, Review, Org, VolunteerRole } from "@/lib/api";
+import type { FeedUpdate, Review, Org, VolunteerRole, Campaign } from "@/lib/api";
 import { GuestDonateSheet } from "@/components/GuestDonateSheet";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -112,39 +112,152 @@ function UpdateCard({ item, org }: { item: FeedUpdate; org: Org }) {
   );
 }
 
-// ── Campaign card (right column) ──────────────────────────────────────────────
+// ── Campaign card (visitor view) ──────────────────────────────────────────────
 
-function CampaignCard({ item }: { item: FeedUpdate }) {
-  const thumb = (item.mediaUrls ?? []).find((u) => !u.endsWith(".mp4") && !u.includes("video"));
-  const pct = Math.min(100, 30 + (item.likes % 70));
-  const raised = (item.likes ?? 0) * 150;
-  const goal = raised + 3500;
+function CampaignCard({ campaign, orgId }: { campaign: Campaign; orgId: string }) {
+  const [showPhases, setShowPhases] = useState(false);
+  const pct = campaign.goal > 0
+    ? Math.min(100, Math.round((campaign.amountRaised / campaign.goal) * 100))
+    : 0;
+  const completedPhases = (campaign.phases ?? []).filter((p) => p.completed).length;
+  const totalPhases = (campaign.phases ?? []).length;
 
   return (
-    <div className="flex gap-3 py-3 border-b border-border last:border-0">
-      {thumb ? (
-        <img src={thumb} alt="" className="w-16 h-16 rounded-lg object-cover flex-shrink-0" />
-      ) : (
-        <div
-          className="w-16 h-16 rounded-lg flex-shrink-0"
-          style={{ background: "linear-gradient(135deg, #B50000 0%, #7A0000 100%)" }}
-        />
+    <div className="border border-border rounded-xl overflow-hidden bg-white">
+      {campaign.imageUrl && (
+        <img src={campaign.imageUrl} alt={campaign.name} className="w-full h-36 object-cover" />
       )}
-      <div className="flex-1 min-w-0">
-        <h5 className="font-bold text-sm text-foreground leading-snug line-clamp-1">{item.title}</h5>
-        <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{item.content}</p>
-        <div className="mt-2 h-1.5 bg-secondary rounded-full overflow-hidden">
-          <div
-            className="h-full rounded-full transition-all"
-            style={{ width: `${pct}%`, backgroundColor: RED }}
-          />
+      <div className="p-4 space-y-3">
+        {/* Header */}
+        <div className="flex items-start gap-3">
+          {!campaign.imageUrl && (
+            <div
+              className="w-10 h-10 rounded-lg flex-shrink-0 flex items-center justify-center"
+              style={{ background: `linear-gradient(135deg, ${RED} 0%, #7A0000 100%)` }}
+            >
+              <DollarSign className="w-5 h-5 text-white" />
+            </div>
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h5 className="font-bold text-sm text-foreground leading-snug">{campaign.name}</h5>
+              <span
+                className="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                style={{ backgroundColor: "#FFF7E6", color: "#B45309" }}
+              >
+                {campaign.type}
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{campaign.description}</p>
+          </div>
         </div>
-        <div className="mt-1 flex items-center justify-between text-xs">
-          <span className="text-muted-foreground">£{raised.toLocaleString()} raised</span>
-          <span className="font-bold" style={{ color: RED }}>
-            {pct}% of £{goal.toLocaleString()}
-          </span>
-        </div>
+
+        {/* Progress bar (fundraising) */}
+        {campaign.type === "fundraising" && campaign.goal > 0 && (
+          <div className="space-y-1.5">
+            <div className="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-500"
+                style={{ width: `${pct}%`, backgroundColor: RED }}
+              />
+            </div>
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground font-medium">
+                £{(campaign.amountRaised ?? 0).toLocaleString()} raised
+              </span>
+              <span className="font-bold" style={{ color: RED }}>
+                {pct}% of £{campaign.goal.toLocaleString()}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* Volunteer count */}
+        {campaign.type === "volunteer" && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Users className="w-4 h-4" />
+            <span>{campaign.volunteersNeeded} volunteers needed</span>
+          </div>
+        )}
+
+        {/* Deadline */}
+        {campaign.deadline && (
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span>📅</span>
+            <span>Deadline: {new Date(campaign.deadline).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
+          </div>
+        )}
+
+        {/* Phases progress */}
+        {totalPhases > 0 && (
+          <div>
+            <button
+              onClick={() => setShowPhases((v) => !v)}
+              className="flex items-center gap-2 text-xs w-full"
+            >
+              {/* Phase progress bar */}
+              <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{
+                    width: `${totalPhases > 0 ? Math.round((completedPhases / totalPhases) * 100) : 0}%`,
+                    backgroundColor: GOLD,
+                  }}
+                />
+              </div>
+              <span className="text-muted-foreground whitespace-nowrap">
+                {completedPhases}/{totalPhases} phases
+              </span>
+              <span className="text-muted-foreground">{showPhases ? "▲" : "▼"}</span>
+            </button>
+
+            {showPhases && (
+              <div className="mt-2 space-y-2">
+                {(campaign.phases ?? []).map((phase, i) => (
+                  <div
+                    key={phase.id ?? i}
+                    className={`flex items-start gap-2.5 p-2.5 rounded-lg border ${
+                      phase.completed
+                        ? "bg-green-50 border-green-200"
+                        : "bg-gray-50 border-gray-200"
+                    }`}
+                  >
+                    <div
+                      className={`w-4 h-4 rounded border-2 flex-shrink-0 flex items-center justify-center mt-0.5 ${
+                        phase.completed ? "bg-green-500 border-green-500" : "border-gray-300"
+                      }`}
+                    >
+                      {phase.completed && <span className="text-white text-[8px]">✓</span>}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-xs font-semibold ${phase.completed ? "line-through text-muted-foreground" : "text-foreground"}`}>
+                        {phase.title}
+                      </p>
+                      {phase.description && (
+                        <p className="text-xs text-muted-foreground mt-0.5">{phase.description}</p>
+                      )}
+                      {phase.targetAmount != null && (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Target: £{phase.targetAmount.toLocaleString()}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Donate CTA */}
+        <a href={`/donate/${orgId}`}>
+          <button
+            className="w-full py-2 text-sm font-bold text-white rounded-lg transition-opacity hover:opacity-90"
+            style={{ backgroundColor: RED }}
+          >
+            {campaign.type === "volunteer" ? "Get Involved" : "Donate to this campaign"}
+          </button>
+        </a>
       </div>
     </div>
   );
@@ -206,6 +319,12 @@ export default function OrgProfilePage() {
     queryFn: () => api.getOrgVolunteerRoles(id),
   });
 
+  const campaignsQ = useQuery({
+    queryKey: ["campaigns", id],
+    queryFn: () => api.getCampaigns(id),
+    enabled: !!id,
+  });
+
   const followsQ = useQuery({
     queryKey: ["follows", "my"],
     queryFn: () => api.getMyFollows(token!),
@@ -263,8 +382,8 @@ export default function OrgProfilePage() {
 
   const initials = org.name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
   const allUpdates = updatesQ.data ?? [];
-  const campaigns = allUpdates.filter((u) => u.type === "campaign");
   const updates = allUpdates.filter((u) => u.type !== "campaign");
+  const realCampaigns = (campaignsQ.data ?? []).filter((c) => c.status !== "deleted");
 
   function handleDonateClick() {
     if (isAuthenticated) {
@@ -276,7 +395,7 @@ export default function OrgProfilePage() {
 
   const TABS = [
     { key: "updates",   label: "Updates",   count: updates.length },
-    { key: "campaigns", label: "Campaigns", count: campaigns.length },
+    { key: "campaigns", label: "Campaigns", count: realCampaigns.length },
     { key: "volunteer", label: "Volunteer",  count: null },
     { key: "about",     label: "About",      count: null },
   ] as const;
@@ -495,11 +614,11 @@ export default function OrgProfilePage() {
 
               {/* ── Campaigns ── */}
               {tab === "campaigns" && (
-                updatesQ.isLoading ? (
+                campaignsQ.isLoading ? (
                   <div className="space-y-4">
-                    <Skeleton className="h-24" /><Skeleton className="h-24" />
+                    <Skeleton className="h-48" /><Skeleton className="h-48" />
                   </div>
-                ) : campaigns.length === 0 ? (
+                ) : realCampaigns.length === 0 ? (
                   <div className="text-center py-12">
                     <div
                       className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-3"
@@ -513,13 +632,34 @@ export default function OrgProfilePage() {
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-0 divide-y divide-border">
-                    {campaigns.map((c) => (
-                      <div key={c._id} className="py-4">
-                        <CampaignCard item={c} />
+                  <>
+                    {/* Active campaigns */}
+                    {realCampaigns.filter((c) => c.status === "active").length > 0 && (
+                      <div className="space-y-4 mb-6">
+                        <h3 className="font-bold text-foreground text-base">Active Campaigns</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          {realCampaigns
+                            .filter((c) => c.status === "active")
+                            .map((c) => (
+                              <CampaignCard key={c._id} campaign={c} orgId={id} />
+                            ))}
+                        </div>
                       </div>
-                    ))}
-                  </div>
+                    )}
+                    {/* Completed campaigns */}
+                    {realCampaigns.filter((c) => c.status === "completed").length > 0 && (
+                      <div className="space-y-4">
+                        <h3 className="font-bold text-foreground text-base text-muted-foreground">Completed</h3>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 opacity-75">
+                          {realCampaigns
+                            .filter((c) => c.status === "completed")
+                            .map((c) => (
+                              <CampaignCard key={c._id} campaign={c} orgId={id} />
+                            ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )
               )}
 

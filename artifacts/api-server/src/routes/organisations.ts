@@ -157,6 +157,141 @@ router.get("/organisations/:id/campaigns", async (req, res) => {
   }
 });
 
+// POST /organisations/:id/campaigns — create a campaign (org owner only)
+router.post("/organisations/:id/campaigns", requireAuth, async (req, res) => {
+  try {
+    const uid = req.user!.userId;
+    const orgId = req.params.id!;
+    if (uid !== orgId) {
+      res.status(403).json({ error: "You can only manage your own campaigns" });
+      return;
+    }
+    const { name, description, type, goal, volunteersNeeded, deadline, imageUrl, phases } =
+      req.body as Record<string, unknown>;
+
+    if (!name || typeof name !== "string" || name.trim().length === 0) {
+      res.status(400).json({ error: "Campaign name is required" });
+      return;
+    }
+    if (!description || typeof description !== "string" || description.trim().length === 0) {
+      res.status(400).json({ error: "Campaign description is required" });
+      return;
+    }
+    const resolvedType = type === "volunteer" ? "volunteer" : "fundraising";
+
+    // Validate phases — array of { id, title, description, targetAmount, completed }
+    const resolvedPhases = Array.isArray(phases)
+      ? (phases as Record<string, unknown>[]).slice(0, 10).map((p, i) => ({
+          id: (p["id"] as string) ?? `phase_${i}`,
+          title: typeof p["title"] === "string" ? p["title"].slice(0, 200) : `Phase ${i + 1}`,
+          description: typeof p["description"] === "string" ? p["description"].slice(0, 1000) : "",
+          targetAmount: typeof p["targetAmount"] === "number" ? p["targetAmount"] : null,
+          completed: p["completed"] === true,
+        }))
+      : [];
+
+    const now = new Date().toISOString();
+    const data: Record<string, unknown> = {
+      name: name.trim().slice(0, 200),
+      description: description.trim().slice(0, 2000),
+      type: resolvedType,
+      goal: typeof goal === "number" && goal > 0 ? goal : 0,
+      amountRaised: 0,
+      volunteersNeeded: typeof volunteersNeeded === "number" ? volunteersNeeded : 0,
+      status: "active",
+      deadline: typeof deadline === "string" && deadline ? deadline : null,
+      imageUrl: typeof imageUrl === "string" && imageUrl ? imageUrl : null,
+      phases: resolvedPhases,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const serverToken = await getServerToken();
+    const newId = await fsCreate(`organisations/${orgId}/campaigns`, data, serverToken);
+    req.log.info({ orgId, campaignId: newId }, "Campaign created");
+    res.status(201).json({ _id: newId, ...data });
+  } catch (err) {
+    req.log.error({ err }, "POST /organisations/:id/campaigns error");
+    res.status(500).json({ error: "Failed to create campaign" });
+  }
+});
+
+// PATCH /organisations/:id/campaigns/:campId — update a campaign (org owner only)
+router.patch("/organisations/:id/campaigns/:campId", requireAuth, async (req, res) => {
+  try {
+    const uid = req.user!.userId;
+    const orgId = req.params.id!;
+    const campId = req.params.campId!;
+    if (uid !== orgId) {
+      res.status(403).json({ error: "You can only manage your own campaigns" });
+      return;
+    }
+
+    const serverToken = await getServerToken();
+    const existing = await fsGet(`organisations/${orgId}/campaigns`, campId, serverToken);
+    if (!existing) {
+      res.status(404).json({ error: "Campaign not found" });
+      return;
+    }
+
+    const allowed = ["name", "description", "goal", "amountRaised", "volunteersNeeded",
+                     "status", "deadline", "imageUrl", "phases"] as const;
+    const updates: Record<string, unknown> = {};
+    const body = req.body as Record<string, unknown>;
+
+    for (const key of allowed) {
+      if (key in body) updates[key] = body[key];
+    }
+
+    // Validate phases if provided
+    if ("phases" in updates && Array.isArray(updates["phases"])) {
+      updates["phases"] = (updates["phases"] as Record<string, unknown>[])
+        .slice(0, 10)
+        .map((p, i) => ({
+          id: (p["id"] as string) ?? `phase_${i}`,
+          title: typeof p["title"] === "string" ? p["title"].slice(0, 200) : `Phase ${i + 1}`,
+          description: typeof p["description"] === "string" ? p["description"].slice(0, 1000) : "",
+          targetAmount: typeof p["targetAmount"] === "number" ? p["targetAmount"] : null,
+          completed: p["completed"] === true,
+        }));
+    }
+
+    const merged = { ...existing, ...updates, updatedAt: new Date().toISOString() };
+    await fsPatch(`organisations/${orgId}/campaigns`, campId, merged, serverToken);
+    req.log.info({ orgId, campId }, "Campaign updated");
+    res.json({ _id: campId, ...merged });
+  } catch (err) {
+    req.log.error({ err }, "PATCH /organisations/:id/campaigns/:campId error");
+    res.status(500).json({ error: "Failed to update campaign" });
+  }
+});
+
+// DELETE /organisations/:id/campaigns/:campId — delete a campaign (org owner only)
+router.delete("/organisations/:id/campaigns/:campId", requireAuth, async (req, res) => {
+  try {
+    const uid = req.user!.userId;
+    const orgId = req.params.id!;
+    const campId = req.params.campId!;
+    if (uid !== orgId) {
+      res.status(403).json({ error: "You can only manage your own campaigns" });
+      return;
+    }
+    // Firestore REST delete: PATCH with __delete__ sentinel is not supported directly;
+    // use the delete endpoint via fsDelete if available, otherwise patch with a tombstone.
+    // For now mark as deleted so the list can filter it out.
+    const serverToken = await getServerToken();
+    const existing = await fsGet(`organisations/${orgId}/campaigns`, campId, serverToken);
+    if (!existing) { res.status(404).json({ error: "Campaign not found" }); return; }
+    await fsPatch(`organisations/${orgId}/campaigns`, campId,
+      { ...existing, status: "deleted", updatedAt: new Date().toISOString() }, serverToken);
+    req.log.info({ orgId, campId }, "Campaign deleted");
+    res.json({ ok: true });
+  } catch (err) {
+    req.log.error({ err }, "DELETE /organisations/:id/campaigns/:campId error");
+    res.status(500).json({ error: "Failed to delete campaign" });
+  }
+});
+
 // GET /organisations/:id — single org profile
 router.get("/organisations/:id", async (req, res) => {
   try {

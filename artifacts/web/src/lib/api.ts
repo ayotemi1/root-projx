@@ -230,6 +230,14 @@ export const getResources = (params?: { category?: string; country?: string }) =
 
 export const getOrgReviews = (orgId: string) => req<Review[]>(`/help/reviews/${orgId}`);
 
+export interface CampaignPhase {
+  id: string;
+  title: string;
+  description: string;
+  targetAmount: number | null;
+  completed: boolean;
+}
+
 export interface Campaign {
   _id: string;
   name: string;
@@ -237,13 +245,52 @@ export interface Campaign {
   imageUrl: string | null;
   amountRaised: number;
   goal: number;
-  status: "active" | "completed";
+  status: "active" | "completed" | "deleted";
   type: "fundraising" | "volunteer";
   volunteersNeeded: number;
+  deadline: string | null;
+  phases: CampaignPhase[];
   createdAt: string;
+  updatedAt: string;
 }
 
-export const getCampaigns = (orgId: string) => req<Campaign[]>(`/organisations/${orgId}/campaigns`);
+export type CreateCampaignData = {
+  name: string;
+  description: string;
+  type: "fundraising" | "volunteer";
+  goal: number;
+  volunteersNeeded: number;
+  deadline: string | null;
+  imageUrl: string | null;
+  phases: Omit<CampaignPhase, "id">[];
+};
+
+export const getCampaigns = (orgId: string) =>
+  req<Campaign[]>(`/organisations/${orgId}/campaigns`).then((cs) =>
+    cs.filter((c) => c.status !== "deleted"),
+  );
+
+export const createCampaign = (orgId: string, data: CreateCampaignData, token: string) =>
+  req<Campaign>(`/organisations/${orgId}/campaigns`, { method: "POST", body: JSON.stringify(data) }, token);
+
+export const updateCampaign = (
+  orgId: string,
+  campId: string,
+  data: Partial<Campaign>,
+  token: string,
+) =>
+  req<Campaign>(
+    `/organisations/${orgId}/campaigns/${campId}`,
+    { method: "PATCH", body: JSON.stringify(data) },
+    token,
+  );
+
+export const deleteCampaign = (orgId: string, campId: string, token: string) =>
+  req<{ ok: boolean }>(
+    `/organisations/${orgId}/campaigns/${campId}`,
+    { method: "DELETE" },
+    token,
+  );
 
 export function apiFetch<T = unknown>(
   path: string,
