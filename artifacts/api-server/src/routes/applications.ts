@@ -339,4 +339,21 @@ router.get("/admin/organisations", requireAdmin, async (req, res) => {
   }
 });
 
+// GET /admin/donations — all donations, newest first (limit 200)
+router.get("/admin/donations", requireAdmin, async (req, res) => {
+  try {
+    const serverToken = await getServerToken();
+    const donations = await fsList("donations", serverToken);
+    donations.sort((a, b) => {
+      const ta = typeof a.createdAt === "string" ? a.createdAt : "";
+      const tb = typeof b.createdAt === "string" ? b.createdAt : "";
+      return tb.localeCompare(ta);
+    });
+    res.json(donations.slice(0, 200));
+  } catch (err) {
+    req.log.error({ err }, "GET /admin/donations error");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;

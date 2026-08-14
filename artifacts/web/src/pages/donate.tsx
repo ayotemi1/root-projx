@@ -10,6 +10,14 @@ import { useAuth } from "@/context/AuthContext";
 import * as api from "@/lib/api";
 
 const PRESET_AMOUNTS_GBP = [5, 10, 25, 50, 100];
+const RED = "#CC0000";
+const GOLD = "#F5C000";
+
+// Stripe fee estimate — UK card rate (1.5% + £0.20).
+// Used for display only; actual fee depends on card type at checkout.
+function estimateStripeFeeGbp(amountGbp: number): number {
+  return Math.round((amountGbp * 0.015 + 0.20) * 100) / 100;
+}
 
 export default function DonatePage() {
   const [, params] = useRoute("/donate/:orgId");
@@ -19,11 +27,11 @@ export default function DonatePage() {
   const search = useSearch();
   const urlParams = new URLSearchParams(search);
 
-  // Guest email pre-filled from the donate-gate modal
   const guestEmail = urlParams.get("email") ?? "";
 
   const [preset, setPreset] = useState<number | null>(25);
   const [custom, setCustom] = useState("");
+  const [feeCovered, setFeeCovered] = useState(true);
   const [redirecting, setRedirecting] = useState(false);
   const [error, setError] = useState("");
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
@@ -35,8 +43,19 @@ export default function DonatePage() {
   });
 
   const org = orgQ.data;
-  const amountGbp = custom ? parseFloat(custom) : (preset ?? 0);
-  const amountPence = Math.round(amountGbp * 100);
+  const originalAmountGbp = custom ? parseFloat(custom) || 0 : (preset ?? 0);
+  const originalAmountPence = Math.round(originalAmountGbp * 100);
+
+  const estimatedFeeGbp = originalAmountGbp > 0 ? estimateStripeFeeGbp(originalAmountGbp) : 0;
+  const estimatedFeePence = Math.round(estimatedFeeGbp * 100);
+
+  // Gross-up: donor pays original + Stripe fee; org receives full original amount
+  const chargedAmountGbp = feeCovered
+    ? originalAmountGbp + estimatedFeeGbp
+    : originalAmountGbp;
+  const chargedAmountPence = feeCovered
+    ? originalAmountPence + estimatedFeePence
+    : originalAmountPence;
 
   const initials = (org?.name ?? "")
     .split(" ")
@@ -46,7 +65,7 @@ export default function DonatePage() {
     .toUpperCase() || "??";
 
   async function handleDonate() {
-    if (!amountGbp || amountGbp < 1) {
+    if (!originalAmountGbp || originalAmountGbp < 1) {
       setError("Please enter an amount of at least £1.");
       return;
     }
@@ -59,7 +78,14 @@ export default function DonatePage() {
     setRedirecting(true);
     try {
       const { url } = await api.createDonationCheckout(
-        { orgId, amountPence, guestEmail: guestEmail || undefined },
+        {
+          orgId,
+          amountPence: chargedAmountPence,
+          guestEmail: guestEmail || undefined,
+          feeCovered,
+          originalAmountPence,
+          feeAmountPence: feeCovered ? estimatedFeePence : 0,
+        },
         token ?? undefined,
       );
       window.location.href = url;
@@ -70,7 +96,7 @@ export default function DonatePage() {
   }
 
   async function handleAnonymousDonate() {
-    if (!amountGbp || amountGbp < 1) {
+    if (!originalAmountGbp || originalAmountGbp < 1) {
       setError("Please enter an amount of at least £1.");
       return;
     }
@@ -81,7 +107,13 @@ export default function DonatePage() {
       const res = await fetch("/api/donations/anonymous-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orgId, amountPence }),
+        body: JSON.stringify({
+          orgId,
+          amountPence: chargedAmountPence,
+          feeCovered,
+          originalAmountPence,
+          feeAmountPence: feeCovered ? estimatedFeePence : 0,
+        }),
       });
       const data = await res.json() as { url?: string; error?: string };
       if (!res.ok || !data.url) {
@@ -142,7 +174,7 @@ export default function DonatePage() {
                   }`}
                   style={
                     preset === amt && !custom
-                      ? { backgroundColor: "#F5C000", borderColor: "#F5C000" }
+                      ? { backgroundColor: GOLD, borderColor: GOLD }
                       : {}
                   }
                 >
@@ -160,7 +192,7 @@ export default function DonatePage() {
                 }`}
                 style={
                   preset === null && !custom
-                    ? { backgroundColor: "#F5C000", borderColor: "#F5C000" }
+                    ? { backgroundColor: GOLD, borderColor: GOLD }
                     : {}
                 }
               >
@@ -169,7 +201,7 @@ export default function DonatePage() {
             </div>
           </div>
 
-          {/* Custom amount input — only when Custom is selected */}
+          {/* Custom amount input */}
           {preset === null && (
             <div>
               <Label className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-2 block">
@@ -191,19 +223,107 @@ export default function DonatePage() {
             </div>
           )}
 
-          {/* Summary */}
-          {amountGbp > 0 && (
-            <div className="rounded-xl px-4 py-3 text-sm text-center" style={{ backgroundColor: "rgba(245,192,0,0.12)" }}>
-              <span className="text-muted-foreground">Donating </span>
-              <strong className="text-lg font-extrabold" style={{ color: "#CC0000" }}>
-                £{amountGbp.toFixed(2)}
-              </strong>
-              {org ? (
-                <span className="text-muted-foreground"> to {org.name}</span>
-              ) : null}
-              <div className="text-xs text-muted-foreground mt-1">
-                5% platform fee · {((amountGbp * 0.95)).toFixed(2)} goes directly to the org
+          {/* ── Fee coverage toggle ─────────────────────────────────── */}
+          {originalAmountGbp > 0 && (
+            <div
+              className="rounded-xl border-2 p-4 space-y-3 transition-colors"
+              style={{
+                borderColor: feeCovered ? RED : "#e0d8cc",
+                backgroundColor: feeCovered ? "rgba(204,0,0,0.04)" : "transparent",
+              }}
+            >
+              {/* Toggle row */}
+              <div className="flex items-start gap-3">
+                <button
+                  role="switch"
+                  aria-checked={feeCovered}
+                  onClick={() => setFeeCovered((v) => !v)}
+                  className="relative flex-shrink-0 mt-0.5"
+                  style={{ width: 44, height: 24 }}
+                >
+                  <div
+                    className="absolute inset-0 rounded-full transition-colors duration-200"
+                    style={{ backgroundColor: feeCovered ? RED : "#d1d5db" }}
+                  />
+                  <div
+                    className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200"
+                    style={{ transform: feeCovered ? "translateX(22px)" : "translateX(2px)" }}
+                  />
+                </button>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-foreground leading-snug">
+                    Cover transaction fees so 100% of my donation reaches{" "}
+                    <span style={{ color: RED }}>{org?.name ?? "the organisation"}</span>
+                  </p>
+                </div>
               </div>
+
+              {/* Breakdown */}
+              <div
+                className="rounded-lg px-3 py-2.5 text-sm space-y-1"
+                style={{ backgroundColor: feeCovered ? "rgba(204,0,0,0.06)" : "rgba(0,0,0,0.03)" }}
+              >
+                {feeCovered ? (
+                  <>
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Your donation</span>
+                      <span>£{originalAmountGbp.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>+ Fee cover (est.)</span>
+                      <span>£{estimatedFeeGbp.toFixed(2)}</span>
+                    </div>
+                    <div
+                      className="flex justify-between font-bold pt-1 border-t"
+                      style={{ borderColor: "rgba(204,0,0,0.2)", color: RED }}
+                    >
+                      <span>= Charged to your card</span>
+                      <span>£{chargedAmountGbp.toFixed(2)}</span>
+                    </div>
+                  </>
+                ) : (
+                  <p className="text-muted-foreground text-center">
+                    <span className="font-semibold" style={{ color: "#92400E" }}>
+                      £{estimatedFeeGbp.toFixed(2)}
+                    </span>{" "}
+                    will be deducted from your donation for transaction fees
+                  </p>
+                )}
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                Fee estimate based on UK card rates (1.5% + £0.20). Actual fee may vary by card type.
+              </p>
+            </div>
+          )}
+
+          {/* Summary */}
+          {originalAmountGbp > 0 && (
+            <div className="rounded-xl px-4 py-3 text-sm text-center" style={{ backgroundColor: "rgba(245,192,0,0.12)" }}>
+              {feeCovered ? (
+                <>
+                  <span className="text-muted-foreground">
+                    <strong className="text-lg font-extrabold" style={{ color: RED }}>
+                      £{originalAmountGbp.toFixed(2)}
+                    </strong>{" "}
+                    goes directly to {org?.name ?? "the organisation"}
+                  </span>
+                  <div className="text-xs text-muted-foreground mt-1">
+                    5% platform fee · you cover transaction fees
+                  </div>
+                </>
+              ) : (
+                <>
+                  <span className="text-muted-foreground">Donating </span>
+                  <strong className="text-lg font-extrabold" style={{ color: RED }}>
+                    £{originalAmountGbp.toFixed(2)}
+                  </strong>
+                  {org ? <span className="text-muted-foreground"> to {org.name}</span> : null}
+                  <div className="text-xs text-muted-foreground mt-1">
+                    5% platform fee · £{(originalAmountGbp * 0.95 - estimatedFeeGbp).toFixed(2)} goes directly to the org
+                  </div>
+                </>
+              )}
             </div>
           )}
 
@@ -213,21 +333,21 @@ export default function DonatePage() {
             </div>
           )}
 
-          {/* Donate button — shown for everyone */}
+          {/* Donate button */}
           <Button
             className="w-full font-bold text-base h-12 text-black"
-            style={{ backgroundColor: "#F5C000" }}
+            style={{ backgroundColor: GOLD }}
             onClick={handleDonate}
-            disabled={!amountGbp || amountGbp < 1 || redirecting}
+            disabled={!originalAmountGbp || originalAmountGbp < 1 || redirecting}
           >
             {redirecting
               ? "Redirecting to Stripe…"
-              : amountGbp > 0
-              ? `Donate £${amountGbp.toFixed(2)} →`
+              : originalAmountGbp > 0
+              ? `Donate £${chargedAmountGbp.toFixed(2)} →`
               : "Select an amount"}
           </Button>
 
-          {/* Inline auth prompt — appears when a guest clicks Donate */}
+          {/* Inline auth prompt */}
           {showAuthPrompt && (
             <div className="rounded-xl border-2 border-border px-4 py-4 text-center space-y-2 animate-in fade-in">
               <p className="text-sm font-semibold text-foreground">
@@ -241,7 +361,7 @@ export default function DonatePage() {
                 >
                   <Button
                     className="w-full font-bold text-black text-sm"
-                    style={{ backgroundColor: "#F5C000" }}
+                    style={{ backgroundColor: GOLD }}
                   >
                     Create account
                   </Button>

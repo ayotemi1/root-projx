@@ -99,7 +99,7 @@ async function handlePaymentSuccess(
     stripeRef = invoice.id;
   }
 
-  const { userId, orgId, orgName, note, type, guestEmail } = metadata;
+  const { userId, orgId, orgName, note, type, guestEmail, feeCovered, originalAmountPence, feeAmountPence } = metadata;
 
   // ── Idempotency guard ─────────────────────────────────────────────────────────
   // Stripe retries webhook deliveries (network blips, non-2xx responses, manual
@@ -135,6 +135,10 @@ async function handlePaymentSuccess(
 
   // 1. Create donation document in Firestore
   const donationDate = new Date().toISOString();
+  const isFeeCovered = feeCovered === "true";
+  const origAmountGbp = originalAmountPence ? Number(originalAmountPence) / 100 : amountGbp;
+  const feeAmountGbp = feeAmountPence ? Number(feeAmountPence) / 100 : 0;
+
   const donationId = await fsCreate(
     "donations",
     {
@@ -142,6 +146,12 @@ async function handlePaymentSuccess(
       ...(isGuest ? { guestEmail } : {}),
       orgId,
       orgName: orgName ?? "",
+      // Fee transparency fields
+      grossAmountGbp: amountGbp,           // total charged to donor's card
+      netAmountGbp: origAmountGbp,         // original intended donation (what org counts toward)
+      feeCovered: isFeeCovered,
+      feeAmountGbp: isFeeCovered ? feeAmountGbp : 0,
+      // Legacy field kept for backwards compatibility
       amountGbp,
       currency,
       type: type ?? "one_time",

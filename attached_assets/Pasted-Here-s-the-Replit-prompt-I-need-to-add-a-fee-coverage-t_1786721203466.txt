@@ -1,0 +1,41 @@
+Here's the Replit prompt:
+
+---
+
+I need to add a fee coverage toggle to the donation flow on Root ProjX. Here is the context and purpose:
+
+Root ProjX is a diaspora giving platform. Our transparency is core to our brand — donors should always know exactly where their money goes. One of our partner organisations has specifically requested that donors be given the option to cover transaction fees so that 100% of their intended donation reaches the organisation.
+
+**What needs to be built:**
+
+**1. Fee calculation logic**
+- Stripe's fee for UK cards is 1.5% + £0.20 per transaction
+- Stripe's fee for international cards is 3.25% + £0.20 per transaction
+- When the toggle is ON, add the calculated Stripe fee on top of the donor's chosen amount so the org receives the full intended amount
+- Root ProjX's 5% platform fee should be calculated on the original donation amount, not the grossed-up amount
+
+**2. Toggle UI on the donation page**
+- Add a clearly visible toggle below the amount selector
+- Default state: ON
+- Label: "Cover transaction fees so 100% of my donation reaches [org name]"
+- Show the donor exactly what they'll be charged with the toggle on vs off
+- Example: "Your donation: £10.00 + £0.35 fee cover = £10.35 charged to your card"
+- When toggled off, show: "£0.35 will be deducted from your donation for transaction fees"
+
+**3. Mobile-first design**
+- The toggle must be clean and easy to use on mobile
+- Use Root ProjX brand colours (red #CC0000, gold #F5C000)
+- Keep it simple — one toggle, clear numbers, no confusion
+
+**4. Pass the correct amount to Stripe**
+- When fee cover is ON, charge the grossed-up amount to Stripe
+- Record both the gross amount charged and the net amount reaching the org in the donation Firestore document
+- Fields to add: `grossAmount`, `netAmount`, `feeCovered` (boolean), `feeAmount`
+
+**5. Update the admin dashboard**
+- Show both gross and net amounts in the donations table
+- Add a column showing whether fee was covered
+
+---
+
+Run that and it'll be ready for the "One One Coco Full Basket" campaign launch.

@@ -126,9 +126,12 @@ router.post("/donations/guest-payment-intent", async (req, res) => {
 // Stripe Checkout handles email collection during payment itself.
 router.post("/donations/anonymous-checkout", async (req, res) => {
   try {
-    const { orgId, amountPence } = req.body as {
+    const { orgId, amountPence, feeCovered, originalAmountPence, feeAmountPence } = req.body as {
       orgId?: string;
       amountPence?: number;
+      feeCovered?: boolean;
+      originalAmountPence?: number;
+      feeAmountPence?: number;
     };
 
     if (!orgId || !amountPence || amountPence < 100) {
@@ -144,7 +147,9 @@ router.post("/donations/anonymous-checkout", async (req, res) => {
     }
 
     const stripe = await getUncachableStripeClient();
-    const feePence = platformFee(amountPence / 100);
+    // Platform fee calculated on original donation amount (not the grossed-up amount)
+    const basePence = feeCovered && originalAmountPence ? originalAmountPence : amountPence;
+    const feePence = platformFee(basePence / 100);
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
@@ -168,6 +173,9 @@ router.post("/donations/anonymous-checkout", async (req, res) => {
           orgName: (org["name"] as string) ?? "",
           amountPence: String(amountPence),
           feePence: String(feePence),
+          feeCovered: feeCovered ? "true" : "false",
+          originalAmountPence: String(originalAmountPence ?? amountPence),
+          feeAmountPence: String(feeAmountPence ?? 0),
           type: "anonymous_one_time",
           platform: "rootprojx",
         },
@@ -330,10 +338,13 @@ router.post("/donations/subscription", requireAuth, async (req, res) => {
 // Supports both authenticated users and guests (with guestEmail in body).
 router.post("/donations/checkout", optionalAuth, async (req, res) => {
   try {
-    const { orgId, amountPence, guestEmail } = req.body as {
+    const { orgId, amountPence, guestEmail, feeCovered, originalAmountPence, feeAmountPence } = req.body as {
       orgId: string;
       amountPence: number;
       guestEmail?: string;
+      feeCovered?: boolean;
+      originalAmountPence?: number;
+      feeAmountPence?: number;
     };
 
     if (!orgId || !amountPence || amountPence < 100) {
@@ -370,7 +381,9 @@ router.post("/donations/checkout", optionalAuth, async (req, res) => {
       donorEmail = (userDoc?.["email"] as string | undefined) ?? guestEmail;
     }
 
-    const feePence = Math.round(amountPence * 0.05);
+    // Platform fee is calculated on the original donation amount, not the grossed-up total
+    const basePence = feeCovered && originalAmountPence ? originalAmountPence : amountPence;
+    const feePence = Math.round(basePence * 0.05);
     const stripe = await getUncachableStripeClient();
 
     const session = await stripe.checkout.sessions.create({
@@ -382,7 +395,9 @@ router.post("/donations/checkout", optionalAuth, async (req, res) => {
             unit_amount: amountPence,
             product_data: {
               name: `Donation to ${org["name"] as string}`,
-              description: "Your support goes straight to the source.",
+              description: feeCovered
+                ? "You've covered the fees — 100% of your donation reaches the organisation."
+                : "Your support goes straight to the source.",
             },
           },
           quantity: 1,
@@ -397,6 +412,9 @@ router.post("/donations/checkout", optionalAuth, async (req, res) => {
           orgName: (org["name"] as string) ?? "",
           amountPence: String(amountPence),
           feePence: String(feePence),
+          feeCovered: feeCovered ? "true" : "false",
+          originalAmountPence: String(originalAmountPence ?? amountPence),
+          feeAmountPence: String(feeAmountPence ?? 0),
           platform: "rootprojx",
         },
       },

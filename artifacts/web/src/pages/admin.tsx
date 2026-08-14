@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
-import { CheckCircle2, XCircle, Clock, Users, FileText, LogOut, RefreshCw, Building2 } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, Users, FileText, LogOut, RefreshCw, Building2, CreditCard } from "lucide-react";
 
 const RED_DEEP = "#7A0000";
 const RED = "#B50000";
@@ -41,6 +41,21 @@ interface Organisation {
   createdAt: string | null;
 }
 
+interface Donation {
+  _id: string;
+  orgName: string;
+  grossAmountGbp?: number;
+  netAmountGbp?: number;
+  amountGbp?: number;
+  feeCovered?: boolean;
+  feeAmountGbp?: number;
+  type: string;
+  status: string;
+  createdAt: string | null;
+  userId?: string;
+  guestEmail?: string;
+}
+
 function StatusBadge({ status }: { status: "pending" | "approved" | "declined" }) {
   const map = {
     pending:  { bg: "#FEF9C3", color: "#92400E", label: "Pending" },
@@ -79,15 +94,17 @@ const TD: React.CSSProperties = { padding: "14px 20px", borderTop: "1px solid #f
 
 export default function AdminPage() {
   const [, setLocation] = useLocation();
-  const [tab, setTab] = useState<"applications" | "supporters" | "organisations">("applications");
+  const [tab, setTab] = useState<"applications" | "supporters" | "organisations" | "donations">("applications");
 
   const [applications, setApplications]   = useState<OrgApplication[]>([]);
   const [supporters,   setSupporters]     = useState<Supporter[]>([]);
   const [organisations, setOrganisations] = useState<Organisation[]>([]);
+  const [donations,    setDonations]      = useState<Donation[]>([]);
 
   const [loadingApps, setLoadingApps] = useState(true);
   const [loadingSups, setLoadingSups] = useState(false);
   const [loadingOrgs, setLoadingOrgs] = useState(false);
+  const [loadingDons, setLoadingDons] = useState(false);
 
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -146,14 +163,30 @@ export default function AdminPage() {
     }
   }, [token]);
 
+  const fetchDonations = useCallback(async () => {
+    setLoadingDons(true);
+    setError("");
+    try {
+      const res = await fetch("/api/admin/donations", { headers: { "x-admin-token": token } });
+      if (res.status === 401) { logout(); return; }
+      const data = await res.json() as Donation[];
+      setDonations(data);
+    } catch {
+      setError("Failed to load donations.");
+    } finally {
+      setLoadingDons(false);
+    }
+  }, [token]);
+
   useEffect(() => {
     if (!token) { setLocation("/admin/login"); return; }
     fetchApplications();
   }, [token, fetchApplications]);
 
   useEffect(() => {
-    if (tab === "supporters"   && supporters.length   === 0) fetchSupporters();
+    if (tab === "supporters"    && supporters.length    === 0) fetchSupporters();
     if (tab === "organisations" && organisations.length === 0) fetchOrganisations();
+    if (tab === "donations"     && donations.length     === 0) fetchDonations();
   }, [tab]);
 
   async function handleApprove(id: string) {
@@ -210,6 +243,9 @@ export default function AdminPage() {
               </button>
               <button style={tabStyle(tab === "supporters")} onClick={() => setTab("supporters")}>
                 <Users size={14} />Supporters
+              </button>
+              <button style={tabStyle(tab === "donations")} onClick={() => setTab("donations")}>
+                <CreditCard size={14} />Donations
               </button>
             </div>
           </div>
@@ -380,6 +416,91 @@ export default function AdminPage() {
                         <td style={{ ...TD, fontSize: 13, color: "#888" }}>{formatDate(org.createdAt)}</td>
                       </tr>
                     ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── Donations tab ─────────────────────────────────────────── */}
+        {tab === "donations" && (
+          <>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+              <div>
+                <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: "#1a1a1a" }}>Donations</h1>
+                <p style={{ margin: "4px 0 0", fontSize: 14, color: "#888" }}>
+                  {donations.length > 0 ? `${donations.length} donations (most recent 200)` : "All recorded donations"}
+                </p>
+              </div>
+              <button
+                onClick={fetchDonations}
+                style={{ padding: "8px 12px", border: "1.5px solid #e0d8cc", borderRadius: 8, background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#555" }}
+              >
+                <RefreshCw size={13} /> Refresh
+              </button>
+            </div>
+
+            {loadingDons ? (
+              <div style={{ textAlign: "center", padding: "60px 0", color: "#888" }}>Loading…</div>
+            ) : donations.length === 0 ? (
+              <div style={{ textAlign: "center", padding: "60px 0", background: "#fff", borderRadius: 12 }}>
+                <CreditCard size={40} color="#ccc" style={{ margin: "0 auto 12px" }} />
+                <p style={{ color: "#888", fontSize: 15 }}>No donations yet</p>
+              </div>
+            ) : (
+              <div style={{ background: "#fff", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ background: "#f9f6f0" }}>
+                      <th style={TH}>Organisation</th>
+                      <th style={TH}>Donor</th>
+                      <th style={TH}>Charged</th>
+                      <th style={TH}>To Org</th>
+                      <th style={TH}>Fee covered</th>
+                      <th style={TH}>Type</th>
+                      <th style={TH}>Date</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {donations.map((d, i) => {
+                      const gross = d.grossAmountGbp ?? d.amountGbp ?? 0;
+                      const net = d.netAmountGbp ?? d.amountGbp ?? 0;
+                      return (
+                        <tr key={d._id ?? i}>
+                          <td style={{ ...TD, fontWeight: 600, fontSize: 14, color: "#1a1a1a" }}>
+                            {d.orgName || "—"}
+                          </td>
+                          <td style={{ ...TD, fontSize: 13, color: "#555" }}>
+                            {d.guestEmail
+                              ? <span style={{ color: "#888" }}>{d.guestEmail} <span style={{ fontSize: 11, background: "#f2ede4", padding: "1px 6px", borderRadius: 4 }}>guest</span></span>
+                              : d.userId && d.userId !== "anonymous" && d.userId !== "guest"
+                              ? <span style={{ fontFamily: "monospace", fontSize: 11, color: "#888" }}>{d.userId.slice(0, 10)}…</span>
+                              : <span style={{ color: "#bbb" }}>anonymous</span>
+                            }
+                          </td>
+                          <td style={{ ...TD, fontSize: 14, fontWeight: 700, color: RED }}>
+                            £{gross.toFixed(2)}
+                          </td>
+                          <td style={{ ...TD, fontSize: 13, color: "#166534", fontWeight: 600 }}>
+                            £{(net * 0.95).toFixed(2)}
+                          </td>
+                          <td style={{ ...TD, textAlign: "center" as const }}>
+                            {d.feeCovered ? (
+                              <span style={{ background: "#dcfce7", color: "#166534", borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 700 }}>
+                                ✓ +£{(d.feeAmountGbp ?? 0).toFixed(2)}
+                              </span>
+                            ) : (
+                              <span style={{ color: "#bbb", fontSize: 12 }}>—</span>
+                            )}
+                          </td>
+                          <td style={{ ...TD, fontSize: 12, color: "#888" }}>
+                            {(d.type ?? "one_time").replace(/_/g, " ")}
+                          </td>
+                          <td style={{ ...TD, fontSize: 13, color: "#888" }}>{formatDate(d.createdAt)}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
