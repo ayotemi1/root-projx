@@ -128,29 +128,26 @@ export function welcomeEmailHtml(name: string): string {
         </td></tr>
         <!-- Body -->
         <tr><td style="padding:40px;">
-          <h2 style="color:#1a1a1a;font-size:22px;margin:0 0 16px;">Welcome, ${escapeHtml(name)}!</h2>
+          <h2 style="color:#1a1a1a;font-size:22px;margin:0 0 16px;">Welcome to Root ProjX, ${escapeHtml(name)}!</h2>
           <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 16px;">
-            You've joined a growing community of diaspora supporters connecting with verified grassroots organisations in Jamaica, the UK, and beyond.
+            You're now part of a community connecting directly with verified grassroots organisations doing real work on the ground — starting in Jamaica.
           </p>
           <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 24px;">
-            Here's what you can do on Root ProjX:
+            You can explore organisations, see exactly where support goes, and start giving directly and transparently.
           </p>
-          <table cellpadding="0" cellspacing="0" style="margin:0 0 24px;">
-            <tr><td style="padding:6px 0;color:#444;font-size:14px;">✅ &nbsp;Discover and follow verified organisations</td></tr>
-            <tr><td style="padding:6px 0;color:#444;font-size:14px;">💸 &nbsp;Make one-time or monthly donations</td></tr>
-            <tr><td style="padding:6px 0;color:#444;font-size:14px;">📰 &nbsp;See real-time impact updates in your feed</td></tr>
-            <tr><td style="padding:6px 0;color:#444;font-size:14px;">🆘 &nbsp;Browse the Get Help directory</td></tr>
-          </table>
           <table cellpadding="0" cellspacing="0" width="100%"><tr><td align="center">
             <a href="https://rootprojx.com/discover" style="display:inline-block;background:#8B0000;color:#FFD700;text-decoration:none;font-size:15px;font-weight:700;padding:14px 32px;border-radius:6px;">
               Explore Organisations →
             </a>
           </td></tr></table>
+          <p style="color:#666;font-size:14px;line-height:1.6;margin:32px 0 0;">
+            Thanks for being part of this,<br>
+            <strong>The Root ProjX Team</strong>
+          </p>
         </td></tr>
         <!-- Footer -->
         <tr><td style="background:#f9f9f9;border-top:1px solid #eee;padding:24px 40px;text-align:center;">
           <p style="margin:0;color:#999;font-size:12px;">
-            You received this email because you registered on Root ProjX.<br>
             &copy; ${new Date().getFullYear()} Root ProjX · <a href="https://rootprojx.com" style="color:#8B0000;">rootprojx.com</a>
           </p>
         </td></tr>
@@ -252,22 +249,20 @@ export function orgApplicationReceivedHtml(opts: { orgName: string; contactName:
           <p style="margin:8px 0 0;color:rgba(255,255,255,0.85);font-size:14px;">Application Received</p>
         </td></tr>
         <tr><td style="padding:40px;">
-          <h2 style="color:#1a1a1a;font-size:22px;margin:0 0 16px;">Thank you, ${escapeHtml(contactName)}!</h2>
+          <h2 style="color:#1a1a1a;font-size:22px;margin:0 0 16px;">Hi ${escapeHtml(contactName)},</h2>
           <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 16px;">
-            We've received the application for <strong>${escapeHtml(orgName)}</strong>. Our team will review it and get back to you within 5 business days.
+            Thank you for applying to join Root ProjX as a founding partner organisation.
           </p>
-          <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 24px;">
-            While you wait, no action is needed from you. We'll be in touch by email once a decision has been made.
+          <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 16px;">
+            We've received your application for <strong>${escapeHtml(orgName)}</strong> and our team will now review it. This helps us make sure every organisation on the platform is verified and ready to receive support directly from our diaspora community.
           </p>
-          <table cellpadding="0" cellspacing="0" width="100%" style="background:#f9f6f0;border-radius:6px;margin:0 0 24px;">
-            <tr><td style="padding:20px;">
-              <p style="margin:0 0 8px;font-size:13px;color:#888;">What happens next</p>
-              <p style="margin:0 0 6px;font-size:14px;color:#1a1a1a;">✅ &nbsp;Our team reviews your application</p>
-              <p style="margin:0 0 6px;font-size:14px;color:#1a1a1a;">📬 &nbsp;You receive an acceptance or decline email</p>
-              <p style="margin:0;font-size:14px;color:#1a1a1a;">🚀 &nbsp;If approved, you're granted access to your organisation profile</p>
-            </td></tr>
-          </table>
-          <p style="color:#888;font-size:13px;margin:0;">Questions? Email us at <a href="mailto:info@rootprojx.com" style="color:#B50000;">info@rootprojx.com</a></p>
+          <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 32px;">
+            We'll be in touch soon with an update. In the meantime, if you have any questions, just reply to this email.
+          </p>
+          <p style="color:#666;font-size:14px;line-height:1.6;margin:0;">
+            Thank you for the work you do,<br>
+            <strong>The Root ProjX Team</strong>
+          </p>
         </td></tr>
         <tr><td style="background:#f9f9f9;border-top:1px solid #eee;padding:24px 40px;text-align:center;">
           <p style="margin:0;color:#999;font-size:12px;">&copy; ${new Date().getFullYear()} Root ProjX · <a href="https://rootprojx.com" style="color:#8B0000;">rootprojx.com</a></p>
@@ -288,12 +283,15 @@ export function orgAcceptedHtml(opts: { orgName: string; contactName: string; em
       <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:8px;overflow:hidden;max-width:600px;">
         <tr><td style="background:#7A0000;padding:32px 40px;text-align:center;">
           <h1 style="margin:0;color:#F5B800;font-size:28px;font-weight:900;">Root ProjX</h1>
-          <p style="margin:8px 0 0;color:rgba(255,255,255,0.85);font-size:14px;">Application Approved 🎉</p>
+          <p style="margin:8px 0 0;color:rgba(255,255,255,0.85);font-size:14px;">Welcome aboard</p>
         </td></tr>
         <tr><td style="padding:40px;">
-          <h2 style="color:#1a1a1a;font-size:22px;margin:0 0 16px;">Welcome to Root ProjX, ${escapeHtml(contactName)}!</h2>
+          <h2 style="color:#1a1a1a;font-size:22px;margin:0 0 16px;">Hi ${escapeHtml(contactName)},</h2>
           <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 16px;">
-            We're delighted to accept <strong>${escapeHtml(orgName)}</strong> as a verified partner organisation. Your profile is now live and ready for supporters to discover and donate to your work.
+            Good news — <strong>${escapeHtml(orgName)}</strong> has been approved and your profile is now live on Root ProjX.
+          </p>
+          <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 24px;">
+            You now have access to your organisation's profile, where you can share updates on your work, receive donations directly from supporters, and give our diaspora community full visibility into the impact of their support. This is the start of a direct, transparent connection between your work and the people who want to support it.
           </p>
           <table cellpadding="0" cellspacing="0" width="100%" style="background:#f9f6f0;border:1px solid #E0D8CC;border-radius:6px;margin:0 0 24px;">
             <tr><td style="padding:20px;">
@@ -308,6 +306,11 @@ export function orgAcceptedHtml(opts: { orgName: string; contactName: string; em
               Sign In to Your Dashboard →
             </a>
           </td></tr></table>
+          <p style="color:#666;font-size:14px;line-height:1.6;margin:32px 0 0;">
+            If you need any help getting started, we're here.<br><br>
+            Welcome aboard,<br>
+            <strong>The Root ProjX Team</strong>
+          </p>
         </td></tr>
         <tr><td style="background:#f9f9f9;border-top:1px solid #eee;padding:24px 40px;text-align:center;">
           <p style="margin:0;color:#999;font-size:12px;">&copy; ${new Date().getFullYear()} Root ProjX · <a href="https://rootprojx.com" style="color:#8B0000;">rootprojx.com</a></p>
@@ -318,8 +321,8 @@ export function orgAcceptedHtml(opts: { orgName: string; contactName: string; em
 </body></html>`.trim();
 }
 
-export function orgDeclinedHtml(opts: { orgName: string; contactName: string }): string {
-  const { orgName, contactName } = opts;
+export function orgDeclinedHtml(opts: { orgName: string; contactName: string; reason?: string }): string {
+  const { orgName, contactName, reason } = opts;
   return `
 <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#f5f5f5;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
@@ -331,14 +334,20 @@ export function orgDeclinedHtml(opts: { orgName: string; contactName: string }):
           <p style="margin:8px 0 0;color:rgba(255,255,255,0.85);font-size:14px;">Application Update</p>
         </td></tr>
         <tr><td style="padding:40px;">
-          <h2 style="color:#1a1a1a;font-size:22px;margin:0 0 16px;">Thank you for applying, ${escapeHtml(contactName)}</h2>
+          <h2 style="color:#1a1a1a;font-size:22px;margin:0 0 16px;">Hi ${escapeHtml(contactName)},</h2>
           <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 16px;">
-            After careful review, we're unable to accept the application for <strong>${escapeHtml(orgName)}</strong> to the Root ProjX platform at this time.
+            Thank you for taking the time to apply to Root ProjX and for sharing more about <strong>${escapeHtml(orgName)}</strong>'s work.
           </p>
-          <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 24px;">
-            This does not reflect the value of your work. If your circumstances change or you'd like to discuss your application, please reach out — we're happy to talk.
+          <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 16px;">
+            After review, we're not able to move forward with onboarding your organisation as a founding partner at this time.${reason ? ` ${escapeHtml(reason)}` : ""}
           </p>
-          <p style="color:#888;font-size:13px;margin:0;">Contact us at <a href="mailto:info@rootprojx.com" style="color:#B50000;">info@rootprojx.com</a></p>
+          <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 32px;">
+            We'd welcome the chance to revisit this in future as the platform grows, and we're grateful for the work you do.
+          </p>
+          <p style="color:#666;font-size:14px;line-height:1.6;margin:0;">
+            Warmly,<br>
+            <strong>The Root ProjX Team</strong>
+          </p>
         </td></tr>
         <tr><td style="background:#f9f9f9;border-top:1px solid #eee;padding:24px 40px;text-align:center;">
           <p style="margin:0;color:#999;font-size:12px;">&copy; ${new Date().getFullYear()} Root ProjX · <a href="https://rootprojx.com" style="color:#8B0000;">rootprojx.com</a></p>
@@ -352,7 +361,8 @@ export function orgDeclinedHtml(opts: { orgName: string; contactName: string }):
 export function internalNotificationHtml(opts: { type: "org_application" | "supporter_signup"; name: string; email: string; orgName?: string; sectors?: string[] }): string {
   const { type, name, email, orgName, sectors } = opts;
   const isOrg = type === "org_application";
-  const title = isOrg ? `New org application: ${orgName ?? name}` : `New supporter signup: ${name}`;
+  const entityType = isOrg ? "organisation" : "supporter";
+  const displayName = isOrg ? (orgName ?? name) : name;
   return `
 <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:0;background:#f5f5f5;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
@@ -363,7 +373,12 @@ export function internalNotificationHtml(opts: { type: "org_application" | "supp
           <p style="margin:0;color:#F5B800;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:1px;">Root ProjX · Internal</p>
         </td></tr>
         <tr><td style="padding:32px 40px;">
-          <h2 style="color:#1a1a1a;font-size:20px;margin:0 0 20px;">${escapeHtml(title)}</h2>
+          <h2 style="color:#1a1a1a;font-size:20px;margin:0 0 8px;">New ${escapeHtml(entityType)} sign-up: ${escapeHtml(displayName)}</h2>
+          <p style="color:#444;font-size:15px;margin:0 0 24px;">
+            Hi team,<br><br>
+            <strong>${escapeHtml(name)}</strong> has just signed up as a ${escapeHtml(entityType)}.
+            ${isOrg ? "Their application is now pending review." : "They now have full access."}
+          </p>
           <table cellpadding="0" cellspacing="0" width="100%" style="border:1px solid #E0D8CC;border-radius:6px;">
             <tr><td style="padding:16px 20px;border-bottom:1px solid #E0D8CC;">
               <p style="margin:0;font-size:13px;color:#888;">Contact name</p>
@@ -387,7 +402,7 @@ export function internalNotificationHtml(opts: { type: "org_application" | "supp
               <p style="margin:4px 0 0;font-size:15px;color:#1a1a1a;">Supporter</p>
             </td></tr>`}
           </table>
-          ${isOrg ? `<p style="margin:20px 0 0;font-size:14px;color:#444;">Review this application in the <a href="https://rootprojx.com/admin" style="color:#B50000;">admin dashboard</a>.</p>` : ""}
+          ${isOrg ? `<p style="margin:20px 0 0;font-size:14px;color:#444;">— Automated notification · <a href="https://rootprojx.com/admin" style="color:#B50000;">Review in admin dashboard</a></p>` : `<p style="margin:20px 0 0;font-size:14px;color:#888;">— Automated notification</p>`}
         </td></tr>
       </table>
     </td></tr>

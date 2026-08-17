@@ -1,0 +1,121 @@
+Root ProjX — Email Drafts
+
+1. Organisation — Application Received
+
+Subject: We've received your application, [Organisation Name]
+
+Hi [Point of Contact Name],
+
+ 
+
+Thank you for applying to join Root ProjX as a founding partner organisation.
+
+ 
+
+We've received your application and our team will now review it. This helps us make sure every organisation on the platform is verified and ready to receive support directly from our diaspora community.
+
+ 
+
+We'll be in touch soon with an update. In the meantime, if you have any questions, just reply to this email.
+
+ 
+
+Thank you for the work you do,
+
+The Root ProjX Team
+
+ 
+
+2. Organisation — Accepted
+
+Subject: Welcome to Root ProjX, [Organisation Name]!
+
+Hi [Point of Contact Name],
+
+ 
+
+Good news — [Organisation Name] has been approved and your profile is now live on Root ProjX.
+
+ 
+
+You now have access to your organisation's profile, where you can share updates on your work, receive donations directly from supporters, and give our diaspora community full visibility into the impact of their support. This is the start of a direct, transparent connection between your work and the people who want to support it.
+
+ 
+
+If you need any help getting started, we're here.
+
+ 
+
+Welcome aboard,
+
+The Root ProjX Team
+
+ 
+
+3. Organisation — Declined
+
+Subject: An update on your Root ProjX application
+
+Hi [Point of Contact Name],
+
+ 
+
+Thank you for taking the time to apply to Root ProjX and for sharing more about [Organisation Name]'s work.
+
+ 
+
+After review, we're not able to move forward with onboarding your organisation as a founding partner at this time. [Optional: brief, honest reason — e.g. "we weren't able to verify X" or "we're currently focused on a specific set of sectors for this founding cohort" — adjust per situation.]
+
+ 
+
+We'd welcome the chance to revisit this in future as the platform grows, and we're grateful for the work you do.
+
+ 
+
+Warmly,
+
+The Root ProjX Team
+
+ 
+
+4. Supporter — Welcome Email
+
+Subject: Welcome to Root ProjX
+
+Hi [Name],
+
+ 
+
+Welcome to Root ProjX! You're now part of a community connecting directly with verified grassroots organisations doing real work on the ground — starting in Jamaica.
+
+ 
+
+You can explore organisations, see exactly where support goes, and start giving directly and transparently.
+
+ 
+
+Thanks for being part of this,
+
+The Root ProjX Team
+
+ 
+
+5. Internal — New Sign-Up Notification
+
+Subject: New [Organisation / Supporter] sign-up: [Name]
+
+Hi team,
+
+ 
+
+[Name] has just signed up as a [organisation / supporter].
+
+ 
+
+[If organisation: their application is now pending review.]
+
+[If supporter: they now have full access.]
+
+ 
+
+— Automated notification

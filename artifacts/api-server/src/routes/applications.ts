@@ -99,12 +99,12 @@ router.post("/applications/org", async (req, res) => {
     Promise.all([
       brevoSendEmail({
         to: [{ email: email.toLowerCase().trim(), name: contactName.trim() }],
-        subject: `Application received — ${orgName.trim()}`,
+        subject: `We've received your application, ${orgName.trim()}`,
         htmlContent: orgApplicationReceivedHtml({ orgName: orgName.trim(), contactName: contactName.trim() }),
       }),
       brevoSendEmail({
         to: [{ email: TEAM_EMAIL, name: "Root ProjX Team" }],
-        subject: `New org application: ${orgName.trim()}`,
+        subject: `New organisation sign-up: ${orgName.trim()}`,
         htmlContent: internalNotificationHtml({
           type: "org_application",
           name: contactName.trim(),
@@ -253,7 +253,7 @@ router.post("/admin/applications/:id/approve", requireAdmin, async (req, res) =>
     // Send acceptance email
     brevoSendEmail({
       to: [{ email, name: contactName }],
-      subject: `Your Root ProjX application has been approved 🎉`,
+      subject: `Welcome to Root ProjX, ${orgName}!`,
       htmlContent: orgAcceptedHtml({ orgName, contactName, email, tempPassword }),
     }).catch((err) => console.error("[Brevo] org accepted email error:", err));
 
@@ -288,10 +288,11 @@ router.post("/admin/applications/:id/decline", requireAdmin, async (req, res) =>
 
     await fsPatch("org_applications", id, { status: "declined", declinedAt: now }, serverToken);
 
+    const { reason } = req.body as { reason?: string };
     brevoSendEmail({
       to: [{ email, name: contactName }],
-      subject: `Update on your Root ProjX application`,
-      htmlContent: orgDeclinedHtml({ orgName, contactName }),
+      subject: `An update on your Root ProjX application`,
+      htmlContent: orgDeclinedHtml({ orgName, contactName, reason }),
     }).catch((err) => console.error("[Brevo] org declined email error:", err));
 
     res.json({ ok: true });
