@@ -21,8 +21,8 @@ const SECTORS = [
   "Other",
 ];
 
-// 0 = welcome, 1 = org details, 2 = sectors, 3 = complete
-const TOTAL_STEPS = 2;
+// 0 = welcome, 1 = org details, 2 = sectors, 3 = socials, 4 = complete
+const TOTAL_STEPS = 3;
 
 function ProgressBar({ step }: { step: number }) {
   const pct = Math.round(((step - 1) / TOTAL_STEPS) * 100);
@@ -42,7 +42,7 @@ function ProgressBar({ step }: { step: number }) {
 }
 
 function TopBar({ step }: { step: number }) {
-  const isEdge = step === 0 || step === 3;
+  const isEdge = step === 0 || step === 4;
   return (
     <div style={{ background: RED_DEEP, padding: "14px 24px", position: "sticky", top: 0, zIndex: 10 }}>
       <div style={{ maxWidth: 680, margin: "0 auto" }}>
@@ -84,12 +84,15 @@ function StepSub({ children }: { children: React.ReactNode }) {
   );
 }
 
-function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
+function FieldGroup({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 20 }}>
-      <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#444", marginBottom: 6 }}>
+      <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#444", marginBottom: hint ? 2 : 6 }}>
         {label}
       </label>
+      {hint && (
+        <p style={{ margin: "0 0 6px", fontSize: 12, color: "#999" }}>{hint}</p>
+      )}
       {children}
     </div>
   );
@@ -106,6 +109,34 @@ const inputStyle: React.CSSProperties = {
   boxSizing: "border-box",
   fontFamily: "inherit",
 };
+
+/** Input with a fixed prefix label (e.g. "@" or "instagram.com/") */
+function PrefixInput({
+  prefix,
+  placeholder,
+  value,
+  onChange,
+}: {
+  prefix: string;
+  placeholder: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", border: "1.5px solid #e0d8cc", borderRadius: 8, background: "#fafaf8", overflow: "hidden" }}>
+      <span style={{ padding: "11px 12px 11px 14px", fontSize: 14, color: "#999", background: "#f0ece4", borderRight: "1.5px solid #e0d8cc", whiteSpace: "nowrap", userSelect: "none" }}>
+        {prefix}
+      </span>
+      <input
+        style={{ ...inputStyle, border: "none", borderRadius: 0, background: "transparent", flex: 1 }}
+        type="text"
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </div>
+  );
+}
 
 function NavButtons({
   onBack,
@@ -161,10 +192,20 @@ export default function OnboardingPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Step 1 fields
   const [orgName, setOrgName] = useState("");
   const [contactName, setContactName] = useState("");
   const [email, setEmail] = useState("");
+
+  // Step 2 fields
   const [sectors, setSectors] = useState<string[]>([]);
+
+  // Step 3 fields
+  const [website, setWebsite] = useState("");
+  const [instagram, setInstagram] = useState("");
+  const [facebook, setFacebook] = useState("");
+  const [twitter, setTwitter] = useState("");
+  const [linkedin, setLinkedin] = useState("");
 
   function toggleSector(s: string) {
     setSectors((prev) => prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]);
@@ -174,10 +215,24 @@ export default function OnboardingPage() {
     setError("");
     setLoading(true);
     try {
+      const socialLinks = {
+        instagram: instagram.trim() || undefined,
+        facebook: facebook.trim() || undefined,
+        twitter: twitter.trim() || undefined,
+        linkedin: linkedin.trim() || undefined,
+      };
+
       const res = await fetch("/api/applications/org", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orgName, contactName, email: email.trim().toLowerCase(), sectors }),
+        body: JSON.stringify({
+          orgName,
+          contactName,
+          email: email.trim().toLowerCase(),
+          sectors,
+          website: website.trim() || undefined,
+          socialLinks,
+        }),
       });
       const data = await res.json() as { error?: string };
       if (!res.ok) {
@@ -185,7 +240,7 @@ export default function OnboardingPage() {
         setLoading(false);
         return;
       }
-      setStep(3);
+      setStep(4);
     } catch {
       setError("Network error — please check your connection and try again.");
     } finally {
@@ -220,7 +275,7 @@ export default function OnboardingPage() {
 
             <div style={{ display: "grid", gap: 12, marginBottom: 36 }}>
               {[
-                ["📋", "Fill in a short questionnaire", "Takes about 2 minutes"],
+                ["📋", "Fill in a short questionnaire", "Takes about 3 minutes"],
                 ["🔍", "We review your application", "Within 5 business days"],
                 ["🚀", "Get listed and start receiving support", "Access granted on approval"],
               ].map(([icon, title, sub]) => (
@@ -347,16 +402,90 @@ export default function OnboardingPage() {
 
             <NavButtons
               onBack={() => setStep(1)}
-              nextLabel="Submit application"
+              nextLabel="Next"
               nextDisabled={sectors.length === 0}
+              onNext={() => { setError(""); setStep(3); }}
+            />
+          </Card>
+        )}
+
+        {/* ── Step 3: Socials & website ────────────────────────────────── */}
+        {step === 3 && (
+          <Card>
+            <StepHeading>Online presence</StepHeading>
+            <StepSub>
+              Share your website and social profiles so we can verify your organisation.
+              All fields are optional — add as many as you have.
+            </StepSub>
+
+            <FieldGroup label="Website" hint="Your organisation's main website, if you have one">
+              <input
+                style={inputStyle}
+                type="url"
+                placeholder="https://yourorg.com"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+                autoFocus
+              />
+            </FieldGroup>
+
+            <div style={{ borderTop: "1px solid #f0ece4", margin: "24px 0 20px" }}>
+              <p style={{ fontSize: 12, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.06em", margin: "20px 0 16px" }}>
+                Social media
+              </p>
+            </div>
+
+            <FieldGroup label="Instagram">
+              <PrefixInput
+                prefix="instagram.com/"
+                placeholder="yourorghandle"
+                value={instagram}
+                onChange={setInstagram}
+              />
+            </FieldGroup>
+
+            <FieldGroup label="Facebook">
+              <PrefixInput
+                prefix="facebook.com/"
+                placeholder="YourOrgPage"
+                value={facebook}
+                onChange={setFacebook}
+              />
+            </FieldGroup>
+
+            <FieldGroup label="X / Twitter">
+              <PrefixInput
+                prefix="x.com/"
+                placeholder="yourorghandle"
+                value={twitter}
+                onChange={setTwitter}
+              />
+            </FieldGroup>
+
+            <FieldGroup label="LinkedIn">
+              <PrefixInput
+                prefix="linkedin.com/company/"
+                placeholder="your-org-name"
+                value={linkedin}
+                onChange={setLinkedin}
+              />
+            </FieldGroup>
+
+            {error && (
+              <p style={{ color: RED, fontSize: 14, marginTop: 8 }}>{error}</p>
+            )}
+
+            <NavButtons
+              onBack={() => setStep(2)}
+              nextLabel="Submit application"
               loading={loading}
               onNext={handleSubmit}
             />
           </Card>
         )}
 
-        {/* ── Step 3: Confirmation ─────────────────────────────────────── */}
-        {step === 3 && (
+        {/* ── Step 4: Confirmation ─────────────────────────────────────── */}
+        {step === 4 && (
           <Card>
             <div style={{ textAlign: "center" }}>
               <CheckCircle2 size={64} color="#22c55e" style={{ margin: "0 auto 20px" }} />

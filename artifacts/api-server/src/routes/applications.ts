@@ -55,11 +55,18 @@ function avatarInitials(name: string): string {
 // POST /applications/org
 router.post("/applications/org", async (req, res) => {
   try {
-    const { orgName, contactName, email, sectors } = req.body as {
+    const { orgName, contactName, email, sectors, website, socialLinks } = req.body as {
       orgName?: string;
       contactName?: string;
       email?: string;
       sectors?: string[];
+      website?: string;
+      socialLinks?: {
+        instagram?: string;
+        facebook?: string;
+        twitter?: string;
+        linkedin?: string;
+      };
     };
 
     if (!orgName?.trim() || !contactName?.trim() || !email?.trim()) {
@@ -73,6 +80,16 @@ router.post("/applications/org", async (req, res) => {
 
     const token = await getServerToken();
     const now = new Date().toISOString();
+
+    // Normalise optional fields
+    const cleanWebsite = website?.trim() || null;
+    const cleanSocials = {
+      instagram: socialLinks?.instagram?.trim() || null,
+      facebook: socialLinks?.facebook?.trim() || null,
+      twitter: socialLinks?.twitter?.trim() || null,
+      linkedin: socialLinks?.linkedin?.trim() || null,
+    };
+    const hasSocials = Object.values(cleanSocials).some(Boolean);
 
     // Check for duplicate pending application from same email
     const existing = await fsQuery(
@@ -91,6 +108,8 @@ router.post("/applications/org", async (req, res) => {
       contactName: contactName.trim(),
       email: email.toLowerCase().trim(),
       sectors,
+      website: cleanWebsite,
+      socialLinks: hasSocials ? cleanSocials : null,
       status: "pending",
       createdAt: now,
     }, token);
@@ -111,6 +130,8 @@ router.post("/applications/org", async (req, res) => {
           email: email.toLowerCase().trim(),
           orgName: orgName.trim(),
           sectors,
+          website: cleanWebsite,
+          socialLinks: hasSocials ? cleanSocials : null,
         }),
       }),
     ]).catch((err) => {
@@ -190,6 +211,8 @@ router.post("/admin/applications/:id/approve", requireAdmin, async (req, res) =>
     const contactName = app.contactName as string;
     const email = app.email as string;
     const sectors = (app.sectors as string[]) ?? [];
+    const appWebsite = (app.website as string | null) ?? null;
+    const appSocialLinks = (app.socialLinks as Record<string, string | null> | null) ?? null;
 
     // Create Firebase Auth account for the org
     const tempPassword = generateTempPassword();
@@ -226,7 +249,7 @@ router.post("/admin/applications/:id/approve", requireAdmin, async (req, res) =>
       createdAt: now,
     }, initialToken);
 
-    // Create org profile
+    // Create org profile — carry over website and social links from the application
     await fsPatch("organisations", uid, {
       _id: uid,
       name: orgName,
@@ -242,8 +265,8 @@ router.post("/admin/applications/:id/approve", requireAdmin, async (req, res) =>
       impactScore: 0,
       coverImage: null,
       logo: null,
-      contact: { email },
-      socialLinks: null,
+      contact: { email, website: appWebsite },
+      socialLinks: appSocialLinks,
       createdAt: now,
     }, serverToken);
 

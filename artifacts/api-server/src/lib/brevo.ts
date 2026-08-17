@@ -358,11 +358,35 @@ export function orgDeclinedHtml(opts: { orgName: string; contactName: string; re
 </body></html>`.trim();
 }
 
-export function internalNotificationHtml(opts: { type: "org_application" | "supporter_signup"; name: string; email: string; orgName?: string; sectors?: string[] }): string {
-  const { type, name, email, orgName, sectors } = opts;
+export function internalNotificationHtml(opts: {
+  type: "org_application" | "supporter_signup";
+  name: string;
+  email: string;
+  orgName?: string;
+  sectors?: string[];
+  website?: string | null;
+  socialLinks?: {
+    instagram?: string | null;
+    facebook?: string | null;
+    twitter?: string | null;
+    linkedin?: string | null;
+  } | null;
+}): string {
+  const { type, name, email, orgName, sectors, website, socialLinks } = opts;
   const isOrg = type === "org_application";
   const entityType = isOrg ? "organisation" : "supporter";
   const displayName = isOrg ? (orgName ?? name) : name;
+
+  // Build social links rows for org applications
+  const socialRows: string[] = [];
+  if (website) {
+    socialRows.push(`<a href="${escapeHtml(website)}" style="color:#B50000;">${escapeHtml(website)}</a>`);
+  }
+  if (socialLinks?.instagram) socialRows.push(`Instagram: <a href="https://instagram.com/${escapeHtml(socialLinks.instagram)}" style="color:#B50000;">@${escapeHtml(socialLinks.instagram)}</a>`);
+  if (socialLinks?.facebook) socialRows.push(`Facebook: <a href="https://facebook.com/${escapeHtml(socialLinks.facebook)}" style="color:#B50000;">facebook.com/${escapeHtml(socialLinks.facebook)}</a>`);
+  if (socialLinks?.twitter) socialRows.push(`X/Twitter: <a href="https://x.com/${escapeHtml(socialLinks.twitter)}" style="color:#B50000;">@${escapeHtml(socialLinks.twitter)}</a>`);
+  if (socialLinks?.linkedin) socialRows.push(`LinkedIn: <a href="https://linkedin.com/company/${escapeHtml(socialLinks.linkedin)}" style="color:#B50000;">linkedin.com/company/${escapeHtml(socialLinks.linkedin)}</a>`);
+
   return `
 <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"></head>
 <body style="margin:0;padding:0;background:#f5f5f5;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
@@ -393,10 +417,15 @@ export function internalNotificationHtml(opts: { type: "org_application" | "supp
               <p style="margin:0;font-size:13px;color:#888;">Organisation</p>
               <p style="margin:4px 0 0;font-size:15px;color:#1a1a1a;font-weight:600;">${escapeHtml(orgName ?? "")}</p>
             </td></tr>
-            <tr><td style="padding:16px 20px;">
+            <tr><td style="padding:16px 20px;${socialRows.length ? "border-bottom:1px solid #E0D8CC;" : ""}">
               <p style="margin:0;font-size:13px;color:#888;">Sectors</p>
               <p style="margin:4px 0 0;font-size:15px;color:#1a1a1a;">${(sectors ?? []).map(s => escapeHtml(s)).join(", ") || "—"}</p>
-            </td></tr>` : `
+            </td></tr>
+            ${socialRows.length ? `
+            <tr><td style="padding:16px 20px;">
+              <p style="margin:0;font-size:13px;color:#888;">Online presence</p>
+              <p style="margin:4px 0 0;font-size:14px;color:#1a1a1a;line-height:1.8;">${socialRows.join("<br>")}</p>
+            </td></tr>` : ""}` : `
             <tr><td style="padding:16px 20px;">
               <p style="margin:0;font-size:13px;color:#888;">Type</p>
               <p style="margin:4px 0 0;font-size:15px;color:#1a1a1a;">Supporter</p>
