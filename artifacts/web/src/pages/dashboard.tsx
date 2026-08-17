@@ -4,7 +4,7 @@ import { useSearch } from "wouter";
 import {
   CheckCircle, PlusCircle, Image as ImageIcon, X, Banknote, ExternalLink,
   AlertCircle, Target, Calendar, Users, Trash2, ChevronDown, ChevronUp,
-  Edit3, Check,
+  Edit3, Check, Upload, Camera,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -616,6 +616,197 @@ function CampaignForm({
   );
 }
 
+// ── Profile Images card ───────────────────────────────────────────────────────
+
+function ProfileImagesCard({
+  org,
+  orgId,
+  token,
+  onUpdated,
+}: {
+  org: import("@/lib/api").Org | undefined;
+  orgId: string;
+  token: string;
+  onUpdated: () => void;
+}) {
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [coverUploading, setCoverUploading] = useState(false);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoPreview(URL.createObjectURL(file));
+    setError(null);
+    setLogoUploading(true);
+    try {
+      const urls = await api.uploadMedia([file], token);
+      const logoUrl = urls[0];
+      if (!logoUrl) throw new Error("Upload returned no URL");
+      await api.updateOrganisation(orgId, { logo: logoUrl }, token);
+      onUpdated();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to upload logo");
+      setLogoPreview(null);
+    } finally {
+      setLogoUploading(false);
+      // reset input so same file can be re-selected
+      if (logoInputRef.current) logoInputRef.current.value = "";
+    }
+  }
+
+  async function handleCoverChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCoverPreview(URL.createObjectURL(file));
+    setError(null);
+    setCoverUploading(true);
+    try {
+      const urls = await api.uploadMedia([file], token);
+      const coverUrl = urls[0];
+      if (!coverUrl) throw new Error("Upload returned no URL");
+      await api.updateOrganisation(orgId, { coverImage: coverUrl }, token);
+      onUpdated();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to upload cover photo");
+      setCoverPreview(null);
+    } finally {
+      setCoverUploading(false);
+      if (coverInputRef.current) coverInputRef.current.value = "";
+    }
+  }
+
+  const currentLogo = logoPreview ?? org?.logo ?? null;
+  const currentCover = coverPreview ?? org?.coverImage ?? null;
+  const initials = (org?.name ?? "").split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase() || "??";
+
+  return (
+    <Card className="border-border shadow-sm overflow-hidden">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Camera className="w-4 h-4" style={{ color: RED }} /> Profile Images
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        {error && (
+          <div className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 flex-shrink-0" /> {error}
+          </div>
+        )}
+
+        {/* Cover photo */}
+        <div>
+          <Label className="text-sm font-semibold mb-2 block">Cover Photo</Label>
+          <div className="relative rounded-xl overflow-hidden border border-border">
+            {currentCover ? (
+              <img src={currentCover} alt="cover" className="w-full h-36 object-cover" />
+            ) : (
+              <div
+                className="w-full h-36 flex items-center justify-center"
+                style={{ background: "linear-gradient(135deg, #B50000 0%, #7A0000 60%, #4a0000 100%)" }}
+              >
+                <ImageIcon className="w-8 h-8 text-white/40" />
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => coverInputRef.current?.click()}
+              disabled={coverUploading}
+              className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/40 opacity-0 hover:opacity-100 transition-opacity text-white disabled:cursor-wait"
+            >
+              {coverUploading ? (
+                <span className="text-sm font-semibold">Uploading…</span>
+              ) : (
+                <>
+                  <Upload className="w-6 h-6" />
+                  <span className="text-sm font-semibold">Change cover photo</span>
+                </>
+              )}
+            </button>
+          </div>
+          <input
+            ref={coverInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/gif,image/webp"
+            className="hidden"
+            onChange={handleCoverChange}
+          />
+          <button
+            type="button"
+            onClick={() => coverInputRef.current?.click()}
+            disabled={coverUploading}
+            className="mt-2 text-xs font-semibold flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+          >
+            <Upload className="w-3.5 h-3.5" />
+            {coverUploading ? "Uploading…" : currentCover ? "Replace cover photo" : "Upload cover photo"}
+          </button>
+        </div>
+
+        {/* Logo */}
+        <div>
+          <Label className="text-sm font-semibold mb-2 block">Logo</Label>
+          <div className="flex items-center gap-4">
+            <div className="relative flex-shrink-0">
+              {currentLogo ? (
+                <img
+                  src={currentLogo}
+                  alt="logo"
+                  className="w-20 h-20 rounded-full object-cover border-2 border-border"
+                />
+              ) : (
+                <div
+                  className="w-20 h-20 rounded-full border-2 border-border flex items-center justify-center text-xl font-extrabold"
+                  style={{ backgroundColor: GOLD, color: "#111" }}
+                >
+                  {initials}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => logoInputRef.current?.click()}
+                disabled={logoUploading}
+                className="absolute inset-0 rounded-full flex items-center justify-center bg-black/50 opacity-0 hover:opacity-100 transition-opacity disabled:cursor-wait"
+              >
+                {logoUploading ? (
+                  <span className="text-white text-xs font-semibold">…</span>
+                ) : (
+                  <Camera className="w-6 h-6 text-white" />
+                )}
+              </button>
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-muted-foreground mb-2">
+                Your logo appears as a circular avatar on your public profile page.
+              </p>
+              <button
+                type="button"
+                onClick={() => logoInputRef.current?.click()}
+                disabled={logoUploading}
+                className="text-xs font-semibold flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                {logoUploading ? "Uploading…" : currentLogo ? "Replace logo" : "Upload logo"}
+              </button>
+            </div>
+          </div>
+          <input
+            ref={logoInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/gif,image/webp"
+            className="hidden"
+            onChange={handleLogoChange}
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ── Main dashboard page ───────────────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -771,6 +962,14 @@ export default function DashboardPage() {
           ))}
         </div>
       </div>
+
+      {/* Profile Images */}
+      <ProfileImagesCard
+        org={org}
+        orgId={orgId}
+        token={token!}
+        onUpdated={() => queryClient.invalidateQueries({ queryKey: ["org", orgId] })}
+      />
 
       {/* Stripe Connect */}
       <Card className="border-border shadow-sm overflow-hidden">
