@@ -1,7 +1,8 @@
 import { Router } from "express";
 import multer from "multer";
 import { requireAuth } from "../lib/auth.js";
-import { uploadToStorage, updateMediaPath } from "../lib/firebase-storage.js";
+import { adminUploadFile } from "../lib/firebase-admin.js";
+import { updateMediaPath, orgProfilePath } from "../lib/firebase-storage.js";
 
 const router = Router();
 
@@ -46,8 +47,16 @@ function runMulter(req: import("express").Request, res: import("express").Respon
 }
 
 // POST /uploads/media
+// Query params:
+//   ?type=logo    — org profile logo  (stable path, overwrites previous)
+//   ?type=cover   — org cover photo   (stable path, overwrites previous)
+//   ?type=media   — feed update media (timestamped, default)
+//
 // Accepts: multipart/form-data with up to 5 files under the "files" field
 // Returns: { urls: string[], files: Array<{ url, name, type, size }> }
+//
+// Uses Firebase Admin SDK — bypasses Storage security rules so uploads work
+// regardless of whether storage.rules have been deployed to Firebase Console.
 router.post("/uploads/media", requireAuth, async (req, res) => {
   try {
     if (req.user!.accountType !== "organisation") {
@@ -64,19 +73,37 @@ router.post("/uploads/media", requireAuth, async (req, res) => {
     }
 
     const orgId = req.user!.userId;
-    // Extract the Firebase ID token — already validated by requireAuth
-    const idToken = req.headers.authorization!.slice(7);
+    const uploadType = (req.query.type as string | undefined) ?? "media";
+
+    if (!["logo", "cover", "media"].includes(uploadType)) {
+      res.status(400).json({ error: "type must be logo, cover, or media" });
+      return;
+    }
+
+    // Profile image uploads are single-file only
+    if ((uploadType === "logo" || uploadType === "cover") && files.length > 1) {
+      res.status(400).json({ error: "Profile image uploads must be a single file" });
+      return;
+    }
 
     const uploadResults = await Promise.all(
       files.map(async (file) => {
-        const storagePath = updateMediaPath(orgId, file.originalname);
-        const url = await uploadToStorage(storagePath, file.buffer, file.mimetype, idToken);
+        let storagePath: string;
+        if (uploadType === "logo") {
+          storagePath = orgProfilePath(orgId, "logo");
+        } else if (uploadType === "cover") {
+          storagePath = orgProfilePath(orgId, "cover");
+        } else {
+          storagePath = updateMediaPath(orgId, file.originalname);
+        }
+
+        const url = await adminUploadFile(storagePath, file.buffer, file.mimetype);
         return { url, name: file.originalname, type: file.mimetype, size: file.size };
       }),
     );
 
     const urls = uploadResults.map((r) => r.url);
-    req.log.info({ orgId, count: urls.length }, "Media uploaded to Firebase Storage");
+    req.log.info({ orgId, uploadType, count: urls.length }, "Media uploaded via Admin SDK");
 
     res.json({ urls, files: uploadResults });
   } catch (err) {

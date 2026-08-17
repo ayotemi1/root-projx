@@ -181,12 +181,12 @@ export const postUpdate = (
 
 // ── Media uploads ─────────────────────────────────────────────────────────────
 
-/** Upload media files for an update. Returns download URLs. */
+/** Upload media files for a feed update. Returns download URLs. */
 export async function uploadMedia(files: File[], token: string): Promise<string[]> {
   const formData = new FormData();
   files.forEach((f) => formData.append("files", f));
 
-  const response = await fetch(`${API_BASE}/uploads/media`, {
+  const response = await fetch(`${API_BASE}/uploads/media?type=media`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
     body: formData,
@@ -199,6 +199,32 @@ export async function uploadMedia(files: File[], token: string): Promise<string[
 
   const result = await response.json() as { urls: string[] };
   return result.urls;
+}
+
+/** Upload a single org profile image (logo or cover). Returns the download URL. */
+export async function uploadOrgImage(
+  file: File,
+  type: "logo" | "cover",
+  token: string,
+): Promise<string> {
+  const formData = new FormData();
+  formData.append("files", file);
+
+  const response = await fetch(`${API_BASE}/uploads/media?type=${type}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({ error: "Upload failed" })) as { error?: string };
+    throw new Error(err.error ?? "Upload failed");
+  }
+
+  const result = await response.json() as { urls: string[] };
+  const url = result.urls[0];
+  if (!url) throw new Error("Upload returned no URL");
+  return url;
 }
 
 // ── Follows ───────────────────────────────────────────────────────────────────

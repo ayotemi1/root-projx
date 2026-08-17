@@ -86,3 +86,14 @@ export function updateMediaPath(orgId: string, filename: string): string {
   const safe = filename.replace(/[^a-zA-Z0-9._-]/g, "_");
   return `updates/${orgId}/${timestamp}/${safe}`;
 }
+
+/**
+ * Build the stable storage path for an organisation profile image.
+ * Pattern: organisations/{orgId}/logo  |  organisations/{orgId}/cover
+ *
+ * No timestamp — re-uploading overwrites the same path so old images don't
+ * accumulate, and the Firestore URL stays valid forever.
+ */
+export function orgProfilePath(orgId: string, type: "logo" | "cover"): string {
+  return `organisations/${orgId}/${type}`;
+}

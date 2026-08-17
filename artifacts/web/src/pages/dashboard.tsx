@@ -645,9 +645,7 @@ function ProfileImagesCard({
     setError(null);
     setLogoUploading(true);
     try {
-      const urls = await api.uploadMedia([file], token);
-      const logoUrl = urls[0];
-      if (!logoUrl) throw new Error("Upload returned no URL");
+      const logoUrl = await api.uploadOrgImage(file, "logo", token);
       await api.updateOrganisation(orgId, { logo: logoUrl }, token);
       onUpdated();
     } catch (err) {
@@ -655,7 +653,6 @@ function ProfileImagesCard({
       setLogoPreview(null);
     } finally {
       setLogoUploading(false);
-      // reset input so same file can be re-selected
       if (logoInputRef.current) logoInputRef.current.value = "";
     }
   }
@@ -667,9 +664,7 @@ function ProfileImagesCard({
     setError(null);
     setCoverUploading(true);
     try {
-      const urls = await api.uploadMedia([file], token);
-      const coverUrl = urls[0];
-      if (!coverUrl) throw new Error("Upload returned no URL");
+      const coverUrl = await api.uploadOrgImage(file, "cover", token);
       await api.updateOrganisation(orgId, { coverImage: coverUrl }, token);
       onUpdated();
     } catch (err) {
