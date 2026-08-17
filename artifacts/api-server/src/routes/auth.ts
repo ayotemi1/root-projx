@@ -156,13 +156,13 @@ router.post("/auth/register", authRateLimit, async (req, res) => {
       }),
       brevoSendEmail({
         to: [{ email: email.toLowerCase(), name }],
-        subject: "Welcome to Root ProjX 🌱",
+        subject: "Welcome to Root ProjX",
         htmlContent: welcomeEmailHtml(name),
       }),
       // Internal notification to team for tracking
       brevoSendEmail({
         to: [{ email: TEAM_EMAIL, name: "Root ProjX Team" }],
-        subject: `New supporter signed up: ${name}`,
+        subject: `New supporter sign-up: ${name}`,
         htmlContent: internalNotificationHtml({
           type: "supporter_signup",
           name,

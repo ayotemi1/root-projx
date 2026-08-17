@@ -410,6 +410,68 @@ export function internalNotificationHtml(opts: { type: "org_application" | "supp
 </body></html>`.trim();
 }
 
+export function shopOrderConfirmationHtml(opts: {
+  name: string;
+  items: Array<{ name: string; qty: number; size: string }>;
+  totalGbp: number;
+  orderDate: string;
+}): string {
+  const { name, items, totalGbp, orderDate } = opts;
+  const itemRows = items.map(item => `
+    <tr>
+      <td style="padding:10px 0;border-bottom:1px solid #eee;font-size:14px;color:#1a1a1a;">
+        ${escapeHtml(item.name)}${item.size && item.size !== "One Size" ? ` <span style="color:#888;font-size:13px;">(${escapeHtml(item.size)})</span>` : ""}
+      </td>
+      <td style="padding:10px 0;border-bottom:1px solid #eee;font-size:14px;color:#888;text-align:center;">×${item.qty}</td>
+    </tr>`).join("");
+
+  return `
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f5f5f5;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;padding:40px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:8px;overflow:hidden;max-width:600px;">
+        <tr><td style="background:#8B0000;padding:32px 40px;text-align:center;">
+          <h1 style="margin:0;color:#FFD700;font-size:28px;font-weight:900;">Root ProjX</h1>
+          <p style="margin:8px 0 0;color:rgba(255,255,255,0.85);font-size:14px;">Order Confirmed</p>
+        </td></tr>
+        <tr><td style="padding:40px;">
+          <h2 style="color:#1a1a1a;font-size:22px;margin:0 0 16px;">Hi ${escapeHtml(name)},</h2>
+          <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 24px;">
+            Your order is confirmed. Thank you for supporting Root ProjX — every purchase helps us grow the platform and support grassroots organisations.
+          </p>
+          <table cellpadding="0" cellspacing="0" width="100%" style="background:#f9f9f9;border:1px solid #eee;border-radius:6px;margin:0 0 24px;">
+            <tr><td style="padding:16px 20px 8px;">
+              <p style="margin:0 0 12px;font-size:13px;color:#888;text-transform:uppercase;letter-spacing:0.5px;">Your order · ${escapeHtml(orderDate)}</p>
+              <table width="100%" cellpadding="0" cellspacing="0">
+                ${itemRows}
+              </table>
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:12px;">
+                <tr>
+                  <td style="font-size:14px;font-weight:700;color:#1a1a1a;padding-top:8px;">Total</td>
+                  <td style="font-size:14px;font-weight:700;color:#1a1a1a;text-align:right;padding-top:8px;">£${totalGbp.toFixed(2)}</td>
+                </tr>
+              </table>
+            </td></tr>
+          </table>
+          <p style="color:#888;font-size:13px;line-height:1.6;margin:0 0 24px;">
+            We'll be in touch with shipping details shortly. If you have any questions, reply to this email or contact us at <a href="mailto:info@rootprojx.com" style="color:#B50000;">info@rootprojx.com</a>.
+          </p>
+          <table cellpadding="0" cellspacing="0" width="100%"><tr><td align="center">
+            <a href="https://rootprojx.com/shop" style="display:inline-block;background:#8B0000;color:#FFD700;text-decoration:none;font-size:15px;font-weight:700;padding:14px 32px;border-radius:6px;">
+              Back to Shop →
+            </a>
+          </td></tr></table>
+        </td></tr>
+        <tr><td style="background:#f9f9f9;border-top:1px solid #eee;padding:24px 40px;text-align:center;">
+          <p style="margin:0;color:#999;font-size:12px;">&copy; ${new Date().getFullYear()} Root ProjX · <a href="https://rootprojx.com" style="color:#8B0000;">rootprojx.com</a></p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`.trim();
+}
+
 function escapeHtml(str: string): string {
   return str
     .replace(/&/g, "&amp;")

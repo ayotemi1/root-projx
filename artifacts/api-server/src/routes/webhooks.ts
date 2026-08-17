@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { fsCreate, fsGet, fsIncrement, fsPatch, fsQuery, getServerToken } from "../lib/firebase-rest.js";
 import { getUncachableStripeClient } from "../lib/stripeClient.js";
-import { brevoSendEmail, donationConfirmationHtml } from "../lib/brevo.js";
+import { brevoSendEmail, donationConfirmationHtml, shopOrderConfirmationHtml } from "../lib/brevo.js";
 import type Stripe from "stripe";
 
 const router = Router();
@@ -258,6 +258,7 @@ async function handleShopOrder({
     log.error({ itemsJson }, "Shop order: failed to parse itemsJson");
   }
 
+  const orderDate = new Date().toISOString();
   const orderId = await fsCreate(
     "orders",
     {
@@ -268,12 +269,57 @@ async function handleShopOrder({
       itemCount: itemCount ? Number(itemCount) : 0,
       items,
       status: "paid",
-      createdAt: new Date().toISOString(),
+      createdAt: orderDate,
     },
     serverToken,
   );
 
   log.info({ orderId, userId: userId ?? "guest", amountGbp }, "Shop order recorded in Firestore");
+
+  // Send order confirmation email to authenticated buyers
+  if (userId) {
+    try {
+      const userDoc = await fsGet("users", userId, serverToken);
+      const recipientEmail = userDoc?.["email"] as string | undefined;
+      const recipientName = (userDoc?.["name"] as string | undefined) ?? "Supporter";
+
+      if (recipientEmail) {
+        // Decode compact itemsJson for display: [{ p, q, s }] → [{ name, qty, size }]
+        const PRODUCT_NAMES: Record<string, string> = {
+          tshirt: "Root ProjX T-Shirt",
+          hoodie: "Root ProjX Hoodie",
+          tote: "Root ProjX Tote",
+          cap: "Root ProjX Cap",
+        };
+        const compactItems = Array.isArray(items)
+          ? (items as Array<{ p?: string; q?: number; s?: string }>)
+          : [];
+        const emailItems = compactItems.map((i) => ({
+          name: PRODUCT_NAMES[i.p ?? ""] ?? "Root ProjX Merchandise",
+          qty: i.q ?? 1,
+          size: i.s ?? "One Size",
+        }));
+
+        await brevoSendEmail({
+          to: [{ email: recipientEmail, name: recipientName }],
+          subject: "Your Root ProjX order is confirmed",
+          htmlContent: shopOrderConfirmationHtml({
+            name: recipientName,
+            items: emailItems,
+            totalGbp: amountGbp,
+            orderDate: new Date(orderDate).toLocaleDateString("en-GB", {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            }),
+          }),
+        });
+        log.info({ recipient: recipientEmail, orderId }, "Shop order confirmation email sent");
+      }
+    } catch (emailErr) {
+      log.error({ emailErr }, "Shop order confirmation email failed (non-fatal)");
+    }
+  }
 }
 
 export default router;
