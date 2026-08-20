@@ -4,6 +4,7 @@ import {
   fsCreate,
   fsPatch,
   fsList,
+  fsGet,
   fsQuery,
   getServerToken,
   firebaseSignUp,
@@ -195,9 +196,10 @@ router.post("/admin/applications/:id/approve", requireAdmin, async (req, res) =>
     const { id } = req.params;
     const serverToken = await getServerToken();
 
-    // Get application
-    const apps = await fsQuery("org_applications", [{ field: "_id", op: "EQUAL", value: id }], serverToken);
-    const app = apps[0] as Record<string, unknown> | undefined;
+    // The dashboard sends Firestore's document ID. It is not a field stored
+    // inside the document, so it must be retrieved by document ID, not queried
+    // as `_id`.
+    const app = await fsGet("org_applications", id, serverToken);
     if (!app) {
       res.status(404).json({ error: "Application not found" });
       return;
@@ -293,8 +295,9 @@ router.post("/admin/applications/:id/decline", requireAdmin, async (req, res) =>
     const { id } = req.params;
     const serverToken = await getServerToken();
 
-    const apps = await fsQuery("org_applications", [{ field: "_id", op: "EQUAL", value: id }], serverToken);
-    const app = apps[0] as Record<string, unknown> | undefined;
+    // See approval route: `id` is the Firestore document ID, not a stored
+    // application field.
+    const app = await fsGet("org_applications", id, serverToken);
     if (!app) {
       res.status(404).json({ error: "Application not found" });
       return;
