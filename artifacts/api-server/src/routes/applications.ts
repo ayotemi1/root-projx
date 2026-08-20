@@ -314,7 +314,10 @@ router.post("/admin/applications/:id/decline", requireAdmin, async (req, res) =>
 
     await fsPatch("org_applications", id, { status: "declined", declinedAt: now }, serverToken);
 
-    const { reason } = req.body as { reason?: string };
+    // The admin UI does not currently send a request body. Treat it as an
+    // empty body so a missing optional decline reason cannot turn a successful
+    // decline into a 500 response after the status has already been written.
+    const { reason } = (req.body ?? {}) as { reason?: string };
     brevoSendEmail({
       to: [{ email, name: contactName }],
       subject: `An update on your Root ProjX application`,

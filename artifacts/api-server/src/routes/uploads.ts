@@ -113,6 +113,13 @@ router.post("/uploads/media", requireAuth, async (req, res) => {
     if (err instanceof multer.MulterError) {
       const status = err.code === "LIMIT_FILE_SIZE" ? 413 : 400;
       res.status(status).json({ error: message });
+    } else if (/billing account|accountdisabled|state closed/i.test(message)) {
+      // Google Cloud rejects Firebase Storage writes when the project's
+      // billing account is disabled. Avoid exposing the raw Google error blob
+      // in the dashboard while still making the required action clear.
+      res.status(503).json({
+        error: "Image uploads are temporarily unavailable because the Firebase project billing account is disabled. Please enable billing for the project and try again.",
+      });
     } else {
       res.status(500).json({ error: message });
     }
