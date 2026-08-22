@@ -649,7 +649,12 @@ function ProfileImagesCard({
       await api.updateOrganisation(orgId, { logo: logoUrl }, token);
       onUpdated();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to upload logo");
+      const raw = err instanceof Error ? err.message : "";
+      // Safari throws "Load failed" for generic network errors — replace with something useful
+      const msg = /load failed|failed to fetch|networkerror/i.test(raw)
+        ? "Upload failed — please check your connection and try again"
+        : raw || "Failed to upload logo";
+      setError(msg);
       setLogoPreview(null);
     } finally {
       setLogoUploading(false);
@@ -668,7 +673,11 @@ function ProfileImagesCard({
       await api.updateOrganisation(orgId, { coverImage: coverUrl }, token);
       onUpdated();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to upload cover photo");
+      const raw = err instanceof Error ? err.message : "";
+      const msg = /load failed|failed to fetch|networkerror/i.test(raw)
+        ? "Upload failed — please check your connection and try again"
+        : raw || "Failed to upload cover photo";
+      setError(msg);
       setCoverPreview(null);
     } finally {
       setCoverUploading(false);
