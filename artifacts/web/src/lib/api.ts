@@ -12,6 +12,14 @@ export interface ApiUser {
   createdAt: string | null;
 }
 
+export interface FundsUsage {
+  operations: number;
+  materials: number;
+  staff: number;
+  events: number;
+  other: number;
+}
+
 export interface Org {
   _id: string;
   name: string;
@@ -30,6 +38,7 @@ export interface Org {
   socialLinks: Record<string, string> | null;
   createdAt: string;
   lastPostAt: string | null;
+  fundsUsage: FundsUsage | null;
 }
 
 export interface WiseStatus {

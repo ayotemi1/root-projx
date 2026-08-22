@@ -513,11 +513,52 @@ router.patch("/organisations/:id", requireAuth, async (req, res) => {
     const allowed = ["name", "country", "city", "category", "description", "mission",
                      "contact", "socialLinks", "coverImage", "logo"];
     const updates: Record<string, unknown> = {};
+    const body = req.body as Record<string, unknown>;
     for (const key of allowed) {
-      if (key in (req.body as Record<string, unknown>)) {
-        updates[key] = (req.body as Record<string, unknown>)[key];
+      if (key in body) {
+        updates[key] = body[key];
       }
     }
+
+    // fundsUsage — validated separately: 5 broad categories, 0-100 each, must sum to 100
+    if ("fundsUsage" in body) {
+      const fu = body.fundsUsage;
+      if (fu === null || fu === undefined) {
+        updates.fundsUsage = null;
+      } else if (typeof fu === "object" && !Array.isArray(fu)) {
+        const CATEGORIES = ["operations", "materials", "staff", "events", "other"] as const;
+        const parsed: Record<string, number> = {};
+        let total = 0;
+        for (const k of CATEGORIES) {
+          const v = (fu as Record<string, unknown>)[k];
+          if (typeof v !== "number" || !isFinite(v)) {
+            res.status(400).json({ error: `fundsUsage.${k} must be a finite number` });
+            return;
+          }
+          if (!Number.isInteger(v)) {
+            res.status(400).json({ error: `fundsUsage.${k} must be a whole number (no decimals)` });
+            return;
+          }
+          if (v < 0 || v > 100) {
+            res.status(400).json({ error: `fundsUsage.${k} must be between 0 and 100` });
+            return;
+          }
+          parsed[k] = v;
+          total += v;
+        }
+        if (total !== 100) {
+          res.status(400).json({
+            error: `fundsUsage percentages must sum to 100 (got ${total})`,
+          });
+          return;
+        }
+        updates.fundsUsage = parsed;
+      } else {
+        res.status(400).json({ error: "fundsUsage must be an object or null" });
+        return;
+      }
+    }
+
     const merged = { ...existing, ...updates };
     await fsPatch("organisations", orgId, merged, serverToken);
     res.json({ _id: orgId, ...merged });

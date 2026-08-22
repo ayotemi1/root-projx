@@ -834,6 +834,14 @@ export default function DashboardPage() {
   const [wiseEmailInput, setWiseEmailInput] = useState("");
   const [wiseError, setWiseError] = useState("");
 
+  // Funds usage form state
+  const [fundsUsageInput, setFundsUsageInput] = useState({
+    operations: 0, materials: 0, staff: 0, events: 0, other: 0,
+  });
+  const [fundsUsageSaving, setFundsUsageSaving] = useState(false);
+  const [fundsUsageError, setFundsUsageError] = useState("");
+  const [fundsUsageSaved, setFundsUsageSaved] = useState(false);
+
   const orgId = user?.id ?? "";
   const connectComplete = new URLSearchParams(search).get("connect") === "complete";
 
@@ -852,6 +860,20 @@ export default function DashboardPage() {
   useEffect(() => {
     if (connectComplete) connectQ.refetch();
   }, [connectComplete]);
+
+  // Sync funds usage form from org data when it loads
+  useEffect(() => {
+    const fu = orgQ.data?.fundsUsage;
+    if (fu) {
+      setFundsUsageInput({
+        operations: fu.operations ?? 0,
+        materials:  fu.materials  ?? 0,
+        staff:      fu.staff      ?? 0,
+        events:     fu.events     ?? 0,
+        other:      fu.other      ?? 0,
+      });
+    }
+  }, [orgQ.data?._id]);
 
   const wiseQ = useQuery({
     queryKey: ["wise-status", orgId],
@@ -943,6 +965,26 @@ export default function DashboardPage() {
   function resetForm() {
     setShowForm(false); setPostTitle(""); setPostContent(""); setPostType("update");
     setSelectedFiles([]); setPreviewUrls([]); setUploadProgress("idle"); setFormError("");
+  }
+
+  async function saveFundsUsage() {
+    const total = Object.values(fundsUsageInput).reduce((s, v) => s + v, 0);
+    if (total !== 100) {
+      setFundsUsageError(`Percentages must add up to 100 (currently ${total})`);
+      return;
+    }
+    setFundsUsageError("");
+    setFundsUsageSaving(true);
+    try {
+      await api.updateOrganisation(orgId, { fundsUsage: fundsUsageInput } as Partial<api.Org>, token!);
+      queryClient.invalidateQueries({ queryKey: ["org", orgId] });
+      setFundsUsageSaved(true);
+      setTimeout(() => setFundsUsageSaved(false), 3000);
+    } catch (e) {
+      setFundsUsageError(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setFundsUsageSaving(false);
+    }
   }
 
   const org = orgQ.data;
@@ -1174,6 +1216,114 @@ export default function DashboardPage() {
               </p>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* ── Funds Usage ──────────────────────────────────────────────────────── */}
+      <Card className="border-border shadow-sm overflow-hidden">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Banknote className="w-4 h-4" style={{ color: RED }} /> How funds are used
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Show supporters how you allocate funds. Percentages must add up to 100.
+            This is self-reported and displayed on your public profile.
+          </p>
+          {(
+            [
+              { key: "operations" as const, label: "Operations" },
+              { key: "materials"  as const, label: "Materials & Supplies" },
+              { key: "staff"      as const, label: "Staff & Volunteers" },
+              { key: "events"     as const, label: "Community Events" },
+              { key: "other"      as const, label: "Other" },
+            ] as const
+          ).map(({ key, label }) => (
+            <div key={key} className="flex items-center gap-3">
+              <Label className="w-44 text-sm flex-shrink-0">{label}</Label>
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                value={fundsUsageInput[key]}
+                onChange={(e) => {
+                  const val = Math.min(100, Math.max(0, parseInt(e.target.value) || 0));
+                  setFundsUsageInput((prev) => ({ ...prev, [key]: val }));
+                  setFundsUsageError("");
+                  setFundsUsageSaved(false);
+                }}
+                className="h-9 w-20 text-center"
+              />
+              <span className="text-sm text-muted-foreground">%</span>
+            </div>
+          ))}
+
+          {/* Running total indicator */}
+          {(() => {
+            const total = Object.values(fundsUsageInput).reduce((s, v) => s + v, 0);
+            const ok = total === 100;
+            return (
+              <div
+                className={`flex items-center justify-between px-3 py-2 rounded-lg border ${
+                  ok ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200"
+                }`}
+              >
+                <span className={`text-sm font-semibold ${ok ? "text-green-700" : "text-amber-700"}`}>
+                  Total
+                </span>
+                <span className={`text-sm font-bold ${ok ? "text-green-700" : "text-amber-700"}`}>
+                  {total}%{" "}
+                  {ok ? "✓" : total < 100 ? `(+${100 - total} to go)` : `(−${total - 100} over)`}
+                </span>
+              </div>
+            );
+          })()}
+
+          {fundsUsageError && (
+            <div className="flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+              <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              {fundsUsageError}
+            </div>
+          )}
+
+          {fundsUsageSaved && (
+            <div className="flex items-center gap-2 text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+              <CheckCircle className="w-4 h-4 flex-shrink-0" />
+              Saved — your public profile has been updated.
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <Button
+              className="flex-1 font-bold text-black"
+              style={{ backgroundColor: GOLD }}
+              disabled={
+                fundsUsageSaving ||
+                Object.values(fundsUsageInput).reduce((s, v) => s + v, 0) !== 100
+              }
+              onClick={saveFundsUsage}
+            >
+              {fundsUsageSaving ? "Saving…" : "Save breakdown"}
+            </Button>
+            {org?.fundsUsage && (
+              <Button
+                variant="outline"
+                disabled={fundsUsageSaving}
+                onClick={async () => {
+                  await api.updateOrganisation(
+                    orgId,
+                    { fundsUsage: null } as Partial<api.Org>,
+                    token!,
+                  );
+                  setFundsUsageInput({ operations: 0, materials: 0, staff: 0, events: 0, other: 0 });
+                  queryClient.invalidateQueries({ queryKey: ["org", orgId] });
+                }}
+              >
+                Clear
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
 

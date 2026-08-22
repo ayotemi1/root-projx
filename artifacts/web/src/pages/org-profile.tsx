@@ -780,6 +780,64 @@ export default function OrgProfilePage() {
                       <p className="text-sm text-foreground/80 leading-relaxed">{org.mission}</p>
                     </div>
                   )}
+
+                  {/* Funds usage — only shown when the org has filled it in */}
+                  {org.fundsUsage && (() => {
+                    const fu = org.fundsUsage!;
+                    const categories: { key: keyof typeof fu; label: string; color: string }[] = [
+                      { key: "operations", label: "Operations",          color: "#B50000" },
+                      { key: "materials",  label: "Materials & Supplies", color: "#D97706" },
+                      { key: "staff",      label: "Staff & Volunteers",   color: "#059669" },
+                      { key: "events",     label: "Community Events",     color: "#2563EB" },
+                      { key: "other",      label: "Other",                color: "#7C3AED" },
+                    ];
+                    return (
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                            How funds are used
+                          </h3>
+                          <span className="text-[10px] text-muted-foreground italic">
+                            Self-reported by the organisation
+                          </span>
+                        </div>
+
+                        {/* Stacked horizontal bar */}
+                        <div className="h-5 rounded-full overflow-hidden flex mb-3">
+                          {categories.map(({ key, color }) => {
+                            const pct = fu[key];
+                            if (!pct) return null;
+                            return (
+                              <div
+                                key={key}
+                                title={`${pct}%`}
+                                style={{ width: `${pct}%`, backgroundColor: color }}
+                              />
+                            );
+                          })}
+                        </div>
+
+                        {/* Legend */}
+                        <div className="space-y-1.5">
+                          {categories.map(({ key, label, color }) => {
+                            const pct = fu[key];
+                            if (!pct) return null;
+                            return (
+                              <div key={key} className="flex items-center gap-2 text-xs">
+                                <div
+                                  className="w-2.5 h-2.5 rounded-sm flex-shrink-0"
+                                  style={{ backgroundColor: color }}
+                                />
+                                <span className="text-foreground/70 flex-1">{label}</span>
+                                <span className="font-semibold text-foreground">{pct}%</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   {org.contact && (
                     <div>
                       <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
