@@ -32,6 +32,7 @@ export default function DonatePage() {
   const [preset, setPreset] = useState<number | null>(25);
   const [custom, setCustom] = useState("");
   const [feeCovered, setFeeCovered] = useState(true);
+  const [wallOptIn, setWallOptIn] = useState(true);
   const [redirecting, setRedirecting] = useState(false);
   const [error, setError] = useState("");
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
@@ -85,6 +86,7 @@ export default function DonatePage() {
           feeCovered,
           originalAmountPence,
           feeAmountPence: feeCovered ? estimatedFeePence : 0,
+          wallOptIn: isAuthenticated ? wallOptIn : false,
         },
         token ?? undefined,
       );
@@ -295,6 +297,31 @@ export default function DonatePage() {
                 Fee estimate based on UK card rates (1.5% + £0.20). Actual fee may vary by card type.
               </p>
             </div>
+          )}
+
+          {/* ── Supporter wall opt-in (authenticated only) ── */}
+          {isAuthenticated && originalAmountGbp > 0 && (
+            <label
+              htmlFor="wall-opt-in"
+              className="flex items-start gap-3 p-3 rounded-xl border border-border cursor-pointer hover:bg-secondary/30 transition-colors"
+            >
+              <input
+                type="checkbox"
+                id="wall-opt-in"
+                checked={wallOptIn}
+                onChange={(e) => setWallOptIn(e.target.checked)}
+                className="mt-0.5 h-4 w-4 flex-shrink-0 accent-red-700"
+              />
+              <div>
+                <p className="text-sm font-medium text-foreground leading-snug">
+                  Add my name to {org?.name ?? "this organisation"}'s supporter wall
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Your first name and last initial will appear on their public profile.
+                  You can remove yourself from your account at any time.
+                </p>
+              </div>
+            </label>
           )}
 
           {/* Summary */}

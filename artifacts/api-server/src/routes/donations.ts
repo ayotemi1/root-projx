@@ -338,13 +338,14 @@ router.post("/donations/subscription", requireAuth, async (req, res) => {
 // Supports both authenticated users and guests (with guestEmail in body).
 router.post("/donations/checkout", optionalAuth, async (req, res) => {
   try {
-    const { orgId, amountPence, guestEmail, feeCovered, originalAmountPence, feeAmountPence } = req.body as {
+    const { orgId, amountPence, guestEmail, feeCovered, originalAmountPence, feeAmountPence, wallOptIn } = req.body as {
       orgId: string;
       amountPence: number;
       guestEmail?: string;
       feeCovered?: boolean;
       originalAmountPence?: number;
       feeAmountPence?: number;
+      wallOptIn?: boolean;
     };
 
     if (!orgId || !amountPence || amountPence < 100) {
@@ -416,6 +417,7 @@ router.post("/donations/checkout", optionalAuth, async (req, res) => {
           originalAmountPence: String(originalAmountPence ?? amountPence),
           feeAmountPence: String(feeAmountPence ?? 0),
           platform: "rootprojx",
+          wallOptIn: (wallOptIn && uid) ? "true" : "false",
         },
       },
       customer_email: donorEmail,
@@ -482,6 +484,50 @@ router.get("/donations/confirm", async (req, res) => {
         },
         serverToken,
       );
+    }
+
+    // Write supporter wall entry if opted in (non-fatal, best-effort).
+    // Stored as embedded arrays on org + user docs to avoid needing a new
+    // Firestore collection (which would require a rules deployment).
+    //
+    // Critically: only write when NO existing entry is present for this user+org.
+    // confirmDonation is idempotent and may be retried or revisited; writing
+    // unconditionally would silently re-add a supporter who later removed
+    // themselves via the account page (consent regression). A missing entry
+    // means this is the first, genuine opt-in from checkout.
+    const WALL_LIMIT = 500; // must match SUPPORTER_WALL_LIMIT in organisations.ts
+    const wallOptIn = meta["wallOptIn"] === "true";
+    if (wallOptIn && userId && userId !== "guest") {
+      try {
+        const orgDoc2 = await fsGet("organisations", orgId, serverToken);
+        const existingOrgWall = ((orgDoc2?.["supporterWall"] ?? []) as Array<Record<string, unknown>>);
+        const alreadyHasEntry = existingOrgWall.some((e) => e["userId"] === userId);
+
+        if (!alreadyHasEntry) {
+          // First-time opt-in from checkout — safe to write
+          const nameParts = ((await fsGet("users", userId, serverToken))?.[
+            "name"
+          ] as string | undefined ?? "Supporter")
+            .trim().split(/\s+/).filter(Boolean);
+          const displayName = nameParts.length <= 1
+            ? (nameParts[0] ?? "Supporter")
+            : `${nameParts[0]} ${(nameParts[nameParts.length - 1]![0] ?? "").toUpperCase()}.`;
+
+          // Append + enforce cap on org's supporterWall array
+          let orgWall = [...existingOrgWall, { userId, displayName, optedIn: true }];
+          if (orgWall.length > WALL_LIMIT) orgWall = orgWall.slice(-WALL_LIMIT);
+          await fsPatch("organisations", orgId, { ...(orgDoc2 ?? {}), supporterWall: orgWall }, serverToken);
+
+          // Mirror on user doc (bounded implicitly — one entry per org)
+          const userDoc2 = await fsGet("users", userId, serverToken);
+          const userWall = (((userDoc2 ?? {})["supportedOrgs"] ?? []) as Array<Record<string, unknown>>)
+            .filter((e) => e["orgId"] !== orgId);
+          userWall.push({ orgId, orgName, displayName, optedIn: true });
+          await fsPatch("users", userId, { ...(userDoc2 ?? {}), supportedOrgs: userWall }, serverToken);
+        }
+      } catch (wallErr) {
+        // Non-fatal — don't block the donation confirmation response
+      }
     }
 
     res.json({

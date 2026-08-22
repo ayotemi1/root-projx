@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { User, LayoutDashboard, LogOut, Edit2, Heart, RefreshCw, ExternalLink } from "lucide-react";
+import { User, LayoutDashboard, LogOut, Edit2, Heart, RefreshCw, ExternalLink, Users } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -110,6 +110,12 @@ export default function AccountPage() {
   const donationsQ = useQuery({
     queryKey: ["donations", "my"],
     queryFn: () => api.getMyDonations(token!),
+    enabled: isAuthenticated,
+  });
+
+  const myWallQ = useQuery({
+    queryKey: ["my-wall"],
+    queryFn: () => api.getMySupporterEntries(token!),
     enabled: isAuthenticated,
   });
 
@@ -290,6 +296,55 @@ export default function AccountPage() {
                   <ExternalLink className="w-3 h-3 mr-1.5" />
                   {portalLoading ? "Opening…" : "Manage recurring donations"}
                 </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Supporter wall */}
+      {profile?.accountType !== "organisation" && (
+        <Card className="border-border shadow-sm">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Users className="w-4 h-4 text-primary" />
+              My Supporter Wall
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {myWallQ.isLoading ? (
+              <Skeleton className="h-10 w-full rounded-lg" />
+            ) : (myWallQ.data ?? []).filter((e) => e.optedIn).length === 0 ? (
+              <p className="text-sm text-muted-foreground py-1">
+                You haven't added your name to any supporter walls yet.
+                Opt in when you donate to an organisation.
+              </p>
+            ) : (
+              <div className="divide-y divide-border">
+                {(myWallQ.data ?? [])
+                  .filter((e) => e.optedIn)
+                  .map((entry) => (
+                    <div key={entry.orgId} className="flex items-center justify-between py-3 gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-foreground truncate">{entry.orgName}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Listed as: <span className="font-medium">{entry.displayName}</span>
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs flex-shrink-0 text-destructive border-destructive/30 hover:bg-destructive/5"
+                        onClick={async () => {
+                          if (!token) return;
+                          await api.updateMySupporter(entry.orgId, { optedIn: false }, token);
+                          queryClient.invalidateQueries({ queryKey: ["my-wall"] });
+                        }}
+                      >
+                        Remove
+                      </Button>
+                    </div>
+                  ))}
               </div>
             )}
           </CardContent>

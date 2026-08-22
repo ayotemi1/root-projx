@@ -397,6 +397,7 @@ export const createDonationCheckout = (
     feeCovered?: boolean;
     originalAmountPence?: number;
     feeAmountPence?: number;
+    wallOptIn?: boolean;
   },
   token?: string,
 ) =>
@@ -414,6 +415,48 @@ export const confirmDonation = (sessionId: string) =>
     feePence: number;
     donorEmail: string | null;
   }>(`/donations/confirm?session_id=${encodeURIComponent(sessionId)}`);
+
+// ── Supporter Wall ─────────────────────────────────────────────────────────────
+
+export interface SupporterEntry {
+  displayName: string;
+}
+
+export interface SupportersResponse {
+  supporters: SupporterEntry[];
+  totalCount: number;
+}
+
+export interface MySupporterEntry {
+  orgId: string;
+  orgName: string;
+  optedIn: boolean;
+  displayName: string;
+}
+
+export const getOrgSupporters = (orgId: string) =>
+  req<SupportersResponse>(`/organisations/${orgId}/supporters`);
+
+export const getMySupporter = (orgId: string, token: string) =>
+  req<{ optedIn: boolean; displayName: string | null }>(
+    `/organisations/${orgId}/supporters/me`,
+    {},
+    token,
+  );
+
+export const updateMySupporter = (
+  orgId: string,
+  data: { optedIn: boolean },
+  token: string,
+) =>
+  req<{ optedIn: boolean; displayName: string }>(
+    `/organisations/${orgId}/supporters/me`,
+    { method: "PATCH", body: JSON.stringify(data) },
+    token,
+  );
+
+export const getMySupporterEntries = (token: string) =>
+  req<MySupporterEntry[]>("/supporters/my", {}, token);
 
 // ── Stripe Connect ─────────────────────────────────────────────────────────────
 

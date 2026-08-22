@@ -343,6 +343,12 @@ export default function OrgProfilePage() {
     enabled: !!id,
   });
 
+  const supportersQ = useQuery({
+    queryKey: ["org-supporters", id],
+    queryFn: () => api.getOrgSupporters(id),
+    enabled: !!id,
+  });
+
   const followsQ = useQuery({
     queryKey: ["follows", "my"],
     queryFn: () => api.getMyFollows(token!),
@@ -1023,6 +1029,49 @@ export default function OrgProfilePage() {
               </div>
             </div>
           )}
+
+          {/* Supporter wall — only shown when there are opted-in supporters */}
+          {(() => {
+            const supporters = supportersQ.data?.supporters ?? [];
+            const totalCount = supportersQ.data?.totalCount ?? 0;
+            if (!supporters.length) return null;
+            const shown = supporters.slice(0, 10);
+            const extra = totalCount - shown.length;
+            return (
+              <div className="bg-white border border-border rounded-2xl overflow-hidden">
+                <div className="px-5 pt-5 pb-2">
+                  <h3 className="font-bold text-foreground text-base flex items-center gap-2">
+                    <Heart className="w-4 h-4" style={{ color: RED }} />
+                    Supporters
+                  </h3>
+                </div>
+                <div className="px-5 pb-5">
+                  <p className="text-sm text-foreground/80 leading-relaxed">
+                    {shown.map((s, i) => (
+                      <span key={i}>
+                        {i > 0 && ", "}
+                        <span className="font-semibold">{s.displayName}</span>
+                      </span>
+                    ))}
+                    {extra > 0 && (
+                      <span className="text-muted-foreground">
+                        {" "}and {extra} other{extra !== 1 ? "s" : ""}
+                      </span>
+                    )}
+                  </p>
+                  {!isAuthenticated && (
+                    <button
+                      onClick={() => setDonateModalOpen(true)}
+                      className="mt-3 text-xs font-semibold underline underline-offset-2"
+                      style={{ color: RED }}
+                    >
+                      Add your name by donating
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </div>
     </div>

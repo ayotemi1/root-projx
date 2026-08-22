@@ -617,4 +617,147 @@ router.patch("/organisations/:id/notifications/read-all", requireAuth, async (re
   }
 });
 
+// ── Supporter Wall ─────────────────────────────────────────────────────────────
+// Stored as a bounded embedded array on the org doc (org.supporterWall, max
+// SUPPORTER_WALL_LIMIT entries) and a mirror array on the user doc
+// (user.supportedOrgs) — avoids needing a new Firestore collection (which would
+// require a Firebase security-rules deployment). This is a low-frequency write
+// path (one write per donation opt-in), so read-modify-write race conditions are
+// accepted as a known, documented limitation.
+//
+// Opt-in is gated on a verified paid donation to the org. Opt-out is always
+// allowed, regardless of donation history.
+//
+// Org entry shape:  { userId, displayName, optedIn }
+// User entry shape: { orgId, orgName, displayName, optedIn }
+
+const SUPPORTER_WALL_LIMIT = 500; // prevent unbounded Firestore document growth
+
+function formatSupporterName(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "Supporter";
+  if (parts.length === 1) return parts[0]!;
+  const firstName = parts[0]!;
+  const lastInitial = (parts[parts.length - 1]![0] ?? "").toUpperCase();
+  return `${firstName} ${lastInitial}.`;
+}
+
+type OrgWallEntry  = { userId: string; displayName: string; optedIn: boolean };
+type UserWallEntry = { orgId: string; orgName: string; displayName: string; optedIn: boolean };
+
+// GET /organisations/:id/supporters — public; returns opted-in names (up to 50)
+router.get("/organisations/:id/supporters", async (req, res) => {
+  try {
+    const orgId = req.params["id"] as string;
+    const serverToken = await getServerToken();
+    const orgDoc = await fsGet("organisations", orgId, serverToken);
+    if (!orgDoc) { res.json({ supporters: [], totalCount: 0 }); return; }
+    const wall = ((orgDoc["supporterWall"] ?? []) as OrgWallEntry[]).filter((e) => e.optedIn);
+    res.json({
+      supporters: wall.slice(0, 50).map((e) => ({ displayName: e.displayName })),
+      totalCount: wall.length,
+    });
+  } catch (err) {
+    req.log.error({ err }, "GET /organisations/:id/supporters error");
+    res.status(500).json({ error: "Failed to fetch supporters" });
+  }
+});
+
+// GET /organisations/:id/supporters/me — authenticated; own opt-in status
+router.get("/organisations/:id/supporters/me", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user!.userId;
+    const orgId = req.params["id"] as string;
+    const serverToken = await getServerToken();
+    const orgDoc = await fsGet("organisations", orgId, serverToken);
+    const wall = ((orgDoc?.["supporterWall"] ?? []) as OrgWallEntry[]);
+    const entry = wall.find((e) => e.userId === userId);
+    res.json({ optedIn: entry?.optedIn === true, displayName: entry?.displayName ?? null });
+  } catch (err) {
+    req.log.error({ err }, "GET /organisations/:id/supporters/me error");
+    res.status(500).json({ error: "Failed to fetch supporter status" });
+  }
+});
+
+// PATCH /organisations/:id/supporters/me — authenticated; opt in or out.
+// Opt-in requires a verified paid donation. Opt-out is always permitted.
+router.patch("/organisations/:id/supporters/me", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user!.userId;
+    const orgId = req.params["id"] as string;
+    const { optedIn } = req.body as { optedIn: boolean };
+    if (typeof optedIn !== "boolean") {
+      res.status(400).json({ error: "optedIn must be a boolean" });
+      return;
+    }
+
+    const serverToken = await getServerToken();
+
+    // Read user doc, org doc, and (when opting in) user's donations in parallel
+    const [userDoc, orgDoc, allDonations] = await Promise.all([
+      fsGet("users", userId, serverToken),
+      fsGet("organisations", orgId, serverToken),
+      optedIn
+        ? fsQuery("donations", [{ field: "userId", op: "EQUAL", value: userId }], serverToken)
+        : Promise.resolve(null),
+    ]);
+
+    // Verify org exists
+    if (!orgDoc) { res.status(404).json({ error: "Organisation not found" }); return; }
+
+    // Gate opt-in: must have at least one paid donation to this org
+    if (optedIn) {
+      // Accept both "paid" (confirm-redirect path) and "succeeded" (webhook path)
+      const hasPaidDonation = (allDonations ?? []).some(
+        (d) => d["orgId"] === orgId && (d["status"] === "paid" || d["status"] === "succeeded"),
+      );
+      if (!hasPaidDonation) {
+        res.status(403).json({
+          error: "You must have donated to this organisation to join its supporter wall",
+        });
+        return;
+      }
+    }
+
+    const rawName    = (userDoc?.["name"] as string | undefined) ?? "Supporter";
+    const displayName = formatSupporterName(rawName);
+    const orgName    = (orgDoc["name"] as string | undefined) ?? orgId;
+
+    // Upsert in org's bounded supporterWall array
+    let orgWall = ((orgDoc["supporterWall"] ?? []) as OrgWallEntry[]).filter(
+      (e) => e.userId !== userId,
+    );
+    orgWall.push({ userId, displayName, optedIn });
+    // Enforce document size limit: keep only the most recent SUPPORTER_WALL_LIMIT entries
+    if (orgWall.length > SUPPORTER_WALL_LIMIT) orgWall = orgWall.slice(-SUPPORTER_WALL_LIMIT);
+    await fsPatch("organisations", orgId, { ...(orgDoc), supporterWall: orgWall }, serverToken);
+
+    // Mirror on user doc for fast account-page listing
+    const userWall = ((userDoc?.["supportedOrgs"] ?? []) as UserWallEntry[]).filter(
+      (e) => e.orgId !== orgId,
+    );
+    userWall.push({ orgId, orgName, displayName, optedIn });
+    await fsPatch("users", userId, { ...(userDoc ?? {}), supportedOrgs: userWall }, serverToken);
+
+    res.json({ optedIn, displayName });
+  } catch (err) {
+    req.log.error({ err }, "PATCH /organisations/:id/supporters/me error");
+    res.status(500).json({ error: "Failed to update supporter status" });
+  }
+});
+
+// GET /supporters/my — authenticated; all wall entries for this user (from user doc)
+router.get("/supporters/my", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user!.userId;
+    const serverToken = await getServerToken();
+    const userDoc = await fsGet("users", userId, serverToken);
+    const entries = ((userDoc?.["supportedOrgs"] ?? []) as UserWallEntry[]);
+    res.json(entries);
+  } catch (err) {
+    req.log.error({ err }, "GET /supporters/my error");
+    res.status(500).json({ error: "Failed to fetch supporter entries" });
+  }
+});
+
 export default router;

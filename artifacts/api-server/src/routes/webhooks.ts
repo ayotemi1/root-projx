@@ -99,7 +99,7 @@ async function handlePaymentSuccess(
     stripeRef = invoice.id;
   }
 
-  const { userId, orgId, orgName, note, type, guestEmail, feeCovered, originalAmountPence, feeAmountPence } = metadata;
+  const { userId, orgId, orgName, note, type, guestEmail, feeCovered, originalAmountPence, feeAmountPence, wallOptIn } = metadata;
 
   // ── Idempotency guard ─────────────────────────────────────────────────────────
   // Stripe retries webhook deliveries (network blips, non-2xx responses, manual
@@ -229,6 +229,44 @@ async function handlePaymentSuccess(
     log.info({ orgId, amountGbp }, "Incremented org totalRaised");
   } catch (incErr) {
     log.error({ incErr, orgId, amountGbp }, "totalRaised increment failed — investigate: donation recorded but org total not updated");
+  }
+
+  // 4. Supporter wall opt-in — durable path; idempotent write, only on first event.
+  // The browser /donations/confirm redirect is an unreliable fallback (user may
+  // close the tab before it loads). Processing here guarantees the opt-in is
+  // recorded for every verified payment. We skip writing if an entry already exists
+  // to preserve any later explicit opt-out the user made via their account page.
+  if (wallOptIn === "true" && userId && userId !== "guest" && orgId) {
+    try {
+      const orgDoc = await fsGet("organisations", orgId, serverToken);
+      if (orgDoc) {
+        const existingWall = ((orgDoc["supporterWall"] ?? []) as Array<Record<string, unknown>>);
+        const alreadyHasEntry = existingWall.some((e) => e["userId"] === userId);
+        if (!alreadyHasEntry) {
+          const userDoc = await fsGet("users", userId, serverToken);
+          const rawName = (userDoc?.["name"] as string | undefined) ?? "Supporter";
+          const nameParts = rawName.trim().split(/\s+/).filter(Boolean);
+          const displayName = nameParts.length <= 1
+            ? (nameParts[0] ?? "Supporter")
+            : `${nameParts[0]} ${(nameParts[nameParts.length - 1]![0] ?? "").toUpperCase()}.`;
+          // Append + enforce 500-entry document-size cap
+          let orgWall: Array<Record<string, unknown>> = [
+            ...existingWall,
+            { userId, displayName, optedIn: true },
+          ];
+          if (orgWall.length > 500) orgWall = orgWall.slice(-500);
+          await fsPatch("organisations", orgId, { ...orgDoc, supporterWall: orgWall }, serverToken);
+          // Mirror on user doc — one entry per org, naturally bounded
+          const userWall = ((userDoc?.["supportedOrgs"] ?? []) as Array<Record<string, unknown>>)
+            .filter((e) => e["orgId"] !== orgId);
+          userWall.push({ orgId, orgName: orgName ?? orgId, displayName, optedIn: true });
+          await fsPatch("users", userId, { ...(userDoc ?? {}), supportedOrgs: userWall }, serverToken);
+          log.info({ userId, orgId }, "Supporter wall entry created via webhook");
+        }
+      }
+    } catch (wallErr) {
+      log.error({ wallErr }, "Supporter wall write failed (non-fatal)");
+    }
   }
 }
 
