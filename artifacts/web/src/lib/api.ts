@@ -29,6 +29,7 @@ export interface Org {
   contact: { email?: string; phone?: string; website?: string } | null;
   socialLinks: Record<string, string> | null;
   createdAt: string;
+  lastPostAt: string | null;
 }
 
 export interface WiseStatus {

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { fsQuery, fsCreate, fsGet, getServerToken } from "../lib/firebase-rest.js";
+import { fsQuery, fsCreate, fsGet, fsPatch, getServerToken } from "../lib/firebase-rest.js";
 import { requireAuth, optionalAuth } from "../lib/auth.js";
 
 const router = Router();
@@ -134,6 +134,18 @@ router.post("/feed", requireAuth, async (req, res) => {
     };
 
     const newId = await fsCreate("updates", data, token);
+
+    // Keep lastPostAt on the org doc so profile pages don't need a separate
+    // feed query just to show "last active" — best-effort, non-blocking.
+    try {
+      const serverToken = await getServerToken();
+      if (org) {
+        await fsPatch("organisations", uid, { ...org, lastPostAt: data.createdAt }, serverToken);
+      }
+    } catch (patchErr) {
+      req.log.warn({ patchErr }, "POST /feed: failed to update lastPostAt on org doc (non-fatal)");
+    }
+
     res.status(201).json({ _id: newId, ...data });
   } catch (err) {
     req.log.error({ err }, "POST /feed error");

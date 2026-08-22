@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle, ArrowLeft, ChevronRight, Heart, HeartOff,
   MapPin, Tag, Users, TrendingUp, Zap, DollarSign,
-  ThumbsUp, MessageCircle, Share2,
+  ThumbsUp, MessageCircle, Share2, Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -23,6 +23,24 @@ function timeAgo(iso: string): string {
   if (d < 7) return `${d}d ago`;
   if (d < 30) return `${Math.floor(d / 7)}w ago`;
   return `${Math.floor(d / 30)}mo ago`;
+}
+
+/** Human-readable "Last active …" label derived from a post timestamp. */
+function lastActiveLabel(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const days = Math.floor(diff / 864e5);
+  if (days === 0) return "Active today";
+  if (days === 1) return "Active yesterday";
+  if (days < 7) return `Active ${days}d ago`;
+  if (days < 14) return "Active last week";
+  if (days < 30) return `Active ${Math.floor(days / 7)}w ago`;
+  if (days < 60) return "Active last month";
+  return `Active ${Math.floor(days / 30)}mo ago`;
+}
+
+/** True when the org has not posted in more than 6 months (~180 days). */
+function isStale(iso: string): boolean {
+  return Date.now() - new Date(iso).getTime() > 180 * 864e5;
 }
 
 const RED = "#B50000";
@@ -385,6 +403,13 @@ export default function OrgProfilePage() {
   const updates = allUpdates.filter((u) => u.type !== "campaign");
   const realCampaigns = (campaignsQ.data ?? []).filter((c) => c.status !== "deleted");
 
+  // lastPostAt is written to the org doc on each new post.
+  // Fall back to the most recent update in the already-fetched feed for existing orgs
+  // that don't have the field yet (client-side backfill — no migration needed).
+  const derivedLastPostAt: string | null =
+    org.lastPostAt ??
+    (allUpdates.length > 0 ? (allUpdates[0]?.createdAt ?? null) : null);
+
   function handleDonateClick() {
     if (isAuthenticated) {
       window.location.href = `/donate/${id}`;
@@ -494,10 +519,32 @@ export default function OrgProfilePage() {
                       <Tag className="w-3.5 h-3.5" />
                       {org.category}
                     </span>
+                    {/* Last-active pill — always visible when data is available */}
+                    {derivedLastPostAt ? (
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5" />
+                        {lastActiveLabel(derivedLastPostAt)}
+                      </span>
+                    ) : !updatesQ.isLoading && (
+                      <span className="flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5" />
+                        No updates yet
+                      </span>
+                    )}
                   </div>
                   <p className="mt-3 text-sm text-foreground/80 leading-relaxed">
                     {org.description}
                   </p>
+
+                  {/* Staleness notice — shown only when last post was 6+ months ago */}
+                  {derivedLastPostAt && isStale(derivedLastPostAt) && (
+                    <div className="mt-3 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
+                      <Clock className="w-3.5 h-3.5 text-amber-600 mt-0.5 flex-shrink-0" />
+                      <p className="text-xs text-amber-700 leading-snug">
+                        This org hasn't posted an update in over 6 months
+                      </p>
+                    </div>
+                  )}
                 </div>
               </div>
 
