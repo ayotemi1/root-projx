@@ -46,8 +46,7 @@ function runMulter(req: import("express").Request, res: import("express").Respon
 }
 
 /**
- * Extract the bucket name from PRIVATE_OBJECT_DIR which has the format:
- *   /bucketname/some/prefix
+ * Extract the bucket name from PRIVATE_OBJECT_DIR (format: /bucketname/some/prefix).
  */
 function getObjectStorageBucketName(): string {
   const dir = (process.env.PRIVATE_OBJECT_DIR ?? "").replace(/^\//, "");
@@ -57,38 +56,63 @@ function getObjectStorageBucketName(): string {
 }
 
 /**
- * Upload a feed update media file (photo/video) to Replit Object Storage.
- * Uses a timestamped path so multiple uploads don't overwrite each other.
- * The file is made publicly readable so it can be served directly in the feed.
+ * Derive the request origin, honouring Replit's proxy forwarding headers.
+ * Used to build permanent proxy URLs that work in both dev and production.
  */
-async function uploadFeedMedia(
-  orgId: string,
-  filename: string,
-  buffer: Buffer,
-  mimeType: string,
-): Promise<string> {
-  const bucketName = getObjectStorageBucketName();
-  // Sanitise filename: strip path components, replace spaces
-  const safeName = filename.replace(/.*[/\\]/, "").replace(/\s+/g, "_") || "upload";
-  const objectPath = `org-media/${orgId}/${Date.now()}/${safeName}`;
-  const file = objectStorageClient.bucket(bucketName).file(objectPath);
-
-  await file.save(buffer, {
-    contentType: mimeType,
-    public: true,
-    resumable: false,
-  });
-
-  return `https://storage.googleapis.com/${bucketName}/${objectPath}`;
+function getRequestOrigin(req: import("express").Request): string {
+  const proto = (req.get("x-forwarded-proto") ?? req.protocol) || "https";
+  const host = req.get("x-forwarded-host") ?? req.get("host") ?? "localhost";
+  return `${proto}://${host}`;
 }
+
+// Valid GCS object path prefixes that this route is allowed to serve.
+// Prevents the proxy being used to read arbitrary bucket objects.
+const ALLOWED_PATH_PREFIXES = ["org-profiles/", "org-media/"];
+
+// ---------------------------------------------------------------------------
+// GET /uploads/object/* — proxy route
+// Streams a Replit Object Storage file through the server.
+// No auth required — org images are public-facing.
+// ---------------------------------------------------------------------------
+// Using router.use() instead of router.get() to avoid path-to-regexp v8
+// named-wildcard requirement — req.path contains everything after the prefix.
+router.use("/uploads/object", async (req, res) => {
+  const objectPath = req.path.replace(/^\//, "");
+
+  if (!objectPath || !ALLOWED_PATH_PREFIXES.some((p) => objectPath.startsWith(p))) {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+
+  try {
+    const bucketName = getObjectStorageBucketName();
+    const file = objectStorageClient.bucket(bucketName).file(objectPath);
+
+    const [exists] = await file.exists();
+    if (!exists) {
+      res.status(404).json({ error: "Image not found" });
+      return;
+    }
+
+    const [metadata] = await file.getMetadata();
+    res.set("Content-Type", (metadata.contentType as string) || "application/octet-stream");
+    res.set("Cache-Control", "public, max-age=86400, stale-while-revalidate=3600");
+    if (metadata.size) res.set("Content-Length", String(metadata.size));
+
+    file.createReadStream().pipe(res);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to serve file" });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Upload helpers — write to GCS privately; caller constructs the proxy URL
+// ---------------------------------------------------------------------------
 
 /**
  * Upload an org profile image (logo or cover) to Replit Object Storage.
- * Uses stable, overwriteable paths so re-uploading replaces the previous image.
- * The file is made publicly readable so the URL works without authentication.
- *
- * Uses Replit Object Storage (not Firebase Storage) to avoid Firebase IAM
- * permission issues with the Replit sidecar service account.
+ * Stable path — re-uploading overwrites the previous image.
+ * Returns the GCS object path (not a URL); the route handler builds the URL.
  */
 async function uploadOrgProfileImage(
   orgId: string,
@@ -102,23 +126,46 @@ async function uploadOrgProfileImage(
 
   await file.save(buffer, {
     contentType: mimeType,
-    // Make publicly readable so the URL can be used directly in <img> tags
-    public: true,
-    // Overwrite in place — no versioning needed for profile images
     resumable: false,
   });
 
-  return `https://storage.googleapis.com/${bucketName}/${objectPath}`;
+  return objectPath;
 }
 
+/**
+ * Upload a feed update media file (photo/video) to Replit Object Storage.
+ * Timestamped path — multiple uploads don't overwrite each other.
+ * Returns the GCS object path (not a URL); the route handler builds the URL.
+ */
+async function uploadFeedMedia(
+  orgId: string,
+  filename: string,
+  buffer: Buffer,
+  mimeType: string,
+): Promise<string> {
+  const bucketName = getObjectStorageBucketName();
+  const safeName = filename.replace(/.*[/\\]/, "").replace(/\s+/g, "_") || "upload";
+  const objectPath = `org-media/${orgId}/${Date.now()}/${safeName}`;
+  const file = objectStorageClient.bucket(bucketName).file(objectPath);
+
+  await file.save(buffer, {
+    contentType: mimeType,
+    resumable: false,
+  });
+
+  return objectPath;
+}
+
+// ---------------------------------------------------------------------------
 // POST /uploads/media
 // Query params:
-//   ?type=logo    — org profile logo  (Replit Object Storage, stable path)
-//   ?type=cover   — org cover photo   (Replit Object Storage, stable path)
-//   ?type=media   — feed update media (Firebase Storage, timestamped)
+//   ?type=logo    — org profile logo  (stable path, overwrites previous)
+//   ?type=cover   — org cover photo   (stable path, overwrites previous)
+//   ?type=media   — feed update media (timestamped, up to 5 files)
 //
-// Accepts: multipart/form-data with up to 5 files under the "files" field
 // Returns: { urls: string[], files: Array<{ url, name, type, size }> }
+// All URLs point to the /api/uploads/object/* proxy route on this server.
+// ---------------------------------------------------------------------------
 router.post("/uploads/media", requireAuth, async (req, res) => {
   try {
     if (req.user!.accountType !== "organisation") {
@@ -142,28 +189,27 @@ router.post("/uploads/media", requireAuth, async (req, res) => {
       return;
     }
 
-    // Profile image uploads are single-file only
     if ((uploadType === "logo" || uploadType === "cover") && files.length > 1) {
       res.status(400).json({ error: "Profile image uploads must be a single file" });
       return;
     }
 
+    const origin = getRequestOrigin(req);
+
     const uploadResults = await Promise.all(
       files.map(async (file) => {
-        let url: string;
+        let objectPath: string;
 
         if (uploadType === "logo" || uploadType === "cover") {
-          // Use Replit Object Storage — the sidecar service account has full
-          // access to this bucket without any Firebase IAM configuration.
-          url = await uploadOrgProfileImage(orgId, uploadType, file.buffer, file.mimetype);
+          objectPath = await uploadOrgProfileImage(orgId, uploadType, file.buffer, file.mimetype);
           req.log.info({ orgId, uploadType }, "Profile image uploaded to Replit Object Storage");
         } else {
-          // Feed update media goes to Replit Object Storage — same bucket,
-          // timestamped path so multiple uploads don't collide.
-          url = await uploadFeedMedia(orgId, file.originalname, file.buffer, file.mimetype);
-          req.log.info({ orgId, uploadType }, "Feed media uploaded to Replit Object Storage");
+          objectPath = await uploadFeedMedia(orgId, file.originalname, file.buffer, file.mimetype);
+          req.log.info({ orgId }, "Feed media uploaded to Replit Object Storage");
         }
 
+        // Proxy URL — served by this server, works in dev and production
+        const url = `${origin}/api/uploads/object/${objectPath}`;
         return { url, name: file.originalname, type: file.mimetype, size: file.size };
       }),
     );

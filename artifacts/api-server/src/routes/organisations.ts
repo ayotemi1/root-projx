@@ -1,7 +1,7 @@
+import { randomUUID } from "crypto";
 import { Router } from "express";
-import { fsGet, fsPatch, fsList, fsQuery, fsCreate, getServerToken } from "../lib/firebase-rest.js";
+import { fsGet, fsPatch, fsList, fsQuery, getServerToken } from "../lib/firebase-rest.js";
 import { requireAuth } from "../lib/auth.js";
-import { adminDb } from "../lib/firebase-admin.js";
 
 const router = Router();
 
@@ -146,18 +146,44 @@ router.post("/organisations/:id/volunteerApplications", requireAuth, async (req,
   }
 });
 
-// GET /organisations/:id/campaigns — list campaigns subcollection
-// Uses Firebase Admin SDK to bypass Firestore security rules (public read).
+// ---------------------------------------------------------------------------
+// Campaign helpers — campaigns are stored as an embedded array on the org doc
+// rather than a Firestore subcollection, so they inherit the org's public-read
+// rule without requiring a separate security rule to be deployed.
+// ---------------------------------------------------------------------------
+
+function parsePhases(phases: unknown): Record<string, unknown>[] {
+  if (!Array.isArray(phases)) return [];
+  return (phases as Record<string, unknown>[]).slice(0, 10).map((p, i) => ({
+    id: (p["id"] as string) ?? `phase_${i}`,
+    title: typeof p["title"] === "string" ? p["title"].slice(0, 200) : `Phase ${i + 1}`,
+    description: typeof p["description"] === "string" ? p["description"].slice(0, 1000) : "",
+    targetAmount: typeof p["targetAmount"] === "number" ? p["targetAmount"] : null,
+    completed: p["completed"] === true,
+  }));
+}
+
+async function getCampaignsFromOrg(orgId: string): Promise<Record<string, unknown>[]> {
+  const serverToken = await getServerToken();
+  const org = await fsGet("organisations", orgId, serverToken);
+  if (!org || !Array.isArray(org.campaigns)) return [];
+  return (org.campaigns as Record<string, unknown>[]).filter(
+    (c) => c.status !== "deleted",
+  );
+}
+
+async function saveCampaigns(
+  orgId: string,
+  campaigns: Record<string, unknown>[],
+): Promise<void> {
+  const serverToken = await getServerToken();
+  await fsPatch("organisations", orgId, { campaigns }, serverToken);
+}
+
+// GET /organisations/:id/campaigns
 router.get("/organisations/:id/campaigns", async (req, res) => {
   try {
-    const snapshot = await adminDb()
-      .collection("organisations")
-      .doc(req.params.id!)
-      .collection("campaigns")
-      .get();
-    const campaigns = snapshot.docs
-      .map((doc) => ({ _id: doc.id, ...doc.data() }))
-      .filter((c) => c.status !== "deleted");
+    const campaigns = await getCampaignsFromOrg(req.params.id!);
     res.json(campaigns.length > 0 ? campaigns : PLACEHOLDER_CAMPAIGNS);
   } catch (err) {
     req.log.error({ err }, "GET /organisations/:id/campaigns error");
@@ -174,6 +200,7 @@ router.post("/organisations/:id/campaigns", requireAuth, async (req, res) => {
       res.status(403).json({ error: "You can only manage your own campaigns" });
       return;
     }
+
     const { name, description, type, goal, volunteersNeeded, deadline, imageUrl, phases } =
       req.body as Record<string, unknown>;
 
@@ -185,39 +212,28 @@ router.post("/organisations/:id/campaigns", requireAuth, async (req, res) => {
       res.status(400).json({ error: "Campaign description is required" });
       return;
     }
-    const resolvedType = type === "volunteer" ? "volunteer" : "fundraising";
-
-    // Validate phases — array of { id, title, description, targetAmount, completed }
-    const resolvedPhases = Array.isArray(phases)
-      ? (phases as Record<string, unknown>[]).slice(0, 10).map((p, i) => ({
-          id: (p["id"] as string) ?? `phase_${i}`,
-          title: typeof p["title"] === "string" ? p["title"].slice(0, 200) : `Phase ${i + 1}`,
-          description: typeof p["description"] === "string" ? p["description"].slice(0, 1000) : "",
-          targetAmount: typeof p["targetAmount"] === "number" ? p["targetAmount"] : null,
-          completed: p["completed"] === true,
-        }))
-      : [];
 
     const now = new Date().toISOString();
-    const data: Record<string, unknown> = {
+    const newCampaign: Record<string, unknown> = {
+      _id: randomUUID().replace(/-/g, "").slice(0, 20),
       name: name.trim().slice(0, 200),
       description: description.trim().slice(0, 2000),
-      type: resolvedType,
+      type: type === "volunteer" ? "volunteer" : "fundraising",
       goal: typeof goal === "number" && goal > 0 ? goal : 0,
       amountRaised: 0,
       volunteersNeeded: typeof volunteersNeeded === "number" ? volunteersNeeded : 0,
       status: "active",
       deadline: typeof deadline === "string" && deadline ? deadline : null,
       imageUrl: typeof imageUrl === "string" && imageUrl ? imageUrl : null,
-      phases: resolvedPhases,
+      phases: parsePhases(phases),
       createdAt: now,
       updatedAt: now,
     };
 
-    const serverToken = await getServerToken();
-    const newId = await fsCreate(`organisations/${orgId}/campaigns`, data, serverToken);
-    req.log.info({ orgId, campaignId: newId }, "Campaign created");
-    res.status(201).json({ _id: newId, ...data });
+    const existing = await getCampaignsFromOrg(orgId);
+    await saveCampaigns(orgId, [...existing, newCampaign]);
+    req.log.info({ orgId, campaignId: newCampaign._id }, "Campaign created");
+    res.status(201).json(newCampaign);
   } catch (err) {
     req.log.error({ err }, "POST /organisations/:id/campaigns error");
     res.status(500).json({ error: "Failed to create campaign" });
@@ -235,9 +251,9 @@ router.patch("/organisations/:id/campaigns/:campId", requireAuth, async (req, re
       return;
     }
 
-    const serverToken = await getServerToken();
-    const existing = await fsGet(`organisations/${orgId}/campaigns`, campId, serverToken);
-    if (!existing) {
+    const allCampaigns = await getCampaignsFromOrg(orgId);
+    const idx = allCampaigns.findIndex((c) => c._id === campId);
+    if (idx === -1) {
       res.status(404).json({ error: "Campaign not found" });
       return;
     }
@@ -246,28 +262,18 @@ router.patch("/organisations/:id/campaigns/:campId", requireAuth, async (req, re
                      "status", "deadline", "imageUrl", "phases"] as const;
     const updates: Record<string, unknown> = {};
     const body = req.body as Record<string, unknown>;
-
     for (const key of allowed) {
       if (key in body) updates[key] = body[key];
     }
-
-    // Validate phases if provided
-    if ("phases" in updates && Array.isArray(updates["phases"])) {
-      updates["phases"] = (updates["phases"] as Record<string, unknown>[])
-        .slice(0, 10)
-        .map((p, i) => ({
-          id: (p["id"] as string) ?? `phase_${i}`,
-          title: typeof p["title"] === "string" ? p["title"].slice(0, 200) : `Phase ${i + 1}`,
-          description: typeof p["description"] === "string" ? p["description"].slice(0, 1000) : "",
-          targetAmount: typeof p["targetAmount"] === "number" ? p["targetAmount"] : null,
-          completed: p["completed"] === true,
-        }));
+    if ("phases" in updates) {
+      updates["phases"] = parsePhases(updates["phases"]);
     }
 
-    const merged = { ...existing, ...updates, updatedAt: new Date().toISOString() };
-    await fsPatch(`organisations/${orgId}/campaigns`, campId, merged, serverToken);
+    const merged = { ...allCampaigns[idx], ...updates, updatedAt: new Date().toISOString() };
+    allCampaigns[idx] = merged;
+    await saveCampaigns(orgId, allCampaigns);
     req.log.info({ orgId, campId }, "Campaign updated");
-    res.json({ _id: campId, ...merged });
+    res.json(merged);
   } catch (err) {
     req.log.error({ err }, "PATCH /organisations/:id/campaigns/:campId error");
     res.status(500).json({ error: "Failed to update campaign" });
@@ -284,14 +290,21 @@ router.delete("/organisations/:id/campaigns/:campId", requireAuth, async (req, r
       res.status(403).json({ error: "You can only manage your own campaigns" });
       return;
     }
-    // Firestore REST delete: PATCH with __delete__ sentinel is not supported directly;
-    // use the delete endpoint via fsDelete if available, otherwise patch with a tombstone.
-    // For now mark as deleted so the list can filter it out.
-    const serverToken = await getServerToken();
-    const existing = await fsGet(`organisations/${orgId}/campaigns`, campId, serverToken);
-    if (!existing) { res.status(404).json({ error: "Campaign not found" }); return; }
-    await fsPatch(`organisations/${orgId}/campaigns`, campId,
-      { ...existing, status: "deleted", updatedAt: new Date().toISOString() }, serverToken);
+
+    const allCampaigns = await getCampaignsFromOrg(orgId);
+    const idx = allCampaigns.findIndex((c) => c._id === campId);
+    if (idx === -1) {
+      res.status(404).json({ error: "Campaign not found" });
+      return;
+    }
+
+    // Soft-delete: keep the entry so array indices are stable, but mark deleted
+    allCampaigns[idx] = {
+      ...allCampaigns[idx],
+      status: "deleted",
+      updatedAt: new Date().toISOString(),
+    };
+    await saveCampaigns(orgId, allCampaigns);
     req.log.info({ orgId, campId }, "Campaign deleted");
     res.json({ ok: true });
   } catch (err) {
