@@ -11,6 +11,7 @@ import newsletterRouter from "./newsletter.js";
 import uploadsRouter from "./uploads.js";
 import shopRouter from "./shop.js";
 import stripeConnectRouter from "./stripe-connect.js";
+import wiseConnectRouter from "./wise-connect.js";
 import applicationsRouter from "./applications.js";
 
 const router: IRouter = Router();
@@ -28,5 +29,6 @@ router.use(newsletterRouter);
 router.use(uploadsRouter);
 router.use(shopRouter);
 router.use(stripeConnectRouter);
+router.use(wiseConnectRouter);
 
 export default router;

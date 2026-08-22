@@ -14,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/context/AuthContext";
 import * as api from "@/lib/api";
-import type { FeedUpdate, Campaign, CampaignPhase } from "@/lib/api";
+import type { FeedUpdate, Campaign, CampaignPhase, WiseStatus } from "@/lib/api";
 
 const RED = "#B50000";
 const GOLD = "#F5B800";
@@ -830,6 +830,10 @@ export default function DashboardPage() {
   // Campaign form state
   const [showCampForm, setShowCampForm] = useState(false);
 
+  // Wise connect form state
+  const [wiseEmailInput, setWiseEmailInput] = useState("");
+  const [wiseError, setWiseError] = useState("");
+
   const orgId = user?.id ?? "";
   const connectComplete = new URLSearchParams(search).get("connect") === "complete";
 
@@ -848,6 +852,32 @@ export default function DashboardPage() {
   useEffect(() => {
     if (connectComplete) connectQ.refetch();
   }, [connectComplete]);
+
+  const wiseQ = useQuery({
+    queryKey: ["wise-status", orgId],
+    queryFn: () => api.getWiseStatus(token!),
+    enabled: !!token,
+  });
+
+  const wiseConnectMut = useMutation({
+    mutationFn: (email: string) => api.connectWise(email, token!),
+    onSuccess: (data: WiseStatus) => {
+      setWiseError("");
+      setWiseEmailInput(data.wise_email ?? "");
+      queryClient.invalidateQueries({ queryKey: ["wise-status", orgId] });
+    },
+    onError: (e: Error) => setWiseError(e.message),
+  });
+
+  const wiseDisconnectMut = useMutation({
+    mutationFn: () => api.disconnectWise(token!),
+    onSuccess: () => {
+      setWiseEmailInput("");
+      setWiseError("");
+      queryClient.invalidateQueries({ queryKey: ["wise-status", orgId] });
+    },
+    onError: (e: Error) => setWiseError(e.message),
+  });
 
   const updatesQ = useQuery({
     queryKey: ["org-feed", orgId],
@@ -1030,6 +1060,118 @@ export default function DashboardPage() {
                   Connect your bank account
                 </Button>
               </a>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Wise Connect ─────────────────────────────────────────────────────── */}
+      <Card className="border-border shadow-sm overflow-hidden">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Banknote className="w-4 h-4" style={{ color: RED }} /> Receive funds via Wise
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {wiseQ.isLoading ? (
+            <div className="h-8 bg-secondary rounded animate-pulse" />
+          ) : wiseQ.data?.wise_email ? (
+            // ── Connected state ──────────────────────────────────────────────
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-5 h-5 text-green-500" />
+                <span className="text-sm font-semibold text-green-700">
+                  {wiseQ.data.wise_verified ? "Connected & verified" : "Saved (pending verification)"}
+                </span>
+              </div>
+              <div className="bg-secondary rounded-xl px-4 py-3 flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs text-muted-foreground mb-0.5">Wise account email</p>
+                  <p className="text-sm font-semibold text-foreground">{wiseQ.data.wise_email}</p>
+                </div>
+              </div>
+              {wiseError && (
+                <div className="flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                  <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                  {wiseError}
+                </div>
+              )}
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => {
+                    setWiseEmailInput(wiseQ.data?.wise_email ?? "");
+                    wiseDisconnectMut.mutate();
+                  }}
+                  disabled={wiseDisconnectMut.isPending}
+                >
+                  {wiseDisconnectMut.isPending ? "Disconnecting…" : "Disconnect"}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => {
+                    setWiseEmailInput(wiseQ.data?.wise_email ?? "");
+                    wiseDisconnectMut.reset();
+                    wiseConnectMut.reset();
+                    setWiseError("");
+                  }}
+                >
+                  Change email
+                </Button>
+              </div>
+            </div>
+          ) : (
+            // ── Not connected state ──────────────────────────────────────────
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Enter your Wise account email so Root ProjX can send your funds internationally.
+                Your donations are held in our Wise account and disbursed to you on request.
+              </p>
+              <div className="space-y-2">
+                <Label htmlFor="wise-email" className="text-sm">
+                  Wise account email
+                </Label>
+                <Input
+                  id="wise-email"
+                  type="email"
+                  placeholder="yourname@example.com"
+                  value={wiseEmailInput}
+                  onChange={(e) => {
+                    setWiseEmailInput(e.target.value);
+                    setWiseError("");
+                  }}
+                  disabled={wiseConnectMut.isPending}
+                />
+              </div>
+              {wiseError && (
+                <div className="flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                  <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                  {wiseError}
+                </div>
+              )}
+              <Button
+                className="w-full font-bold text-black"
+                style={{ backgroundColor: GOLD }}
+                disabled={!wiseEmailInput.trim() || wiseConnectMut.isPending}
+                onClick={() => wiseConnectMut.mutate(wiseEmailInput.trim())}
+              >
+                {wiseConnectMut.isPending ? "Connecting…" : "Connect Wise account"}
+              </Button>
+              <p className="text-xs text-muted-foreground text-center">
+                Don't have a Wise account?{" "}
+                <a
+                  href="https://wise.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-foreground"
+                >
+                  Sign up at wise.com
+                </a>
+              </p>
             </div>
           )}
         </CardContent>

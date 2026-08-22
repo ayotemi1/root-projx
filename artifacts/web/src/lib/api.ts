@@ -31,6 +31,12 @@ export interface Org {
   createdAt: string;
 }
 
+export interface WiseStatus {
+  wise_email: string | null;
+  wise_recipient_id: number | null;
+  wise_verified: boolean;
+}
+
 export interface FeedUpdate {
   _id: string;
   orgId: string;
@@ -410,6 +416,20 @@ export const getConnectStatus = (token: string) =>
 
 export const getConnectDashboardLink = (token: string) =>
   req<{ url: string }>("/stripe/connect/dashboard-link", {}, token);
+
+// ── Wise Connect ───────────────────────────────────────────────────────────────
+
+export const getWiseStatus = (token: string) =>
+  req<WiseStatus>("/wise/connect/status", {}, token);
+
+export const connectWise = (email: string, token: string) =>
+  req<WiseStatus>("/wise/connect", {
+    method: "PUT",
+    body: JSON.stringify({ email }),
+  }, token);
+
+export const disconnectWise = (token: string) =>
+  req<{ disconnected: boolean }>("/wise/connect", { method: "DELETE" }, token);
 
 // ── Newsletter ─────────────────────────────────────────────────────────────────
 
