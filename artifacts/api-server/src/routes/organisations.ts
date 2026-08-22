@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { fsGet, fsPatch, fsList, fsQuery, fsCreate, getServerToken } from "../lib/firebase-rest.js";
 import { requireAuth } from "../lib/auth.js";
+import { adminDb } from "../lib/firebase-admin.js";
 
 const router = Router();
 
@@ -146,10 +147,17 @@ router.post("/organisations/:id/volunteerApplications", requireAuth, async (req,
 });
 
 // GET /organisations/:id/campaigns — list campaigns subcollection
+// Uses Firebase Admin SDK to bypass Firestore security rules (public read).
 router.get("/organisations/:id/campaigns", async (req, res) => {
   try {
-    const token = await getServerToken();
-    const campaigns = await fsList(`organisations/${req.params.id}/campaigns`, token);
+    const snapshot = await adminDb()
+      .collection("organisations")
+      .doc(req.params.id!)
+      .collection("campaigns")
+      .get();
+    const campaigns = snapshot.docs
+      .map((doc) => ({ _id: doc.id, ...doc.data() }))
+      .filter((c) => c.status !== "deleted");
     res.json(campaigns.length > 0 ? campaigns : PLACEHOLDER_CAMPAIGNS);
   } catch (err) {
     req.log.error({ err }, "GET /organisations/:id/campaigns error");

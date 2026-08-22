@@ -1,8 +1,6 @@
 import { Router } from "express";
 import multer from "multer";
 import { requireAuth } from "../lib/auth.js";
-import { adminUploadFile } from "../lib/firebase-admin.js";
-import { updateMediaPath } from "../lib/firebase-storage.js";
 import { objectStorageClient } from "../lib/objectStorage.js";
 
 const router = Router();
@@ -56,6 +54,32 @@ function getObjectStorageBucketName(): string {
   const bucketName = dir.split("/")[0] ?? "";
   if (!bucketName) throw new Error("PRIVATE_OBJECT_DIR is not configured");
   return bucketName;
+}
+
+/**
+ * Upload a feed update media file (photo/video) to Replit Object Storage.
+ * Uses a timestamped path so multiple uploads don't overwrite each other.
+ * The file is made publicly readable so it can be served directly in the feed.
+ */
+async function uploadFeedMedia(
+  orgId: string,
+  filename: string,
+  buffer: Buffer,
+  mimeType: string,
+): Promise<string> {
+  const bucketName = getObjectStorageBucketName();
+  // Sanitise filename: strip path components, replace spaces
+  const safeName = filename.replace(/.*[/\\]/, "").replace(/\s+/g, "_") || "upload";
+  const objectPath = `org-media/${orgId}/${Date.now()}/${safeName}`;
+  const file = objectStorageClient.bucket(bucketName).file(objectPath);
+
+  await file.save(buffer, {
+    contentType: mimeType,
+    public: true,
+    resumable: false,
+  });
+
+  return `https://storage.googleapis.com/${bucketName}/${objectPath}`;
 }
 
 /**
@@ -134,10 +158,10 @@ router.post("/uploads/media", requireAuth, async (req, res) => {
           url = await uploadOrgProfileImage(orgId, uploadType, file.buffer, file.mimetype);
           req.log.info({ orgId, uploadType }, "Profile image uploaded to Replit Object Storage");
         } else {
-          // Feed update media goes to Firebase Storage as before
-          const storagePath = updateMediaPath(orgId, file.originalname);
-          url = await adminUploadFile(storagePath, file.buffer, file.mimetype);
-          req.log.info({ orgId, storagePath }, "Feed media uploaded to Firebase Storage");
+          // Feed update media goes to Replit Object Storage — same bucket,
+          // timestamped path so multiple uploads don't collide.
+          url = await uploadFeedMedia(orgId, file.originalname, file.buffer, file.mimetype);
+          req.log.info({ orgId, uploadType }, "Feed media uploaded to Replit Object Storage");
         }
 
         return { url, name: file.originalname, type: file.mimetype, size: file.size };
