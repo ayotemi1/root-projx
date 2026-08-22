@@ -638,6 +638,13 @@ function ProfileImagesCard({
   const [coverPreview, setCoverPreview] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  function handleUploadError(err: unknown, fallback: string) {
+    const raw = err instanceof Error ? err.message : "";
+    return /load failed|failed to fetch|networkerror/i.test(raw)
+      ? "Upload failed — please check your connection and try again"
+      : raw || fallback;
+  }
+
   async function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -645,16 +652,11 @@ function ProfileImagesCard({
     setError(null);
     setLogoUploading(true);
     try {
-      const logoUrl = await api.uploadOrgImage(file, "logo", token);
-      await api.updateOrganisation(orgId, { logo: logoUrl }, token);
+      // Single call: upload + save to org doc atomically
+      await api.uploadOrgProfileImage(file, orgId, "logo", token);
       onUpdated();
     } catch (err) {
-      const raw = err instanceof Error ? err.message : "";
-      // Safari throws "Load failed" for generic network errors — replace with something useful
-      const msg = /load failed|failed to fetch|networkerror/i.test(raw)
-        ? "Upload failed — please check your connection and try again"
-        : raw || "Failed to upload logo";
-      setError(msg);
+      setError(handleUploadError(err, "Failed to upload logo"));
       setLogoPreview(null);
     } finally {
       setLogoUploading(false);
@@ -669,15 +671,11 @@ function ProfileImagesCard({
     setError(null);
     setCoverUploading(true);
     try {
-      const coverUrl = await api.uploadOrgImage(file, "cover", token);
-      await api.updateOrganisation(orgId, { coverImage: coverUrl }, token);
+      // Single call: upload + save to org doc atomically
+      await api.uploadOrgProfileImage(file, orgId, "cover", token);
       onUpdated();
     } catch (err) {
-      const raw = err instanceof Error ? err.message : "";
-      const msg = /load failed|failed to fetch|networkerror/i.test(raw)
-        ? "Upload failed — please check your connection and try again"
-        : raw || "Failed to upload cover photo";
-      setError(msg);
+      setError(handleUploadError(err, "Failed to upload cover photo"));
       setCoverPreview(null);
     } finally {
       setCoverUploading(false);

@@ -201,16 +201,20 @@ export async function uploadMedia(files: File[], token: string): Promise<string[
   return result.urls;
 }
 
-/** Upload a single org profile image (logo or cover). Returns the download URL. */
-export async function uploadOrgImage(
+/**
+ * Upload a logo or cover photo — single call that writes to storage AND
+ * updates the org document. Returns the updated org.
+ */
+export async function uploadOrgProfileImage(
   file: File,
+  orgId: string,
   type: "logo" | "cover",
   token: string,
-): Promise<string> {
+): Promise<Org> {
   const formData = new FormData();
-  formData.append("files", file);
+  formData.append("file", file);
 
-  const response = await fetch(`${API_BASE}/uploads/media?type=${type}`, {
+  const response = await fetch(`${API_BASE}/organisations/${orgId}/images?type=${type}`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
     body: formData,
@@ -221,10 +225,7 @@ export async function uploadOrgImage(
     throw new Error(err.error ?? "Upload failed");
   }
 
-  const result = await response.json() as { urls: string[] };
-  const url = result.urls[0];
-  if (!url) throw new Error("Upload returned no URL");
-  return url;
+  return response.json() as Promise<Org>;
 }
 
 // ── Follows ───────────────────────────────────────────────────────────────────

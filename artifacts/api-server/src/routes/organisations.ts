@@ -1,9 +1,127 @@
 import { randomUUID } from "crypto";
 import { Router } from "express";
-import { fsGet, fsPatch, fsList, fsQuery, getServerToken } from "../lib/firebase-rest.js";
+import multer from "multer";
+import { fsGet, fsPatch, fsList, fsQuery, fsCreate, getServerToken } from "../lib/firebase-rest.js";
 import { requireAuth } from "../lib/auth.js";
+import { objectStorageClient } from "../lib/objectStorage.js";
 
 const router = Router();
+
+// ---------------------------------------------------------------------------
+// Org image upload helpers
+// ---------------------------------------------------------------------------
+
+function getOrgImageBucketName(): string {
+  const dir = (process.env.PRIVATE_OBJECT_DIR ?? "").replace(/^\//, "");
+  const bucket = dir.split("/")[0] ?? "";
+  if (!bucket) throw new Error("PRIVATE_OBJECT_DIR is not configured");
+  return bucket;
+}
+
+const imageUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 20 * 1024 * 1024 },
+  fileFilter(_req, file, cb) {
+    const allowed = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    if (allowed.includes(file.mimetype)) cb(null, true);
+    else cb(Object.assign(new Error(`File type "${file.mimetype}" is not allowed`), {}));
+  },
+});
+
+// ---------------------------------------------------------------------------
+// GET /org-images/:orgId/:type — serve org profile image directly from GCS
+// No auth. 5-minute cache so re-uploads appear quickly.
+// ---------------------------------------------------------------------------
+router.get("/org-images/:orgId/:type", async (req, res) => {
+  const { orgId, type } = req.params;
+  if (type !== "logo" && type !== "cover") {
+    res.status(404).json({ error: "Not found" });
+    return;
+  }
+  try {
+    const bucketName = getOrgImageBucketName();
+    const objectPath = `org-profiles/${orgId}/${type}`;
+    const file = objectStorageClient.bucket(bucketName).file(objectPath);
+
+    const [exists] = await file.exists();
+    if (!exists) { res.status(404).json({ error: "Image not found" }); return; }
+
+    const [metadata] = await file.getMetadata();
+    res.set("Content-Type", (metadata.contentType as string) || "application/octet-stream");
+    res.set("Cache-Control", "public, max-age=300, stale-while-revalidate=60");
+    if (metadata.size) res.set("Content-Length", String(metadata.size));
+
+    file.createReadStream().pipe(res);
+  } catch (err) {
+    req.log.error({ err }, "GET /org-images error");
+    res.status(500).json({ error: "Failed to serve image" });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// POST /organisations/:orgId/images?type=logo|cover
+// Single call: upload file → write to GCS → update Firestore → return updated org.
+// Replaces the old two-step (upload + PATCH) flow.
+// ---------------------------------------------------------------------------
+router.post(
+  "/organisations/:orgId/images",
+  requireAuth,
+  (req, res, next) => {
+    imageUpload.single("file")(req, res, (err) => {
+      if (err instanceof multer.MulterError) {
+        res.status(err.code === "LIMIT_FILE_SIZE" ? 413 : 400).json({ error: err.message });
+        return;
+      }
+      if (err) {
+        res.status(400).json({ error: (err as Error).message || "Invalid file" });
+        return;
+      }
+      next();
+    });
+  },
+  async (req, res) => {
+    try {
+      const uid = req.user!.userId;
+      const orgId = req.params.orgId!;
+      if (uid !== orgId) {
+        res.status(403).json({ error: "You can only update your own organisation" });
+        return;
+      }
+
+      const type = req.query.type as string;
+      if (type !== "logo" && type !== "cover") {
+        res.status(400).json({ error: "type must be logo or cover" });
+        return;
+      }
+
+      const file = req.file;
+      if (!file) { res.status(400).json({ error: "No file provided" }); return; }
+
+      // Write to GCS — overwrites any previous image at the same stable path
+      const bucketName = getOrgImageBucketName();
+      const objectPath = `org-profiles/${orgId}/${type}`;
+      const gcsFile = objectStorageClient.bucket(bucketName).file(objectPath);
+      await gcsFile.save(file.buffer, { contentType: file.mimetype, resumable: false });
+
+      // Store a root-relative URL so it's domain-independent
+      const imageUrl = `/api/org-images/${orgId}/${type}`;
+      const field = type === "logo" ? "logo" : "coverImage";
+
+      const serverToken = await getServerToken();
+      const existing = await fsGet("organisations", orgId, serverToken);
+      if (!existing) { res.status(404).json({ error: "Organisation not found" }); return; }
+
+      const merged = { ...existing, [field]: imageUrl };
+      await fsPatch("organisations", orgId, merged, serverToken);
+
+      req.log.info({ orgId, type }, "Org profile image uploaded");
+      res.json({ _id: orgId, ...merged });
+    } catch (err) {
+      req.log.error({ err }, "POST /organisations/:orgId/images error");
+      res.status(500).json({ error: err instanceof Error ? err.message : "Upload failed" });
+    }
+  },
+);
 
 // GET /organisations — list all; optional ?category= &country= filters
 router.get("/organisations", async (req, res) => {
