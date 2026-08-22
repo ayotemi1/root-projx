@@ -185,4 +185,162 @@ router.delete("/wise/connect", requireAuth, async (req, res) => {
   }
 });
 
+// ── POST /wise/disburse — admin-only: send funds to an org via Wise ───────────
+//
+// Flow:
+//   1. Load org → wise_recipient_id
+//   2. GET /v1/profiles          → platform profileId
+//   3. POST /v3/profiles/{id}/quotes → lock in amount + exchange rate (quoteId)
+//   4. POST /v1/transfers         → create transfer instruction (transferId)
+//   5. POST /v3/profiles/{id}/transfers/{id}/payments → fund from Wise balance
+//   6. Patch Firestore org doc with disbursement record
+//
+// Auth: X-Admin-Secret header must match ADMIN_SECRET env var.
+//
+router.post("/wise/disburse", requireAdmin, async (req, res) => {
+  try {
+    const { orgId, amountGbp, reference } = req.body as {
+      orgId?: string;
+      amountGbp?: number;
+      reference?: string;
+    };
+
+    if (!orgId || typeof orgId !== "string") {
+      res.status(400).json({ error: "orgId is required" });
+      return;
+    }
+    if (!amountGbp || typeof amountGbp !== "number" || amountGbp <= 0) {
+      res.status(400).json({ error: "amountGbp must be a positive number" });
+      return;
+    }
+
+    const apiKey = process.env.WISE_API_KEY;
+    if (!apiKey) {
+      res.status(503).json({ error: "WISE_API_KEY is not configured on this server." });
+      return;
+    }
+
+    // Load org — verify Wise is connected
+    const serverToken = await getServerToken();
+    const org = await fsGet("organisations", orgId, serverToken);
+    if (!org) {
+      res.status(404).json({ error: "Organisation not found" });
+      return;
+    }
+
+    const wiseRecipientId = org["wise_recipient_id"] as number | null;
+    const wiseEmail = org["wise_email"] as string | null;
+
+    if (!wiseRecipientId) {
+      res.status(422).json({
+        error:
+          "This organisation has not connected a Wise account yet. Ask them to add their Wise email in the dashboard first.",
+      });
+      return;
+    }
+
+    // ── Step 1: platform profile ───────────────────────────────────────────────
+    const profileId = await getWisePlatformProfileId(apiKey);
+
+    // ── Step 2: create quote — locks in GBP→GBP amount + rate ─────────────────
+    const quoteRes = await fetch(`${WISE_BASE}/v3/profiles/${profileId}/quotes`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        sourceCurrency: "GBP",
+        targetCurrency: "GBP",
+        sourceAmount: amountGbp,
+        payOut: "BALANCE",
+      }),
+    });
+
+    if (!quoteRes.ok) {
+      throw new Error(`Failed to create Wise quote: ${await quoteRes.text()}`);
+    }
+    const quote = (await quoteRes.json()) as { id: string };
+
+    // ── Step 3: create transfer instruction ────────────────────────────────────
+    const transferRes = await fetch(`${WISE_BASE}/v1/transfers`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        targetAccount: wiseRecipientId,
+        quoteUuid: quote.id,
+        customerTransactionId: randomUUID(),
+        details: {
+          reference: reference?.trim() || `Root ProjX — ${(org["name"] as string) ?? orgId}`,
+          transferPurpose: "verification.transfers.purpose.pay.bills",
+          sourceOfFunds: "verification.source.of.funds.other",
+        },
+      }),
+    });
+
+    if (!transferRes.ok) {
+      throw new Error(`Failed to create Wise transfer: ${await transferRes.text()}`);
+    }
+    const transfer = (await transferRes.json()) as { id: number; status: string };
+
+    // ── Step 4: fund from platform's Wise balance ──────────────────────────────
+    const payRes = await fetch(
+      `${WISE_BASE}/v3/profiles/${profileId}/transfers/${transfer.id}/payments`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ type: "BALANCE" }),
+      },
+    );
+
+    if (!payRes.ok) {
+      // Transfer was created but funding failed — tell admin so they can handle it in Wise dashboard
+      throw new Error(
+        `Transfer created (ID: ${transfer.id}) but funding from Wise balance failed: ${await payRes.text()}. ` +
+          `You can retry or cancel this transfer from wise.com.`,
+      );
+    }
+    const payment = (await payRes.json()) as { type: string; status: string };
+
+    // ── Step 5: record disbursement in Firestore ───────────────────────────────
+    const disbursedAt = new Date().toISOString();
+    await fsPatch(
+      "organisations",
+      orgId,
+      {
+        ...org,
+        lastDisbursementAt: disbursedAt,
+        lastDisbursementAmountGbp: amountGbp,
+        lastDisbursementTransferId: transfer.id,
+      },
+      serverToken,
+    );
+
+    req.log.info(
+      { orgId, amountGbp, transferId: transfer.id, paymentStatus: payment.status },
+      "Wise disbursement initiated",
+    );
+
+    res.json({
+      ok: true,
+      transferId: transfer.id,
+      transferStatus: transfer.status,
+      paymentStatus: payment.status,
+      amountGbp,
+      recipientEmail: wiseEmail,
+      disbursedAt,
+    });
+  } catch (err) {
+    req.log.error({ err }, "POST /wise/disburse error");
+    const msg = err instanceof Error ? err.message : "Disbursement failed";
+    res.status(500).json({ error: msg });
+  }
+});
+
 export default router;
