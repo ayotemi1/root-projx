@@ -49,6 +49,27 @@ export async function requireAuth(
   }
 }
 
+// ── Admin-only middleware ──────────────────────────────────────────────────────
+// Requires X-Admin-Secret header matching the ADMIN_SECRET env var.
+// Use for platform-operator endpoints (disbursements, etc).
+export function requireAdmin(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
+  const secret = process.env.ADMIN_SECRET;
+  if (!secret) {
+    res.status(503).json({ error: "Admin access is not configured on this server." });
+    return;
+  }
+  const provided = req.headers["x-admin-secret"];
+  if (!provided || provided !== secret) {
+    res.status(401).json({ error: "Unauthorized — invalid admin secret." });
+    return;
+  }
+  next();
+}
+
 export async function optionalAuth(
   req: Request,
   _res: Response,

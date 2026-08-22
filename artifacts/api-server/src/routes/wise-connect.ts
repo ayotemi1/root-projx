@@ -1,6 +1,7 @@
 import { Router } from "express";
+import { randomUUID } from "crypto";
 import { fsGet, fsPatch, getServerToken } from "../lib/firebase-rest.js";
-import { requireAuth } from "../lib/auth.js";
+import { requireAuth, requireAdmin } from "../lib/auth.js";
 
 const router = Router();
 
