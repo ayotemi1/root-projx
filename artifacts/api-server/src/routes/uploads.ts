@@ -2,7 +2,8 @@ import { Router } from "express";
 import multer from "multer";
 import { requireAuth } from "../lib/auth.js";
 import { adminUploadFile } from "../lib/firebase-admin.js";
-import { updateMediaPath, orgProfilePath } from "../lib/firebase-storage.js";
+import { updateMediaPath } from "../lib/firebase-storage.js";
+import { objectStorageClient } from "../lib/objectStorage.js";
 
 const router = Router();
 
@@ -46,17 +47,54 @@ function runMulter(req: import("express").Request, res: import("express").Respon
   });
 }
 
+/**
+ * Extract the bucket name from PRIVATE_OBJECT_DIR which has the format:
+ *   /bucketname/some/prefix
+ */
+function getObjectStorageBucketName(): string {
+  const dir = (process.env.PRIVATE_OBJECT_DIR ?? "").replace(/^\//, "");
+  const bucketName = dir.split("/")[0] ?? "";
+  if (!bucketName) throw new Error("PRIVATE_OBJECT_DIR is not configured");
+  return bucketName;
+}
+
+/**
+ * Upload an org profile image (logo or cover) to Replit Object Storage.
+ * Uses stable, overwriteable paths so re-uploading replaces the previous image.
+ * The file is made publicly readable so the URL works without authentication.
+ *
+ * Uses Replit Object Storage (not Firebase Storage) to avoid Firebase IAM
+ * permission issues with the Replit sidecar service account.
+ */
+async function uploadOrgProfileImage(
+  orgId: string,
+  type: "logo" | "cover",
+  buffer: Buffer,
+  mimeType: string,
+): Promise<string> {
+  const bucketName = getObjectStorageBucketName();
+  const objectPath = `org-profiles/${orgId}/${type}`;
+  const file = objectStorageClient.bucket(bucketName).file(objectPath);
+
+  await file.save(buffer, {
+    contentType: mimeType,
+    // Make publicly readable so the URL can be used directly in <img> tags
+    public: true,
+    // Overwrite in place — no versioning needed for profile images
+    resumable: false,
+  });
+
+  return `https://storage.googleapis.com/${bucketName}/${objectPath}`;
+}
+
 // POST /uploads/media
 // Query params:
-//   ?type=logo    — org profile logo  (stable path, overwrites previous)
-//   ?type=cover   — org cover photo   (stable path, overwrites previous)
-//   ?type=media   — feed update media (timestamped, default)
+//   ?type=logo    — org profile logo  (Replit Object Storage, stable path)
+//   ?type=cover   — org cover photo   (Replit Object Storage, stable path)
+//   ?type=media   — feed update media (Firebase Storage, timestamped)
 //
 // Accepts: multipart/form-data with up to 5 files under the "files" field
 // Returns: { urls: string[], files: Array<{ url, name, type, size }> }
-//
-// Uses Firebase Admin SDK — bypasses Storage security rules so uploads work
-// regardless of whether storage.rules have been deployed to Firebase Console.
 router.post("/uploads/media", requireAuth, async (req, res) => {
   try {
     if (req.user!.accountType !== "organisation") {
@@ -88,23 +126,25 @@ router.post("/uploads/media", requireAuth, async (req, res) => {
 
     const uploadResults = await Promise.all(
       files.map(async (file) => {
-        let storagePath: string;
-        if (uploadType === "logo") {
-          storagePath = orgProfilePath(orgId, "logo");
-        } else if (uploadType === "cover") {
-          storagePath = orgProfilePath(orgId, "cover");
+        let url: string;
+
+        if (uploadType === "logo" || uploadType === "cover") {
+          // Use Replit Object Storage — the sidecar service account has full
+          // access to this bucket without any Firebase IAM configuration.
+          url = await uploadOrgProfileImage(orgId, uploadType, file.buffer, file.mimetype);
+          req.log.info({ orgId, uploadType }, "Profile image uploaded to Replit Object Storage");
         } else {
-          storagePath = updateMediaPath(orgId, file.originalname);
+          // Feed update media goes to Firebase Storage as before
+          const storagePath = updateMediaPath(orgId, file.originalname);
+          url = await adminUploadFile(storagePath, file.buffer, file.mimetype);
+          req.log.info({ orgId, storagePath }, "Feed media uploaded to Firebase Storage");
         }
 
-        const url = await adminUploadFile(storagePath, file.buffer, file.mimetype);
         return { url, name: file.originalname, type: file.mimetype, size: file.size };
       }),
     );
 
     const urls = uploadResults.map((r) => r.url);
-    req.log.info({ orgId, uploadType, count: urls.length }, "Media uploaded via Admin SDK");
-
     res.json({ urls, files: uploadResults });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Upload failed";
@@ -113,13 +153,6 @@ router.post("/uploads/media", requireAuth, async (req, res) => {
     if (err instanceof multer.MulterError) {
       const status = err.code === "LIMIT_FILE_SIZE" ? 413 : 400;
       res.status(status).json({ error: message });
-    } else if (/billing account|accountdisabled|state closed/i.test(message)) {
-      // Google Cloud rejects Firebase Storage writes when the project's
-      // billing account is disabled. Avoid exposing the raw Google error blob
-      // in the dashboard while still making the required action clear.
-      res.status(503).json({
-        error: "Image uploads are temporarily unavailable because the Firebase project billing account is disabled. Please enable billing for the project and try again.",
-      });
     } else {
       res.status(500).json({ error: message });
     }
