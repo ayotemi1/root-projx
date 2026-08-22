@@ -1,0 +1,63 @@
+Root ProjX — Organisation Profile Pages
+Feature Spec (Draft for Temi)
+ 
+1. Purpose
+The org profile page is the trust anchor of the platform. It needs to make verification, transparency, and impact tangible for a supporter deciding whether to give — and it should feel like a living relationship, not a static charity brochure.
+ 
+2. Core Identity & Credibility
+• Org name, logo, location (parish/community), founding year
+• Verification badge — visible indicator of what's been checked (registration status, references, site visit, etc.)
+• Mission statement in the org's own words, not a Root ProjX paraphrase
+• Photos/video of actual work — no stock imagery
+ 
+3. Transparency Layer
+• Funds received to date + broad usage categories (operations, materials, staff, etc.) — doesn't need line-item detail but should feel concrete
+• Recent updates feed — short posts with photos ("here's what your support funded this month")
+• Named contact person/leader at the org, for accountability and human connection
+ 
+4. Giving Mechanics
+• One-off vs recurring donation options
+• Specific funding "asks" tied to a concrete goal (e.g. "roof repair — $2,000 of $5,000 raised") rather than a generic donate button
+• Supporter wall — opt-in names only, no amounts shown
+ 
+5. Social / Network Layer
+• "X of your friends support this org" signal
+• Group/circle giving call-to-action on specific funding asks
+• "Notify a friend" button on the page
+ 
+6. Trust & Risk Flags
+• Last updated date — staleness itself is a transparency signal (e.g. no posts in 6 months should be visible to supporters)
+• Any pending flags/reviews surfaced by the moderation process
+ 
+7. Story & Context
+• Origin story — why the org exists, what problem it solves
+• Connection to broader context (e.g. Hurricane Melissa recovery), to help donors feel part of something bigger than one org
+ 
+8. Data Ownership: Org-Editable vs Root ProjX-Curated
+Key open decision for Visaka + Temi: how much of the page content is self-reported by the org vs verified/curated by Root ProjX.
+Field
+Likely org-editable
+Likely Root ProjX-curated / verified
+Mission statement, story
+Yes
+Reviewed at onboarding
+Updates feed / photos
+Yes
+Spot-checked periodically
+Verification badge
+No
+Root ProjX-controlled
+Funds usage breakdown
+Org-submitted
+Needs audit trail / spot-check process
+Funding ask targets
+Yes
+Approved before going live
+ 
+Note: if orgs self-report funds usage without any audit trail or spot-check process, the transparency promise risks becoming aesthetic rather than substantive. This should be resolved before launch.
+ 
+9. Open Decisions for Visaka + Temi
+• How much of the page is org-editable vs Root ProjX-curated (see section 8)
+• What the audit/spot-check cadence for funds usage reporting looks like
+• How verification badge tiers are defined and displayed (single badge vs tiered levels)
+• Whether funding asks require Root ProjX approval before going live
