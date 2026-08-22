@@ -5,6 +5,7 @@ import { Heart, MessageCircle, HandHeart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import * as api from "@/lib/api";
+import type { FeedUpdate } from "@/lib/api";
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -26,20 +27,23 @@ function initials(name: string): string {
 }
 
 
-type PostData = {
-  _id: string;
-  orgId: string;
-  orgName: string;
-  title: string;
-  content: string;
-  likes?: number;
-  createdAt: string;
-};
+function isVideoUrl(url: string): boolean {
+  const lower = url.toLowerCase();
+  return [".mp4", ".mov", ".webm", ".avi", ".m4v", ".ogv"].some((ext) =>
+    lower.includes(ext),
+  );
+}
 
-function PostCard({ post }: { post: PostData }) {
+function PostCard({ post }: { post: FeedUpdate }) {
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(post.likes ?? 0);
+  const [logoFailed, setLogoFailed] = useState(false);
   const isPlaceholder = post.orgId === "placeholder";
+
+  const mediaUrls = post.mediaUrls ?? [];
+  const heroPhoto = mediaUrls.find((u) => !isVideoUrl(u)) ?? post.imageUrl ?? null;
+  const firstVideo = mediaUrls.find((u) => isVideoUrl(u)) ?? null;
+  const showVideoHero = !heroPhoto && !!firstVideo;
 
   function handleLike() {
     if (liked) {
@@ -51,12 +55,24 @@ function PostCard({ post }: { post: PostData }) {
     }
   }
 
+  // Org logo: deterministic URL from the new stable route; fall back to initials on error
+  const logoUrl = isPlaceholder ? null : `/api/org-images/${post.orgId}/logo`;
+
   return (
     <article className="bg-card border border-border rounded-2xl overflow-hidden shadow-sm">
       {/* Header */}
       <div className="flex items-center gap-3 px-4 pt-4 pb-2">
-        <div className="w-10 h-10 rounded-full bg-primary/20 text-primary flex items-center justify-center text-sm font-bold flex-shrink-0">
-          {initials(post.orgName)}
+        <div className="w-10 h-10 rounded-full bg-primary/20 text-primary flex items-center justify-center text-sm font-bold flex-shrink-0 overflow-hidden">
+          {logoUrl && !logoFailed ? (
+            <img
+              src={logoUrl}
+              alt={post.orgName}
+              className="w-full h-full object-cover"
+              onError={() => setLogoFailed(true)}
+            />
+          ) : (
+            initials(post.orgName)
+          )}
         </div>
         <div className="min-w-0">
           <p className="font-semibold text-sm text-foreground truncate">{post.orgName}</p>
@@ -64,10 +80,25 @@ function PostCard({ post }: { post: PostData }) {
         </div>
       </div>
 
-      {/* Media placeholder */}
-      <div className="w-full bg-secondary/60 aspect-video flex items-center justify-center">
-        <span className="text-xs text-muted-foreground italic">Photo / video</span>
-      </div>
+      {/* Hero media — photo */}
+      {heroPhoto && (
+        <div className="w-full h-48 overflow-hidden bg-secondary">
+          <img src={heroPhoto} alt="update media" className="w-full h-full object-cover" />
+        </div>
+      )}
+
+      {/* Hero media — video only */}
+      {showVideoHero && (
+        <a
+          href={firstVideo!}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center gap-3 w-full h-36 bg-secondary border-b border-border text-foreground/70 hover:text-foreground transition-colors"
+        >
+          <span className="text-3xl">🎬</span>
+          <span className="text-sm font-semibold">Watch video</span>
+        </a>
+      )}
 
       {/* Caption */}
       <div className="px-4 pt-3 pb-1">
