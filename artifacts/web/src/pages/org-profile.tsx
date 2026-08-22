@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useRoute, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  CheckCircle, ArrowLeft, Heart, HeartOff,
+  CheckCircle, ArrowLeft, ChevronRight, Heart, HeartOff,
   MapPin, Tag, Users, TrendingUp, Zap, DollarSign,
   ThumbsUp, MessageCircle, Share2,
 } from "lucide-react";
@@ -812,12 +812,14 @@ export default function OrgProfilePage() {
                 <div className="space-y-3">
                   <Skeleton className="h-20" /><Skeleton className="h-20" />
                 </div>
-              ) : campaigns.length === 0 ? (
+              ) : realCampaigns.length === 0 ? (
                 <p className="text-sm text-muted-foreground py-4 text-center">
                   No active campaigns right now.
                 </p>
               ) : (
-                campaigns.slice(0, 3).map((c) => <CampaignCard key={c._id} item={c} />)
+                realCampaigns.slice(0, 3).map((c) => (
+                  <CampaignCard key={c._id} campaign={c} orgId={id} />
+                ))
               )}
             </div>
 
