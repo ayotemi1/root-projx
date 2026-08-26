@@ -308,6 +308,13 @@ export interface CampaignPhase {
   completed: boolean;
 }
 
+export interface CampaignTheme {
+  primaryColor: string;
+  accentColor: string;
+  backgroundColor: string;
+  textColor: string;
+}
+
 export interface Campaign {
   _id: string;
   name: string;
@@ -322,7 +329,28 @@ export interface Campaign {
   phases: CampaignPhase[];
   createdAt: string;
   updatedAt: string;
+  enabled?: boolean;
+  publicId?: string;
+  theme?: CampaignTheme;
 }
+
+export interface PublicCampaignLanding {
+  campaign: Campaign;
+  organisation: {
+    _id: string;
+    name: string;
+    country: string;
+    city: string | null;
+    category: string;
+    description: string;
+    logo: string | null;
+    coverImage: string | null;
+    verified: boolean;
+  };
+}
+
+export const getPublicCampaignLanding = (publicId: string) =>
+  req<PublicCampaignLanding>(`/campaigns/landing/${encodeURIComponent(publicId)}`);
 
 export type CreateCampaignData = {
   name: string;
@@ -337,6 +365,11 @@ export type CreateCampaignData = {
 
 export const getCampaigns = (orgId: string) =>
   req<Campaign[]>(`/organisations/${orgId}/campaigns`).then((cs) =>
+    cs.filter((c) => c.status !== "deleted"),
+  );
+
+export const getManagedCampaigns = (orgId: string, token: string) =>
+  req<Campaign[]>(`/organisations/${orgId}/campaigns/manage`, {}, token).then((cs) =>
     cs.filter((c) => c.status !== "deleted"),
   );
 

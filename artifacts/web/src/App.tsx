@@ -36,6 +36,7 @@ import AdminLoginPage from "@/pages/admin-login";
 import AdminPage from "@/pages/admin";
 import NotFound from "@/pages/not-found";
 import SupporterProfilePage from "@/pages/supporter-profile";
+import CampaignLandingPage from "@/pages/campaign-landing";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -66,6 +67,9 @@ function AppRoutes() {
     <Switch>
       {/* Landing page — no navbar or footer */}
       <Route path="/" component={LandingPage} />
+
+      {/* Campaign Landing page — standalone */}
+      <Route path="/campaigns/:publicId" component={CampaignLandingPage} />
 
       {/* Org onboarding — standalone questionnaire */}
       <Route path="/onboarding" component={OnboardingPage} />

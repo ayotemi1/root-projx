@@ -29,10 +29,12 @@ service cloud.firestore {
     }
 
     // ── organisations ───────────────────────────────────────────────────────
-    // Public read. Org owner or server may write.
+    // The server projects public organisation fields through its API.
+    // This document also embeds non-public campaign draft state, so client-side
+    // reads would leak fields that Firestore rules cannot project away.
     // The org document ID is always the owner's Firebase UID.
     match /organisations/{orgId} {
-      allow read:   if true;
+      allow read:   if isServer();
       allow create: if isOwner(orgId) || isServer();
       allow update: if isOwner(orgId) || isServer();
       allow delete: if false;

@@ -6,6 +6,13 @@ import { requireAuth } from "../lib/auth.js";
 import { objectStorageClient } from "../lib/objectStorage.js";
 
 const router = Router();
+const PUBLIC_CAMPAIGN_ID_PATTERN = /^cp_[a-f0-9]{24}$/;
+const DEFAULT_CAMPAIGN_THEME = {
+  primaryColor: "#B50000",
+  accentColor: "#F5B800",
+  backgroundColor: "#FFF9F2",
+  textColor: "#1A1A1A",
+};
 
 // ---------------------------------------------------------------------------
 // Org image upload helpers
@@ -127,7 +134,7 @@ router.post(
 router.get("/organisations", async (req, res) => {
   try {
     const { category, country } = req.query as Record<string, string | undefined>;
-    const token = req.headers.authorization?.slice(7) ?? await getServerToken();
+    const token = await getServerToken();
     let orgs: Array<Record<string, unknown>>;
     if (category || country) {
       const filters: Array<{ field: string; op: string; value: unknown }> = [];
@@ -137,7 +144,7 @@ router.get("/organisations", async (req, res) => {
     } else {
       orgs = await fsList("organisations", token);
     }
-    res.json(orgs);
+    res.json(orgs.map(({ campaigns: _campaigns, ...org }) => org));
   } catch (err) {
     req.log.error({ err }, "GET /organisations error");
     res.status(500).json({ error: "Failed to fetch organisations" });
@@ -266,8 +273,8 @@ router.post("/organisations/:id/volunteerApplications", requireAuth, async (req,
 
 // ---------------------------------------------------------------------------
 // Campaign helpers — campaigns are stored as an embedded array on the org doc
-// rather than a Firestore subcollection, so they inherit the org's public-read
-// rule without requiring a separate security rule to be deployed.
+// rather than a Firestore subcollection. Public campaign data is always
+// projected explicitly; the embedded array itself is never a public API shape.
 // ---------------------------------------------------------------------------
 
 function parsePhases(phases: unknown): Record<string, unknown>[] {
@@ -281,13 +288,52 @@ function parsePhases(phases: unknown): Record<string, unknown>[] {
   }));
 }
 
-async function getCampaignsFromOrg(orgId: string): Promise<Record<string, unknown>[]> {
+function normalizeHexColor(value: unknown, fallback: string): string {
+  if (typeof value !== "string") return fallback;
+  const trimmed = value.trim().toUpperCase();
+  return /^#[0-9A-F]{6}$/.test(trimmed) ? trimmed : fallback;
+}
+
+function parseCampaignTheme(theme: unknown): Record<string, string> {
+  const input = (theme && typeof theme === "object" ? theme : {}) as Record<string, unknown>;
+  return {
+    primaryColor: normalizeHexColor(input["primaryColor"], DEFAULT_CAMPAIGN_THEME.primaryColor),
+    accentColor: normalizeHexColor(input["accentColor"], DEFAULT_CAMPAIGN_THEME.accentColor),
+    backgroundColor: normalizeHexColor(input["backgroundColor"], DEFAULT_CAMPAIGN_THEME.backgroundColor),
+    textColor: normalizeHexColor(input["textColor"], DEFAULT_CAMPAIGN_THEME.textColor),
+  };
+}
+
+function createPublicCampaignId(): string {
+  return `cp_${randomUUID().replace(/-/g, "").slice(0, 24)}`;
+}
+
+function publicCampaignFields(campaign: Record<string, unknown>): Record<string, unknown> {
+  return {
+    _id: campaign["_id"],
+    publicId: campaign["publicId"],
+    enabled: campaign["enabled"] === true,
+    name: campaign["name"] ?? "",
+    description: campaign["description"] ?? "",
+    imageUrl: campaign["imageUrl"] ?? null,
+    amountRaised: typeof campaign["amountRaised"] === "number" ? campaign["amountRaised"] : 0,
+    goal: typeof campaign["goal"] === "number" ? campaign["goal"] : 0,
+    status: campaign["status"] === "completed" ? "completed" : "active",
+    type: campaign["type"] === "volunteer" ? "volunteer" : "fundraising",
+    volunteersNeeded: typeof campaign["volunteersNeeded"] === "number" ? campaign["volunteersNeeded"] : 0,
+    deadline: campaign["deadline"] ?? null,
+    phases: parsePhases(campaign["phases"]),
+    createdAt: campaign["createdAt"] ?? null,
+    updatedAt: campaign["updatedAt"] ?? null,
+    theme: parseCampaignTheme(campaign["theme"]),
+  };
+}
+
+async function getStoredCampaigns(orgId: string): Promise<Record<string, unknown>[]> {
   const serverToken = await getServerToken();
   const org = await fsGet("organisations", orgId, serverToken);
   if (!org || !Array.isArray(org.campaigns)) return [];
-  return (org.campaigns as Record<string, unknown>[]).filter(
-    (c) => c.status !== "deleted",
-  );
+  return org.campaigns as Record<string, unknown>[];
 }
 
 async function saveCampaigns(
@@ -298,14 +344,92 @@ async function saveCampaigns(
   await fsPatch("organisations", orgId, { campaigns }, serverToken);
 }
 
-// GET /organisations/:id/campaigns
+// GET /organisations/:id/campaigns/manage — private full campaign list for owner dashboard
+router.get("/organisations/:id/campaigns/manage", requireAuth, async (req, res) => {
+  try {
+    const orgId = req.params.id!;
+    if (req.user!.accountType !== "organisation" || req.user!.userId !== orgId) {
+      res.status(403).json({ error: "You can only manage your own campaigns" });
+      return;
+    }
+    const token = await getServerToken();
+    const org = await fsGet("organisations", orgId, token);
+    if (!org) {
+      res.status(404).json({ error: "Organisation not found" });
+      return;
+    }
+    const campaigns = (await getStoredCampaigns(orgId)).filter((campaign) => campaign["status"] !== "deleted");
+    res.json(campaigns);
+  } catch (err) {
+    req.log.error({ err }, "GET /organisations/:id/campaigns/manage error");
+    res.status(500).json({ error: "Failed to fetch campaigns" });
+  }
+});
+
+// GET /organisations/:id/campaigns — public, published campaign summaries only
 router.get("/organisations/:id/campaigns", async (req, res) => {
   try {
-    const campaigns = await getCampaignsFromOrg(req.params.id!);
-    res.json(campaigns.length > 0 ? campaigns : PLACEHOLDER_CAMPAIGNS);
+    const campaigns = (await getStoredCampaigns(req.params.id!))
+      .filter((campaign) => campaign["enabled"] === true && campaign["status"] !== "deleted")
+      .map(publicCampaignFields);
+    res.json(campaigns);
   } catch (err) {
     req.log.error({ err }, "GET /organisations/:id/campaigns error");
     res.status(500).json({ error: "Failed to fetch campaigns" });
+  }
+});
+
+// GET /campaigns/landing/:publicId — public, enabled campaign landing page
+router.get("/campaigns/landing/:publicId", async (req, res) => {
+  try {
+    const publicId = req.params.publicId!;
+    if (!PUBLIC_CAMPAIGN_ID_PATTERN.test(publicId)) {
+      res.status(404).json({ error: "Campaign not found" });
+      return;
+    }
+
+    const token = await getServerToken();
+    const organisations = await fsList("organisations", token);
+    for (const org of organisations) {
+      const campaigns = Array.isArray(org["campaigns"])
+        ? (org["campaigns"] as Record<string, unknown>[])
+        : [];
+      const campaign = campaigns.find(
+        (candidate) =>
+          candidate["publicId"] === publicId &&
+          candidate["enabled"] === true &&
+          candidate["status"] !== "deleted",
+      );
+      if (!campaign) continue;
+      const owner = await fsGet("users", String(org["_id"]), token);
+      const organisationName =
+        typeof org["name"] === "string" && org["name"].trim()
+          ? org["name"]
+          : typeof owner?.["orgName"] === "string" && owner["orgName"].trim()
+            ? owner["orgName"]
+            : "Community organisation";
+
+      res.json({
+        campaign: publicCampaignFields(campaign),
+        organisation: {
+          _id: org["_id"],
+          name: organisationName,
+          country: org["country"] ?? "",
+          city: org["city"] ?? null,
+          category: org["category"] ?? "",
+          description: org["description"] ?? "",
+          logo: org["logo"] ?? null,
+          coverImage: org["coverImage"] ?? null,
+          verified: org["verified"] === true,
+        },
+      });
+      return;
+    }
+
+    res.status(404).json({ error: "Campaign not found" });
+  } catch (err) {
+    req.log.error({ err }, "GET /campaigns/landing/:publicId error");
+    res.status(500).json({ error: "Failed to fetch campaign landing page" });
   }
 });
 
@@ -314,8 +438,14 @@ router.post("/organisations/:id/campaigns", requireAuth, async (req, res) => {
   try {
     const uid = req.user!.userId;
     const orgId = req.params.id!;
-    if (uid !== orgId) {
+    if (req.user!.accountType !== "organisation" || uid !== orgId) {
       res.status(403).json({ error: "You can only manage your own campaigns" });
+      return;
+    }
+    const serverToken = await getServerToken();
+    const org = await fsGet("organisations", orgId, serverToken);
+    if (!org) {
+      res.status(404).json({ error: "Organisation not found" });
       return;
     }
 
@@ -334,6 +464,8 @@ router.post("/organisations/:id/campaigns", requireAuth, async (req, res) => {
     const now = new Date().toISOString();
     const newCampaign: Record<string, unknown> = {
       _id: randomUUID().replace(/-/g, "").slice(0, 20),
+        publicId: createPublicCampaignId(),
+        enabled: false,
       name: name.trim().slice(0, 200),
       description: description.trim().slice(0, 2000),
       type: type === "volunteer" ? "volunteer" : "fundraising",
@@ -344,11 +476,12 @@ router.post("/organisations/:id/campaigns", requireAuth, async (req, res) => {
       deadline: typeof deadline === "string" && deadline ? deadline : null,
       imageUrl: typeof imageUrl === "string" && imageUrl ? imageUrl : null,
       phases: parsePhases(phases),
+        theme: { ...DEFAULT_CAMPAIGN_THEME },
       createdAt: now,
       updatedAt: now,
     };
 
-    const existing = await getCampaignsFromOrg(orgId);
+    const existing = Array.isArray(org["campaigns"]) ? org["campaigns"] as Record<string, unknown>[] : [];
     await saveCampaigns(orgId, [...existing, newCampaign]);
     req.log.info({ orgId, campaignId: newCampaign._id }, "Campaign created");
     res.status(201).json(newCampaign);
@@ -364,20 +497,26 @@ router.patch("/organisations/:id/campaigns/:campId", requireAuth, async (req, re
     const uid = req.user!.userId;
     const orgId = req.params.id!;
     const campId = req.params.campId!;
-    if (uid !== orgId) {
+    if (req.user!.accountType !== "organisation" || uid !== orgId) {
       res.status(403).json({ error: "You can only manage your own campaigns" });
       return;
     }
 
-    const allCampaigns = await getCampaignsFromOrg(orgId);
-    const idx = allCampaigns.findIndex((c) => c._id === campId);
+    const serverToken = await getServerToken();
+    const org = await fsGet("organisations", orgId, serverToken);
+    if (!org) {
+      res.status(404).json({ error: "Organisation not found" });
+      return;
+    }
+    const allCampaigns = Array.isArray(org["campaigns"]) ? org["campaigns"] as Record<string, unknown>[] : [];
+    const idx = allCampaigns.findIndex((c) => c._id === campId && c["status"] !== "deleted");
     if (idx === -1) {
       res.status(404).json({ error: "Campaign not found" });
       return;
     }
 
     const allowed = ["name", "description", "goal", "amountRaised", "volunteersNeeded",
-                     "status", "deadline", "imageUrl", "phases"] as const;
+                     "status", "deadline", "imageUrl", "phases", "enabled", "theme"] as const;
     const updates: Record<string, unknown> = {};
     const body = req.body as Record<string, unknown>;
     for (const key of allowed) {
@@ -386,8 +525,29 @@ router.patch("/organisations/:id/campaigns/:campId", requireAuth, async (req, re
     if ("phases" in updates) {
       updates["phases"] = parsePhases(updates["phases"]);
     }
+    if ("enabled" in updates && typeof updates["enabled"] !== "boolean") {
+      res.status(400).json({ error: "enabled must be a boolean" });
+      return;
+    }
+    if (updates["enabled"] === true) {
+      const owner = await fsGet("users", orgId, serverToken);
+      const hasPublicOrganisationName =
+        (typeof org?.["name"] === "string" && org["name"].trim()) ||
+        (typeof owner?.["orgName"] === "string" && owner["orgName"].trim());
+      if (!hasPublicOrganisationName) {
+        res.status(400).json({ error: "Add an organisation name before publishing a campaign page" });
+        return;
+      }
+    }
+    if ("theme" in updates) {
+      updates["theme"] = parseCampaignTheme(updates["theme"]);
+    }
 
     const merged = { ...allCampaigns[idx], ...updates, updatedAt: new Date().toISOString() };
+    if (merged["enabled"] === true && !PUBLIC_CAMPAIGN_ID_PATTERN.test(String(merged["publicId"] ?? ""))) {
+      merged["publicId"] = createPublicCampaignId();
+    }
+    if (!merged["theme"]) merged["theme"] = { ...DEFAULT_CAMPAIGN_THEME };
     allCampaigns[idx] = merged;
     await saveCampaigns(orgId, allCampaigns);
     req.log.info({ orgId, campId }, "Campaign updated");
@@ -404,13 +564,19 @@ router.delete("/organisations/:id/campaigns/:campId", requireAuth, async (req, r
     const uid = req.user!.userId;
     const orgId = req.params.id!;
     const campId = req.params.campId!;
-    if (uid !== orgId) {
+    if (req.user!.accountType !== "organisation" || uid !== orgId) {
       res.status(403).json({ error: "You can only manage your own campaigns" });
       return;
     }
 
-    const allCampaigns = await getCampaignsFromOrg(orgId);
-    const idx = allCampaigns.findIndex((c) => c._id === campId);
+    const serverToken = await getServerToken();
+    const org = await fsGet("organisations", orgId, serverToken);
+    if (!org) {
+      res.status(404).json({ error: "Organisation not found" });
+      return;
+    }
+    const allCampaigns = Array.isArray(org["campaigns"]) ? org["campaigns"] as Record<string, unknown>[] : [];
+    const idx = allCampaigns.findIndex((c) => c._id === campId && c["status"] !== "deleted");
     if (idx === -1) {
       res.status(404).json({ error: "Campaign not found" });
       return;
@@ -434,13 +600,14 @@ router.delete("/organisations/:id/campaigns/:campId", requireAuth, async (req, r
 // GET /organisations/:id — single org profile
 router.get("/organisations/:id", async (req, res) => {
   try {
-    const token = req.headers.authorization?.slice(7) ?? await getServerToken();
+    const token = await getServerToken();
     const org = await fsGet("organisations", req.params.id!, token);
     if (!org) {
       res.status(404).json({ error: "Organisation not found" });
       return;
     }
-    res.json({ _id: req.params.id, ...org });
+    const { campaigns: _campaigns, ...publicOrg } = org;
+    res.json({ _id: req.params.id, ...publicOrg });
   } catch (err) {
     req.log.error({ err }, "GET /organisations/:id error");
     res.status(500).json({ error: "Failed to fetch organisation" });

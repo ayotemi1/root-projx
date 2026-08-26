@@ -1,10 +1,11 @@
 import { useRef, useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useSearch } from "wouter";
+import { useSearch, Link } from "wouter";
+import { Switch } from "@/components/ui/switch";
 import {
   CheckCircle, PlusCircle, Image as ImageIcon, X, Banknote, ExternalLink,
   AlertCircle, Target, Calendar, Users, Trash2, ChevronDown, ChevronUp,
-  Edit3, Check, Upload, Camera,
+  Edit3, Check, Upload, Camera, Palette, Link as LinkIcon, Copy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -80,9 +81,32 @@ function DashCampaignCard({
   onDeleted: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [editRaised, setEditRaised] = useState(false);
   const [raisedInput, setRaisedInput] = useState(String(campaign.amountRaised ?? 0));
   const [saving, setSaving] = useState(false);
+
+  const [landingEnabled, setLandingEnabled] = useState(campaign.enabled ?? false);
+  const [publicId, setPublicId] = useState(campaign.publicId ?? "");
+  const [theme, setTheme] = useState(campaign.theme ?? {
+    primaryColor: "#B50000",
+    accentColor: "#F5B800",
+    backgroundColor: "#FFF9F2",
+    textColor: "#1A1A1A",
+  });
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [landingFeedback, setLandingFeedback] = useState("");
+
+  useEffect(() => {
+    setLandingEnabled(campaign.enabled ?? false);
+    setPublicId(campaign.publicId ?? "");
+    setTheme(campaign.theme ?? {
+      primaryColor: "#B50000",
+      accentColor: "#F5B800",
+      backgroundColor: "#FFF9F2",
+      textColor: "#1A1A1A",
+    });
+  }, [campaign.enabled, campaign.publicId, campaign.theme]);
 
   const pct = campaign.goal > 0
     ? Math.min(100, Math.round((campaign.amountRaised / campaign.goal) * 100))
@@ -118,6 +142,41 @@ function DashCampaignCard({
     if (!confirm(`Delete campaign "${campaign.name}"? This cannot be undone.`)) return;
     await api.deleteCampaign(orgId, campaign._id, token);
     onDeleted();
+  }
+
+  async function saveLandingSettings() {
+    setSavingSettings(true);
+    setLandingFeedback("");
+    try {
+      const updated = await api.updateCampaign(orgId, campaign._id, {
+        enabled: landingEnabled,
+        theme,
+      }, token);
+      setLandingEnabled(updated.enabled ?? false);
+      setPublicId(updated.publicId ?? "");
+      setTheme(updated.theme ?? theme);
+      setLandingFeedback(updated.enabled ? "Published and ready to share." : "Saved. This landing page is hidden.");
+      onUpdated();
+    } catch {
+      setLandingFeedback(
+        landingEnabled
+          ? "Add an organisation name during registration or in your public profile before publishing."
+          : "We could not save these landing page settings. Please try again.",
+      );
+    } finally {
+      setSavingSettings(false);
+    }
+  }
+
+  async function handleCopyLink() {
+    if (!publicId) return;
+    const url = `${window.location.origin}/campaigns/${publicId}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setLandingFeedback("Share link copied.");
+    } catch {
+      setLandingFeedback("Copy failed. Please copy the link from Preview instead.");
+    }
   }
 
   const isCompleted = campaign.status === "completed";
@@ -275,13 +334,119 @@ function DashCampaignCard({
           </div>
         )}
 
+        {/* Landing Page Settings Toggle */}
+        <div className="pt-2 border-t border-border mt-3">
+          <button
+            onClick={() => setShowSettings((v) => !v)}
+            data-testid={`button-settings-toggle-${campaign._id}`}
+            className="flex items-center justify-between w-full text-sm font-semibold text-foreground hover:text-primary transition-colors"
+          >
+            <span className="flex items-center gap-2">
+              <LinkIcon className="w-4 h-4" /> Share & Landing Page
+            </span>
+            {showSettings ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
+
+          {showSettings && (
+            <div className="mt-4 p-3 bg-secondary/30 rounded-xl border border-border space-y-4" data-testid={`panel-settings-${campaign._id}`}>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label className="text-sm font-semibold">Publish Landing Page</Label>
+                  <p className="text-xs text-muted-foreground">Make this campaign public.</p>
+                </div>
+                <Switch
+                  checked={landingEnabled}
+                  onCheckedChange={setLandingEnabled}
+                  data-testid={`switch-publish-${campaign._id}`}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold">Share Link</Label>
+                <div className="flex items-center gap-2">
+                  {publicId && landingEnabled ? (
+                    <>
+                      <p className="flex-1 min-w-0 truncate text-xs text-muted-foreground" data-testid={`text-share-link-${campaign._id}`}>
+                        {`/campaigns/${publicId}`}
+                      </p>
+                      <Button size="sm" variant="outline" className="h-8 px-2" onClick={handleCopyLink} title="Copy Link" data-testid={`button-copylink-${campaign._id}`}>
+                        <Copy className="w-4 h-4" />
+                      </Button>
+                      <Link href={`/campaigns/${publicId}`} target="_blank" className="inline-flex items-center justify-center h-8 px-2 border border-input bg-background hover:bg-accent hover:text-accent-foreground rounded-md" title="Preview landing page" data-testid={`link-preview-${campaign._id}`}>
+                        <ExternalLink className="w-4 h-4" />
+                      </Link>
+                    </>
+                  ) : (
+                    <p className="text-xs text-muted-foreground" data-testid={`text-share-link-pending-${campaign._id}`}>
+                      Publish and save to create a secure share link.
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2 pt-2 border-t border-border/50">
+                <Label className="text-xs font-semibold flex items-center gap-1.5"><Palette className="w-3.5 h-3.5"/> Theme Colors</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label className="text-[10px] text-muted-foreground">Primary</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <input type="color" data-testid={`input-color-primary-${campaign._id}`} value={theme.primaryColor} onChange={e => setTheme(t => ({...t, primaryColor: e.target.value}))} className="w-6 h-6 rounded cursor-pointer" />
+                      <Input aria-label="Primary colour value" value={theme.primaryColor} onChange={e => setTheme(t => ({...t, primaryColor: e.target.value}))} className="h-7 text-xs" />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-[10px] text-muted-foreground">Accent</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <input type="color" data-testid={`input-color-accent-${campaign._id}`} value={theme.accentColor} onChange={e => setTheme(t => ({...t, accentColor: e.target.value}))} className="w-6 h-6 rounded cursor-pointer" />
+                      <Input aria-label="Accent colour value" value={theme.accentColor} onChange={e => setTheme(t => ({...t, accentColor: e.target.value}))} className="h-7 text-xs" />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-[10px] text-muted-foreground">Background</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <input type="color" data-testid={`input-color-bg-${campaign._id}`} value={theme.backgroundColor} onChange={e => setTheme(t => ({...t, backgroundColor: e.target.value}))} className="w-6 h-6 rounded cursor-pointer" />
+                      <Input aria-label="Background colour value" value={theme.backgroundColor} onChange={e => setTheme(t => ({...t, backgroundColor: e.target.value}))} className="h-7 text-xs" />
+                    </div>
+                  </div>
+                  <div>
+                    <Label className="text-[10px] text-muted-foreground">Text</Label>
+                    <div className="flex items-center gap-2 mt-1">
+                      <input type="color" data-testid={`input-color-text-${campaign._id}`} value={theme.textColor} onChange={e => setTheme(t => ({...t, textColor: e.target.value}))} className="w-6 h-6 rounded cursor-pointer" />
+                      <Input aria-label="Text colour value" value={theme.textColor} onChange={e => setTheme(t => ({...t, textColor: e.target.value}))} className="h-7 text-xs" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <Button
+                size="sm"
+                className="w-full h-8 text-xs font-bold mt-2"
+                onClick={saveLandingSettings}
+                disabled={savingSettings}
+                data-testid={`button-save-settings-${campaign._id}`}
+              >
+                {savingSettings ? "Saving..." : "Save Settings"}
+              </Button>
+              {landingFeedback && (
+                <p
+                  className="text-xs text-muted-foreground text-center"
+                  data-testid={`text-landing-feedback-${campaign._id}`}
+                  role="status"
+                >
+                  {landingFeedback}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* Actions */}
         {!isCompleted && (
-          <div className="flex gap-2 pt-1">
+          <div className="flex gap-2 pt-1 border-t border-border mt-3">
             <Button
               size="sm"
               variant="outline"
-              className="flex-1 text-xs h-8"
+              className="flex-1 text-xs h-8 mt-2"
               onClick={markComplete}
             >
               <CheckCircle className="w-3.5 h-3.5 mr-1.5" /> Mark complete
@@ -289,7 +454,7 @@ function DashCampaignCard({
             <Button
               size="sm"
               variant="outline"
-              className="h-8 px-3 text-destructive border-destructive/30 hover:bg-destructive/5"
+              className="h-8 px-3 mt-2 text-destructive border-destructive/30 hover:bg-destructive/5"
               onClick={handleDelete}
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -909,8 +1074,8 @@ export default function DashboardPage() {
 
   const campaignsQ = useQuery({
     queryKey: ["campaigns", orgId],
-    queryFn: () => api.getCampaigns(orgId),
-    enabled: !!orgId,
+    queryFn: () => api.getManagedCampaigns(orgId, token!),
+    enabled: !!orgId && !!token,
   });
 
   const postMut = useMutation({

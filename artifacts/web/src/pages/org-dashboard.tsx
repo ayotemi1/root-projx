@@ -247,8 +247,8 @@ export default function OrgDashboardPage() {
 
   const { data: campaigns = [] } = useQuery<Campaign[]>({
     queryKey: ["campaigns", orgId],
-    queryFn: () => api.getCampaigns(orgId),
-    enabled: !!orgId,
+    queryFn: () => api.getManagedCampaigns(orgId, token!),
+    enabled: !!orgId && !!token,
   });
 
   const { data: roles = [] } = useQuery<unknown[]>({
