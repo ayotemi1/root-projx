@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { User, LayoutDashboard, LogOut, Edit2, Heart, RefreshCw, ExternalLink, Users } from "lucide-react";
+import { User, LayoutDashboard, LogOut, Edit2, Heart, RefreshCw, ExternalLink, Users, Copy, Check, Globe } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +21,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/context/AuthContext";
 import * as api from "@/lib/api";
 
@@ -84,6 +86,168 @@ function EditProfileDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function PublicProfileCard({ profile, token }: { profile: api.ApiUser, token: string }) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const [enabled, setEnabled] = useState(profile.publicProfileSettings?.enabled ?? false);
+  const [displayName, setDisplayName] = useState(profile.publicProfileSettings?.displayName ?? profile.name);
+  const [bio, setBio] = useState(profile.publicProfileSettings?.bio ?? "");
+
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    setEnabled(profile.publicProfileSettings?.enabled ?? false);
+    setDisplayName(profile.publicProfileSettings?.displayName ?? profile.name);
+    setBio(profile.publicProfileSettings?.bio ?? "");
+    setError("");
+  }, [
+    profile.id,
+    profile.name,
+    profile.publicProfileSettings?.enabled,
+    profile.publicProfileSettings?.displayName,
+    profile.publicProfileSettings?.bio,
+  ]);
+
+  const isDirty =
+    enabled !== (profile.publicProfileSettings?.enabled ?? false) ||
+    displayName !== (profile.publicProfileSettings?.displayName ?? profile.name) ||
+    bio !== (profile.publicProfileSettings?.bio ?? "");
+
+  async function handleSave() {
+    if (!displayName.trim()) {
+      setError("Display name is required");
+      return;
+    }
+
+    setSaving(true);
+    setError("");
+    try {
+      const updated = await api.updatePublicProfile({ enabled, displayName, bio }, token);
+
+      // Update cache in-place
+      queryClient.setQueryData<api.ApiUser>(["profile"], (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          publicProfileSettings: updated,
+        };
+      });
+
+      toast({ title: "Public profile updated" });
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Update failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function handleCopy() {
+    const publicId = profile.publicProfileSettings?.publicId;
+    if (!publicId) {
+      setError("Save your public profile before sharing it.");
+      return;
+    }
+    const url = `${window.location.origin}/supporters/${publicId}`;
+    if (!navigator.clipboard) {
+      setError("Couldn't copy the link. You can copy it from the address shown.");
+      return;
+    }
+    void navigator.clipboard.writeText(url)
+      .then(() => {
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      })
+      .catch(() => {
+        setError("Couldn't copy the link. You can copy it from the address shown.");
+      });
+  }
+
+  return (
+    <Card className="border-border shadow-sm">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Globe className="w-4 h-4 text-primary" />
+            Public Profile
+          </div>
+          <div className="flex items-center space-x-2">
+            <Label htmlFor="public-profile" className="text-xs text-muted-foreground cursor-pointer" data-testid="status-public-profile">
+              {enabled ? "Visible" : "Hidden"}
+            </Label>
+            <Switch
+              id="public-profile"
+              checked={enabled}
+              onCheckedChange={setEnabled}
+              data-testid="switch-public-profile"
+            />
+          </div>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground leading-relaxed">
+          Create a public page to show the grassroots causes you support. Your email, phone, and donation amounts remain strictly private.
+        </p>
+
+        {error && (
+          <div className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md">
+            {error}
+          </div>
+        )}
+
+        {enabled && profile.publicProfileSettings?.publicId && (
+          <div className="pt-2 flex items-center justify-between bg-secondary/50 rounded-lg p-3 border border-border">
+            <div className="flex-1 truncate mr-4">
+              <p className="text-xs text-muted-foreground mb-0.5 font-medium">Your public link</p>
+              <a href={`/supporters/${profile.publicProfileSettings.publicId}`} target="_blank" rel="noreferrer" className="text-sm text-primary hover:underline truncate block" data-testid="link-public-profile">
+                {window.location.host}/supporters/{profile.publicProfileSettings.publicId}
+              </a>
+            </div>
+            <Button variant="secondary" size="sm" onClick={handleCopy} className="flex-shrink-0" data-testid="btn-copy-link">
+              {copied ? <Check className="w-4 h-4 mr-1.5 text-green-600" /> : <Copy className="w-4 h-4 mr-1.5" />}
+              {copied ? "Copied" : "Copy"}
+            </Button>
+          </div>
+        )}
+
+        <div className="space-y-4 pt-2">
+          <div className="space-y-1.5">
+            <Label>Display Name</Label>
+            <Input
+              value={displayName}
+              onChange={e => setDisplayName(e.target.value)}
+              placeholder="How you appear publicly"
+               maxLength={80}
+              data-testid="input-display-name"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Short Bio</Label>
+            <Textarea
+              value={bio}
+              onChange={e => setBio(e.target.value)}
+              placeholder="Why you support these causes..."
+               maxLength={280}
+              className="resize-none h-20"
+              data-testid="input-bio"
+            />
+          </div>
+
+          {isDirty && (
+            <div className="flex justify-end pt-2">
+              <Button onClick={handleSave} disabled={saving} data-testid="btn-save-public-profile">
+                {saving ? "Saving…" : "Save Changes"}
+              </Button>
+            </div>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -200,6 +364,11 @@ export default function AccountPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Public Profile Settings */}
+      {profile && profile.accountType !== "organisation" && token && (
+        <PublicProfileCard profile={profile} token={token} />
+      )}
 
       {/* Stats */}
       <Card className="border-border shadow-sm">

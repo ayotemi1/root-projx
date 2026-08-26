@@ -10,6 +10,33 @@ export interface ApiUser {
   accountType: "supporter" | "organisation";
   avatarInitials: string;
   createdAt: string | null;
+  publicProfileSettings?: PublicProfileSettings;
+}
+
+export interface PublicProfileSettings {
+  enabled: boolean;
+  displayName: string;
+  bio: string;
+  publicId: string | null;
+}
+
+export type PublicProfileUpdate = Omit<PublicProfileSettings, "publicId">;
+
+export interface PublicOrganisationSummary {
+  _id: string;
+  name: string;
+  country: string;
+  category: string;
+  verified: boolean;
+}
+
+export interface PublicSupporterProfile {
+  displayName: string;
+  bio: string;
+  avatarInitials: string;
+  createdAt: string | null;
+  followedOrganisations: PublicOrganisationSummary[];
+  supportedOrganisations: Array<{ orgId: string; orgName: string }>;
 }
 
 export interface FundsUsage {
@@ -358,6 +385,19 @@ export const updateProfile = (
   token: string,
 ) =>
   req<ApiUser>("/profile", { method: "PATCH", body: JSON.stringify(data) }, token);
+
+export const updatePublicProfile = (
+  data: PublicProfileUpdate,
+  token: string,
+) =>
+  req<PublicProfileSettings>(
+    "/profile/public",
+    { method: "PATCH", body: JSON.stringify(data) },
+    token,
+  );
+
+export const getPublicSupporterProfile = (publicId: string) =>
+  req<PublicSupporterProfile>(`/supporters/${encodeURIComponent(publicId)}`);
 
 // ── Donations ─────────────────────────────────────────────────────────────────
 

@@ -35,6 +35,7 @@ import OnboardingPage from "@/pages/onboarding";
 import AdminLoginPage from "@/pages/admin-login";
 import AdminPage from "@/pages/admin";
 import NotFound from "@/pages/not-found";
+import SupporterProfilePage from "@/pages/supporter-profile";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -100,6 +101,7 @@ function AppRoutes() {
               <Route path="/organisations/:id/volunteer" component={OrgVolunteerPage} />
               <Route path="/organisations/:id/about" component={OrgAboutPage} />
               <Route path="/organisations/:id" component={OrgProfilePage} />
+              <Route path="/supporters/:publicId" component={SupporterProfilePage} />
               <Route path="/donate/success" component={DonateSuccessPage} />
               <Route path="/donate/:orgId" component={DonatePage} />
               <Route path="/dashboard">
