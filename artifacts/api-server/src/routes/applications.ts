@@ -8,6 +8,7 @@ import {
   fsQuery,
   getServerToken,
   firebaseSignUp,
+  firebaseSignIn,
   firebaseUpdateProfile,
 } from "../lib/firebase-rest.js";
 import {
@@ -38,10 +39,6 @@ function requireAdmin(req: import("express").Request, res: import("express").Res
   next();
 }
 
-function generateTempPassword(): string {
-  return crypto.randomBytes(8).toString("hex");
-}
-
 function avatarInitials(name: string): string {
   return name
     .split(" ")
@@ -56,10 +53,11 @@ function avatarInitials(name: string): string {
 // POST /applications/org
 router.post("/applications/org", async (req, res) => {
   try {
-    const { orgName, contactName, email, sectors, website, socialLinks } = req.body as {
+    const { orgName, contactName, email, password, sectors, website, socialLinks } = req.body as {
       orgName?: string;
       contactName?: string;
       email?: string;
+      password?: string;
       sectors?: string[];
       website?: string;
       socialLinks?: {
@@ -70,8 +68,12 @@ router.post("/applications/org", async (req, res) => {
       };
     };
 
-    if (!orgName?.trim() || !contactName?.trim() || !email?.trim()) {
-      res.status(400).json({ error: "orgName, contactName and email are required" });
+    if (!orgName?.trim() || !contactName?.trim() || !email?.trim() || !password) {
+      res.status(400).json({ error: "orgName, contactName, email and password are required" });
+      return;
+    }
+    if (password.length < 6) {
+      res.status(400).json({ error: "Password must be at least 6 characters" });
       return;
     }
     if (!Array.isArray(sectors) || sectors.length === 0) {
@@ -81,6 +83,7 @@ router.post("/applications/org", async (req, res) => {
 
     const token = await getServerToken();
     const now = new Date().toISOString();
+    const normalisedEmail = email.toLowerCase().trim();
 
     // Normalise optional fields
     const cleanWebsite = website?.trim() || null;
@@ -95,19 +98,73 @@ router.post("/applications/org", async (req, res) => {
     // Check for duplicate pending application from same email
     const existing = await fsQuery(
       "org_applications",
-      [{ field: "email", op: "EQUAL", value: email.toLowerCase().trim() },
+      [{ field: "email", op: "EQUAL", value: normalisedEmail },
        { field: "status", op: "EQUAL", value: "pending" }],
       token,
     );
     if (existing.length > 0) {
+      try {
+        const signedIn = await firebaseSignIn(normalisedEmail, password);
+        const existingUid = existing[0]?.uid;
+        if (existingUid && existingUid === signedIn.uid) {
+          res.status(200).json({ id: existing[0]?._id, status: "pending", token: signedIn.idToken });
+          return;
+        }
+      } catch {
+        // Return the same response for a mismatched password or account.
+      }
       res.status(409).json({ error: "An application from this email is already under review" });
       return;
     }
 
+    let uid: string;
+    let initialToken: string;
+    try {
+      const created = await firebaseSignUp(normalisedEmail, password);
+      uid = created.uid;
+      initialToken = created.idToken;
+    } catch (err: unknown) {
+      const code = (err as { firebaseCode?: string }).firebaseCode ?? "";
+      if (!code.includes("EMAIL_EXISTS")) {
+        res.status(400).json({
+          error: code.includes("WEAK_PASSWORD")
+            ? "Password must be at least 6 characters"
+            : "Account creation failed — check your email and password",
+        });
+        return;
+      }
+      try {
+        const signedIn = await firebaseSignIn(normalisedEmail, password);
+        uid = signedIn.uid;
+        initialToken = signedIn.idToken;
+        const user = await fsGet("users", uid, initialToken);
+        if (user && user.accountType !== "organisation") {
+          res.status(409).json({ error: "This email is already used by a supporter account" });
+          return;
+        }
+      } catch {
+        res.status(409).json({ error: "An account with this email already exists" });
+        return;
+      }
+    }
+
+    await firebaseUpdateProfile(initialToken, contactName.trim());
+    await fsPatch("users", uid, {
+      uid,
+      name: contactName.trim(),
+      email: normalisedEmail,
+      accountType: "organisation",
+      orgName: orgName.trim(),
+      avatarInitials: avatarInitials(contactName.trim()),
+      approvalStatus: "pending",
+      createdAt: now,
+    }, initialToken);
+
     const applicationId = await fsCreate("org_applications", {
+      uid,
       orgName: orgName.trim(),
       contactName: contactName.trim(),
-      email: email.toLowerCase().trim(),
+      email: normalisedEmail,
       sectors,
       website: cleanWebsite,
       socialLinks: hasSocials ? cleanSocials : null,
@@ -118,7 +175,7 @@ router.post("/applications/org", async (req, res) => {
     // Fire-and-forget emails
     Promise.all([
       brevoSendEmail({
-        to: [{ email: email.toLowerCase().trim(), name: contactName.trim() }],
+        to: [{ email: normalisedEmail, name: contactName.trim() }],
         subject: `We've received your application, ${orgName.trim()}`,
         htmlContent: orgApplicationReceivedHtml({ orgName: orgName.trim(), contactName: contactName.trim() }),
       }),
@@ -128,7 +185,7 @@ router.post("/applications/org", async (req, res) => {
         htmlContent: internalNotificationHtml({
           type: "org_application",
           name: contactName.trim(),
-          email: email.toLowerCase().trim(),
+          email: normalisedEmail,
           orgName: orgName.trim(),
           sectors,
           website: cleanWebsite,
@@ -139,7 +196,7 @@ router.post("/applications/org", async (req, res) => {
       console.error("[Brevo] org application email error:", err);
     });
 
-    res.status(201).json({ id: applicationId, status: "pending" });
+    res.status(201).json({ id: applicationId, status: "pending", token: initialToken });
   } catch (err) {
     req.log.error({ err }, "POST /applications/org error");
     res.status(500).json({ error: "Internal server error" });
@@ -193,7 +250,7 @@ router.get("/admin/applications", requireAdmin, async (req, res) => {
 // POST /admin/applications/:id/approve
 router.post("/admin/applications/:id/approve", requireAdmin, async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = String(req.params.id);
     const serverToken = await getServerToken();
 
     // The dashboard sends Firestore's document ID. It is not a field stored
@@ -216,40 +273,14 @@ router.post("/admin/applications/:id/approve", requireAdmin, async (req, res) =>
     const appWebsite = (app.website as string | null) ?? null;
     const appSocialLinks = (app.socialLinks as Record<string, string | null> | null) ?? null;
 
-    // Create Firebase Auth account for the org
-    const tempPassword = generateTempPassword();
-    let uid: string;
-    let initialToken: string;
-    try {
-      const result = await firebaseSignUp(email, tempPassword);
-      uid = result.uid;
-      initialToken = result.idToken;
-    } catch (err: unknown) {
-      const code = (err as { firebaseCode?: string }).firebaseCode ?? "";
-      if (code.includes("EMAIL_EXISTS")) {
-        res.status(409).json({ error: "A Firebase account with this email already exists" });
-      } else {
-        req.log.error({ err }, "firebaseSignUp failed during approval");
-        res.status(500).json({ error: "Failed to create organisation account" });
-      }
+    const uid = app.uid as string | undefined;
+    if (!uid) {
+      res.status(409).json({ error: "This legacy application has no applicant account. Ask the applicant to resubmit." });
       return;
     }
 
-    await firebaseUpdateProfile(initialToken, contactName);
-
     const now = new Date().toISOString();
     const initials = avatarInitials(contactName);
-
-    // Create user doc
-    await fsPatch("users", uid, {
-      uid,
-      name: contactName,
-      email,
-      accountType: "organisation",
-      orgName,
-      avatarInitials: initials,
-      createdAt: now,
-    }, initialToken);
 
     // Create org profile — carry over website and social links from the application
     await fsPatch("organisations", uid, {
@@ -272,6 +303,17 @@ router.post("/admin/applications/:id/approve", requireAdmin, async (req, res) =>
       createdAt: now,
     }, serverToken);
 
+    await fsPatch("users", uid, {
+      uid,
+      name: contactName,
+      email,
+      accountType: "organisation",
+      orgName,
+      avatarInitials: initials,
+      approvalStatus: "approved",
+      approvedAt: now,
+    }, serverToken);
+
     // Update application status
     await fsPatch("org_applications", id, { status: "approved", approvedAt: now, uid }, serverToken);
 
@@ -279,7 +321,7 @@ router.post("/admin/applications/:id/approve", requireAdmin, async (req, res) =>
     brevoSendEmail({
       to: [{ email, name: contactName }],
       subject: `Welcome to Root ProjX, ${orgName}!`,
-      htmlContent: orgAcceptedHtml({ orgName, contactName, email, tempPassword }),
+      htmlContent: orgAcceptedHtml({ orgName, contactName, email }),
     }).catch((err) => console.error("[Brevo] org accepted email error:", err));
 
     res.json({ ok: true, uid });
@@ -292,7 +334,7 @@ router.post("/admin/applications/:id/approve", requireAdmin, async (req, res) =>
 // POST /admin/applications/:id/decline
 router.post("/admin/applications/:id/decline", requireAdmin, async (req, res) => {
   try {
-    const { id } = req.params;
+    const id = String(req.params.id);
     const serverToken = await getServerToken();
 
     // See approval route: `id` is the Firestore document ID, not a stored
@@ -313,6 +355,10 @@ router.post("/admin/applications/:id/decline", requireAdmin, async (req, res) =>
     const now = new Date().toISOString();
 
     await fsPatch("org_applications", id, { status: "declined", declinedAt: now }, serverToken);
+    const uid = typeof app.uid === "string" ? app.uid : null;
+    if (uid) {
+      await fsPatch("users", uid, { approvalStatus: "declined", declinedAt: now }, serverToken);
+    }
 
     // The admin UI does not currently send a request body. Treat it as an
     // empty body so a missing optional decline reason cannot turn a successful

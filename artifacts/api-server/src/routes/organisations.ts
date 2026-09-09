@@ -547,7 +547,11 @@ router.patch("/organisations/:id/campaigns/:campId", requireAuth, async (req, re
       updates["theme"] = parseCampaignTheme(updates["theme"]);
     }
 
-    const merged = { ...allCampaigns[idx], ...updates, updatedAt: new Date().toISOString() };
+    const merged: Record<string, unknown> = {
+      ...allCampaigns[idx],
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    };
     if (merged["enabled"] === true && !PUBLIC_CAMPAIGN_ID_PATTERN.test(String(merged["publicId"] ?? ""))) {
       merged["publicId"] = createPublicCampaignId();
     }

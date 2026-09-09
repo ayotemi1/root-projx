@@ -183,6 +183,7 @@ router.post("/auth/register", authRateLimit, async (req, res) => {
         phone: phone ?? null,
         accountType,
         avatarInitials: initials,
+        approvalStatus: accountType === "organisation" ? "pending" : undefined,
         createdAt: now,
       },
     });
@@ -238,6 +239,7 @@ router.post("/auth/login", authRateLimit, async (req, res) => {
         phone: userData.phone ?? null,
         accountType: userData.accountType,
         avatarInitials: userData.avatarInitials,
+        approvalStatus: userData.approvalStatus ?? null,
         createdAt: userData.createdAt ?? null,
       },
     });
@@ -271,6 +273,7 @@ router.get("/auth/me", requireAuth, async (req, res) => {
       phone: userData.phone ?? null,
       accountType: userData.accountType,
       avatarInitials: userData.avatarInitials,
+      approvalStatus: userData.approvalStatus ?? null,
       createdAt: userData.createdAt ?? null,
     };
     if (userData.accountType === "organisation") {

@@ -51,6 +51,28 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
   return <Component />;
 }
 
+function ApprovedOrganisationRoute({ component: Component }: { component: React.ComponentType }) {
+  const { user, isAuthenticated, isLoading } = useAuth();
+  if (isLoading) return null;
+  if (!isAuthenticated) return <Redirect to="/login" />;
+  if (user?.accountType !== "organisation" || user.approvalStatus !== "approved") {
+    const declined = user?.approvalStatus === "declined";
+    return (
+      <div className="mx-auto max-w-xl px-6 py-20 text-center" data-testid="status-organisation-review">
+        <h1 className="text-3xl font-bold">
+          {declined ? "Your application was not approved" : "Your application is under review"}
+        </h1>
+        <p className="mt-4 text-muted-foreground">
+          {declined
+            ? "Your account remains available, but organisation tools are locked. Check your email for details or contact the Root ProjX team if you have questions."
+            : "Your account is ready, but organisation tools remain locked until the Root ProjX team approves your application. We’ll email you with an update within 5 business days."}
+        </p>
+      </div>
+    );
+  }
+  return <Component />;
+}
+
 function AuthRoute({ component: Component }: { component: React.ComponentType }) {
   const { isAuthenticated, isLoading } = useAuth();
   if (isLoading) return null;
@@ -98,7 +120,7 @@ function AppRoutes() {
                 {() => <ProtectedRoute component={AccountPage} />}
               </Route>
               <Route path="/org-dashboard">
-                {() => <ProtectedRoute component={OrgDashboardPage} />}
+                {() => <ApprovedOrganisationRoute component={OrgDashboardPage} />}
               </Route>
               <Route path="/organisations/:id/campaigns" component={OrgCampaignsPage} />
               <Route path="/organisations/:id/updates" component={OrgUpdatesPage} />
@@ -109,7 +131,7 @@ function AppRoutes() {
               <Route path="/donate/success" component={DonateSuccessPage} />
               <Route path="/donate/:orgId" component={DonatePage} />
               <Route path="/dashboard">
-                {() => <ProtectedRoute component={DashboardPage} />}
+                {() => <ApprovedOrganisationRoute component={DashboardPage} />}
               </Route>
               <Route path="/login">
                 {() => <AuthRoute component={LoginPage} />}

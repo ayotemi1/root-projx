@@ -8,6 +8,7 @@ export interface ApiUser {
   email: string;
   phone: string | null;
   accountType: "supporter" | "organisation";
+  approvalStatus?: "pending" | "approved" | "declined" | null;
   avatarInitials: string;
   createdAt: string | null;
   publicProfileSettings?: PublicProfileSettings;

@@ -202,6 +202,8 @@ export default function OnboardingPage() {
   const [orgName, setOrgName] = useState("");
   const [contactName, setContactName] = useState("");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
   // Step 2 fields
   const [sectors, setSectors] = useState<string[]>([]);
@@ -235,6 +237,7 @@ export default function OnboardingPage() {
           orgName,
           contactName,
           email: email.trim().toLowerCase(),
+          password,
           sectors,
           website: website.trim() || undefined,
           socialLinks,
@@ -281,7 +284,7 @@ export default function OnboardingPage() {
 
             <div style={{ display: "grid", gap: 12, marginBottom: 36 }}>
               {[
-                { icon: ClipboardList, title: "Submit your details", sub: "Complete our short application form (takes about 3 minutes)" },
+                 { icon: ClipboardList, title: "Create your account and apply", sub: "Choose your login details and complete our short application" },
                 { icon: Search, title: "Undergo our review process", sub: "Our team verifies your eligibility within 5 business days" },
                 { icon: Rocket, title: "Receive platform access", sub: "Get approved, create your profile, and start receiving support" },
               ].map(({ icon: Icon, title, sub }) => (
@@ -357,6 +360,34 @@ export default function OnboardingPage() {
               />
             </FieldGroup>
 
+            <FieldGroup label="Create a password" hint="Use at least 6 characters">
+              <input
+                data-testid="input-password"
+                style={inputStyle}
+                type="password"
+                autoComplete="new-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </FieldGroup>
+
+            <FieldGroup label="Confirm password">
+              <input
+                data-testid="input-confirm-password"
+                style={inputStyle}
+                type="password"
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+            </FieldGroup>
+
+            {confirmPassword && password !== confirmPassword && (
+              <p data-testid="error-password-match" style={{ color: RED, fontSize: 13, marginTop: -12, marginBottom: 16 }}>
+                Passwords do not match.
+              </p>
+            )}
+
             {error && (
               <p data-testid="error-message" style={{ color: RED, fontSize: 14, marginTop: -8, marginBottom: 8 }}>{error}</p>
             )}
@@ -365,7 +396,7 @@ export default function OnboardingPage() {
               hideBack
               nextLabel="Next"
               nextTestId="button-next-step1"
-              nextDisabled={!orgName.trim() || !contactName.trim() || !email.trim() || !email.includes("@")}
+              nextDisabled={!orgName.trim() || !contactName.trim() || !email.trim() || !email.includes("@") || password.length < 6 || password !== confirmPassword}
               onNext={() => { setError(""); setStep(2); }}
             />
           </Card>
@@ -511,10 +542,10 @@ export default function OnboardingPage() {
             <div style={{ textAlign: "center" }}>
               <CheckCircle2 size={64} color="#22c55e" style={{ margin: "0 auto 20px" }} />
               <h2 style={{ fontSize: 26, fontWeight: 800, color: "#1a1a1a", marginBottom: 12 }}>
-                Application submitted!
+                 Account created and application submitted!
               </h2>
               <p style={{ fontSize: 15, color: "#555", lineHeight: 1.7, maxWidth: 440, margin: "0 auto 32px" }}>
-                Thank you, <strong>{contactName}</strong>. We've sent a confirmation email to <strong>{email}</strong>.
+                 Thank you, <strong>{contactName}</strong>. Your account is ready and we've sent a confirmation email to <strong>{email}</strong>.
                 Our team will review <strong>{orgName}</strong>'s application and get back to you within 5 business days.
               </p>
 
@@ -523,7 +554,7 @@ export default function OnboardingPage() {
                 {[
                   "Our team reviews your application against our eligibility criteria",
                   "You receive an acceptance or decline email within 5 business days",
-                  "If approved, you receive instructions to access your organisation dashboard",
+                   "You can sign in now, but organisation tools stay locked until approval",
                 ].map((item, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: i < 2 ? 10 : 0 }}>
                     <span style={{ width: 22, height: 22, borderRadius: "50%", background: RED_DEEP, color: GOLD, fontSize: 12, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>{i + 1}</span>

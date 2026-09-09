@@ -256,6 +256,9 @@ export function orgApplicationReceivedHtml(opts: { orgName: string; contactName:
           <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 16px;">
             We've received your application for <strong>${escapeHtml(orgName)}</strong> and our team will now review it. This helps us make sure every organisation on the platform is verified and ready to receive support directly from our diaspora community.
           </p>
+          <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 16px;">
+            Your login account has been created. You can sign in while you wait, but organisation tools will remain locked until your application is approved.
+          </p>
           <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 32px;">
             We'll be in touch soon with an update. In the meantime, if you have any questions, just reply to this email.
           </p>
@@ -273,8 +276,8 @@ export function orgApplicationReceivedHtml(opts: { orgName: string; contactName:
 </body></html>`.trim();
 }
 
-export function orgAcceptedHtml(opts: { orgName: string; contactName: string; email: string; tempPassword: string }): string {
-  const { orgName, contactName, email, tempPassword } = opts;
+export function orgAcceptedHtml(opts: { orgName: string; contactName: string; email: string }): string {
+  const { orgName, contactName, email } = opts;
   return `
 <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#f5f5f5;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
@@ -293,14 +296,9 @@ export function orgAcceptedHtml(opts: { orgName: string; contactName: string; em
           <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 24px;">
             You now have access to your organisation's profile, where you can share updates on your work, receive donations directly from supporters, and give our diaspora community full visibility into the impact of their support. This is the start of a direct, transparent connection between your work and the people who want to support it.
           </p>
-          <table cellpadding="0" cellspacing="0" width="100%" style="background:#f9f6f0;border:1px solid #E0D8CC;border-radius:6px;margin:0 0 24px;">
-            <tr><td style="padding:20px;">
-              <p style="margin:0 0 12px;font-size:14px;font-weight:700;color:#1a1a1a;">Your login details</p>
-              <p style="margin:0 0 6px;font-size:14px;color:#444;"><strong>Email:</strong> ${escapeHtml(email)}</p>
-              <p style="margin:0 0 12px;font-size:14px;color:#444;"><strong>Temporary password:</strong> <code style="background:#eee;padding:2px 6px;border-radius:3px;">${escapeHtml(tempPassword)}</code></p>
-              <p style="margin:0;font-size:13px;color:#888;">Please change your password after your first login.</p>
-            </td></tr>
-          </table>
+          <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 24px;">
+            Sign in with <strong>${escapeHtml(email)}</strong> and the password you created when applying.
+          </p>
           <table cellpadding="0" cellspacing="0" width="100%"><tr><td align="center">
             <a href="https://rootprojx.com/login" style="display:inline-block;background:#B50000;color:#F5B800;text-decoration:none;font-size:15px;font-weight:700;padding:14px 32px;border-radius:6px;">
               Sign In to Your Dashboard →
