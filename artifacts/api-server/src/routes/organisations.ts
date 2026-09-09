@@ -144,7 +144,11 @@ router.get("/organisations", async (req, res) => {
     } else {
       orgs = await fsList("organisations", token);
     }
-    res.json(orgs.map(({ campaigns: _campaigns, ...org }) => org));
+    res.json(
+      orgs
+        .filter((org) => typeof org["name"] === "string" && org["name"].trim().length > 0)
+        .map(({ campaigns: _campaigns, ...org }) => org),
+    );
   } catch (err) {
     req.log.error({ err }, "GET /organisations error");
     res.status(500).json({ error: "Failed to fetch organisations" });

@@ -454,11 +454,15 @@ export default function DiscoverPage() {
       api.getOrganisations(category !== "All Causes" ? { category } : undefined),
   });
 
-  const filtered = orgs.filter((o) => {
+  const publicOrgs = orgs.filter(
+    (o) => typeof o.name === "string" && o.name.trim().length > 0,
+  );
+
+  const filtered = publicOrgs.filter((o) => {
     const matchesSearch =
-      o.name.toLowerCase().includes(search.toLowerCase()) ||
+      (o.name ?? "").toLowerCase().includes(search.toLowerCase()) ||
       (o.city ?? "").toLowerCase().includes(search.toLowerCase()) ||
-      o.country.toLowerCase().includes(search.toLowerCase());
+      (o.country ?? "").toLowerCase().includes(search.toLowerCase());
     const matchesLocation =
       locationFilter === "All" || o.country === locationFilter;
     return matchesSearch && matchesLocation;
