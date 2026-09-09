@@ -16,7 +16,7 @@ interface AuthContextValue {
   token: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<ApiUser>;
   register: (data: {
     name: string;
     email: string;
@@ -52,6 +52,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem(TOKEN_KEY, res.token);
     setToken(res.token);
     setUser(res.user);
+    return res.user;
   }, []);
 
   const register = useCallback(

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { CheckCircle2, ChevronRight, ChevronLeft } from "lucide-react";
+import { CheckCircle2, ChevronRight, ChevronLeft, Sprout, ClipboardList, Search, Rocket } from "lucide-react";
 
 const RED_DEEP = "#7A0000";
 const RED = "#B50000";
@@ -110,17 +110,18 @@ const inputStyle: React.CSSProperties = {
   fontFamily: "inherit",
 };
 
-/** Input with a fixed prefix label (e.g. "@" or "instagram.com/") */
 function PrefixInput({
   prefix,
   placeholder,
   value,
   onChange,
+  testId,
 }: {
   prefix: string;
   placeholder: string;
   value: string;
   onChange: (v: string) => void;
+  testId?: string;
 }) {
   return (
     <div style={{ display: "flex", alignItems: "center", border: "1.5px solid #e0d8cc", borderRadius: 8, background: "#fafaf8", overflow: "hidden" }}>
@@ -128,6 +129,7 @@ function PrefixInput({
         {prefix}
       </span>
       <input
+        data-testid={testId}
         style={{ ...inputStyle, border: "none", borderRadius: 0, background: "transparent", flex: 1 }}
         type="text"
         placeholder={placeholder}
@@ -145,6 +147,7 @@ function NavButtons({
   nextDisabled = false,
   loading = false,
   hideBack = false,
+  nextTestId = "button-next",
 }: {
   onBack?: () => void;
   onNext?: () => void;
@@ -152,11 +155,13 @@ function NavButtons({
   nextDisabled?: boolean;
   loading?: boolean;
   hideBack?: boolean;
+  nextTestId?: string;
 }) {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 32 }}>
       {!hideBack && onBack ? (
         <button
+          data-testid="button-back"
           onClick={onBack}
           style={{
             display: "flex", alignItems: "center", gap: 6,
@@ -168,6 +173,7 @@ function NavButtons({
         </button>
       ) : <span />}
       <button
+        data-testid={nextTestId}
         onClick={onNext}
         disabled={nextDisabled || loading}
         style={{
@@ -259,28 +265,28 @@ export default function OnboardingPage() {
           <Card>
             <div style={{ textAlign: "center", marginBottom: 40 }}>
               <div style={{
-                width: 72, height: 72, borderRadius: "50%", background: RED_DEEP,
+                width: 72, height: 72, borderRadius: "50%", background: RED_DEEP, color: GOLD,
                 display: "flex", alignItems: "center", justifyContent: "center",
                 margin: "0 auto 20px",
               }}>
-                <span style={{ fontSize: 34 }}>🌱</span>
+                <Sprout size={36} strokeWidth={2.5} />
               </div>
               <h1 style={{ fontSize: 30, fontWeight: 900, color: "#1a1a1a", marginBottom: 12 }}>
-                List your organisation on Root ProjX
+                Apply to list your organisation
               </h1>
               <p style={{ fontSize: 16, color: "#555", lineHeight: 1.7, maxWidth: 480, margin: "0 auto 32px" }}>
-                Connect with diaspora supporters, receive donations, and share your impact with a growing global community.
+                Submit your organisation for review. Once verified, you'll gain access to the platform to connect with diaspora supporters, receive donations, and share your impact.
               </p>
             </div>
 
             <div style={{ display: "grid", gap: 12, marginBottom: 36 }}>
               {[
-                ["📋", "Fill in a short questionnaire", "Takes about 3 minutes"],
-                ["🔍", "We review your application", "Within 5 business days"],
-                ["🚀", "Get listed and start receiving support", "Access granted on approval"],
-              ].map(([icon, title, sub]) => (
+                { icon: ClipboardList, title: "Submit your details", sub: "Complete our short application form (takes about 3 minutes)" },
+                { icon: Search, title: "Undergo our review process", sub: "Our team verifies your eligibility within 5 business days" },
+                { icon: Rocket, title: "Receive platform access", sub: "Get approved, create your profile, and start receiving support" },
+              ].map(({ icon: Icon, title, sub }) => (
                 <div key={title} style={{ display: "flex", alignItems: "flex-start", gap: 16, background: "#f9f6f0", borderRadius: 10, padding: "16px 20px" }}>
-                  <span style={{ fontSize: 22, lineHeight: 1 }}>{icon}</span>
+                  <Icon size={24} color={RED} style={{ marginTop: 2 }} />
                   <div>
                     <p style={{ margin: 0, fontWeight: 700, fontSize: 15, color: "#1a1a1a" }}>{title}</p>
                     <p style={{ margin: "2px 0 0", fontSize: 13, color: "#888" }}>{sub}</p>
@@ -291,6 +297,7 @@ export default function OnboardingPage() {
 
             <div style={{ textAlign: "center" }}>
               <button
+                data-testid="button-begin-application"
                 onClick={() => setStep(1)}
                 style={{
                   background: RED, color: "#fff", border: "none", borderRadius: 10,
@@ -300,9 +307,11 @@ export default function OnboardingPage() {
               >
                 Begin application <ChevronRight size={18} />
               </button>
-              <p style={{ marginTop: 16, fontSize: 13, color: "#999" }}>
-                Already a supporter?{" "}
-                <a href="/register" style={{ color: RED, textDecoration: "none", fontWeight: 600 }}>Create a supporter account</a>
+              <p style={{ marginTop: 24, fontSize: 14, color: "#666" }}>
+                Looking to support instead?{" "}
+                <a href="/register" style={{ color: RED, textDecoration: "none", fontWeight: 700 }} data-testid="link-register">
+                  Create a supporter account
+                </a>
               </p>
             </div>
           </Card>
@@ -311,11 +320,12 @@ export default function OnboardingPage() {
         {/* ── Step 1: Organisation details ────────────────────────────── */}
         {step === 1 && (
           <Card>
-            <StepHeading>Tell us about your organisation</StepHeading>
-            <StepSub>We'll use these details to review your application and get in touch.</StepSub>
+            <StepHeading>Organisation details</StepHeading>
+            <StepSub>We'll use these details to review your application and communicate our decision.</StepSub>
 
             <FieldGroup label="Organisation name">
               <input
+                data-testid="input-org-name"
                 style={inputStyle}
                 type="text"
                 placeholder="e.g. Kingston Youth Foundation"
@@ -327,6 +337,7 @@ export default function OnboardingPage() {
 
             <FieldGroup label="Point of contact (your name)">
               <input
+                data-testid="input-contact-name"
                 style={inputStyle}
                 type="text"
                 placeholder="e.g. Maria Campbell"
@@ -337,6 +348,7 @@ export default function OnboardingPage() {
 
             <FieldGroup label="Email address">
               <input
+                data-testid="input-email"
                 style={inputStyle}
                 type="email"
                 placeholder="e.g. hello@yourorg.com"
@@ -346,12 +358,13 @@ export default function OnboardingPage() {
             </FieldGroup>
 
             {error && (
-              <p style={{ color: RED, fontSize: 14, marginTop: -8, marginBottom: 8 }}>{error}</p>
+              <p data-testid="error-message" style={{ color: RED, fontSize: 14, marginTop: -8, marginBottom: 8 }}>{error}</p>
             )}
 
             <NavButtons
               hideBack
               nextLabel="Next"
+              nextTestId="button-next-step1"
               nextDisabled={!orgName.trim() || !contactName.trim() || !email.trim() || !email.includes("@")}
               onNext={() => { setError(""); setStep(2); }}
             />
@@ -370,6 +383,7 @@ export default function OnboardingPage() {
                 return (
                   <button
                     key={s}
+                    data-testid={`button-sector-${s.replace(/[^a-z0-9]/gi, '').toLowerCase()}`}
                     onClick={() => toggleSector(s)}
                     style={{
                       padding: "12px 16px",
@@ -397,12 +411,13 @@ export default function OnboardingPage() {
             )}
 
             {error && (
-              <p style={{ color: RED, fontSize: 14, marginTop: 8 }}>{error}</p>
+              <p data-testid="error-message" style={{ color: RED, fontSize: 14, marginTop: 8 }}>{error}</p>
             )}
 
             <NavButtons
               onBack={() => setStep(1)}
               nextLabel="Next"
+              nextTestId="button-next-step2"
               nextDisabled={sectors.length === 0}
               onNext={() => { setError(""); setStep(3); }}
             />
@@ -420,6 +435,7 @@ export default function OnboardingPage() {
 
             <FieldGroup label="Website" hint="Your organisation's main website, if you have one">
               <input
+                data-testid="input-website"
                 style={inputStyle}
                 type="url"
                 placeholder="https://yourorg.com"
@@ -437,6 +453,7 @@ export default function OnboardingPage() {
 
             <FieldGroup label="Instagram">
               <PrefixInput
+                testId="input-instagram"
                 prefix="instagram.com/"
                 placeholder="yourorghandle"
                 value={instagram}
@@ -446,6 +463,7 @@ export default function OnboardingPage() {
 
             <FieldGroup label="Facebook">
               <PrefixInput
+                testId="input-facebook"
                 prefix="facebook.com/"
                 placeholder="YourOrgPage"
                 value={facebook}
@@ -455,6 +473,7 @@ export default function OnboardingPage() {
 
             <FieldGroup label="X / Twitter">
               <PrefixInput
+                testId="input-twitter"
                 prefix="x.com/"
                 placeholder="yourorghandle"
                 value={twitter}
@@ -464,6 +483,7 @@ export default function OnboardingPage() {
 
             <FieldGroup label="LinkedIn">
               <PrefixInput
+                testId="input-linkedin"
                 prefix="linkedin.com/company/"
                 placeholder="your-org-name"
                 value={linkedin}
@@ -472,12 +492,13 @@ export default function OnboardingPage() {
             </FieldGroup>
 
             {error && (
-              <p style={{ color: RED, fontSize: 14, marginTop: 8 }}>{error}</p>
+              <p data-testid="error-message" style={{ color: RED, fontSize: 14, marginTop: 8 }}>{error}</p>
             )}
 
             <NavButtons
               onBack={() => setStep(2)}
               nextLabel="Submit application"
+              nextTestId="button-submit-application"
               loading={loading}
               onNext={handleSubmit}
             />
@@ -500,9 +521,9 @@ export default function OnboardingPage() {
               <div style={{ background: "#f9f6f0", borderRadius: 12, padding: "24px 28px", marginBottom: 32, textAlign: "left" }}>
                 <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.05em" }}>What happens next</p>
                 {[
-                  "Our team reviews your application",
-                  "You receive an acceptance or decline email",
-                  "If approved, you get access to your organisation profile",
+                  "Our team reviews your application against our eligibility criteria",
+                  "You receive an acceptance or decline email within 5 business days",
+                  "If approved, you receive instructions to access your organisation dashboard",
                 ].map((item, i) => (
                   <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: i < 2 ? 10 : 0 }}>
                     <span style={{ width: 22, height: 22, borderRadius: "50%", background: RED_DEEP, color: GOLD, fontSize: 12, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>{i + 1}</span>
@@ -517,13 +538,14 @@ export default function OnboardingPage() {
               </p>
 
               <button
+                data-testid="button-back-to-home"
                 onClick={() => setLocation("/")}
                 style={{
                   background: RED_DEEP, color: "#fff", border: "none", borderRadius: 10,
                   padding: "12px 32px", fontSize: 15, fontWeight: 700, cursor: "pointer",
                 }}
               >
-                Back to home
+                Return to home
               </button>
             </div>
           </Card>

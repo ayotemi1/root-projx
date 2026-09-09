@@ -20,8 +20,12 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
     try {
-      await login(email.trim().toLowerCase(), password);
-      navigate("/feed");
+      const loggedInUser = await login(email.trim().toLowerCase(), password);
+      if (loggedInUser.accountType === "organisation") {
+        navigate("/dashboard");
+      } else {
+        navigate("/feed");
+      }
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Login failed.");
     } finally {

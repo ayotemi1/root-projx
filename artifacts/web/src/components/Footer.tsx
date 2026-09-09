@@ -86,8 +86,9 @@ export default function Footer() {
           <div>
             <p className="font-bold text-sm text-foreground mb-3 uppercase tracking-wide">Account</p>
             <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><a href="/register" className="hover:text-primary transition-colors">Join Root ProjX</a></li>
-              <li><a href="/login" className="hover:text-primary transition-colors">Sign In</a></li>
+              <li><a href="/register" className="hover:text-primary transition-colors" data-testid="footer-link-join">Join as Supporter</a></li>
+              <li><a href="/onboarding" className="hover:text-primary transition-colors" data-testid="footer-link-apply">Apply as Organisation</a></li>
+              <li><a href="/login" className="hover:text-primary transition-colors" data-testid="footer-link-login">Sign In</a></li>
               <li><a href="/account" className="hover:text-primary transition-colors">My Account</a></li>
             </ul>
           </div>

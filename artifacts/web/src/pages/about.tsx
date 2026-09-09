@@ -183,8 +183,9 @@ export default function AboutPage() {
               size="lg"
               className="font-bold text-black border-0"
               style={{ backgroundColor: "#F5C000" }}
+              data-testid="button-about-join"
             >
-              Join Root ProjX
+              Join as a Supporter
             </Button>
           </Link>
           <Link href="/discover">

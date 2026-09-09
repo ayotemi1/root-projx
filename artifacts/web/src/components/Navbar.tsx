@@ -122,9 +122,9 @@ export default function Navbar() {
           ) : (
             <>
               {/* Org CTA — subtle, logged-out only */}
-              <Link href="/register?type=org">
-                <span className="text-xs text-white/60 hover:text-white transition-colors cursor-pointer whitespace-nowrap">
-                  Are you an organisation?
+              <Link href="/onboarding">
+                <span className="text-xs text-white/60 hover:text-white transition-colors cursor-pointer whitespace-nowrap" data-testid="nav-link-apply">
+                  Apply as an organisation
                 </span>
               </Link>
 
@@ -218,9 +218,9 @@ export default function Navbar() {
             ) : (
               <>
                 {/* Org CTA in mobile menu */}
-                <Link href="/register?type=org" onClick={() => setMobileOpen(false)}>
-                  <span className="block px-3 py-2 text-xs text-white/60 hover:text-white transition-colors rounded-md">
-                    Are you an organisation?
+                <Link href="/onboarding" onClick={() => setMobileOpen(false)}>
+                  <span className="block px-3 py-2 text-xs text-white/60 hover:text-white transition-colors rounded-md" data-testid="nav-mobile-link-apply">
+                    Apply as an organisation
                   </span>
                 </Link>
                 <Link href="/login" onClick={() => setMobileOpen(false)}>
