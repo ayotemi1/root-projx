@@ -312,6 +312,51 @@ function createPublicCampaignId(): string {
   return `cp_${randomUUID().replace(/-/g, "").slice(0, 24)}`;
 }
 
+function slugifyPublicName(value: unknown, fallback: string): string {
+  const slug = String(value ?? "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 70);
+  return slug || fallback;
+}
+
+export function campaignSharePath(
+  org: Record<string, unknown>,
+  campaign: Record<string, unknown>,
+): { organisationSlug: string; campaignSlug: string; sharePath: string } {
+  const orgId = String(org["_id"] ?? "").slice(-6).toLowerCase();
+  const campaignId = String(campaign["_id"] ?? campaign["publicId"] ?? "").slice(-6).toLowerCase();
+  const storedOrganisationSlug =
+    typeof campaign["organisationSlug"] === "string" ? campaign["organisationSlug"] : "";
+  const storedCampaignSlug =
+    typeof campaign["campaignSlug"] === "string" ? campaign["campaignSlug"] : "";
+  const organisationSlug =
+    storedOrganisationSlug && orgId && storedOrganisationSlug.endsWith(`-${orgId}`)
+      ? storedOrganisationSlug
+      : `${slugifyPublicName(org["name"], "organisation")}-${orgId}`;
+  const campaignSlug =
+    storedCampaignSlug && campaignId && storedCampaignSlug.endsWith(`-${campaignId}`)
+      ? storedCampaignSlug
+      : `${slugifyPublicName(campaign["name"], "campaign")}-${campaignId}`;
+  return {
+    organisationSlug,
+    campaignSlug,
+    sharePath: `/campaigns/${organisationSlug}/${campaignSlug}`,
+  };
+}
+
+function organisationDisplayName(
+  org: Record<string, unknown>,
+  owner?: Record<string, unknown> | null,
+): string {
+  if (typeof org["name"] === "string" && org["name"].trim()) return org["name"];
+  if (typeof owner?.["orgName"] === "string" && owner["orgName"].trim()) return owner["orgName"];
+  return "Community organisation";
+}
+
 function publicCampaignFields(campaign: Record<string, unknown>): Record<string, unknown> {
   return {
     _id: campaign["_id"],
@@ -330,6 +375,9 @@ function publicCampaignFields(campaign: Record<string, unknown>): Record<string,
     createdAt: campaign["createdAt"] ?? null,
     updatedAt: campaign["updatedAt"] ?? null,
     theme: parseCampaignTheme(campaign["theme"]),
+    organisationSlug: campaign["organisationSlug"] ?? null,
+    campaignSlug: campaign["campaignSlug"] ?? null,
+    sharePath: campaign["sharePath"] ?? null,
   };
 }
 
@@ -362,7 +410,11 @@ router.get("/organisations/:id/campaigns/manage", requireAuth, async (req, res) 
       res.status(404).json({ error: "Organisation not found" });
       return;
     }
-    const campaigns = (await getStoredCampaigns(orgId)).filter((campaign) => campaign["status"] !== "deleted");
+    const owner = await fsGet("users", orgId, token);
+    const orgWithIdentity = { ...org, _id: orgId, name: organisationDisplayName(org, owner) };
+    const campaigns = (await getStoredCampaigns(orgId))
+      .filter((campaign) => campaign["status"] !== "deleted")
+      .map((campaign) => ({ ...campaign, ...campaignSharePath(orgWithIdentity, campaign) }));
     res.json(campaigns);
   } catch (err) {
     req.log.error({ err }, "GET /organisations/:id/campaigns/manage error");
@@ -373,9 +425,21 @@ router.get("/organisations/:id/campaigns/manage", requireAuth, async (req, res) 
 // GET /organisations/:id/campaigns — public, published campaign summaries only
 router.get("/organisations/:id/campaigns", async (req, res) => {
   try {
-    const campaigns = (await getStoredCampaigns(req.params.id!))
+    const orgId = req.params.id!;
+    const token = await getServerToken();
+    const org = await fsGet("organisations", orgId, token);
+    if (!org) {
+      res.status(404).json({ error: "Organisation not found" });
+      return;
+    }
+    const owner = await fsGet("users", orgId, token);
+    const orgWithIdentity = { ...org, _id: orgId, name: organisationDisplayName(org, owner) };
+    const campaigns = (await getStoredCampaigns(orgId))
       .filter((campaign) => campaign["enabled"] === true && campaign["status"] !== "deleted")
-      .map(publicCampaignFields);
+      .map((campaign) => publicCampaignFields({
+        ...campaign,
+        ...campaignSharePath(orgWithIdentity, campaign),
+      }));
     res.json(campaigns);
   } catch (err) {
     req.log.error({ err }, "GET /organisations/:id/campaigns error");
@@ -383,7 +447,65 @@ router.get("/organisations/:id/campaigns", async (req, res) => {
   }
 });
 
-// GET /campaigns/landing/:publicId — public, enabled campaign landing page
+export async function findPublicCampaign(
+  predicate: (campaign: Record<string, unknown>, org: Record<string, unknown>) => boolean,
+) {
+  const token = await getServerToken();
+  const organisations = await fsList("organisations", token);
+  for (const org of organisations) {
+    const campaigns = Array.isArray(org["campaigns"])
+      ? (org["campaigns"] as Record<string, unknown>[])
+      : [];
+    const owner = await fsGet("users", String(org["_id"]), token);
+    const organisationName = organisationDisplayName(org, owner);
+    const orgWithIdentity = { ...org, name: organisationName };
+    const campaign = campaigns.find(
+      (candidate) =>
+        candidate["enabled"] === true &&
+        candidate["status"] !== "deleted" &&
+        predicate(candidate, orgWithIdentity),
+    );
+    if (!campaign) continue;
+    const share = campaignSharePath(orgWithIdentity, campaign);
+    return {
+      campaign: publicCampaignFields({ ...campaign, ...share }),
+      organisation: {
+        _id: org["_id"],
+        name: organisationName,
+        country: org["country"] ?? "",
+        city: org["city"] ?? null,
+        category: org["category"] ?? "",
+        description: org["description"] ?? "",
+        logo: org["logo"] ?? null,
+        coverImage: org["coverImage"] ?? null,
+        verified: org["verified"] === true,
+      },
+    };
+  }
+  return null;
+}
+
+// GET /campaigns/landing/:organisationSlug/:campaignSlug — human-readable public route
+router.get("/campaigns/landing/:organisationSlug/:campaignSlug", async (req, res) => {
+  try {
+    const organisationSlug = req.params.organisationSlug!;
+    const campaignSlug = req.params.campaignSlug!;
+    const landing = await findPublicCampaign((candidate, org) => {
+      const share = campaignSharePath(org, candidate);
+      return share.organisationSlug === organisationSlug && share.campaignSlug === campaignSlug;
+    });
+    if (!landing) {
+      res.status(404).json({ error: "Campaign not found" });
+      return;
+    }
+    res.json(landing);
+  } catch (err) {
+    req.log.error({ err }, "GET human-readable campaign landing error");
+    res.status(500).json({ error: "Failed to fetch campaign landing page" });
+  }
+});
+
+// GET /campaigns/landing/:publicId — stable legacy public route
 router.get("/campaigns/landing/:publicId", async (req, res) => {
   try {
     const publicId = req.params.publicId!;
@@ -392,45 +514,12 @@ router.get("/campaigns/landing/:publicId", async (req, res) => {
       return;
     }
 
-    const token = await getServerToken();
-    const organisations = await fsList("organisations", token);
-    for (const org of organisations) {
-      const campaigns = Array.isArray(org["campaigns"])
-        ? (org["campaigns"] as Record<string, unknown>[])
-        : [];
-      const campaign = campaigns.find(
-        (candidate) =>
-          candidate["publicId"] === publicId &&
-          candidate["enabled"] === true &&
-          candidate["status"] !== "deleted",
-      );
-      if (!campaign) continue;
-      const owner = await fsGet("users", String(org["_id"]), token);
-      const organisationName =
-        typeof org["name"] === "string" && org["name"].trim()
-          ? org["name"]
-          : typeof owner?.["orgName"] === "string" && owner["orgName"].trim()
-            ? owner["orgName"]
-            : "Community organisation";
-
-      res.json({
-        campaign: publicCampaignFields(campaign),
-        organisation: {
-          _id: org["_id"],
-          name: organisationName,
-          country: org["country"] ?? "",
-          city: org["city"] ?? null,
-          category: org["category"] ?? "",
-          description: org["description"] ?? "",
-          logo: org["logo"] ?? null,
-          coverImage: org["coverImage"] ?? null,
-          verified: org["verified"] === true,
-        },
-      });
+    const landing = await findPublicCampaign((candidate) => candidate["publicId"] === publicId);
+    if (!landing) {
+      res.status(404).json({ error: "Campaign not found" });
       return;
     }
-
-    res.status(404).json({ error: "Campaign not found" });
+    res.json(landing);
   } catch (err) {
     req.log.error({ err }, "GET /campaigns/landing/:publicId error");
     res.status(500).json({ error: "Failed to fetch campaign landing page" });
@@ -452,6 +541,12 @@ router.post("/organisations/:id/campaigns", requireAuth, async (req, res) => {
       res.status(404).json({ error: "Organisation not found" });
       return;
     }
+    const owner = await fsGet("users", orgId, serverToken);
+    const orgWithIdentity = {
+      ...org,
+      _id: orgId,
+      name: organisationDisplayName(org, owner),
+    };
 
     const { name, description, type, goal, volunteersNeeded, deadline, imageUrl, phases } =
       req.body as Record<string, unknown>;
@@ -466,10 +561,13 @@ router.post("/organisations/:id/campaigns", requireAuth, async (req, res) => {
     }
 
     const now = new Date().toISOString();
+    const campaignId = randomUUID().replace(/-/g, "").slice(0, 20);
+    const share = campaignSharePath(orgWithIdentity, { _id: campaignId, name });
     const newCampaign: Record<string, unknown> = {
-      _id: randomUUID().replace(/-/g, "").slice(0, 20),
-        publicId: createPublicCampaignId(),
-        enabled: false,
+      _id: campaignId,
+      publicId: createPublicCampaignId(),
+      enabled: false,
+      ...share,
       name: name.trim().slice(0, 200),
       description: description.trim().slice(0, 2000),
       type: type === "volunteer" ? "volunteer" : "fundraising",
@@ -480,7 +578,7 @@ router.post("/organisations/:id/campaigns", requireAuth, async (req, res) => {
       deadline: typeof deadline === "string" && deadline ? deadline : null,
       imageUrl: typeof imageUrl === "string" && imageUrl ? imageUrl : null,
       phases: parsePhases(phases),
-        theme: { ...DEFAULT_CAMPAIGN_THEME },
+      theme: { ...DEFAULT_CAMPAIGN_THEME },
       createdAt: now,
       updatedAt: now,
     };
@@ -512,6 +610,12 @@ router.patch("/organisations/:id/campaigns/:campId", requireAuth, async (req, re
       res.status(404).json({ error: "Organisation not found" });
       return;
     }
+    const owner = await fsGet("users", orgId, serverToken);
+    const orgWithIdentity = {
+      ...org,
+      _id: orgId,
+      name: organisationDisplayName(org, owner),
+    };
     const allCampaigns = Array.isArray(org["campaigns"]) ? org["campaigns"] as Record<string, unknown>[] : [];
     const idx = allCampaigns.findIndex((c) => c._id === campId && c["status"] !== "deleted");
     if (idx === -1) {
@@ -534,7 +638,6 @@ router.patch("/organisations/:id/campaigns/:campId", requireAuth, async (req, re
       return;
     }
     if (updates["enabled"] === true) {
-      const owner = await fsGet("users", orgId, serverToken);
       const hasPublicOrganisationName =
         (typeof org?.["name"] === "string" && org["name"].trim()) ||
         (typeof owner?.["orgName"] === "string" && owner["orgName"].trim());
@@ -554,6 +657,9 @@ router.patch("/organisations/:id/campaigns/:campId", requireAuth, async (req, re
     };
     if (merged["enabled"] === true && !PUBLIC_CAMPAIGN_ID_PATTERN.test(String(merged["publicId"] ?? ""))) {
       merged["publicId"] = createPublicCampaignId();
+    }
+    if (merged["enabled"] === true) {
+      Object.assign(merged, campaignSharePath(orgWithIdentity, merged));
     }
     if (!merged["theme"]) merged["theme"] = { ...DEFAULT_CAMPAIGN_THEME };
     allCampaigns[idx] = merged;

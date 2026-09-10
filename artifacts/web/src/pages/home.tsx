@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { Heart, MessageCircle, HandHeart } from "lucide-react";
+import { Heart, MessageCircle, HandHeart, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import * as api from "@/lib/api";
@@ -95,7 +95,7 @@ function PostCard({ post }: { post: FeedUpdate }) {
           rel="noopener noreferrer"
           className="flex items-center justify-center gap-3 w-full h-36 bg-secondary border-b border-border text-foreground/70 hover:text-foreground transition-colors"
         >
-          <span className="text-3xl">🎬</span>
+          <Video className="w-8 h-8 text-muted-foreground" />
           <span className="text-sm font-semibold">Watch video</span>
         </a>
       )}

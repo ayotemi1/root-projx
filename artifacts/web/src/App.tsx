@@ -91,6 +91,8 @@ function AppRoutes() {
       <Route path="/" component={LandingPage} />
 
       {/* Campaign Landing page — standalone */}
+      <Route path="/campaign/:organisationSlug/:campaignSlug" component={CampaignLandingPage} />
+      <Route path="/campaigns/:organisationSlug/:campaignSlug" component={CampaignLandingPage} />
       <Route path="/campaigns/:publicId" component={CampaignLandingPage} />
 
       {/* Org onboarding — standalone questionnaire */}

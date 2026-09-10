@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
+import { Video } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -87,7 +88,7 @@ function UpdateCard({ item }: { item: FeedUpdate }) {
           onClick={(e) => e.stopPropagation()}
           className="flex items-center justify-center gap-3 w-full h-40 bg-secondary border-b border-border text-foreground/70 hover:text-foreground transition-colors"
         >
-          <span className="text-4xl">🎬</span>
+          <Video className="w-8 h-8 text-muted-foreground" />
           <span className="text-sm font-semibold">Watch video</span>
         </a>
       )}
@@ -122,9 +123,9 @@ function UpdateCard({ item }: { item: FeedUpdate }) {
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={(e) => e.stopPropagation()}
-                  className="w-14 h-14 bg-secondary rounded-lg flex items-center justify-center text-lg border border-border flex-shrink-0"
+                  className="w-14 h-14 bg-secondary rounded-lg flex items-center justify-center border border-border flex-shrink-0"
                 >
-                  🎬
+                  <Video className="w-5 h-5 text-muted-foreground" />
                 </a>
               ) : (
                 <img

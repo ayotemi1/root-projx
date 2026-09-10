@@ -5,7 +5,7 @@ import {
   Heart, Share2, MapPin, CheckCircle, Clock, 
   Target, Users, ArrowRight, ShieldCheck, ChevronRight
 } from "lucide-react";
-import { getPublicCampaignLanding } from "@/lib/api";
+import { getPublicCampaignLanding, getPublicCampaignLandingBySlug } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { GuestDonateSheet } from "@/components/GuestDonateSheet";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -21,7 +21,7 @@ function timeAgo(iso: string): string {
 }
 
 export default function CampaignLandingPage() {
-  const params = useParams<{ publicId: string }>();
+  const params = useParams<{ publicId?: string; organisationSlug?: string; campaignSlug?: string }>();
   const [, setLocation] = useLocation();
   const [donateOpen, setDonateOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -33,10 +33,58 @@ export default function CampaignLandingPage() {
   }, []);
 
   const { data: landing, isLoading, isError } = useQuery({
-    queryKey: ["campaign-landing", params?.publicId],
-    queryFn: () => getPublicCampaignLanding(params?.publicId ?? ""),
-    enabled: !!params?.publicId,
+    queryKey: ["campaign-landing", params?.publicId, params?.organisationSlug, params?.campaignSlug],
+    queryFn: () =>
+      params?.organisationSlug && params?.campaignSlug
+        ? getPublicCampaignLandingBySlug(params.organisationSlug, params.campaignSlug)
+        : getPublicCampaignLanding(params?.publicId ?? ""),
+    enabled: !!params?.publicId || (!!params?.organisationSlug && !!params?.campaignSlug),
   });
+
+  useEffect(() => {
+    if (!landing) return;
+    const { campaign, organisation } = landing;
+    const title = `${campaign.name} — ${organisation.name}`;
+    const description = campaign.description.slice(0, 180);
+    document.title = title;
+
+    const previous = new Map<string, string | null>();
+    const setMeta = (selector: string, attr: "name" | "property", key: string, content: string) => {
+      let tag = document.head.querySelector<HTMLMetaElement>(selector);
+      previous.set(selector, tag?.getAttribute("content") ?? null);
+      if (!tag) {
+        tag = document.createElement("meta");
+        tag.setAttribute(attr, key);
+        document.head.appendChild(tag);
+      }
+      tag.setAttribute("content", content);
+    };
+    setMeta('meta[name="description"]', "name", "description", description);
+    setMeta('meta[property="og:title"]', "property", "og:title", title);
+    setMeta('meta[property="og:description"]', "property", "og:description", description);
+    setMeta('meta[property="og:type"]', "property", "og:type", "website");
+    setMeta('meta[property="og:url"]', "property", "og:url", window.location.href);
+    if (campaign.imageUrl) {
+      setMeta('meta[property="og:image"]', "property", "og:image", new URL(campaign.imageUrl, window.location.origin).href);
+    }
+
+    return () => {
+      document.title = "Root ProjX";
+      previous.forEach((content, selector) => {
+        const tag = document.head.querySelector<HTMLMetaElement>(selector);
+        if (!tag) return;
+        if (content === null) tag.remove();
+        else tag.setAttribute("content", content);
+      });
+    };
+  }, [landing]);
+
+  useEffect(() => {
+    const readablePath = landing?.campaign.sharePath;
+    if (params?.publicId && readablePath && window.location.pathname !== readablePath) {
+      window.history.replaceState(null, "", readablePath);
+    }
+  }, [landing?.campaign.sharePath, params?.publicId]);
 
   if (isLoading) {
     return (
@@ -132,7 +180,7 @@ export default function CampaignLandingPage() {
                 {org.name.charAt(0) || "O"}
               </div>
             )}
-            <div className={`font-semibold text-sm transition-colors ${scrolled ? "text-gray-900" : "text-gray-900 drop-shadow-sm md:text-white md:drop-shadow-md"}`}>
+            <div className="font-semibold text-sm text-gray-900 transition-colors">
               {org.name}
             </div>
           </Link>
@@ -143,7 +191,7 @@ export default function CampaignLandingPage() {
               className={`p-2.5 rounded-full transition-colors ${
                 scrolled 
                   ? "bg-gray-100 hover:bg-gray-200 text-gray-700" 
-                  : "bg-white/20 hover:bg-white/30 text-gray-900 md:text-white backdrop-blur-sm"
+                  : "bg-white/60 hover:bg-white/80 text-gray-900 backdrop-blur-sm"
               }`}
               aria-label="Share campaign"
             >
@@ -212,7 +260,7 @@ export default function CampaignLandingPage() {
 
               {campaign.imageUrl && (
                 <div className="rounded-3xl overflow-hidden shadow-2xl md:hidden">
-                  <img src={campaign.imageUrl} alt="Campaign cover" data-testid="img-campaign-cover-mobile" className="w-full h-auto aspect-video object-cover" />
+                  <img src={campaign.imageUrl} alt="Campaign cover" data-testid="img-campaign-cover-mobile" className="w-full h-auto aspect-[4/3] object-cover" />
                 </div>
               )}
 

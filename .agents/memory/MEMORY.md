@@ -2,3 +2,4 @@
 - [Firebase access from Replit sidecar](firebase-sidecar-access.md) — sidecar service account has zero IAM permissions on the Firebase project
 - [Campaigns embedded in org doc](campaigns-embedded-array.md) — campaigns stored as org.campaigns array, not a Firestore subcollection
 - [Onboarding audience model](onboarding-audience-model.md) — supporters register immediately; organisations apply for review before platform access
+- [Campaign share metadata](campaign-share-metadata.md) — readable share URLs are API-rendered for crawler metadata, then hand off to the static React campaign page

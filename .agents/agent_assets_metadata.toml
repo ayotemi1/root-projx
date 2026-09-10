@@ -6,33 +6,39 @@ id = "iiThPnfqTFXppgxiwNE73"
 uri = "file://artifacts/web/public/screenshots/screenshot_1.png"
 type = "image"
 title = "Screenshot 1 – Give Directly"
+logical_id = "91fc4502-daa1-4ecf-8329-23b73acb54b1"
 
 [[outputs]]
 id = "9aUNg8QvIxv41tKAi6CEB"
 uri = "file://artifacts/web/public/screenshots/screenshot_2.png"
 type = "image"
 title = "Screenshot 2 – No Middlemen"
+logical_id = "2898c3d1-7556-4c99-9f7a-b3f97ebb975c"
 
 [[outputs]]
 id = "AY-jJ4kQIPCLBE9Ykc_rl"
 uri = "file://artifacts/web/public/screenshots/screenshot_3.png"
 type = "image"
 title = "Screenshot 3 – Watch Progress"
+logical_id = "c10e96f2-0ec7-422a-827b-92e9e2f90bed"
 
 [[outputs]]
 id = "vYnGjM15m6XpoDqNuKw7E"
 uri = "file://artifacts/web/public/screenshots/screenshot_4.png"
 type = "image"
 title = "Screenshot 4 – See Where"
+logical_id = "6f8363f8-ef66-488a-a719-9eb78dec2867"
 
 [[outputs]]
 id = "HPkKaTzaNmOPlYEUxxHMC"
 uri = "file://artifacts/web/public/screenshots/screenshot_5.png"
 type = "image"
 title = "Screenshot 5 – Follow The Causes"
+logical_id = "5627df81-01d4-4c0a-9ae7-ba3c5c8b4cb6"
 
 [[outputs]]
 id = "UrNwrcD9z-1SxZjfOZ8e9"
 uri = "file://artifacts/web/public/screenshots/screenshot_6.png"
 type = "image"
 title = "Screenshot 6 – For The Diaspora"
+logical_id = "f5bfd681-61b7-48c1-a736-f7d9aff9839c"

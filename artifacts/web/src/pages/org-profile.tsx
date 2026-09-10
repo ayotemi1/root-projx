@@ -201,7 +201,7 @@ function CampaignCard({ campaign, orgId }: { campaign: Campaign; orgId: string }
         {/* Deadline */}
         {campaign.deadline && (
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span>📅</span>
+            <Clock className="w-3.5 h-3.5" />
             <span>Deadline: {new Date(campaign.deadline).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
           </div>
         )}

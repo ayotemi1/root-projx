@@ -332,6 +332,9 @@ export interface Campaign {
   updatedAt: string;
   enabled?: boolean;
   publicId?: string;
+  organisationSlug?: string | null;
+  campaignSlug?: string | null;
+  sharePath?: string | null;
   theme?: CampaignTheme;
 }
 
@@ -352,6 +355,11 @@ export interface PublicCampaignLanding {
 
 export const getPublicCampaignLanding = (publicId: string) =>
   req<PublicCampaignLanding>(`/campaigns/landing/${encodeURIComponent(publicId)}`);
+
+export const getPublicCampaignLandingBySlug = (organisationSlug: string, campaignSlug: string) =>
+  req<PublicCampaignLanding>(
+    `/campaigns/landing/${encodeURIComponent(organisationSlug)}/${encodeURIComponent(campaignSlug)}`,
+  );
 
 export type CreateCampaignData = {
   name: string;
