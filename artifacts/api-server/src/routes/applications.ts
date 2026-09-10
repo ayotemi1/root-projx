@@ -9,6 +9,7 @@ import {
   getServerToken,
   firebaseSignUp,
   firebaseSignIn,
+  firebaseSendPasswordResetEmail,
   firebaseUpdateProfile,
 } from "../lib/firebase-rest.js";
 import {
@@ -273,10 +274,44 @@ router.post("/admin/applications/:id/approve", requireAdmin, async (req, res) =>
     const appWebsite = (app.website as string | null) ?? null;
     const appSocialLinks = (app.socialLinks as Record<string, string | null> | null) ?? null;
 
-    const uid = app.uid as string | undefined;
+    let uid = app.uid as string | undefined;
+    let passwordSetupRequired = false;
     if (!uid) {
-      res.status(409).json({ error: "This legacy application has no applicant account. Ask the applicant to resubmit." });
-      return;
+      const matchingUsers = await fsQuery(
+        "users",
+        [{ field: "email", op: "EQUAL", value: email.toLowerCase().trim() }],
+        serverToken,
+        { limit: 1 },
+      );
+      const existingUser = matchingUsers[0];
+      if (existingUser) {
+        if (existingUser.accountType !== "organisation") {
+          res.status(409).json({ error: "This email is already used by a supporter account" });
+          return;
+        }
+        uid = String(existingUser._id);
+      } else {
+        try {
+          const created = await firebaseSignUp(
+            email.toLowerCase().trim(),
+            crypto.randomBytes(32).toString("base64url"),
+          );
+          uid = created.uid;
+          passwordSetupRequired = true;
+        } catch (err: unknown) {
+          const code = (err as { firebaseCode?: string }).firebaseCode ?? "";
+          res.status(409).json({
+            error: code.includes("EMAIL_EXISTS")
+              ? "An authentication account already exists for this legacy application but cannot be matched safely. Link the account before approval."
+              : "Could not create an account for this legacy application",
+          });
+          return;
+        }
+      }
+      await fsPatch("org_applications", id, {
+        uid,
+        accountProvisionedAt: new Date().toISOString(),
+      }, serverToken);
     }
 
     const now = new Date().toISOString();
@@ -321,8 +356,12 @@ router.post("/admin/applications/:id/approve", requireAdmin, async (req, res) =>
     brevoSendEmail({
       to: [{ email, name: contactName }],
       subject: `Welcome to Root ProjX, ${orgName}!`,
-      htmlContent: orgAcceptedHtml({ orgName, contactName, email }),
+      htmlContent: orgAcceptedHtml({ orgName, contactName, email, passwordSetupRequired }),
     }).catch((err) => console.error("[Brevo] org accepted email error:", err));
+    if (passwordSetupRequired) {
+      firebaseSendPasswordResetEmail(email)
+        .catch((err) => console.error("[Firebase] legacy applicant password setup email error:", err));
+    }
 
     res.json({ ok: true, uid });
   } catch (err) {

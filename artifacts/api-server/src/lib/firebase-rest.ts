@@ -83,6 +83,19 @@ export async function firebaseUpdateProfile(idToken: string, displayName: string
   });
 }
 
+export async function firebaseSendPasswordResetEmail(email: string): Promise<void> {
+  const res = await fetch(`${IDENTITY}:sendOobCode?key=${API_KEY}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ requestType: "PASSWORD_RESET", email }),
+  });
+  if (!res.ok) {
+    const data = await res.json() as Record<string, unknown>;
+    const code = ((data.error as Record<string, unknown>)?.message as string) ?? "PASSWORD_RESET_FAILED";
+    throw Object.assign(new Error(code), { firebaseCode: code });
+  }
+}
+
 // ─── Firestore REST ───────────────────────────────────────────────────────────
 
 type FsValue =
@@ -163,7 +176,10 @@ export async function fsPatch(
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (idToken) headers["Authorization"] = `Bearer ${idToken}`;
 
-  const res = await fetch(`${FIRESTORE}/${collection}/${docId}`, {
+  const updateMask = new URLSearchParams();
+  for (const field of Object.keys(data)) updateMask.append("updateMask.fieldPaths", field);
+  const query = updateMask.toString();
+  const res = await fetch(`${FIRESTORE}/${collection}/${docId}${query ? `?${query}` : ""}`, {
     method: "PATCH",
     headers,
     body: JSON.stringify({ fields }),

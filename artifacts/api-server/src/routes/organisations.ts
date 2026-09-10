@@ -3,6 +3,7 @@ import { Router } from "express";
 import multer from "multer";
 import { fsGet, fsPatch, fsList, fsQuery, fsCreate, getServerToken } from "../lib/firebase-rest.js";
 import { requireApprovedOrganisation, requireAuth } from "../lib/auth.js";
+import { isCampaignPublished } from "../lib/campaign-publication.js";
 import { objectStorageClient } from "../lib/objectStorage.js";
 
 const router = Router();
@@ -362,7 +363,7 @@ function publicCampaignFields(campaign: Record<string, unknown>): Record<string,
   return {
     _id: campaign["_id"],
     publicId: campaign["publicId"],
-    enabled: campaign["enabled"] === true,
+    enabled: campaign["enabled"] !== false,
     name: campaign["name"] ?? "",
     description: campaign["description"] ?? "",
     imageUrl: campaign["imageUrl"] ?? null,
@@ -436,7 +437,7 @@ router.get("/organisations/:id/campaigns", async (req, res) => {
     const owner = await fsGet("users", orgId, token);
     const orgWithIdentity = { ...org, _id: orgId, name: organisationDisplayName(org, owner) };
     const campaigns = (await getStoredCampaigns(orgId))
-      .filter((campaign) => campaign["enabled"] === true && campaign["status"] !== "deleted")
+      .filter(isCampaignPublished)
       .map((campaign) => publicCampaignFields({
         ...campaign,
         ...campaignSharePath(orgWithIdentity, campaign),
@@ -462,8 +463,7 @@ export async function findPublicCampaign(
     const orgWithIdentity = { ...org, name: organisationName };
     const campaign = campaigns.find(
       (candidate) =>
-        candidate["enabled"] === true &&
-        candidate["status"] !== "deleted" &&
+        isCampaignPublished(candidate) &&
         predicate(candidate, orgWithIdentity),
     );
     if (!campaign) continue;

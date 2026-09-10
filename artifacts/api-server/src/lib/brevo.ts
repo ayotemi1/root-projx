@@ -276,8 +276,13 @@ export function orgApplicationReceivedHtml(opts: { orgName: string; contactName:
 </body></html>`.trim();
 }
 
-export function orgAcceptedHtml(opts: { orgName: string; contactName: string; email: string }): string {
-  const { orgName, contactName, email } = opts;
+export function orgAcceptedHtml(opts: {
+  orgName: string;
+  contactName: string;
+  email: string;
+  passwordSetupRequired?: boolean;
+}): string {
+  const { orgName, contactName, email, passwordSetupRequired = false } = opts;
   return `
 <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#f5f5f5;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;">
@@ -297,7 +302,9 @@ export function orgAcceptedHtml(opts: { orgName: string; contactName: string; em
             You now have access to your organisation's profile, where you can share updates on your work, receive donations directly from supporters, and give our diaspora community full visibility into the impact of their support. This is the start of a direct, transparent connection between your work and the people who want to support it.
           </p>
           <p style="color:#444;font-size:15px;line-height:1.6;margin:0 0 24px;">
-            Sign in with <strong>${escapeHtml(email)}</strong> and the password you created when applying.
+             ${passwordSetupRequired
+               ? `We have sent a separate password setup email to <strong>${escapeHtml(email)}</strong>. Set your password there, then sign in.`
+               : `Sign in with <strong>${escapeHtml(email)}</strong> and the password you created when applying.`}
           </p>
           <table cellpadding="0" cellspacing="0" width="100%"><tr><td align="center">
             <a href="https://rootprojx.com/login" style="display:inline-block;background:#B50000;color:#F5B800;text-decoration:none;font-size:15px;font-weight:700;padding:14px 32px;border-radius:6px;">

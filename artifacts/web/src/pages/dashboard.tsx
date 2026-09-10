@@ -84,7 +84,7 @@ function DashCampaignCard({
   const [raisedInput, setRaisedInput] = useState(String(campaign.amountRaised ?? 0));
   const [saving, setSaving] = useState(false);
 
-  const [landingEnabled, setLandingEnabled] = useState(campaign.enabled ?? false);
+  const [landingEnabled, setLandingEnabled] = useState(campaign.enabled ?? true);
   const [publicId, setPublicId] = useState(campaign.publicId ?? "");
   const [sharePath, setSharePath] = useState(campaign.sharePath ?? "");
   const [theme, setTheme] = useState(campaign.theme ?? {
@@ -97,7 +97,7 @@ function DashCampaignCard({
   const [landingFeedback, setLandingFeedback] = useState("");
 
   useEffect(() => {
-    setLandingEnabled(campaign.enabled ?? false);
+    setLandingEnabled(campaign.enabled ?? true);
     setPublicId(campaign.publicId ?? "");
     setSharePath(campaign.sharePath ?? "");
     setTheme(campaign.theme ?? {
@@ -152,7 +152,7 @@ function DashCampaignCard({
         enabled: landingEnabled,
         theme,
       }, token);
-      setLandingEnabled(updated.enabled ?? false);
+      setLandingEnabled(updated.enabled ?? true);
       setPublicId(updated.publicId ?? "");
       setSharePath(updated.sharePath ?? "");
       setTheme(updated.theme ?? theme);
