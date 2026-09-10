@@ -19,12 +19,18 @@ service cloud.firestore {
     }
 
     // ── users ──────────────────────────────────────────────────────────────
-    // Each user reads/writes only their own doc. Server can access all.
-    // No client can delete user docs.
+    // Privileged fields are server-controlled. Supporters may create their own
+    // basic profile and later edit only non-privileged presentation fields.
     match /users/{userId} {
       allow read:   if isOwner(userId) || isServer();
-      allow create: if isOwner(userId) || isServer();
-      allow update: if isOwner(userId) || isServer();
+      allow create: if isServer() ||
+        (isOwner(userId) &&
+         request.resource.data.accountType == "supporter" &&
+         !request.resource.data.keys().hasAny(["approvalStatus"]));
+      allow update: if isServer() ||
+        (isOwner(userId) &&
+         request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly(["name", "phone", "avatarInitials", "publicProfile"]));
       allow delete: if false;
     }
 
@@ -32,24 +38,19 @@ service cloud.firestore {
     // The server projects public organisation fields through its API.
     // This document also embeds non-public campaign draft state, so client-side
     // reads would leak fields that Firestore rules cannot project away.
-    // The org document ID is always the owner's Firebase UID.
+    // All writes go through the API so approval is enforced before mutation.
     match /organisations/{orgId} {
       allow read:   if isServer();
-      allow create: if isOwner(orgId) || isServer();
-      allow update: if isOwner(orgId) || isServer();
+      allow create: if isServer();
+      allow update: if isServer();
       allow delete: if false;
     }
 
     // ── updates (impact feed posts) ─────────────────────────────────────────
-    // Public read. Org that owns the post (orgId == uid) or server may write.
+    // Public read. Writes go through the API's approved-organisation guard.
     match /updates/{updateId} {
       allow read: if true;
-      allow create: if isServer() ||
-        (isSignedIn() && request.resource.data.orgId == request.auth.uid);
-      allow update: if isServer() ||
-        (isSignedIn() && resource.data.orgId == request.auth.uid);
-      allow delete: if isServer() ||
-        (isSignedIn() && resource.data.orgId == request.auth.uid);
+      allow create, update, delete: if isServer();
     }
 
     // ── follows ─────────────────────────────────────────────────────────────

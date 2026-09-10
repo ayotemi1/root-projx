@@ -158,7 +158,7 @@ router.post("/applications/org", async (req, res) => {
       avatarInitials: avatarInitials(contactName.trim()),
       approvalStatus: "pending",
       createdAt: now,
-    }, initialToken);
+    }, token);
 
     const applicationId = await fsCreate("org_applications", {
       uid,

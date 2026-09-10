@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { randomUUID } from "crypto";
 import { fsGet, fsPatch, getServerToken } from "../lib/firebase-rest.js";
-import { requireAuth, requireAdmin } from "../lib/auth.js";
+import { requireApprovedOrganisation, requireAuth, requireAdmin } from "../lib/auth.js";
 
 const router = Router();
 
@@ -65,7 +65,7 @@ async function createWiseRecipient(
 }
 
 // ── GET /wise/connect/status ───────────────────────────────────────────────────
-router.get("/wise/connect/status", requireAuth, async (req, res) => {
+router.get("/wise/connect/status", requireAuth, requireApprovedOrganisation, async (req, res) => {
   try {
     if (req.user!.accountType !== "organisation") {
       res.status(403).json({ error: "Only organisation accounts" });
@@ -92,7 +92,7 @@ router.get("/wise/connect/status", requireAuth, async (req, res) => {
 });
 
 // ── PUT /wise/connect — save/verify Wise email ────────────────────────────────
-router.put("/wise/connect", requireAuth, async (req, res) => {
+router.put("/wise/connect", requireAuth, requireApprovedOrganisation, async (req, res) => {
   try {
     if (req.user!.accountType !== "organisation") {
       res.status(403).json({ error: "Only organisation accounts can connect a Wise account" });
@@ -156,7 +156,7 @@ router.put("/wise/connect", requireAuth, async (req, res) => {
 });
 
 // ── DELETE /wise/connect — disconnect Wise account ────────────────────────────
-router.delete("/wise/connect", requireAuth, async (req, res) => {
+router.delete("/wise/connect", requireAuth, requireApprovedOrganisation, async (req, res) => {
   try {
     if (req.user!.accountType !== "organisation") {
       res.status(403).json({ error: "Only organisation accounts" });
@@ -225,6 +225,11 @@ router.post("/wise/disburse", requireAdmin, async (req, res) => {
     const org = await fsGet("organisations", orgId, serverToken);
     if (!org) {
       res.status(404).json({ error: "Organisation not found" });
+      return;
+    }
+    const owner = await fsGet("users", orgId, serverToken);
+    if (owner?.["approvalStatus"] === "pending" || owner?.["approvalStatus"] === "declined") {
+      res.status(403).json({ error: "This organisation is not approved for payouts" });
       return;
     }
 

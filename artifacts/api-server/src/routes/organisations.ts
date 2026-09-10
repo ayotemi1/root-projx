@@ -2,7 +2,7 @@ import { randomUUID } from "crypto";
 import { Router } from "express";
 import multer from "multer";
 import { fsGet, fsPatch, fsList, fsQuery, fsCreate, getServerToken } from "../lib/firebase-rest.js";
-import { requireAuth } from "../lib/auth.js";
+import { requireApprovedOrganisation, requireAuth } from "../lib/auth.js";
 import { objectStorageClient } from "../lib/objectStorage.js";
 
 const router = Router();
@@ -73,6 +73,7 @@ router.get("/org-images/:orgId/:type", async (req, res) => {
 router.post(
   "/organisations/:orgId/images",
   requireAuth,
+  requireApprovedOrganisation,
   (req, res, next) => {
     imageUpload.single("file")(req, res, (err) => {
       if (err instanceof multer.MulterError) {
@@ -397,7 +398,7 @@ async function saveCampaigns(
 }
 
 // GET /organisations/:id/campaigns/manage — private full campaign list for owner dashboard
-router.get("/organisations/:id/campaigns/manage", requireAuth, async (req, res) => {
+router.get("/organisations/:id/campaigns/manage", requireAuth, requireApprovedOrganisation, async (req, res) => {
   try {
     const orgId = req.params.id!;
     if (req.user!.accountType !== "organisation" || req.user!.userId !== orgId) {
@@ -527,7 +528,7 @@ router.get("/campaigns/landing/:publicId", async (req, res) => {
 });
 
 // POST /organisations/:id/campaigns — create a campaign (org owner only)
-router.post("/organisations/:id/campaigns", requireAuth, async (req, res) => {
+router.post("/organisations/:id/campaigns", requireAuth, requireApprovedOrganisation, async (req, res) => {
   try {
     const uid = req.user!.userId;
     const orgId = req.params.id!;
@@ -594,7 +595,7 @@ router.post("/organisations/:id/campaigns", requireAuth, async (req, res) => {
 });
 
 // PATCH /organisations/:id/campaigns/:campId — update a campaign (org owner only)
-router.patch("/organisations/:id/campaigns/:campId", requireAuth, async (req, res) => {
+router.patch("/organisations/:id/campaigns/:campId", requireAuth, requireApprovedOrganisation, async (req, res) => {
   try {
     const uid = req.user!.userId;
     const orgId = req.params.id!;
@@ -673,7 +674,7 @@ router.patch("/organisations/:id/campaigns/:campId", requireAuth, async (req, re
 });
 
 // DELETE /organisations/:id/campaigns/:campId — delete a campaign (org owner only)
-router.delete("/organisations/:id/campaigns/:campId", requireAuth, async (req, res) => {
+router.delete("/organisations/:id/campaigns/:campId", requireAuth, requireApprovedOrganisation, async (req, res) => {
   try {
     const uid = req.user!.userId;
     const orgId = req.params.id!;
@@ -729,7 +730,7 @@ router.get("/organisations/:id", async (req, res) => {
 });
 
 // POST /organisations — create org profile (accountType=organisation only)
-router.post("/organisations", requireAuth, async (req, res) => {
+router.post("/organisations", requireAuth, requireApprovedOrganisation, async (req, res) => {
   try {
     if (req.user!.accountType !== "organisation") {
       res.status(403).json({ error: "Only organisation accounts can create an org profile" });
@@ -777,7 +778,7 @@ router.post("/organisations", requireAuth, async (req, res) => {
 });
 
 // PATCH /organisations/:id — update org profile (owner only)
-router.patch("/organisations/:id", requireAuth, async (req, res) => {
+router.patch("/organisations/:id", requireAuth, requireApprovedOrganisation, async (req, res) => {
   try {
     const uid = req.user!.userId;
     const orgId = req.params.id!;
@@ -850,8 +851,12 @@ router.patch("/organisations/:id", requireAuth, async (req, res) => {
 });
 
 // GET /organisations/:id/analytics
-router.get("/organisations/:id/analytics", requireAuth, async (req, res) => {
+router.get("/organisations/:id/analytics", requireAuth, requireApprovedOrganisation, async (req, res) => {
   try {
+    if (req.user!.userId !== req.params.id) {
+      res.status(403).json({ error: "Forbidden" });
+      return;
+    }
     const token = await getServerToken();
     const doc = await fsGet(`organisations/${req.params.id}/analytics`, "summary", token);
     if (!doc) {
@@ -870,7 +875,7 @@ router.get("/organisations/:id/analytics", requireAuth, async (req, res) => {
 });
 
 // GET /organisations/:id/notifications
-router.get("/organisations/:id/notifications", requireAuth, async (req, res) => {
+router.get("/organisations/:id/notifications", requireAuth, requireApprovedOrganisation, async (req, res) => {
   try {
     const uid = req.user!.userId;
     if (uid !== req.params.id) { res.status(403).json({ error: "Forbidden" }); return; }
@@ -887,7 +892,7 @@ router.get("/organisations/:id/notifications", requireAuth, async (req, res) => 
 });
 
 // PATCH /organisations/:id/notifications/read-all
-router.patch("/organisations/:id/notifications/read-all", requireAuth, async (req, res) => {
+router.patch("/organisations/:id/notifications/read-all", requireAuth, requireApprovedOrganisation, async (req, res) => {
   try {
     const uid = req.user!.userId;
     if (uid !== req.params.id) { res.status(403).json({ error: "Forbidden" }); return; }

@@ -15,6 +15,18 @@ const TEAM_EMAIL = process.env.TEAM_EMAIL ?? "info@rootprojx.com";
 
 const router = Router();
 
+async function effectiveApprovalStatus(
+  uid: string,
+  userData: Record<string, unknown>,
+): Promise<"pending" | "approved" | "declined" | null> {
+  const status = userData.approvalStatus;
+  if (status === "pending" || status === "approved" || status === "declined") return status;
+  if (userData.accountType !== "organisation") return null;
+  const serverToken = await getServerToken();
+  const establishedOrganisation = await fsGet("organisations", uid, serverToken);
+  return establishedOrganisation ? "approved" : "pending";
+}
+
 // ── Simple in-memory rate limiter ─────────────────────────────────────────────
 // Limits repeated attempts from a single IP to prevent brute-force attacks.
 // State is per-process; a restart clears it (acceptable for our scale).
@@ -56,27 +68,20 @@ function avatarInitials(name: string): string {
 // POST /auth/register
 router.post("/auth/register", authRateLimit, async (req, res) => {
   try {
-    const { name, email, phone, password, accountType, orgName, country, registrationNumber } = req.body as {
+    const { name, email, phone, password, accountType } = req.body as {
       name: string;
       email: string;
       phone?: string;
       password: string;
       accountType: "supporter" | "organisation";
-      orgName?: string;
-      country?: string;
-      registrationNumber?: string;
     };
 
     if (!name || !email || !password || !accountType) {
       res.status(400).json({ error: "name, email, password and accountType are required" });
       return;
     }
-    if (!["supporter", "organisation"].includes(accountType)) {
-      res.status(400).json({ error: "accountType must be supporter or organisation" });
-      return;
-    }
-    if (accountType === "organisation" && !orgName) {
-      res.status(400).json({ error: "orgName is required for organisation accounts" });
+    if (accountType !== "supporter") {
+      res.status(400).json({ error: "Organisation accounts must be created through the application process" });
       return;
     }
 
@@ -114,11 +119,6 @@ router.post("/auth/register", authRateLimit, async (req, res) => {
       avatarInitials: initials,
       createdAt: now,
     };
-    if (accountType === "organisation") {
-      userDoc.orgName = orgName ?? null;
-      userDoc.country = country ?? null;
-      userDoc.registrationNumber = registrationNumber ?? null;
-    }
     await fsPatch("users", uid, userDoc, initialToken);
 
     // Mirror supporters to their own collection for dedicated admin tracking
@@ -183,7 +183,7 @@ router.post("/auth/register", authRateLimit, async (req, res) => {
         phone: phone ?? null,
         accountType,
         avatarInitials: initials,
-        approvalStatus: accountType === "organisation" ? "pending" : undefined,
+        approvalStatus: undefined,
         createdAt: now,
       },
     });
@@ -229,6 +229,7 @@ router.post("/auth/login", authRateLimit, async (req, res) => {
       res.status(404).json({ error: "User profile not found" });
       return;
     }
+    const approvalStatus = await effectiveApprovalStatus(uid, userData);
 
     res.json({
       token: idToken,
@@ -239,7 +240,7 @@ router.post("/auth/login", authRateLimit, async (req, res) => {
         phone: userData.phone ?? null,
         accountType: userData.accountType,
         avatarInitials: userData.avatarInitials,
-        approvalStatus: userData.approvalStatus ?? null,
+        approvalStatus,
         createdAt: userData.createdAt ?? null,
       },
     });
@@ -266,6 +267,7 @@ router.get("/auth/me", requireAuth, async (req, res) => {
       res.status(404).json({ error: "User not found" });
       return;
     }
+    const approvalStatus = await effectiveApprovalStatus(uid, userData);
     const payload: Record<string, unknown> = {
       id: uid,
       name: userData.name,
@@ -273,7 +275,7 @@ router.get("/auth/me", requireAuth, async (req, res) => {
       phone: userData.phone ?? null,
       accountType: userData.accountType,
       avatarInitials: userData.avatarInitials,
-      approvalStatus: userData.approvalStatus ?? null,
+      approvalStatus,
       createdAt: userData.createdAt ?? null,
     };
     if (userData.accountType === "organisation") {

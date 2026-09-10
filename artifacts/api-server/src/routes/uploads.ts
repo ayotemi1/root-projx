@@ -1,6 +1,6 @@
 import { Router } from "express";
 import multer from "multer";
-import { requireAuth } from "../lib/auth.js";
+import { requireApprovedOrganisation, requireAuth } from "../lib/auth.js";
 import { objectStorageClient } from "../lib/objectStorage.js";
 
 const router = Router();
@@ -131,7 +131,7 @@ async function uploadFeedMedia(
 // Up to 5 files. Returns { urls, files } with proxy URLs via /uploads/object/*.
 // Profile image uploads (logo/cover) are handled by POST /organisations/:id/images.
 // ---------------------------------------------------------------------------
-router.post("/uploads/media", requireAuth, async (req, res) => {
+router.post("/uploads/media", requireAuth, requireApprovedOrganisation, async (req, res) => {
   try {
     if (req.user!.accountType !== "organisation") {
       res.status(403).json({ error: "Only organisation accounts can upload media" });

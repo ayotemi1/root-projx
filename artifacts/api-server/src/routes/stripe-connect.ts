@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { fsGet, fsPatch, getServerToken } from "../lib/firebase-rest.js";
-import { requireAuth } from "../lib/auth.js";
+import { requireApprovedOrganisation, requireAuth } from "../lib/auth.js";
 import { getUncachableStripeClient } from "../lib/stripeClient.js";
 
 const router = Router();
@@ -12,7 +12,7 @@ const DOMAIN = process.env.REPLIT_DEV_DOMAIN
   : "http://localhost:3000";
 
 // ── GET /stripe/connect/onboard — initiate Stripe Express onboarding ──────────
-router.get("/stripe/connect/onboard", requireAuth, async (req, res) => {
+router.get("/stripe/connect/onboard", requireAuth, requireApprovedOrganisation, async (req, res) => {
   try {
     if (req.user!.accountType !== "organisation") {
       res.status(403).json({ error: "Only organisation accounts can connect to Stripe" });
@@ -73,7 +73,7 @@ router.get("/stripe/connect/onboard", requireAuth, async (req, res) => {
 });
 
 // ── GET /stripe/connect/status — get org's Connect account status ─────────────
-router.get("/stripe/connect/status", requireAuth, async (req, res) => {
+router.get("/stripe/connect/status", requireAuth, requireApprovedOrganisation, async (req, res) => {
   try {
     if (req.user!.accountType !== "organisation") {
       res.status(403).json({ error: "Only organisation accounts" });
@@ -120,7 +120,7 @@ router.get("/stripe/connect/status", requireAuth, async (req, res) => {
 });
 
 // ── GET /stripe/connect/dashboard-link — Stripe Express dashboard login ────────
-router.get("/stripe/connect/dashboard-link", requireAuth, async (req, res) => {
+router.get("/stripe/connect/dashboard-link", requireAuth, requireApprovedOrganisation, async (req, res) => {
   try {
     if (req.user!.accountType !== "organisation") {
       res.status(403).json({ error: "Only organisation accounts" });

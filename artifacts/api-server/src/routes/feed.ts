@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { fsQuery, fsCreate, fsGet, fsPatch, getServerToken } from "../lib/firebase-rest.js";
-import { requireAuth, optionalAuth } from "../lib/auth.js";
+import { requireApprovedOrganisation, requireAuth, optionalAuth } from "../lib/auth.js";
 
 const router = Router();
 
@@ -86,14 +86,14 @@ router.get("/feed/org/:id", optionalAuth, async (req, res) => {
 });
 
 // POST /feed — publish a new update (org accounts only)
-router.post("/feed", requireAuth, async (req, res) => {
+router.post("/feed", requireAuth, requireApprovedOrganisation, async (req, res) => {
   try {
     if (req.user!.accountType !== "organisation") {
       res.status(403).json({ error: "Only organisation accounts can post updates" });
       return;
     }
     const uid = req.user!.userId;
-    const token = req.headers.authorization!.slice(7);
+    const serverToken = await getServerToken();
 
     const { title, content, type, mediaUrls } = req.body as Record<string, unknown>;
     if (!title || !content) {
@@ -112,7 +112,7 @@ router.post("/feed", requireAuth, async (req, res) => {
     const resolvedType = typeof type === "string" && ALLOWED_TYPES.includes(type) ? type : "update";
 
     // Fetch the org name for denormalisation
-    const org = await fsGet("organisations", uid, token);
+    const org = await fsGet("organisations", uid, serverToken);
     const orgName = (org?.["name"] as string) ?? "";
 
     // Validate mediaUrls if provided — cap at 10 items, string URLs only
@@ -133,12 +133,11 @@ router.post("/feed", requireAuth, async (req, res) => {
       createdAt: new Date().toISOString(),
     };
 
-    const newId = await fsCreate("updates", data, token);
+    const newId = await fsCreate("updates", data, serverToken);
 
     // Keep lastPostAt on the org doc so profile pages don't need a separate
     // feed query just to show "last active" — best-effort, non-blocking.
     try {
-      const serverToken = await getServerToken();
       if (org) {
         await fsPatch("organisations", uid, { ...org, lastPostAt: data.createdAt }, serverToken);
       }

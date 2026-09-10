@@ -1,10 +1,15 @@
 import type { Request, Response, NextFunction } from "express";
-import { firebaseLookup, fsGet } from "./firebase-rest.js";
+import { firebaseLookup, fsGet, getServerToken } from "./firebase-rest.js";
+import {
+  organisationAccessDecision,
+  type OrganisationApprovalStatus,
+} from "./organisation-approval.js";
 
 export interface AuthPayload {
   userId: string;
   email: string;
   accountType: string;
+  approvalStatus?: OrganisationApprovalStatus;
 }
 
 declare global {
@@ -21,8 +26,13 @@ async function resolveUser(token: string): Promise<AuthPayload | null> {
 
   const userDoc = await fsGet("users", firebaseUser.uid, token);
   const accountType = (userDoc?.accountType as string) ?? "supporter";
+  const rawApprovalStatus = userDoc?.approvalStatus;
+  const approvalStatus =
+    rawApprovalStatus === "pending" || rawApprovalStatus === "approved" || rawApprovalStatus === "declined"
+      ? rawApprovalStatus
+      : undefined;
 
-  return { userId: firebaseUser.uid, email: firebaseUser.email, accountType };
+  return { userId: firebaseUser.uid, email: firebaseUser.email, accountType, approvalStatus };
 }
 
 export async function requireAuth(
@@ -46,6 +56,39 @@ export async function requireAuth(
     next();
   } catch {
     res.status(401).json({ error: "Unauthorized — invalid or expired token" });
+  }
+}
+
+export async function requireApprovedOrganisation(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): Promise<void> {
+  const user = req.user;
+  if (!user) {
+    res.status(403).json({ error: "Only approved organisation accounts can access this feature" });
+    return;
+  }
+  const decision = organisationAccessDecision(user.accountType, user.approvalStatus);
+  if (decision === "deny") {
+    res.status(403).json({ error: "Your organisation must be approved before accessing this feature" });
+    return;
+  }
+  if (decision === "allow") {
+    next();
+    return;
+  }
+
+  try {
+    const serverToken = await getServerToken();
+    const legacyOrganisation = await fsGet("organisations", user.userId, serverToken);
+    if (!legacyOrganisation) {
+      res.status(403).json({ error: "Your organisation must be approved before accessing this feature" });
+      return;
+    }
+    next();
+  } catch {
+    res.status(503).json({ error: "Could not verify organisation approval status" });
   }
 }
 
