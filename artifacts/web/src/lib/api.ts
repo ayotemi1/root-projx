@@ -184,7 +184,7 @@ export const getOrganisations = (params?: { category?: string; country?: string 
         .map(([k, v]) => `${k}=${encodeURIComponent(v!)}`)
         .join("&")
     : "";
-  return req<Org[]>(`/organisations${qs}`);
+  return req<Org[]>(`/organisations${qs}`, { cache: "no-store" });
 };
 
 export const getOrganisation = (id: string, token?: string | null) =>

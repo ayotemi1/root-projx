@@ -452,6 +452,8 @@ export default function DiscoverPage() {
     queryKey: ["organisations", category],
     queryFn: () =>
       api.getOrganisations(category !== "All Causes" ? { category } : undefined),
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   const publicOrgs = orgs.filter(
