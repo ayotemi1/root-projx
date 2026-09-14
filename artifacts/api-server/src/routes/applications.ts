@@ -454,6 +454,100 @@ router.get("/admin/organisations", requireAdmin, async (req, res) => {
   }
 });
 
+// PATCH /admin/organisations/:id — edit public profile fields on an org's behalf
+router.patch("/admin/organisations/:id", requireAdmin, async (req, res) => {
+  try {
+    const id = String(req.params.id);
+    const serverToken = await getServerToken();
+    const existing = await fsGet("organisations", id, serverToken);
+    if (!existing) {
+      res.status(404).json({ error: "Organisation not found" });
+      return;
+    }
+
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const cleanText = (key: string, max: number, required = false): string | null | undefined => {
+      if (!(key in body)) return undefined;
+      if (body[key] === null && !required) return null;
+      if (typeof body[key] !== "string") throw new Error(`${key} must be text`);
+      const value = body[key].trim();
+      if (required && !value) throw new Error(`${key} is required`);
+      if (value.length > max) throw new Error(`${key} must be ${max} characters or fewer`);
+      return value || null;
+    };
+    const cleanUrl = (value: unknown, label: string): string | null => {
+      if (value === null || value === undefined || value === "") return null;
+      if (typeof value !== "string") throw new Error(`${label} must be a URL`);
+      const trimmed = value.trim();
+      if (!trimmed) return null;
+      try {
+        const parsed = new URL(trimmed);
+        if (!["http:", "https:"].includes(parsed.protocol)) throw new Error();
+        return parsed.toString();
+      } catch {
+        throw new Error(`${label} must be a valid http or https URL`);
+      }
+    };
+
+    let updates: Record<string, unknown>;
+    try {
+      updates = {};
+      for (const [key, max, required] of [
+        ["name", 120, true],
+        ["country", 100, true],
+        ["city", 100, false],
+        ["category", 100, true],
+        ["description", 2000, false],
+        ["mission", 1000, false],
+      ] as const) {
+        const value = cleanText(key, max, required);
+        if (value !== undefined) updates[key] = value;
+      }
+
+      if ("contact" in body) {
+        if (!body.contact || typeof body.contact !== "object" || Array.isArray(body.contact)) {
+          throw new Error("contact must be an object");
+        }
+        const contact = body.contact as Record<string, unknown>;
+        const email = typeof contact.email === "string" ? contact.email.trim() : "";
+        if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) throw new Error("Contact email is invalid");
+        const phone = typeof contact.phone === "string" ? contact.phone.trim() : "";
+        if (email.length > 254 || phone.length > 50) throw new Error("Contact details are too long");
+        updates.contact = { email: email || null, phone: phone || null, website: cleanUrl(contact.website, "Website") };
+      }
+
+      if ("socialLinks" in body) {
+        if (!body.socialLinks || typeof body.socialLinks !== "object" || Array.isArray(body.socialLinks)) {
+          throw new Error("socialLinks must be an object");
+        }
+        const socials = body.socialLinks as Record<string, unknown>;
+        updates.socialLinks = Object.fromEntries(
+          ["instagram", "facebook", "twitter", "linkedin", "youtube", "tiktok"]
+            .map((key) => [key, cleanUrl(socials[key], key)]),
+        );
+      }
+
+      if ("logo" in body) updates.logo = cleanUrl(body.logo, "Logo");
+      if ("coverImage" in body) updates.coverImage = cleanUrl(body.coverImage, "Banner");
+    } catch (validationError) {
+      res.status(400).json({ error: validationError instanceof Error ? validationError.message : "Invalid profile details" });
+      return;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      res.status(400).json({ error: "No editable profile fields were provided" });
+      return;
+    }
+
+    await fsPatch("organisations", id, updates, serverToken);
+    req.log.info({ organisationId: id, changedFields: Object.keys(updates) }, "Admin updated organisation profile");
+    res.json({ _id: id, ...existing, ...updates });
+  } catch (err) {
+    req.log.error({ err }, "PATCH /admin/organisations/:id error");
+    res.status(500).json({ error: "Failed to update organisation profile" });
+  }
+});
+
 // GET /admin/donations — all donations, newest first (limit 200)
 router.get("/admin/donations", requireAdmin, async (req, res) => {
   try {

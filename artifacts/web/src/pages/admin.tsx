@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
-import { CheckCircle2, XCircle, Clock, Users, FileText, LogOut, RefreshCw, Building2, CreditCard } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, Users, FileText, LogOut, RefreshCw, Building2, CreditCard, Pencil, X } from "lucide-react";
 
 const RED_DEEP = "#7A0000";
 const RED = "#B50000";
@@ -34,11 +34,34 @@ interface Organisation {
   category: string;
   country: string | null;
   city: string | null;
-  contact?: { email?: string };
+  description?: string;
+  mission?: string | null;
+  logo?: string | null;
+  coverImage?: string | null;
+  contact?: { email?: string; phone?: string; website?: string };
+  socialLinks?: Record<string, string | null>;
   verified: boolean;
   followerCount: number;
   totalRaised: number;
   createdAt: string | null;
+}
+
+type OrganisationForm = {
+  name: string; category: string; country: string; city: string;
+  description: string; mission: string; logo: string; coverImage: string;
+  email: string; phone: string; website: string;
+  instagram: string; facebook: string; twitter: string; linkedin: string; youtube: string; tiktok: string;
+};
+
+function formFromOrganisation(org: Organisation): OrganisationForm {
+  return {
+    name: org.name ?? "", category: org.category ?? "", country: org.country ?? "", city: org.city ?? "",
+    description: org.description ?? "", mission: org.mission ?? "", logo: org.logo ?? "", coverImage: org.coverImage ?? "",
+    email: org.contact?.email ?? "", phone: org.contact?.phone ?? "", website: org.contact?.website ?? "",
+    instagram: org.socialLinks?.instagram ?? "", facebook: org.socialLinks?.facebook ?? "",
+    twitter: org.socialLinks?.twitter ?? "", linkedin: org.socialLinks?.linkedin ?? "",
+    youtube: org.socialLinks?.youtube ?? "", tiktok: org.socialLinks?.tiktok ?? "",
+  };
 }
 
 interface Donation {
@@ -109,6 +132,9 @@ export default function AdminPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "approved" | "declined">("pending");
+  const [editingOrg, setEditingOrg] = useState<Organisation | null>(null);
+  const [orgForm, setOrgForm] = useState<OrganisationForm | null>(null);
+  const [savingOrg, setSavingOrg] = useState(false);
 
   const token = typeof window !== "undefined" ? localStorage.getItem("admin_token") ?? "" : "";
 
@@ -216,6 +242,41 @@ export default function AdminPage() {
       alert("Network error — please try again.");
     } finally {
       setActionLoading(null);
+    }
+  }
+
+  function openOrgEditor(org: Organisation) {
+    setEditingOrg(org);
+    setOrgForm(formFromOrganisation(org));
+  }
+
+  async function saveOrganisation() {
+    if (!editingOrg || !orgForm) return;
+    setSavingOrg(true);
+    try {
+      const res = await fetch(`/api/admin/organisations/${editingOrg._id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "x-admin-token": token },
+        body: JSON.stringify({
+          name: orgForm.name, category: orgForm.category, country: orgForm.country, city: orgForm.city,
+          description: orgForm.description, mission: orgForm.mission, logo: orgForm.logo, coverImage: orgForm.coverImage,
+          contact: { email: orgForm.email, phone: orgForm.phone, website: orgForm.website },
+          socialLinks: {
+            instagram: orgForm.instagram, facebook: orgForm.facebook, twitter: orgForm.twitter,
+            linkedin: orgForm.linkedin, youtube: orgForm.youtube, tiktok: orgForm.tiktok,
+          },
+        }),
+      });
+      const data = await res.json() as Organisation & { error?: string };
+      if (res.status === 401) { logout(); return; }
+      if (!res.ok) { alert(data.error ?? "Failed to save organisation."); return; }
+      setOrganisations((current) => current.map((org) => org._id === data._id ? data : org));
+      setEditingOrg(null);
+      setOrgForm(null);
+    } catch {
+      alert("Network error — please try again.");
+    } finally {
+      setSavingOrg(false);
     }
   }
 
@@ -381,6 +442,7 @@ export default function AdminPage() {
                       <th style={TH}>Followers</th>
                       <th style={TH}>Total Raised</th>
                       <th style={TH}>Joined</th>
+                       <th style={TH}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -414,6 +476,11 @@ export default function AdminPage() {
                           £{(org.totalRaised ?? 0).toLocaleString()}
                         </td>
                         <td style={{ ...TD, fontSize: 13, color: "#888" }}>{formatDate(org.createdAt)}</td>
+                         <td style={TD}>
+                           <button onClick={() => openOrgEditor(org)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 10px", border: "1px solid #d8d0c5", borderRadius: 7, background: "#fff", color: RED_DEEP, fontWeight: 700, cursor: "pointer" }}>
+                             <Pencil size={13} /> Edit profile
+                           </button>
+                         </td>
                       </tr>
                     ))}
                   </tbody>
@@ -421,6 +488,46 @@ export default function AdminPage() {
               </div>
             )}
           </>
+        )}
+
+        {editingOrg && orgForm && (
+          <div role="dialog" aria-modal="true" aria-labelledby="org-editor-title" style={{ position: "fixed", inset: 0, background: "rgba(20,10,5,0.55)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+            <div style={{ width: "min(760px, 100%)", maxHeight: "90vh", overflowY: "auto", background: "#fff", borderRadius: 14, boxShadow: "0 20px 60px rgba(0,0,0,.25)" }}>
+              <div style={{ position: "sticky", top: 0, background: "#fff", zIndex: 1, padding: "20px 24px", borderBottom: "1px solid #eee7dd", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div><h2 id="org-editor-title" style={{ margin: 0, fontSize: 20 }}>Edit organisation profile</h2><p style={{ margin: "4px 0 0", color: "#777", fontSize: 13 }}>{editingOrg.name}</p></div>
+                <button aria-label="Close editor" onClick={() => setEditingOrg(null)} style={{ border: 0, background: "transparent", cursor: "pointer", padding: 6 }}><X size={20} /></button>
+              </div>
+              <div style={{ padding: 24, display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 16 }}>
+                {([
+                  ["name", "Organisation name", true], ["category", "Category", true],
+                  ["country", "Country", true], ["city", "City", false],
+                  ["email", "Public email", false], ["phone", "Public phone", false],
+                  ["website", "Website URL", false], ["logo", "Logo image URL", false],
+                  ["coverImage", "Banner image URL", false], ["instagram", "Instagram URL", false],
+                  ["facebook", "Facebook URL", false], ["twitter", "X / Twitter URL", false],
+                  ["linkedin", "LinkedIn URL", false], ["youtube", "YouTube URL", false],
+                  ["tiktok", "TikTok URL", false],
+                ] as const).map(([key, label, required]) => (
+                  <label key={key} style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13, fontWeight: 700, color: "#444" }}>
+                    {label}{required ? " *" : ""}
+                    <input required={required} value={orgForm[key]} onChange={(e) => setOrgForm({ ...orgForm, [key]: e.target.value })} style={{ padding: "10px 12px", border: "1.5px solid #ddd5ca", borderRadius: 8, fontSize: 14 }} />
+                  </label>
+                ))}
+                {([["description", "Description"], ["mission", "Mission"]] as const).map(([key, label]) => (
+                  <label key={key} style={{ gridColumn: "1 / -1", display: "flex", flexDirection: "column", gap: 6, fontSize: 13, fontWeight: 700, color: "#444" }}>
+                    {label}
+                    <textarea rows={key === "description" ? 5 : 3} value={orgForm[key]} onChange={(e) => setOrgForm({ ...orgForm, [key]: e.target.value })} style={{ padding: "10px 12px", border: "1.5px solid #ddd5ca", borderRadius: 8, fontSize: 14, resize: "vertical" }} />
+                  </label>
+                ))}
+              </div>
+              <div style={{ position: "sticky", bottom: 0, background: "#fff", borderTop: "1px solid #eee7dd", padding: "16px 24px", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                <button onClick={() => setEditingOrg(null)} disabled={savingOrg} style={{ padding: "10px 16px", border: "1px solid #d8d0c5", borderRadius: 8, background: "#fff", cursor: "pointer" }}>Cancel</button>
+                <button onClick={saveOrganisation} disabled={savingOrg || !orgForm.name.trim() || !orgForm.category.trim() || !orgForm.country.trim()} style={{ padding: "10px 18px", border: 0, borderRadius: 8, background: RED_DEEP, color: "#fff", fontWeight: 800, cursor: savingOrg ? "wait" : "pointer", opacity: savingOrg ? .65 : 1 }}>
+                  {savingOrg ? "Saving…" : "Save profile"}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* ── Donations tab ─────────────────────────────────────────── */}
