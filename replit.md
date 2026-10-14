@@ -4,6 +4,56 @@
 
 Root ProjX is a community giving platform connecting diaspora supporters to verified grassroots organisations in Jamaica, the UK, and beyond.
 
+## Phase 0 — stabilisation (Oct 2026)
+
+The **website is the product**. The iOS app hands off to Safari via
+`expo-web-browser` for payments; donations are not collected through native
+payment sheets. The last Apple-reviewed build was 1.0 (7); the next configured
+iOS build number is 8.
+
+Six stabilisation fixes:
+
+1. **Unified platform fee:** shared fee calculation defaults to 5%, with
+   `STRIPE_PLATFORM_FEE_PERCENT` retaining its override; donation copy says 5%.
+2. **Single donation writer:** the Stripe webhook owns donation writes,
+   deduplicated by PaymentIntent `stripeRef`. Checkout confirmation is read-only
+   and the website polls while webhook recording is pending. The legacy
+   duplicate-cleanup script is dry-run by default and must be run manually.
+3. **Campaign credit:** campaign IDs pass through checkout metadata and the
+   webhook credits `amountRaised` in the organisation's embedded campaigns array.
+4. **Subscription lifecycle:** successful invoices create/update recurring
+   records; subscription updates/deletion track active, paused, past-due, and
+   canceled states. The website account page displays these statuses.
+5. **Mobile payment hand-off:** donation entry points open the organisation's
+   website donation page, preserving campaign context. The native Stripe SDK and
+   publishable-key fetches are removed; the merch shop uses hosted checkout.
+6. **£3 minimum:** all five donation creation endpoints and both web donation
+   forms enforce the intended donation amount, before optional fee coverage.
+   Presets are £3 / £5 / £10 / £25 / £50 / £100 / Custom.
+
+Verification must use synthetic events and mocked Firestore, Stripe, and email
+services: configured Stripe keys are **LIVE**, so never use a real charge as a
+verification step. Run all API library tests with
+`pnpm --filter @workspace/api-server run test:approval`.
+Firestore rules are published manually; do not assume the `recurring` rules
+block or Stripe subscription event subscriptions have been enabled merely
+because the corresponding code is implemented.
+
+Phase 0 verification includes
+`artifacts/api-server/src/lib/phase0-verification.test.ts`, which uses the real
+Checkout and webhook handlers with synthetic events and in-memory services.
+It verifies 15p platform fees on £3 intended donations, one donation write after
+replay and confirmation, and £3 campaign credit with fee coverage on and off.
+
+**Accounting finding — not changed during verification:** `netAmountGbp` stores
+the £3 intended donation and the campaign receives £3, but the legacy
+`amountGbp` and `grossAmountGbp` fields both subtract the platform fee from the
+card charge. They store £3.10 for a £3.25 covered-fee charge, and £2.85 for a
+£3 uncovered-fee charge. Organisation `totalRaised` uses that legacy amount,
+so it does not match the intended-donation campaign credit. In particular,
+`grossAmountGbp` is not actually gross. Resolve these accounting semantics
+explicitly before relying on those fields for financial reporting.
+
 ## Stack
 
 - **Monorepo tool**: pnpm workspaces
