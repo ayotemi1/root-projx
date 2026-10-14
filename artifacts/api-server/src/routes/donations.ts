@@ -2,7 +2,7 @@ import { Router } from "express";
 import { fsGet, fsPatch, fsQuery, getServerToken } from "../lib/firebase-rest.js";
 import { requireAuth, optionalAuth } from "../lib/auth.js";
 import { getUncachableStripeClient, getStripePublishableKey } from "../lib/stripeClient.js";
-import { PLATFORM_FEE_PERCENT, platformFeePence } from "../lib/fees.js";
+import { MIN_DONATION_PENCE, PLATFORM_FEE_PERCENT, platformFeePence } from "../lib/fees.js";
 
 const DOMAIN = process.env.REPLIT_DEV_DOMAIN
   ? `https://${process.env.REPLIT_DEV_DOMAIN}`
@@ -67,8 +67,12 @@ router.post("/donations/guest-payment-intent", async (req, res) => {
       note?: string;
     };
 
-    if (!orgId || !amountGbp || amountGbp <= 0) {
-      res.status(400).json({ error: "orgId and a positive amountGbp are required" });
+    if (!orgId || typeof amountGbp !== "number" || !Number.isFinite(amountGbp)) {
+      res.status(400).json({ error: "orgId and a valid amountGbp are required" });
+      return;
+    }
+    if (amountGbp * 100 < MIN_DONATION_PENCE) {
+      res.status(400).json({ error: "Minimum donation is £3." });
       return;
     }
     if (!guestEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guestEmail)) {
@@ -129,8 +133,14 @@ router.post("/donations/anonymous-checkout", async (req, res) => {
       campaignId?: string;
     };
 
-    if (!orgId || !amountPence || amountPence < 100) {
-      res.status(400).json({ error: "orgId and amountPence (≥100) are required" });
+    const basePence = originalAmountPence ?? amountPence;
+    if (!orgId || !Number.isSafeInteger(amountPence) || !Number.isSafeInteger(basePence) ||
+        (feeCovered && originalAmountPence === undefined)) {
+      res.status(400).json({ error: "orgId and valid donation amounts in pence are required" });
+      return;
+    }
+    if (basePence! < MIN_DONATION_PENCE || amountPence! < MIN_DONATION_PENCE) {
+      res.status(400).json({ error: "Minimum donation is £3." });
       return;
     }
 
@@ -152,8 +162,7 @@ router.post("/donations/anonymous-checkout", async (req, res) => {
 
     const stripe = await getUncachableStripeClient();
     // Platform fee calculated on original donation amount (not the grossed-up amount)
-    const basePence = feeCovered && originalAmountPence ? originalAmountPence : amountPence;
-    const feePence = platformFeePence(basePence);
+    const feePence = platformFeePence(basePence!);
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
@@ -217,8 +226,12 @@ router.post("/donations/payment-intent", requireAuth, async (req, res) => {
       note?: string;
     };
 
-    if (!orgId || !amountGbp || amountGbp < 1) {
-      res.status(400).json({ error: "orgId and a minimum amountGbp of £1 are required" });
+    if (!orgId || typeof amountGbp !== "number" || !Number.isFinite(amountGbp)) {
+      res.status(400).json({ error: "orgId and a valid amountGbp are required" });
+      return;
+    }
+    if (amountGbp * 100 < MIN_DONATION_PENCE) {
+      res.status(400).json({ error: "Minimum donation is £3." });
       return;
     }
 
@@ -275,8 +288,12 @@ router.post("/donations/subscription", requireAuth, async (req, res) => {
       note?: string;
     };
 
-    if (!orgId || !amountGbp || amountGbp < 1) {
-      res.status(400).json({ error: "orgId and a minimum amountGbp of £1 are required" });
+    if (!orgId || typeof amountGbp !== "number" || !Number.isFinite(amountGbp)) {
+      res.status(400).json({ error: "orgId and a valid amountGbp are required" });
+      return;
+    }
+    if (amountGbp * 100 < MIN_DONATION_PENCE) {
+      res.status(400).json({ error: "Minimum donation is £3." });
       return;
     }
 
@@ -354,8 +371,14 @@ router.post("/donations/checkout", optionalAuth, async (req, res) => {
       campaignId?: string;
     };
 
-    if (!orgId || !amountPence || amountPence < 100) {
-      res.status(400).json({ error: "orgId and amountPence (≥100) are required" });
+    const basePence = originalAmountPence ?? amountPence;
+    if (!orgId || !Number.isSafeInteger(amountPence) || !Number.isSafeInteger(basePence) ||
+        (feeCovered && originalAmountPence === undefined)) {
+      res.status(400).json({ error: "orgId and valid donation amounts in pence are required" });
+      return;
+    }
+    if (basePence < MIN_DONATION_PENCE || amountPence < MIN_DONATION_PENCE) {
+      res.status(400).json({ error: "Minimum donation is £3." });
       return;
     }
 
@@ -398,7 +421,6 @@ router.post("/donations/checkout", optionalAuth, async (req, res) => {
     }
 
     // Platform fee is calculated on the original donation amount, not the grossed-up total
-    const basePence = feeCovered && originalAmountPence ? originalAmountPence : amountPence;
     const feePence = platformFeePence(basePence);
     const stripe = await getUncachableStripeClient();
 

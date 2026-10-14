@@ -1,3 +1,5 @@
+export const MIN_DONATION_PENCE = 300;
+
 export const PLATFORM_FEE_PERCENT: number = parseFloat(
   process.env.STRIPE_PLATFORM_FEE_PERCENT ?? "5",
 );

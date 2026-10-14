@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/context/AuthContext";
 import * as api from "@/lib/api";
 
-const PRESET_AMOUNTS_GBP = [5, 10, 25, 50, 100];
+const PRESET_AMOUNTS_GBP = [3, 5, 10, 25, 50, 100];
 const RED = "#CC0000";
 const GOLD = "#F5C000";
 
@@ -68,8 +68,8 @@ export default function DonatePage() {
     .toUpperCase() || "??";
 
   async function handleDonate() {
-    if (!originalAmountGbp || originalAmountGbp < 1) {
-      setError("Please enter an amount of at least £1.");
+    if (!Number.isFinite(originalAmountGbp) || originalAmountGbp < 3) {
+      setError("Minimum donation is £3.");
       return;
     }
     if (!isAuthenticated && !guestEmail) {
@@ -101,8 +101,8 @@ export default function DonatePage() {
   }
 
   async function handleAnonymousDonate() {
-    if (!originalAmountGbp || originalAmountGbp < 1) {
-      setError("Please enter an amount of at least £1.");
+    if (!Number.isFinite(originalAmountGbp) || originalAmountGbp < 3) {
+      setError("Minimum donation is £3.");
       return;
     }
     setError("");
@@ -217,7 +217,7 @@ export default function DonatePage() {
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-muted-foreground">£</span>
                 <Input
                   type="number"
-                  min="1"
+                  min="3"
                   step="0.01"
                   placeholder="0.00"
                   value={custom}
@@ -369,7 +369,7 @@ export default function DonatePage() {
             className="w-full font-bold text-base h-12 text-black"
             style={{ backgroundColor: GOLD }}
             onClick={handleDonate}
-            disabled={!originalAmountGbp || originalAmountGbp < 1 || redirecting}
+            disabled={!Number.isFinite(originalAmountGbp) || originalAmountGbp < 3 || redirecting}
           >
             {redirecting
               ? "Redirecting to Stripe…"

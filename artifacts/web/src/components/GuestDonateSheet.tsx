@@ -4,7 +4,7 @@ import { X, Heart } from "lucide-react";
 
 const RED = "#B50000";
 const GOLD = "#F5B800";
-const PRESETS = [5, 10, 25, 50, 100];
+const PRESETS = [3, 5, 10, 25, 50, 100];
 
 interface Props {
   open: boolean;
@@ -24,7 +24,7 @@ export function GuestDonateSheet({ open, onClose, orgId, orgName, campaignId }: 
 
   const amountGbp = custom ? parseFloat(custom) : preset;
   const amountPence = Math.round((amountGbp || 0) * 100);
-  const valid = amountPence >= 100;
+  const valid = Number.isFinite(amountGbp) && amountGbp >= 3;
 
   function handleClose() {
     setPreset(25);
@@ -137,7 +137,7 @@ export function GuestDonateSheet({ open, onClose, orgId, orgName, campaignId }: 
               <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontWeight: 700, color: "#888", fontSize: 17 }}>£</span>
               <input
                 type="number"
-                min="1"
+                min="3"
                 step="1"
                 placeholder="0"
                 autoFocus
