@@ -213,8 +213,14 @@ for (const feeCovered of [true, false]) {
     assert.equal(state.emails.length, 1, "Replay must not send another confirmation");
     const html = state.emails[0].htmlContent;
     assert.match(html, /£3\.00/);
-    assert.match(html, /Platform fee \(deducted from donation\)/);
-    assert.equal(html.includes("plus £0.25 to cover fees so 100% reaches the org"), feeCovered);
+    assert.ok(html.includes(feeCovered
+      ? "Your donation £3.00 · Fee cover £0.25 · Total charged £3.25"
+      : "Your donation £3.00 · Total charged £3.00"));
+    assert.ok(html.includes(feeCovered
+      ? "Test Organisation receives £2.85 · Root ProjX platform fee £0.15 (5%)"
+      : "Test Organisation receives £2.60 · Root ProjX platform fee £0.15 (5%) · Card processing £0.25"));
+    assert.doesNotMatch(html.replace(/<[^>]*>/g, ""), /100%/);
+    assert.doesNotMatch(state.checkout.line_items[0].price_data.product_data.description, /100%/);
     assert.equal(state.errors.length, 0, "No swallowed side-effect failures");
     t.diagnostic(JSON.stringify({
       feeCovered, chargedGbp: grossPence / 100,

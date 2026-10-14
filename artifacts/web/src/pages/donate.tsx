@@ -8,16 +8,13 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/context/AuthContext";
 import * as api from "@/lib/api";
+import {
+  calculateDonationAccounting, donationDisclosure, estimateStripeFeePence,
+} from "../../../api-server/src/lib/donation-accounting";
 
 const PRESET_AMOUNTS_GBP = [3, 5, 10, 25, 50, 100];
 const RED = "#CC0000";
 const GOLD = "#F5C000";
-
-// Stripe fee estimate — UK card rate (1.5% + £0.20).
-// Used for display only; actual fee depends on card type at checkout.
-function estimateStripeFeeGbp(amountGbp: number): number {
-  return Math.round((amountGbp * 0.015 + 0.20) * 100) / 100;
-}
 
 export default function DonatePage() {
   const [, params] = useRoute("/donate/:orgId");
@@ -49,16 +46,18 @@ export default function DonatePage() {
   const originalAmountGbp = custom ? parseFloat(custom) || 0 : (preset ?? 0);
   const originalAmountPence = Math.round(originalAmountGbp * 100);
 
-  const estimatedFeeGbp = originalAmountGbp > 0 ? estimateStripeFeeGbp(originalAmountGbp) : 0;
-  const estimatedFeePence = Math.round(estimatedFeeGbp * 100);
+  const validAmount = Number.isSafeInteger(originalAmountPence) && originalAmountPence > 0;
+  const estimatedFeePence = validAmount ? estimateStripeFeePence(originalAmountPence) : 0;
 
-  // Gross-up: donor pays original + Stripe fee; org receives full original amount
-  const chargedAmountGbp = feeCovered
-    ? originalAmountGbp + estimatedFeeGbp
-    : originalAmountGbp;
+  // Fee cover offsets estimated processing; the platform fee still applies.
   const chargedAmountPence = feeCovered
     ? originalAmountPence + estimatedFeePence
     : originalAmountPence;
+  const accounting = validAmount ? calculateDonationAccounting({
+    intendedPence: originalAmountPence, chargedPence: chargedAmountPence, feeCovered,
+  }) : null;
+  const disclosure = accounting ? donationDisclosure(accounting, org?.name ?? "The organisation") : null;
+  const chargedAmountGbp = accounting?.chargedGbp ?? 0;
 
   const initials = (org?.name ?? "")
     .split(" ")
@@ -68,7 +67,7 @@ export default function DonatePage() {
     .toUpperCase() || "??";
 
   async function handleDonate() {
-    if (!Number.isFinite(originalAmountGbp) || originalAmountGbp < 3) {
+    if (!accounting || originalAmountGbp < 3) {
       setError("Minimum donation is £3.");
       return;
     }
@@ -101,7 +100,7 @@ export default function DonatePage() {
   }
 
   async function handleAnonymousDonate() {
-    if (!Number.isFinite(originalAmountGbp) || originalAmountGbp < 3) {
+    if (!accounting || originalAmountGbp < 3) {
       setError("Minimum donation is £3.");
       return;
     }
@@ -258,7 +257,7 @@ export default function DonatePage() {
                 </button>
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-foreground leading-snug">
-                    Cover transaction fees so 100% of my donation reaches{" "}
+                    Cover the card processing fees so more of my donation reaches{" "}
                     <span style={{ color: RED }}>{org?.name ?? "the organisation"}</span>
                   </p>
                 </div>
@@ -269,32 +268,8 @@ export default function DonatePage() {
                 className="rounded-lg px-3 py-2.5 text-sm space-y-1"
                 style={{ backgroundColor: feeCovered ? "rgba(204,0,0,0.06)" : "rgba(0,0,0,0.03)" }}
               >
-                {feeCovered ? (
-                  <>
-                    <div className="flex justify-between text-muted-foreground">
-                      <span>Your donation</span>
-                      <span>£{originalAmountGbp.toFixed(2)}</span>
-                    </div>
-                    <div className="flex justify-between text-muted-foreground">
-                      <span>+ Fee cover (est.)</span>
-                      <span>£{estimatedFeeGbp.toFixed(2)}</span>
-                    </div>
-                    <div
-                      className="flex justify-between font-bold pt-1 border-t"
-                      style={{ borderColor: "rgba(204,0,0,0.2)", color: RED }}
-                    >
-                      <span>= Charged to your card</span>
-                      <span>£{chargedAmountGbp.toFixed(2)}</span>
-                    </div>
-                  </>
-                ) : (
-                  <p className="text-muted-foreground text-center">
-                    <span className="font-semibold" style={{ color: "#92400E" }}>
-                      £{estimatedFeeGbp.toFixed(2)}
-                    </span>{" "}
-                    will be deducted from your donation for transaction fees
-                  </p>
-                )}
+                <p className="text-muted-foreground">{disclosure?.donationLine}</p>
+                <p className="font-semibold" style={{ color: RED }}>{disclosure?.orgLine}</p>
               </div>
 
               <p className="text-xs text-muted-foreground">
@@ -331,30 +306,8 @@ export default function DonatePage() {
           {/* Summary */}
           {originalAmountGbp > 0 && (
             <div className="rounded-xl px-4 py-3 text-sm text-center" style={{ backgroundColor: "rgba(245,192,0,0.12)" }}>
-              {feeCovered ? (
-                <>
-                  <span className="text-muted-foreground">
-                    <strong className="text-lg font-extrabold" style={{ color: RED }}>
-                      £{originalAmountGbp.toFixed(2)}
-                    </strong>{" "}
-                    goes directly to {org?.name ?? "the organisation"}
-                  </span>
-                  <div className="text-xs text-muted-foreground mt-1">
-                    5% platform fee · you cover transaction fees
-                  </div>
-                </>
-              ) : (
-                <>
-                  <span className="text-muted-foreground">Donating </span>
-                  <strong className="text-lg font-extrabold" style={{ color: RED }}>
-                    £{originalAmountGbp.toFixed(2)}
-                  </strong>
-                  {org ? <span className="text-muted-foreground"> to {org.name}</span> : null}
-                  <div className="text-xs text-muted-foreground mt-1">
-                    5% platform fee · £{(originalAmountGbp * 0.95 - estimatedFeeGbp).toFixed(2)} goes directly to the org
-                  </div>
-                </>
-              )}
+              <p className="text-muted-foreground">{disclosure?.donationLine}</p>
+              <p className="text-xs text-muted-foreground mt-1">{disclosure?.orgLine}</p>
             </div>
           )}
 
@@ -369,7 +322,7 @@ export default function DonatePage() {
             className="w-full font-bold text-base h-12 text-black"
             style={{ backgroundColor: GOLD }}
             onClick={handleDonate}
-            disabled={!Number.isFinite(originalAmountGbp) || originalAmountGbp < 3 || redirecting}
+            disabled={!accounting || originalAmountGbp < 3 || redirecting}
           >
             {redirecting
               ? "Redirecting to Stripe…"
@@ -414,7 +367,7 @@ export default function DonatePage() {
           )}
 
           <p className="text-center text-xs text-muted-foreground">
-            Secured by Stripe · Payments go directly to the organisation
+            Secured by Stripe · Platform and card processing fees are disclosed above
           </p>
         </CardContent>
       </Card>

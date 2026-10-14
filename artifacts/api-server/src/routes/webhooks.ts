@@ -4,7 +4,7 @@ import { getUncachableStripeClient } from "../lib/stripeClient.js";
 import { brevoSendEmail, donationConfirmationHtml, shopOrderConfirmationHtml } from "../lib/brevo.js";
 import type Stripe from "stripe";
 import { recurringStatus } from "../lib/recurring-status.js";
-import { donationAccounting } from "../lib/fees.js";
+import { donationAccounting, PLATFORM_FEE_PERCENT } from "../lib/fees.js";
 
 const router = Router();
 
@@ -289,10 +289,8 @@ async function handlePaymentSuccess(
         htmlContent: donationConfirmationHtml({
           name: recipientName,
           orgName: orgName ?? "the organisation",
-          amountGbp: intendedGbp,
-          feeCovered: accounting.feeCovered,
-          feeCoverGbp: accounting.feeCoverGbp,
-          platformFeeGbp: accounting.platformFeeGbp,
+          accounting,
+          platformFeePercent: PLATFORM_FEE_PERCENT,
           type: type ?? "one_time",
           donationDate: new Date(donationDate).toLocaleDateString("en-GB", {
             day: "numeric",

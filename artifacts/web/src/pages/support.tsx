@@ -44,9 +44,9 @@ export default function SupportPage() {
               within 5 business days.
             </Faq>
             <Faq q="Where does my donation go?">
-              100% of your donation amount reaches the organisation, minus a small platform fee (5%) and
-              any Stripe payment processing fees. Root ProjX never takes a cut beyond the platform fee
-              shown at checkout.
+              Your donation supports the organisation after the 5% Root ProjX platform fee and
+              card processing fees. You can cover the card processing fees so more reaches the
+              organisation; the platform fee still applies. The breakdown is shown before checkout.
             </Faq>
             <Faq q="Can I get a receipt for my donation?">
               Yes — a confirmation email is sent automatically to the address you provide at checkout.

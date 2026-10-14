@@ -434,8 +434,8 @@ router.post("/donations/checkout", optionalAuth, async (req, res) => {
             product_data: {
               name: `Donation to ${org["name"] as string}`,
               description: feeCovered
-                ? "You've covered the fees — 100% of your donation reaches the organisation."
-                : "Your support goes straight to the source.",
+                ? "You cover card processing fees so more of your donation reaches the organisation. A 5% platform fee still applies."
+                : "Your donation supports the organisation after the 5% platform fee and card processing fees.",
             },
           },
           quantity: 1,

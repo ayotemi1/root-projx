@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "wouter";
 import { X, Heart } from "lucide-react";
+import { calculateDonationAccounting, donationDisclosure } from "../../../api-server/src/lib/donation-accounting";
 
 const RED = "#B50000";
 const GOLD = "#F5B800";
@@ -24,7 +25,10 @@ export function GuestDonateSheet({ open, onClose, orgId, orgName, campaignId }: 
 
   const amountGbp = custom ? parseFloat(custom) : preset;
   const amountPence = Math.round((amountGbp || 0) * 100);
-  const valid = Number.isFinite(amountGbp) && amountGbp >= 3;
+  const valid = Number.isSafeInteger(amountPence) && amountGbp >= 3;
+  const accounting = Number.isSafeInteger(amountPence) && amountPence > 0
+    ? calculateDonationAccounting({chargedPence:amountPence, feeCovered:false}) : null;
+  const disclosure = accounting ? donationDisclosure(accounting, orgName) : null;
 
   function handleClose() {
     setPreset(25);
@@ -155,10 +159,9 @@ export function GuestDonateSheet({ open, onClose, orgId, orgName, campaignId }: 
           {/* Summary */}
           {amountGbp > 0 && (
             <div style={{ background: "rgba(245,184,0,0.1)", borderRadius: 10, padding: "10px 14px", marginBottom: 14, textAlign: "center" }}>
-              <span style={{ fontSize: 13, color: "#777" }}>Donating </span>
-              <span style={{ fontSize: 21, fontWeight: 900, color: RED }}>£{amountGbp.toFixed(2)}</span>
+              <p style={{ margin: 0, fontSize: 13, color: "#777" }}>{disclosure?.donationLine}</p>
               <p style={{ margin: "3px 0 0", fontSize: 12, color: "#aaa" }}>
-                5% platform fee · £{(amountGbp * 0.95).toFixed(2)} reaches {orgName}
+                {disclosure?.orgLine}
               </p>
             </div>
           )}

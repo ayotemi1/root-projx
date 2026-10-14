@@ -67,8 +67,13 @@ For a £3 intended UK donation, covered fees charge £3.25 and accrue £2.85 owe
 uncovered fees charge £3.00 and accrue £2.60 owed. Raised increases by £3 in both.
 Confirmation emails show the intended donation and any covered-fee top-up;
 the admin Donations table separates intended, charged, platform fee and to-org.
-The requested covered-fee email wording says "100% reaches the org", but the
-platform fee is still deducted and is disclosed separately in the email.
+The fee-cover toggle says "Cover the card processing fees so more of my donation
+reaches [org name]". Website previews and confirmation emails share canonical
+accounting/disclosure functions from the browser-safe
+`artifacts/api-server/src/lib/donation-accounting.ts`; the server `fees.ts`
+wrapper supplies the configured platform percentage. Breakdowns itemise intended
+donation, any fee cover, total charged, estimated organisation proceeds, platform
+fee, and uncovered card processing. Fee cover never waives the platform fee.
 
 Historical donations and totals have **not** been migrated or recalculated.
 Older admin rows show — where canonical accounting fields are unavailable.
