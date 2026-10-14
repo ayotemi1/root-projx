@@ -140,7 +140,7 @@ All routes prefixed `/api`:
 
 - `BREVO_NEWSLETTER_LIST_ID` — Brevo list ID for newsletter subscribers (optional)
 - `BREVO_SENDER_EMAIL` — sender email for transactional emails (optional, defaults to noreply@rootprojx.com)
-- `STRIPE_PLATFORM_FEE_PERCENT` — platform fee % (optional, defaults to 5)
+- `STRIPE_PLATFORM_FEE_PERCENT` — platform fee % (default 5)
 - `STRIPE_WEBHOOK_SECRET` — Stripe webhook signing secret (set in production for signature verification)
 - `ADMIN_PASSWORD` — password for `/admin` dashboard (set in Replit Secrets; defaults to `rootprojx-admin`)
 - `TEAM_EMAIL` — internal notification recipient (defaults to `info@rootprojx.com`)
