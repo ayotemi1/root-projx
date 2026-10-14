@@ -165,8 +165,11 @@ export function donationConfirmationHtml(opts: {
   amountGbp: number;
   type: string;
   donationDate: string;
+  feeCovered?: boolean;
+  feeCoverGbp?: number;
+  platformFeeGbp?: number;
 }): string {
-  const { name, orgName, amountGbp, type, donationDate } = opts;
+  const { name, orgName, amountGbp, type, donationDate, feeCovered, feeCoverGbp = 0, platformFeeGbp } = opts;
   const isRecurring = type === "recurring";
   return `
 <!DOCTYPE html>
@@ -200,6 +203,13 @@ export function donationConfirmationHtml(opts: {
                   <td style="font-size:13px;color:#888;padding-bottom:8px;">Amount</td>
                   <td style="font-size:14px;color:#1a1a1a;font-weight:700;text-align:right;padding-bottom:8px;">£${amountGbp.toFixed(2)}${isRecurring ? " / month" : ""}</td>
                 </tr>
+                ${feeCovered ? `<tr>
+                  <td colspan="2" style="font-size:13px;color:#444;padding-bottom:8px;">plus £${feeCoverGbp.toFixed(2)} to cover fees so 100% reaches the org</td>
+                </tr>` : ""}
+                ${platformFeeGbp !== undefined ? `<tr>
+                  <td style="font-size:13px;color:#888;padding-bottom:8px;">Platform fee (deducted from donation)</td>
+                  <td style="font-size:14px;color:#1a1a1a;text-align:right;padding-bottom:8px;">£${platformFeeGbp.toFixed(2)}</td>
+                </tr>` : ""}
                 <tr>
                   <td style="font-size:13px;color:#888;padding-bottom:8px;">Type</td>
                   <td style="font-size:14px;color:#1a1a1a;text-align:right;padding-bottom:8px;">${isRecurring ? "Monthly Recurring" : "One-time"}</td>

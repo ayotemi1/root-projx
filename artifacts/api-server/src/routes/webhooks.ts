@@ -4,6 +4,7 @@ import { getUncachableStripeClient } from "../lib/stripeClient.js";
 import { brevoSendEmail, donationConfirmationHtml, shopOrderConfirmationHtml } from "../lib/brevo.js";
 import type Stripe from "stripe";
 import { recurringStatus } from "../lib/recurring-status.js";
+import { donationAccounting } from "../lib/fees.js";
 
 const router = Router();
 
@@ -145,11 +146,20 @@ async function handlePaymentSuccess(
   let amountGbp = 0;
   let currency = "gbp";
   let stripeRef = "";
+  let chargedPence = 0;
+  let cardCountry: string | null | undefined;
 
   if (event.type === "payment_intent.succeeded") {
     const pi = event.data.object as Stripe.PaymentIntent;
     metadata = pi.metadata ?? {};
     amountGbp = (pi.amount - (pi.application_fee_amount ?? 0)) / 100;
+    chargedPence = pi.amount;
+    // Stripe often supplies only a charge ID. Do not make a live lookup merely
+    // for a fee estimate; missing card country intentionally uses the UK rate.
+    const legacyCharges = (pi as Stripe.PaymentIntent & { charges?: { data?: Stripe.Charge[] } }).charges;
+    const charge = typeof pi.latest_charge === "object" && pi.latest_charge
+      ? pi.latest_charge : legacyCharges?.data?.[0];
+    cardCountry = charge?.payment_method_details?.card?.country;
     currency = pi.currency;
     stripeRef = pi.id;
   } else if (event.type === "invoice.payment_succeeded") {
@@ -180,11 +190,21 @@ async function handlePaymentSuccess(
       metadata.type = "recurring";
     }
     amountGbp = (invoice.amount_paid - ((invoice as Stripe.Invoice & { application_fee_amount?: number }).application_fee_amount ?? 0)) / 100;
+    chargedPence = invoice.amount_paid;
+    const legacyInvoice = invoice as Stripe.Invoice & {
+      charge?: string | Stripe.Charge | null;
+      payment_intent?: string | Stripe.PaymentIntent | null;
+    };
+    const invoiceIntent = typeof legacyInvoice.payment_intent === "object" ? legacyInvoice.payment_intent : null;
+    const invoiceCharge = typeof legacyInvoice.charge === "object" && legacyInvoice.charge
+      ? legacyInvoice.charge
+      : typeof invoiceIntent?.latest_charge === "object" ? invoiceIntent.latest_charge : null;
+    cardCountry = invoiceCharge?.payment_method_details?.card?.country;
     currency = invoice.currency ?? "gbp";
     stripeRef = invoice.id;
   }
 
-  const { userId, orgId, orgName, note, type, guestEmail, feeCovered, originalAmountPence, feeAmountPence, wallOptIn, campaignId } = metadata;
+  const { userId, orgId, orgName, note, type, guestEmail, feeCovered, originalAmountPence, wallOptIn, campaignId } = metadata;
 
   // ── Idempotency guard ─────────────────────────────────────────────────────────
   // Stripe retries webhook deliveries (network blips, non-2xx responses, manual
@@ -220,10 +240,13 @@ async function handlePaymentSuccess(
 
   // 1. Create donation document in Firestore
   const donationDate = new Date().toISOString();
-  const isFeeCovered = feeCovered === "true";
-  const origAmountGbp = originalAmountPence ? Number(originalAmountPence) / 100 : amountGbp;
-  const netAmountGbp = origAmountGbp;
-  const feeAmountGbp = feeAmountPence ? Number(feeAmountPence) / 100 : 0;
+  const accounting = donationAccounting({
+    chargedPence,
+    intendedPence: originalAmountPence === undefined ? undefined : Number(originalAmountPence),
+    feeCovered: feeCovered === "true",
+    cardCountry,
+  });
+  const { intendedGbp, toOrgGbp } = accounting;
 
   const donationId = await fsCreate(
     "donations",
@@ -233,13 +256,8 @@ async function handlePaymentSuccess(
       orgId,
       orgName: orgName ?? "",
       ...(campaignId ? { campaignId } : {}),
-      // Fee transparency fields
-      grossAmountGbp: amountGbp,           // total charged to donor's card
-      netAmountGbp,                       // original intended donation (what org counts toward)
-      feeCovered: isFeeCovered,
-      feeAmountGbp: isFeeCovered ? feeAmountGbp : 0,
-      // Legacy field kept for backwards compatibility
-      amountGbp,
+      ...accounting,
+      feeAmountGbp: accounting.feeCoverGbp, // legacy top-up field
       currency,
       type: type ?? "one_time",
       note: note ?? "",
@@ -249,7 +267,7 @@ async function handlePaymentSuccess(
     },
     serverToken,
   );
-  log.info({ donationId, userId: userId ?? "guest", orgId, amountGbp }, "Donation recorded in Firestore");
+  log.info({ donationId, userId: userId ?? "guest", orgId, intendedGbp, toOrgGbp }, "Donation recorded in Firestore");
 
   // 1b. Send donation confirmation email via Brevo (fire-and-forget)
   try {
@@ -271,7 +289,10 @@ async function handlePaymentSuccess(
         htmlContent: donationConfirmationHtml({
           name: recipientName,
           orgName: orgName ?? "the organisation",
-          amountGbp,
+          amountGbp: intendedGbp,
+          feeCovered: accounting.feeCovered,
+          feeCoverGbp: accounting.feeCoverGbp,
+          platformFeeGbp: accounting.platformFeeGbp,
           type: type ?? "one_time",
           donationDate: new Date(donationDate).toLocaleDateString("en-GB", {
             day: "numeric",
@@ -312,10 +333,13 @@ async function handlePaymentSuccess(
   // Atomic server-side increment: two donations landing at the same moment both
   // count, and a concurrent profile edit is never clobbered by a stale full-doc write.
   try {
-    await fsIncrement("organisations", orgId, { totalRaised: amountGbp }, serverToken);
-    log.info({ orgId, amountGbp }, "Incremented org totalRaised");
+    await fsIncrement("organisations", orgId, {
+      totalRaised: intendedGbp,
+      totalOwedGbp: toOrgGbp,
+    }, serverToken);
+    log.info({ orgId, intendedGbp, toOrgGbp }, "Incremented org totalRaised and totalOwedGbp");
   } catch (incErr) {
-    log.error({ incErr, orgId, amountGbp }, "totalRaised increment failed — investigate: donation recorded but org total not updated");
+    log.error({ incErr, orgId, intendedGbp, toOrgGbp }, "Donation aggregate increment failed — investigate: donation recorded but org totals not updated");
   }
 
   if (campaignId) {
@@ -327,16 +351,16 @@ async function handlePaymentSuccess(
       if (index < 0) throw new Error("Campaign not found on organisation");
       const current = campaigns[index] as Record<string, unknown>;
       const previousAmount = typeof current.amountRaised === "number" ? current.amountRaised : 0;
-      if (!Number.isFinite(previousAmount) || !Number.isFinite(netAmountGbp)) {
+      if (!Number.isFinite(previousAmount) || !Number.isFinite(intendedGbp)) {
         throw new Error("Invalid campaign donation amount");
       }
       const updatedCampaigns = [...campaigns];
       updatedCampaigns[index] = {
         ...current,
-        amountRaised: Math.round((previousAmount + netAmountGbp) * 100) / 100,
+        amountRaised: Math.round((previousAmount + intendedGbp) * 100) / 100,
       };
       await fsPatch("organisations", orgId, { campaigns: updatedCampaigns }, serverToken);
-      log.info({ orgId, campaignId, netAmountGbp }, "Updated campaign amountRaised");
+      log.info({ orgId, campaignId, intendedGbp }, "Updated campaign amountRaised");
     } catch (campaignErr) {
       log.error({ campaignErr, orgId, campaignId }, "Campaign amountRaised update failed (non-fatal)");
     }

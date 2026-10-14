@@ -45,14 +45,36 @@ Checkout and webhook handlers with synthetic events and in-memory services.
 It verifies 15p platform fees on £3 intended donations, one donation write after
 replay and confirmation, and £3 campaign credit with fee coverage on and off.
 
-**Accounting finding — not changed during verification:** `netAmountGbp` stores
-the £3 intended donation and the campaign receives £3, but the legacy
-`amountGbp` and `grossAmountGbp` fields both subtract the platform fee from the
-card charge. They store £3.10 for a £3.25 covered-fee charge, and £2.85 for a
-£3 uncovered-fee charge. Organisation `totalRaised` uses that legacy amount,
-so it does not match the intended-donation campaign credit. In particular,
-`grossAmountGbp` is not actually gross. Resolve these accounting semantics
-explicitly before relying on those fields for financial reporting.
+**Donation accounting:** the shared helper in `lib/fees.ts` calculates whole-pence
+amounts for all newly recorded donation payments and invoices:
+`chargedGbp` is the card charge, `intendedGbp` is the original intended donation,
+`platformFeeGbp` is the shared platform fee on that intended amount,
+`feeCoverGbp` is the actual top-up when covered (otherwise zero), and `toOrgGbp`
+is the organisation's estimated proceeds. `feeCovered` is a boolean.
+UK processing is estimated at 1.5% + £0.20; international cards at 3.25% + £0.20.
+Missing card country defaults to UK. Without original-amount metadata, the
+intended amount defaults to the card charge for legacy/native and invoice flows.
+With fee coverage, proceeds are intended minus platform fee; without it,
+estimated processing fees are also deducted. These are estimates, not Stripe
+settlement reconciliation.
+
+Legacy aliases now mean `amountGbp = intendedGbp`,
+`netAmountGbp = toOrgGbp`, and `grossAmountGbp = chargedGbp`.
+Both public raised aggregates (organisation `totalRaised` and campaign
+`amountRaised`) increment by intended donation. Organisation `totalOwedGbp`
+increments by estimated proceeds for future Phase 1 payouts.
+For a £3 intended UK donation, covered fees charge £3.25 and accrue £2.85 owed;
+uncovered fees charge £3.00 and accrue £2.60 owed. Raised increases by £3 in both.
+Confirmation emails show the intended donation and any covered-fee top-up;
+the admin Donations table separates intended, charged, platform fee and to-org.
+The requested covered-fee email wording says "100% reaches the org", but the
+platform fee is still deducted and is disclosed separately in the email.
+
+Historical donations and totals have **not** been migrated or recalculated.
+Older admin rows show — where canonical accounting fields are unavailable.
+`totalOwedGbp` starts accumulating only from newly recorded events; it is not
+yet a complete historical payable balance and must not drive payouts until
+historical reconciliation is explicitly completed.
 
 ## Stack
 

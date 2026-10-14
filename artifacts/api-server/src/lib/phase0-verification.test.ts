@@ -9,13 +9,14 @@ async function isolatedRouters() {
   const mocks: Record<string, string> = {
     state: `
       export const state = {
-        documents: new Map(), writes: [], errors: [], checkout: null, event: null
+        documents: new Map(), writes: [], errors: [], emails: [], checkout: null, event: null
       };
       state.documents.set("organisations/test-org", {
         _id: "test-org", name: "Test Organisation", stripe_account_id: "acct_synthetic",
         totalRaised: 10,
         campaigns: [{_id: "test-campaign", title: "Test Campaign", amountRaised: 10}]
       });
+      state.documents.set("users/test-user", {name:"Test Donor", email:"donor@example.test"});
     `,
     "firebase-rest.js": `
       import {state} from "phase0:state";
@@ -81,9 +82,10 @@ async function isolatedRouters() {
       });
     `,
     "brevo.js": `
-      export const brevoSendEmail = async () => {};
-      export const donationConfirmationHtml = () => "";
-      export const shopOrderConfirmationHtml = () => "";
+      import {state} from "phase0:state";
+      export const brevoSendEmail = async (email) => {state.emails.push(email);};
+      export {donationConfirmationHtml, shopOrderConfirmationHtml}
+        from ${JSON.stringify(new URL("./brevo.ts", import.meta.url).pathname)};
     `,
   };
   const result = await build({
@@ -111,6 +113,7 @@ async function isolatedRouters() {
         }));
         builder.onLoad({ filter: /.*/, namespace: "phase0-mocks" }, (args) => ({
           contents: mocks[args.path], loader: "js",
+          resolveDir: new URL("./", import.meta.url).pathname,
         }));
       },
     }],
@@ -154,7 +157,7 @@ for (const feeCovered of [true, false]) {
         guestEmail: "donor@example.test", amountPence: grossPence,
         originalAmountPence, feeAmountPence, feeCovered,
       },
-      headers: {}, log,
+      user: {userId:"test-user"}, headers: {}, log,
     });
     const intentData = state.checkout.payment_intent_data;
     assert.equal(intentData.application_fee_amount, 15, "Platform fee must be 5% of £3");
@@ -192,13 +195,26 @@ for (const feeCovered of [true, false]) {
     const donation = writes[0].data;
     assert.equal(donation.stripeRef, paymentIntent.id);
     assert.equal(donation.campaignId, "test-campaign");
-    assert.equal(donation.netAmountGbp, 3, "Intended donation is £3 in either case");
+    const toOrgGbp = feeCovered ? 2.85 : 2.60;
+    assert.equal(donation.intendedGbp, 3);
+    assert.equal(donation.platformFeeGbp, 0.15);
+    assert.equal(donation.chargedGbp, grossPence / 100);
+    assert.equal(donation.toOrgGbp, toOrgGbp);
+    assert.equal(donation.netAmountGbp, toOrgGbp);
+    assert.equal(donation.grossAmountGbp, grossPence / 100);
+    assert.equal(donation.feeCoverGbp, feeAmountPence / 100);
     assert.equal(donation.feeCovered, feeCovered);
     assert.equal(donation.feeAmountGbp, feeAmountPence / 100);
-    // Report existing legacy accounting separately from intended/net donation.
-    assert.equal(donation.amountGbp, (grossPence - 15) / 100);
+    assert.equal(donation.amountGbp, 3, "Legacy amount now means intended donation");
     const org = state.documents.get("organisations/test-org");
     assert.equal(org.campaigns[0].amountRaised, 13, "Campaign increases exactly once by £3");
+    assert.equal(org.totalRaised, 13, "Public raised amount uses the intended donation");
+    assert.equal(org.totalOwedGbp, toOrgGbp, "Missing owed aggregate starts at zero");
+    assert.equal(state.emails.length, 1, "Replay must not send another confirmation");
+    const html = state.emails[0].htmlContent;
+    assert.match(html, /£3\.00/);
+    assert.match(html, /Platform fee \(deducted from donation\)/);
+    assert.equal(html.includes("plus £0.25 to cover fees so 100% reaches the org"), feeCovered);
     assert.equal(state.errors.length, 0, "No swallowed side-effect failures");
     t.diagnostic(JSON.stringify({
       feeCovered, chargedGbp: grossPence / 100,
@@ -209,6 +225,67 @@ for (const feeCovered of [true, false]) {
       donationDocumentsWritten: writes.length,
       campaignBeforeGbp: 10, campaignAfterGbp: org.campaigns[0].amountRaised,
       orgTotalRaisedAfterGbp: org.totalRaised,
+      orgTotalOwedAfterGbp: org.totalOwedGbp,
+      toOrgGbp: donation.toOrgGbp,
+      feeCoverGbp: donation.feeCoverGbp,
     }));
   });
 }
+
+test("invoice donations use the same accounting and add to existing owed totals", async () => {
+  const {webhooks, state} = await isolatedRouters();
+  state.documents.get("organisations/test-org").totalOwedGbp = 5;
+  const metadata = {
+    userId:"test-user", orgId:"test-org", orgName:"Test Organisation",
+    campaignId:"test-campaign",
+  };
+  const event = {
+    id:"evt_invoice_synthetic", object:"event", type:"invoice.payment_succeeded",
+    created:1791979200, livemode:false,
+    data:{object:{
+      id:"in_synthetic", amount_paid:300, currency:"gbp",
+      parent:{subscription_details:{subscription:"sub_synthetic", metadata}},
+      status_transitions:{paid_at:1791979200},
+    }},
+  };
+  const log = {info(){}, warn(){}, error(obj: unknown){state.errors.push(obj);}};
+  await invoke(webhooks, "/stripe", {
+    body:Buffer.from(JSON.stringify(event)),
+    headers:{"stripe-signature":"synthetic-signature"}, log,
+  });
+  const donation = state.writes.find((w: any) => w.collection === "donations").data;
+  assert.equal(donation.intendedGbp, 3, "Missing original metadata falls back to charged amount");
+  assert.equal(donation.chargedGbp, 3);
+  assert.equal(donation.platformFeeGbp, 0.15);
+  assert.equal(donation.toOrgGbp, 2.60, "Unavailable card country uses UK fee estimate");
+  assert.equal(donation.feeCoverGbp, 0);
+  assert.equal(donation.amountGbp, 3);
+  assert.equal(donation.netAmountGbp, 2.60);
+  const org = state.documents.get("organisations/test-org");
+  assert.equal(org.totalRaised, 13);
+  assert.equal(org.campaigns[0].amountRaised, 13);
+  assert.equal(org.totalOwedGbp, 7.60);
+  assert.equal(state.errors.length, 0);
+});
+
+test("expanded international card country selects international fees", async () => {
+  const {webhooks, state} = await isolatedRouters();
+  const event = {
+    type:"payment_intent.succeeded",
+    data:{object:{
+      id:"pi_international_synthetic", amount:300, currency:"gbp",
+      application_fee_amount:15,
+      latest_charge:{payment_method_details:{card:{country:"US"}}},
+      metadata:{orgId:"test-org", originalAmountPence:"300"},
+    }},
+  };
+  const log = {info(){}, warn(){}, error(obj: unknown){state.errors.push(obj);}};
+  await invoke(webhooks, "/stripe", {
+    body:Buffer.from(JSON.stringify(event)),
+    headers:{"stripe-signature":"synthetic-signature"}, log,
+  });
+  const donation = state.writes.find((w: any) => w.collection === "donations").data;
+  assert.equal(donation.toOrgGbp, 2.55);
+  assert.equal(donation.estimatedStripeFeeGbp, 0.30);
+  assert.equal(state.errors.length, 0);
+});

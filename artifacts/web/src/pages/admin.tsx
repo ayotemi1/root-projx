@@ -67,6 +67,10 @@ function formFromOrganisation(org: Organisation): OrganisationForm {
 interface Donation {
   _id: string;
   orgName: string;
+  intendedGbp?: number;
+  chargedGbp?: number;
+  platformFeeGbp?: number;
+  toOrgGbp?: number;
   grossAmountGbp?: number;
   netAmountGbp?: number;
   amountGbp?: number;
@@ -539,6 +543,9 @@ export default function AdminPage() {
                 <p style={{ margin: "4px 0 0", fontSize: 14, color: "#888" }}>
                   {donations.length > 0 ? `${donations.length} donations (most recent 200)` : "All recorded donations"}
                 </p>
+                <p style={{ margin: "4px 0 0", fontSize: 12, color: "#888" }}>
+                  Missing accounting fields on older donations are shown as —; historical records have not been recalculated.
+                </p>
               </div>
               <button
                 onClick={fetchDonations}
@@ -556,13 +563,15 @@ export default function AdminPage() {
                 <p style={{ color: "#888", fontSize: 15 }}>No donations yet</p>
               </div>
             ) : (
-              <div style={{ background: "#fff", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+              <div style={{ background: "#fff", borderRadius: 12, overflowX: "auto", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr style={{ background: "#f9f6f0" }}>
                       <th style={TH}>Organisation</th>
                       <th style={TH}>Donor</th>
+                      <th style={TH}>Intended</th>
                       <th style={TH}>Charged</th>
+                      <th style={TH}>Platform fee</th>
                       <th style={TH}>To Org</th>
                       <th style={TH}>Fee covered</th>
                       <th style={TH}>Type</th>
@@ -571,8 +580,8 @@ export default function AdminPage() {
                   </thead>
                   <tbody>
                     {donations.map((d, i) => {
-                      const gross = d.grossAmountGbp ?? d.amountGbp ?? 0;
-                      const net = d.netAmountGbp ?? d.amountGbp ?? 0;
+                      const money = (value: number | undefined) =>
+                        typeof value === "number" && Number.isFinite(value) ? `£${value.toFixed(2)}` : "—";
                       return (
                         <tr key={d._id ?? i}>
                           <td style={{ ...TD, fontWeight: 600, fontSize: 14, color: "#1a1a1a" }}>
@@ -587,10 +596,16 @@ export default function AdminPage() {
                             }
                           </td>
                           <td style={{ ...TD, fontSize: 14, fontWeight: 700, color: RED }}>
-                            £{gross.toFixed(2)}
+                            {money(d.intendedGbp)}
+                          </td>
+                          <td style={{ ...TD, fontSize: 14, fontWeight: 700, color: RED }}>
+                            {money(d.chargedGbp)}
+                          </td>
+                          <td style={{ ...TD, fontSize: 13, color: "#555" }}>
+                            {money(d.platformFeeGbp)}
                           </td>
                           <td style={{ ...TD, fontSize: 13, color: "#166534", fontWeight: 600 }}>
-                            £{(net * 0.95).toFixed(2)}
+                            {money(d.toOrgGbp)}
                           </td>
                           <td style={{ ...TD, textAlign: "center" as const }}>
                             {d.feeCovered ? (

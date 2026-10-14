@@ -37,6 +37,49 @@ test("platform fee honours STRIPE_PLATFORM_FEE_PERCENT override", () => {
   });
 });
 
+function evaluateAccounting(input: Record<string, unknown>) {
+  const moduleUrl = new URL("./fees.ts", import.meta.url).href;
+  const result = spawnSync(process.execPath, [
+    "--experimental-strip-types", "--input-type=module", "-e",
+    `import {donationAccounting} from ${JSON.stringify(moduleUrl)};
+     console.log(JSON.stringify(donationAccounting(${JSON.stringify(input)})));`,
+  ], {env:{}, encoding:"utf8"});
+  assert.equal(result.status, 0, result.stderr);
+  return JSON.parse(result.stdout);
+}
+
+test("covered donation accounting uses actual card charge and preserves intended donation", () => {
+  assert.deepEqual(evaluateAccounting({chargedPence:325, intendedPence:300, feeCovered:true}), {
+    chargedGbp:3.25, intendedGbp:3, platformFeeGbp:0.15,
+    feeCovered:true, feeCoverGbp:0.25, toOrgGbp:2.85,
+    estimatedStripeFeeGbp:0.25, amountGbp:3, netAmountGbp:2.85, grossAmountGbp:3.25,
+  });
+});
+
+test("uncovered donation accounting subtracts UK estimated Stripe fees", () => {
+  assert.deepEqual(evaluateAccounting({chargedPence:300, intendedPence:300, feeCovered:false, cardCountry:"GB"}), {
+    chargedGbp:3, intendedGbp:3, platformFeeGbp:0.15,
+    feeCovered:false, feeCoverGbp:0, toOrgGbp:2.60,
+    estimatedStripeFeeGbp:0.25, amountGbp:3, netAmountGbp:2.60, grossAmountGbp:3,
+  });
+});
+
+test("unknown card country defaults to UK and missing intended amount uses the charge", () => {
+  const accounting = evaluateAccounting({chargedPence:300, feeCovered:false});
+  assert.equal(accounting.intendedGbp, 3);
+  assert.equal(accounting.toOrgGbp, 2.60);
+  assert.equal(accounting.estimatedStripeFeeGbp, 0.25);
+});
+
+test("international card estimate is 3.25% plus 20p, rounded to pence", () => {
+  const uncovered = evaluateAccounting({chargedPence:300, intendedPence:300, feeCovered:false, cardCountry:"US"});
+  assert.equal(uncovered.estimatedStripeFeeGbp, 0.30);
+  assert.equal(uncovered.toOrgGbp, 2.55);
+  const covered = evaluateAccounting({chargedPence:330, intendedPence:300, feeCovered:true, cardCountry:"US"});
+  assert.equal(covered.feeCoverGbp, 0.30);
+  assert.equal(covered.toOrgGbp, 2.85);
+});
+
 // Exercise the real route handlers with all authentication, Firestore and Stripe
 // dependencies mocked. No accounts, payment objects or database records are created.
 async function donationHandlers() {
