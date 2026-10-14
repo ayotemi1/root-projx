@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { fsCreate, fsGet, fsPatch, fsQuery, getServerToken } from "../lib/firebase-rest.js";
+import { fsGet, fsPatch, fsQuery, getServerToken } from "../lib/firebase-rest.js";
 import { requireAuth, optionalAuth } from "../lib/auth.js";
 import { getUncachableStripeClient, getStripePublishableKey } from "../lib/stripeClient.js";
 import { PLATFORM_FEE_PERCENT, platformFeePence } from "../lib/fees.js";
@@ -426,7 +426,7 @@ router.post("/donations/checkout", optionalAuth, async (req, res) => {
   }
 });
 
-// ── GET /donations/confirm — verify session + log donation idempotently ────────
+// ── GET /donations/confirm — read-only receipt; webhook owns all writes ────────
 router.get("/donations/confirm", async (req, res) => {
   try {
     const { session_id } = req.query as { session_id?: string };
@@ -445,91 +445,35 @@ router.get("/donations/confirm", async (req, res) => {
       return;
     }
 
-    const meta = (session.payment_intent as import("stripe").Stripe.PaymentIntent)?.metadata ?? {};
+    res.setHeader("Cache-Control", "no-store");
+    const paymentIntent = session.payment_intent;
+    if (!paymentIntent || typeof paymentIntent === "string") {
+      res.status(502).json({ error: "Could not retrieve payment details" });
+      return;
+    }
+    const meta = paymentIntent.metadata ?? {};
     const orgId = meta["orgId"] ?? "";
     const orgName = meta["orgName"] ?? "";
-    const amountPence = parseInt(meta["amountPence"] ?? "0", 10);
-    const feePence = parseInt(meta["feePence"] ?? "0", 10);
-    const userId = meta["userId"] ?? "";
+    const amountPence = parseInt(meta["amountPence"] ?? String(session.amount_total ?? paymentIntent.amount), 10);
+    const feePence = parseInt(meta["feePence"] ?? String(paymentIntent.application_fee_amount ?? 0), 10);
 
-    // Idempotent — only write if not already logged
+    // The verified webhook is the sole writer. Match its PaymentIntent key,
+    // never the Checkout session ID, and return receipt data even while pending.
     const serverToken = await getServerToken();
     const existing = await fsQuery(
       "donations",
-      [{ field: "stripeSessionId", op: "EQUAL", value: session_id }],
+      [{ field: "stripeRef", op: "EQUAL", value: paymentIntent.id }],
       serverToken,
+      { limit: 1 },
     );
-
-    if (existing.length === 0) {
-      await fsCreate(
-        "donations",
-        {
-          stripeSessionId: session_id,
-          userId,
-          orgId,
-          orgName,
-          amountPence,
-          amountGbp: amountPence / 100,
-          feePence,
-          donorEmail: session.customer_email ?? "",
-          currency: "gbp",
-          status: "paid",
-          createdAt: new Date().toISOString(),
-        },
-        serverToken,
-      );
-    }
-
-    // Write supporter wall entry if opted in (non-fatal, best-effort).
-    // Stored as embedded arrays on org + user docs to avoid needing a new
-    // Firestore collection (which would require a rules deployment).
-    //
-    // Critically: only write when NO existing entry is present for this user+org.
-    // confirmDonation is idempotent and may be retried or revisited; writing
-    // unconditionally would silently re-add a supporter who later removed
-    // themselves via the account page (consent regression). A missing entry
-    // means this is the first, genuine opt-in from checkout.
-    const WALL_LIMIT = 500; // must match SUPPORTER_WALL_LIMIT in organisations.ts
-    const wallOptIn = meta["wallOptIn"] === "true";
-    if (wallOptIn && userId && userId !== "guest") {
-      try {
-        const orgDoc2 = await fsGet("organisations", orgId, serverToken);
-        const existingOrgWall = ((orgDoc2?.["supporterWall"] ?? []) as Array<Record<string, unknown>>);
-        const alreadyHasEntry = existingOrgWall.some((e) => e["userId"] === userId);
-
-        if (!alreadyHasEntry) {
-          // First-time opt-in from checkout — safe to write
-          const nameParts = ((await fsGet("users", userId, serverToken))?.[
-            "name"
-          ] as string | undefined ?? "Supporter")
-            .trim().split(/\s+/).filter(Boolean);
-          const displayName = nameParts.length <= 1
-            ? (nameParts[0] ?? "Supporter")
-            : `${nameParts[0]} ${(nameParts[nameParts.length - 1]![0] ?? "").toUpperCase()}.`;
-
-          // Append + enforce cap on org's supporterWall array
-          let orgWall = [...existingOrgWall, { userId, displayName, optedIn: true }];
-          if (orgWall.length > WALL_LIMIT) orgWall = orgWall.slice(-WALL_LIMIT);
-          await fsPatch("organisations", orgId, { ...(orgDoc2 ?? {}), supporterWall: orgWall }, serverToken);
-
-          // Mirror on user doc (bounded implicitly — one entry per org)
-          const userDoc2 = await fsGet("users", userId, serverToken);
-          const userWall = (((userDoc2 ?? {})["supportedOrgs"] ?? []) as Array<Record<string, unknown>>)
-            .filter((e) => e["orgId"] !== orgId);
-          userWall.push({ orgId, orgName, displayName, optedIn: true });
-          await fsPatch("users", userId, { ...(userDoc2 ?? {}), supportedOrgs: userWall }, serverToken);
-        }
-      } catch (wallErr) {
-        // Non-fatal — don't block the donation confirmation response
-      }
-    }
 
     res.json({
       orgId,
       orgName,
       amountGbp: amountPence / 100,
       feePence,
-      donorEmail: session.customer_email,
+      donorEmail: session.customer_details?.email ?? session.customer_email,
+      recorded: existing.length > 0,
     });
   } catch (err) {
     req.log.error({ err }, "GET /donations/confirm error");

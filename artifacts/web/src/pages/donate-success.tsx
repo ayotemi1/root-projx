@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useSearch, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { CheckCircle, Heart } from "lucide-react";
@@ -9,15 +9,38 @@ export default function DonateSuccessPage() {
   const search = useSearch();
   const params = new URLSearchParams(search);
   const sessionId = params.get("session_id") ?? "";
+  const [pollExpired, setPollExpired] = useState(false);
+  const [pollStartedAt, setPollStartedAt] = useState<number | null>(null);
+
+  useEffect(() => {
+    setPollExpired(false);
+    setPollStartedAt(null);
+  }, [sessionId]);
 
   const confirmQ = useQuery({
     queryKey: ["donation-confirm", sessionId],
     queryFn: () => api.confirmDonation(sessionId),
     enabled: !!sessionId,
     retry: 2,
+    refetchOnWindowFocus: false,
+    refetchInterval: (query) =>
+      query.state.data?.recorded === false && !pollExpired &&
+      (pollStartedAt === null || Date.now() - pollStartedAt < 20_000)
+        ? 2_000
+        : false,
   });
 
+  useEffect(() => {
+    if (confirmQ.data?.recorded !== false || pollExpired) return;
+    const startedAt = pollStartedAt ?? Date.now();
+    if (pollStartedAt === null) setPollStartedAt(startedAt);
+    const timeout = window.setTimeout(() => setPollExpired(true),
+      Math.max(0, 20_000 - (Date.now() - startedAt)));
+    return () => window.clearTimeout(timeout);
+  }, [confirmQ.data?.recorded, pollExpired, pollStartedAt]);
+
   const donation = confirmQ.data;
+  const waitingForRecord = donation?.recorded === false && !pollExpired;
 
   return (
     <div className="max-w-lg mx-auto px-4 py-12">
@@ -28,7 +51,7 @@ export default function DonateSuccessPage() {
           className="w-24 h-24 rounded-full flex items-center justify-center mx-auto"
           style={{ backgroundColor: "rgba(245,192,0,0.15)", border: "2px solid #F5C000" }}
         >
-          {confirmQ.isLoading ? (
+          {confirmQ.isLoading || waitingForRecord ? (
             <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
           ) : (
             <CheckCircle className="w-12 h-12" style={{ color: "#CC0000" }} />
@@ -38,7 +61,7 @@ export default function DonateSuccessPage() {
         {/* Heading */}
         <div>
           <h1 className="text-3xl font-extrabold text-foreground mb-2">Thank you!</h1>
-          {donation ? (
+          {donation && !waitingForRecord ? (
             <>
               <p className="text-muted-foreground text-base">
                 Your donation of{" "}
@@ -56,6 +79,8 @@ export default function DonateSuccessPage() {
                 Your support goes straight to the source.
               </p>
             </>
+          ) : waitingForRecord ? (
+            <p className="text-muted-foreground">Payment successful. Finalising your receipt…</p>
           ) : confirmQ.isError ? (
             <p className="text-muted-foreground">
               Your payment was received. If you have questions, contact us.
@@ -66,7 +91,7 @@ export default function DonateSuccessPage() {
         </div>
 
         {/* Platform fee note */}
-        {donation && (
+        {donation && !waitingForRecord && (
           <div
             className="rounded-xl px-5 py-4 text-sm text-center"
             style={{ backgroundColor: "rgba(245,192,0,0.1)" }}

@@ -496,6 +496,7 @@ export const confirmDonation = (sessionId: string) =>
     amountGbp: number;
     feePence: number;
     donorEmail: string | null;
+    recorded: boolean;
   }>(`/donations/confirm?session_id=${encodeURIComponent(sessionId)}`);
 
 // ── Supporter Wall ─────────────────────────────────────────────────────────────
