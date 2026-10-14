@@ -474,6 +474,7 @@ export const createPortalSession = (token: string) =>
 export const createDonationCheckout = (
   data: {
     orgId: string;
+    campaignId?: string;
     amountPence: number;
     guestEmail?: string;
     feeCovered?: boolean;

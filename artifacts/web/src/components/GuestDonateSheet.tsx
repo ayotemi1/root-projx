@@ -11,9 +11,10 @@ interface Props {
   onClose: () => void;
   orgId: string;
   orgName: string;
+  campaignId?: string;
 }
 
-export function GuestDonateSheet({ open, onClose, orgId, orgName }: Props) {
+export function GuestDonateSheet({ open, onClose, orgId, orgName, campaignId }: Props) {
   const [preset, setPreset] = useState<number>(25);
   const [custom, setCustom] = useState("");
   const [loading, setLoading] = useState(false);
@@ -41,7 +42,7 @@ export function GuestDonateSheet({ open, onClose, orgId, orgName }: Props) {
       const res = await fetch("/api/donations/anonymous-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orgId, amountPence }),
+        body: JSON.stringify({ orgId, amountPence, campaignId }),
       });
       const data = await res.json() as { url?: string; error?: string };
       if (!res.ok || !data.url) {

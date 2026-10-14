@@ -120,12 +120,13 @@ router.post("/donations/guest-payment-intent", async (req, res) => {
 // Stripe Checkout handles email collection during payment itself.
 router.post("/donations/anonymous-checkout", async (req, res) => {
   try {
-    const { orgId, amountPence, feeCovered, originalAmountPence, feeAmountPence } = req.body as {
+    const { orgId, amountPence, feeCovered, originalAmountPence, feeAmountPence, campaignId } = req.body as {
       orgId?: string;
       amountPence?: number;
       feeCovered?: boolean;
       originalAmountPence?: number;
       feeAmountPence?: number;
+      campaignId?: string;
     };
 
     if (!orgId || !amountPence || amountPence < 100) {
@@ -137,6 +138,15 @@ router.post("/donations/anonymous-checkout", async (req, res) => {
     const org = await fsGet("organisations", orgId, serverToken);
     if (!org) {
       res.status(404).json({ error: "Organisation not found" });
+      return;
+    }
+
+    if (campaignId !== undefined && (
+      typeof campaignId !== "string" || !campaignId ||
+      !Array.isArray(org.campaigns) ||
+      !org.campaigns.some((campaign: Record<string, unknown>) => campaign?._id === campaignId)
+    )) {
+      res.status(400).json({ error: "Campaign not found for this organisation" });
       return;
     }
 
@@ -171,6 +181,7 @@ router.post("/donations/anonymous-checkout", async (req, res) => {
           originalAmountPence: String(originalAmountPence ?? amountPence),
           feeAmountPence: String(feeAmountPence ?? 0),
           type: "anonymous_one_time",
+          ...(campaignId ? { campaignId } : {}),
           platform: "rootprojx",
         },
       },
@@ -332,7 +343,7 @@ router.post("/donations/subscription", requireAuth, async (req, res) => {
 // Supports both authenticated users and guests (with guestEmail in body).
 router.post("/donations/checkout", optionalAuth, async (req, res) => {
   try {
-    const { orgId, amountPence, guestEmail, feeCovered, originalAmountPence, feeAmountPence, wallOptIn } = req.body as {
+    const { orgId, amountPence, guestEmail, feeCovered, originalAmountPence, feeAmountPence, wallOptIn, campaignId } = req.body as {
       orgId: string;
       amountPence: number;
       guestEmail?: string;
@@ -340,6 +351,7 @@ router.post("/donations/checkout", optionalAuth, async (req, res) => {
       originalAmountPence?: number;
       feeAmountPence?: number;
       wallOptIn?: boolean;
+      campaignId?: string;
     };
 
     if (!orgId || !amountPence || amountPence < 100) {
@@ -358,6 +370,15 @@ router.post("/donations/checkout", optionalAuth, async (req, res) => {
     const org = await fsGet("organisations", orgId, serverToken);
     if (!org) {
       res.status(404).json({ error: "Organisation not found" });
+      return;
+    }
+
+    if (campaignId !== undefined && (
+      typeof campaignId !== "string" || !campaignId ||
+      !Array.isArray(org.campaigns) ||
+      !org.campaigns.some((campaign: Record<string, unknown>) => campaign?._id === campaignId)
+    )) {
+      res.status(400).json({ error: "Campaign not found for this organisation" });
       return;
     }
 
@@ -412,11 +433,12 @@ router.post("/donations/checkout", optionalAuth, async (req, res) => {
           feeAmountPence: String(feeAmountPence ?? 0),
           platform: "rootprojx",
           wallOptIn: (wallOptIn && uid) ? "true" : "false",
+          ...(campaignId ? { campaignId } : {}),
         },
       },
       customer_email: donorEmail,
       success_url: `${DOMAIN}/donate/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${DOMAIN}/donate/${orgId}`,
+      cancel_url: `${DOMAIN}/donate/${orgId}${campaignId ? `?campaign=${encodeURIComponent(campaignId)}` : ""}`,
     });
 
     res.json({ url: session.url, sessionId: session.id });

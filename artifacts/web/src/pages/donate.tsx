@@ -28,6 +28,8 @@ export default function DonatePage() {
   const urlParams = new URLSearchParams(search);
 
   const guestEmail = urlParams.get("email") ?? "";
+  const campaignId = urlParams.get("campaign") || undefined;
+  const donationPath = `/donate/${orgId}${campaignId ? `?campaign=${encodeURIComponent(campaignId)}` : ""}`;
 
   const [preset, setPreset] = useState<number | null>(25);
   const [custom, setCustom] = useState("");
@@ -82,6 +84,7 @@ export default function DonatePage() {
         {
           orgId,
           amountPence: chargedAmountPence,
+          campaignId,
           guestEmail: guestEmail || undefined,
           feeCovered,
           originalAmountPence,
@@ -112,6 +115,7 @@ export default function DonatePage() {
         body: JSON.stringify({
           orgId,
           amountPence: chargedAmountPence,
+          campaignId,
           feeCovered,
           originalAmountPence,
           feeAmountPence: feeCovered ? estimatedFeePence : 0,
@@ -383,7 +387,7 @@ export default function DonatePage() {
               <p className="text-xs text-muted-foreground">Takes 30 seconds — no spam, ever.</p>
               <div className="flex gap-2 mt-3">
                 <Link
-                  href={`/register?${guestEmail ? `email=${encodeURIComponent(guestEmail)}&` : ""}next=${encodeURIComponent(`/donate/${orgId}`)}`}
+                  href={`/register?${guestEmail ? `email=${encodeURIComponent(guestEmail)}&` : ""}next=${encodeURIComponent(donationPath)}`}
                   className="flex-1"
                 >
                   <Button
@@ -393,7 +397,7 @@ export default function DonatePage() {
                     Create account
                   </Button>
                 </Link>
-                <Link href={`/login?next=${encodeURIComponent(`/donate/${orgId}`)}`} className="flex-1">
+                <Link href={`/login?next=${encodeURIComponent(donationPath)}`} className="flex-1">
                   <Button variant="outline" className="w-full text-sm font-semibold">
                     Sign in
                   </Button>

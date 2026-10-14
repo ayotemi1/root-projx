@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useSearch, Link } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import * as api from "@/lib/api";
 
 export default function DonateSuccessPage() {
+  const queryClient = useQueryClient();
   const search = useSearch();
   const params = new URLSearchParams(search);
   const sessionId = params.get("session_id") ?? "";
@@ -41,6 +42,10 @@ export default function DonateSuccessPage() {
 
   const donation = confirmQ.data;
   const waitingForRecord = donation?.recorded === false && !pollExpired;
+
+  useEffect(() => {
+    void queryClient.invalidateQueries({ queryKey: ["campaign-landing"] });
+  }, [queryClient, sessionId, donation?.recorded]);
 
   return (
     <div className="max-w-lg mx-auto px-4 py-12">

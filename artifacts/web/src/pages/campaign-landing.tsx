@@ -39,6 +39,9 @@ export default function CampaignLandingPage() {
         ? getPublicCampaignLandingBySlug(params.organisationSlug, params.campaignSlug)
         : getPublicCampaignLanding(params?.publicId ?? ""),
     enabled: !!params?.publicId || (!!params?.organisationSlug && !!params?.campaignSlug),
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: "always",
   });
 
   useEffect(() => {
@@ -163,6 +166,7 @@ export default function CampaignLandingPage() {
         onClose={() => setDonateOpen(false)}
         orgId={org._id}
         orgName={org.name}
+        campaignId={campaign._id}
       />
 
       {/* Floating Header */}

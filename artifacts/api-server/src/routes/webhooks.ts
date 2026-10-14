@@ -99,7 +99,7 @@ async function handlePaymentSuccess(
     stripeRef = invoice.id;
   }
 
-  const { userId, orgId, orgName, note, type, guestEmail, feeCovered, originalAmountPence, feeAmountPence, wallOptIn } = metadata;
+  const { userId, orgId, orgName, note, type, guestEmail, feeCovered, originalAmountPence, feeAmountPence, wallOptIn, campaignId } = metadata;
 
   // ── Idempotency guard ─────────────────────────────────────────────────────────
   // Stripe retries webhook deliveries (network blips, non-2xx responses, manual
@@ -137,6 +137,7 @@ async function handlePaymentSuccess(
   const donationDate = new Date().toISOString();
   const isFeeCovered = feeCovered === "true";
   const origAmountGbp = originalAmountPence ? Number(originalAmountPence) / 100 : amountGbp;
+  const netAmountGbp = origAmountGbp;
   const feeAmountGbp = feeAmountPence ? Number(feeAmountPence) / 100 : 0;
 
   const donationId = await fsCreate(
@@ -146,9 +147,10 @@ async function handlePaymentSuccess(
       ...(isGuest ? { guestEmail } : {}),
       orgId,
       orgName: orgName ?? "",
+      ...(campaignId ? { campaignId } : {}),
       // Fee transparency fields
       grossAmountGbp: amountGbp,           // total charged to donor's card
-      netAmountGbp: origAmountGbp,         // original intended donation (what org counts toward)
+      netAmountGbp,                       // original intended donation (what org counts toward)
       feeCovered: isFeeCovered,
       feeAmountGbp: isFeeCovered ? feeAmountGbp : 0,
       // Legacy field kept for backwards compatibility
@@ -229,6 +231,30 @@ async function handlePaymentSuccess(
     log.info({ orgId, amountGbp }, "Incremented org totalRaised");
   } catch (incErr) {
     log.error({ incErr, orgId, amountGbp }, "totalRaised increment failed — investigate: donation recorded but org total not updated");
+  }
+
+  if (campaignId) {
+    try {
+      const orgDoc = await fsGet("organisations", orgId, serverToken);
+      const campaigns = orgDoc?.campaigns;
+      if (!Array.isArray(campaigns)) throw new Error("Organisation has no campaigns array");
+      const index = campaigns.findIndex((campaign: Record<string, unknown>) => campaign?._id === campaignId);
+      if (index < 0) throw new Error("Campaign not found on organisation");
+      const current = campaigns[index] as Record<string, unknown>;
+      const previousAmount = typeof current.amountRaised === "number" ? current.amountRaised : 0;
+      if (!Number.isFinite(previousAmount) || !Number.isFinite(netAmountGbp)) {
+        throw new Error("Invalid campaign donation amount");
+      }
+      const updatedCampaigns = [...campaigns];
+      updatedCampaigns[index] = {
+        ...current,
+        amountRaised: Math.round((previousAmount + netAmountGbp) * 100) / 100,
+      };
+      await fsPatch("organisations", orgId, { campaigns: updatedCampaigns }, serverToken);
+      log.info({ orgId, campaignId, netAmountGbp }, "Updated campaign amountRaised");
+    } catch (campaignErr) {
+      log.error({ campaignErr, orgId, campaignId }, "Campaign amountRaised update failed (non-fatal)");
+    }
   }
 
   // 4. Supporter wall opt-in — durable path; idempotent write, only on first event.
