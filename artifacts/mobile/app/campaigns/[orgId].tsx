@@ -236,7 +236,7 @@ export default function CampaignsScreen() {
               completed={activeTab === "completed"}
               onDonate={
                 item.type !== "volunteer"
-                  ? () => router.push(`/donate/${orgId}`)
+                  ? () => router.push(`/donate/${orgId}?campaign=${encodeURIComponent(item._id)}`)
                   : undefined
               }
             />

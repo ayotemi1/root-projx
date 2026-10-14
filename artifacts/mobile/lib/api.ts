@@ -300,29 +300,6 @@ export interface Donation {
   createdAt: string;
 }
 
-export const getStripePublishableKey = () =>
-  req<{ publishableKey: string }>("/donations/publishable-key");
-
-export const createPaymentIntent = (
-  data: { orgId: string; amountGbp: number; note?: string },
-  token: string,
-) =>
-  req<{ clientSecret: string; paymentIntentId: string; amountGbp: number; feePence: number }>(
-    "/donations/payment-intent",
-    { method: "POST", body: JSON.stringify(data) },
-    token,
-  );
-
-export const createSubscription = (
-  data: { orgId: string; amountGbp: number; note?: string },
-  token: string,
-) =>
-  req<{ subscriptionId: string; clientSecret: string; amountGbp: number; feePence: number }>(
-    "/donations/subscription",
-    { method: "POST", body: JSON.stringify(data) },
-    token,
-  );
-
 export const getMyDonations = (token: string) =>
   req<Donation[]>("/donations/my", {}, token);
 
@@ -345,24 +322,14 @@ export interface ShopProduct {
 export const getShopProducts = () =>
   req<{ products: ShopProduct[] }>("/shop/products");
 
-export const createGuestPaymentIntent = (data: {
-  orgId: string;
-  amountGbp: number;
-  guestEmail: string;
-  note?: string;
-}) =>
-  req<{ clientSecret: string; amountGbp: number; feePence: number }>(
-    "/donations/guest-payment-intent",
-    { method: "POST", body: JSON.stringify(data) },
-  );
-
-export const createShopPaymentIntent = (
+export const createShopCheckout = (
   items: Array<{ id: string; qty: number; size?: string }>,
+  token: string,
 ) =>
-  req<{ clientSecret: string; amountGbp: number }>("/shop/payment-intent", {
+  req<{ url: string }>("/shop/checkout", {
     method: "POST",
     body: JSON.stringify({ items }),
-  });
+  }, token);
 
 // ── Campaigns / Volunteer roles ───────────────────────────────────────────────
 

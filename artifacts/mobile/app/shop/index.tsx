@@ -12,7 +12,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { StripeProvider, usePaymentSheet } from "@stripe/stripe-react-native";
+import * as WebBrowser from "expo-web-browser";
 
 import { useColors } from "@/hooks/useColors";
 import { useAuth } from "@/context/AuthContext";
@@ -174,7 +174,7 @@ function CartModal({
                 {isCheckingOut ? (
                   <ActivityIndicator color="#FFFFFF" />
                 ) : (
-                  <Text style={s.checkoutBtnText}>Checkout · £{total.toFixed(2)}</Text>
+                  <Text style={s.checkoutBtnText}>Checkout on website · £{total.toFixed(2)}</Text>
                 )}
               </Pressable>
             </>
@@ -187,13 +187,10 @@ function CartModal({
 
 function ShopContent() {
   const colors = useColors();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, token } = useAuth();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [cartVisible, setCartVisible] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
-  const [success, setSuccess] = useState(false);
-
-  const { initPaymentSheet, presentPaymentSheet } = usePaymentSheet();
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["shop-products"],
@@ -223,7 +220,7 @@ function ShopContent() {
   }
 
   async function handleCheckout() {
-    if (!isAuthenticated) {
+    if (!isAuthenticated || !token) {
       Alert.alert(
         "Sign in required",
         "Please sign in to complete your purchase.",
@@ -241,53 +238,19 @@ function ShopContent() {
         size: item.size,
       }));
 
-      const { clientSecret, amountGbp } = await api.createShopPaymentIntent(cartItems);
+      const { url } = await api.createShopCheckout(cartItems, token);
 
-      if (!clientSecret) {
+      if (!url) {
         Alert.alert("Checkout unavailable", "Please try again later.");
         return;
       }
 
-      const { error: initErr } = await initPaymentSheet({
-        paymentIntentClientSecret: clientSecret,
-        merchantDisplayName: "Root ProjX Shop",
-        style: "alwaysLight",
-        primaryButtonLabel: `Pay £${amountGbp.toFixed(2)}`,
-      });
-
-      if (initErr) {
-        Alert.alert("Checkout failed", initErr.message);
-        return;
-      }
-
-      const { error: presentErr } = await presentPaymentSheet();
-      if (!presentErr) {
-        setCart([]);
-        setCartVisible(false);
-        setSuccess(true);
-      } else if (presentErr.code !== "Canceled") {
-        Alert.alert("Payment failed", presentErr.message);
-      }
+      await WebBrowser.openBrowserAsync(url);
     } catch (err) {
       Alert.alert("Error", err instanceof Error ? err.message : "Something went wrong. Please try again.");
     } finally {
       setIsCheckingOut(false);
     }
-  }
-
-  if (success) {
-    return (
-      <View style={s.successContainer}>
-        <Text style={{ fontSize: 60, marginBottom: 16 }}>🎉</Text>
-        <Text style={[s.successTitle, { color: colors.foreground }]}>Order confirmed!</Text>
-        <Text style={[s.successMsg, { color: colors.mutedForeground }]}>
-          Thank you for supporting Root ProjX. Your order is on its way.
-        </Text>
-        <Pressable style={[s.backBtn, { backgroundColor: colors.primary }]} onPress={() => setSuccess(false)}>
-          <Text style={{ color: "#fff", fontWeight: "700", fontSize: 15 }}>Shop more</Text>
-        </Pressable>
-      </View>
-    );
   }
 
   return (
@@ -347,29 +310,10 @@ function ShopContent() {
 
 export default function ShopScreen() {
   const colors = useColors();
-  const [publishableKey, setPublishableKey] = useState<string | null>(null);
-
-  React.useEffect(() => {
-    api.getStripePublishableKey()
-      .then((r) => setPublishableKey(r.publishableKey))
-      .catch(() => setPublishableKey(""));
-  }, []);
-
-  if (publishableKey === null) {
-    return (
-      <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]} edges={["bottom"]}>
-        <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-          <ActivityIndicator color={colors.primary} size="large" />
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   return (
     <SafeAreaView style={[s.safe, { backgroundColor: colors.background }]} edges={["bottom"]}>
-      <StripeProvider publishableKey={publishableKey} merchantIdentifier="merchant.com.rootprojx">
-        <ShopContent />
-      </StripeProvider>
+      <ShopContent />
     </SafeAreaView>
   );
 }

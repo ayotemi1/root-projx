@@ -4,3 +4,4 @@
 - [Onboarding audience model](onboarding-audience-model.md) — supporters register immediately; organisations apply for review before platform access
 - [Campaign share metadata](campaign-share-metadata.md) — readable share URLs are API-rendered for crawler metadata, then hand off to the static React campaign page
 - [Stabilisation boundaries](stabilisation-boundaries.md) — one fix at a time, existing API tests after each fix, no unrelated refactors or automatic rules edits
+- [Mobile donation policy](mobile-donation-policy.md) — Apple rejected in-app donations; mobile must hand donations off to rootprojx.com.

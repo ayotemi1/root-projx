@@ -240,9 +240,6 @@ importers:
       '@expo-google-fonts/dancing-script':
         specifier: ^0.4.2
         version: 0.4.2
-      '@stripe/stripe-react-native':
-        specifier: ^0.64.0
-        version: 0.64.0(expo@54.0.33)(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
       firebase:
         specifier: ^11.0.0
         version: 11.10.0(@react-native-async-storage/async-storage@2.2.0(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0)))
@@ -2898,19 +2895,6 @@ packages:
   '@stripe/stripe-js@9.2.0':
     resolution: {integrity: sha512-YSzLC0t6VS9MDdPTynSMqU8IxrItFUjkDORALFT6sSMR/XZ5Vgm3RDp/Gk7z727MC4A9s4MFVel0gF0c7+kdrg==}
     engines: {node: '>=12.16'}
-
-  '@stripe/stripe-react-native@0.64.0':
-    resolution: {integrity: sha512-NQxFUMWJ7W/T1jEho3qd0XRnQGhXG6GdcoieG8JZo3IG/1QggugOVqEzvg1HRAq8S+cAGVXaj5CXfJuJsnF3eg==}
-    peerDependencies:
-      expo: '>=46.0.9'
-      react: '*'
-      react-native: '*'
-      react-native-webview: '*'
-    peerDependenciesMeta:
-      expo:
-        optional: true
-      react-native-webview:
-        optional: true
 
   '@szmarczak/http-timer@4.0.6':
     resolution: {integrity: sha512-4BAffykYOgO+5nzBWYwE3W90sBgLJoUPRWWcL8wlyiM8IB8ipJz3UMJ9KXQd1RKQXpKp8Tutn80HZtWsu2u76w==}
@@ -9597,13 +9581,6 @@ snapshots:
       react-dom: 19.1.0(react@19.1.0)
 
   '@stripe/stripe-js@9.2.0': {}
-
-  '@stripe/stripe-react-native@0.64.0(expo@54.0.33)(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)':
-    dependencies:
-      react: 19.1.0
-      react-native: 0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0)
-    optionalDependencies:
-      expo: 54.0.33(@babel/core@7.29.0)(@expo/metro-runtime@6.1.2)(expo-router@6.0.23)(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)(typescript@5.9.3)
 
   '@szmarczak/http-timer@4.0.6':
     dependencies:
