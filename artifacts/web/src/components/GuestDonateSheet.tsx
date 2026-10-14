@@ -157,7 +157,7 @@ export function GuestDonateSheet({ open, onClose, orgId, orgName }: Props) {
               <span style={{ fontSize: 13, color: "#777" }}>Donating </span>
               <span style={{ fontSize: 21, fontWeight: 900, color: RED }}>£{amountGbp.toFixed(2)}</span>
               <p style={{ margin: "3px 0 0", fontSize: 12, color: "#aaa" }}>
-                3% platform fee · £{(amountGbp * 0.97).toFixed(2)} reaches {orgName}
+                5% platform fee · £{(amountGbp * 0.95).toFixed(2)} reaches {orgName}
               </p>
             </div>
           )}

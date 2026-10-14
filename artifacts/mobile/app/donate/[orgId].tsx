@@ -296,7 +296,7 @@ function DonateForm({ orgId }: { orgId: string }) {
 
         <View style={s.notice}>
           <Text style={s.noticeText}>
-            🔒 Secured by Stripe · 3% platform fee supports Root ProjX
+            🔒 Secured by Stripe · 5% platform fee supports Root ProjX
           </Text>
         </View>
 

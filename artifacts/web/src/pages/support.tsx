@@ -44,7 +44,7 @@ export default function SupportPage() {
               within 5 business days.
             </Faq>
             <Faq q="Where does my donation go?">
-              100% of your donation amount reaches the organisation, minus a small platform fee (3%) and
+              100% of your donation amount reaches the organisation, minus a small platform fee (5%) and
               any Stripe payment processing fees. Root ProjX never takes a cut beyond the platform fee
               shown at checkout.
             </Faq>

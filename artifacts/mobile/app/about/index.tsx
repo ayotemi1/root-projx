@@ -19,7 +19,7 @@ const PILLARS = [
   {
     icon: "💸",
     title: "Give Directly",
-    desc: "Send money straight to the organisations on the ground. No middlemen, no bureaucracy. 97% of every donation reaches the cause — we charge just 3% to keep the lights on.",
+    desc: "Send money straight to the organisations on the ground. No middlemen, no bureaucracy. 95% of every donation reaches the cause — we charge just 5% to keep the lights on.",
   },
   {
     icon: "🤝",

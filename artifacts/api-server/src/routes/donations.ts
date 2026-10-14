@@ -2,6 +2,7 @@ import { Router } from "express";
 import { fsCreate, fsGet, fsPatch, fsQuery, getServerToken } from "../lib/firebase-rest.js";
 import { requireAuth, optionalAuth } from "../lib/auth.js";
 import { getUncachableStripeClient, getStripePublishableKey } from "../lib/stripeClient.js";
+import { PLATFORM_FEE_PERCENT, platformFeePence } from "../lib/fees.js";
 
 const DOMAIN = process.env.REPLIT_DEV_DOMAIN
   ? `https://${process.env.REPLIT_DEV_DOMAIN}`
@@ -10,13 +11,6 @@ const DOMAIN = process.env.REPLIT_DEV_DOMAIN
   : "http://localhost:3000";
 
 const router = Router();
-
-// ── Platform fee ──────────────────────────────────────────────────────────────
-const FEE_PERCENT = parseFloat(process.env.STRIPE_PLATFORM_FEE_PERCENT ?? "5");
-
-function platformFee(amountGbp: number): number {
-  return Math.round(amountGbp * 100 * (FEE_PERCENT / 100));
-}
 
 // ── Get / upsert Stripe customer — stored in Firestore users/{uid} ─────────────
 async function ensureStripeCustomer(userId: string, email: string, token: string): Promise<string> {
@@ -92,7 +86,7 @@ router.post("/donations/guest-payment-intent", async (req, res) => {
     const customerId = await ensureGuestStripeCustomer(guestEmail);
     const stripe = await getUncachableStripeClient();
     const amountPence = Math.round(amountGbp * 100);
-    const feePence = platformFee(amountGbp);
+    const feePence = platformFeePence(amountPence);
 
     const intent = await stripe.paymentIntents.create({
       amount: amountPence,
@@ -149,7 +143,7 @@ router.post("/donations/anonymous-checkout", async (req, res) => {
     const stripe = await getUncachableStripeClient();
     // Platform fee calculated on original donation amount (not the grossed-up amount)
     const basePence = feeCovered && originalAmountPence ? originalAmountPence : amountPence;
-    const feePence = platformFee(basePence / 100);
+    const feePence = platformFeePence(basePence);
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
@@ -230,7 +224,7 @@ router.post("/donations/payment-intent", requireAuth, async (req, res) => {
     const stripe = await getUncachableStripeClient();
 
     const amountPence = Math.round(amountGbp * 100);
-    const feePence = platformFee(amountGbp);
+    const feePence = platformFeePence(amountPence);
 
     const intent = await stripe.paymentIntents.create({
       amount: amountPence,
@@ -288,7 +282,7 @@ router.post("/donations/subscription", requireAuth, async (req, res) => {
     const stripe = await getUncachableStripeClient();
 
     const amountPence = Math.round(amountGbp * 100);
-    const feePence = platformFee(amountGbp);
+    const feePence = platformFeePence(amountPence);
 
     const price = await stripe.prices.create({
       unit_amount: amountPence,
@@ -303,7 +297,7 @@ router.post("/donations/subscription", requireAuth, async (req, res) => {
     const subscription = await stripe.subscriptions.create({
       customer: customerId,
       items: [{ price: price.id }],
-      application_fee_percent: FEE_PERCENT,
+      application_fee_percent: PLATFORM_FEE_PERCENT,
       payment_behavior: "default_incomplete",
       payment_settings: { save_default_payment_method: "on_subscription" },
       expand: ["latest_invoice.confirmation_token", "latest_invoice.payment_intent"],
@@ -384,7 +378,7 @@ router.post("/donations/checkout", optionalAuth, async (req, res) => {
 
     // Platform fee is calculated on the original donation amount, not the grossed-up total
     const basePence = feeCovered && originalAmountPence ? originalAmountPence : amountPence;
-    const feePence = platformFee(basePence / 100);
+    const feePence = platformFeePence(basePence);
     const stripe = await getUncachableStripeClient();
 
     const session = await stripe.checkout.sessions.create({
