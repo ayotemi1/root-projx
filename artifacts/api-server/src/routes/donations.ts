@@ -12,7 +12,7 @@ const DOMAIN = process.env.REPLIT_DEV_DOMAIN
 const router = Router();
 
 // ── Platform fee ──────────────────────────────────────────────────────────────
-const FEE_PERCENT = parseFloat(process.env.STRIPE_PLATFORM_FEE_PERCENT ?? "3");
+const FEE_PERCENT = parseFloat(process.env.STRIPE_PLATFORM_FEE_PERCENT ?? "5");
 
 function platformFee(amountGbp: number): number {
   return Math.round(amountGbp * 100 * (FEE_PERCENT / 100));
@@ -384,7 +384,7 @@ router.post("/donations/checkout", optionalAuth, async (req, res) => {
 
     // Platform fee is calculated on the original donation amount, not the grossed-up total
     const basePence = feeCovered && originalAmountPence ? originalAmountPence : amountPence;
-    const feePence = Math.round(basePence * 0.05);
+    const feePence = platformFee(basePence / 100);
     const stripe = await getUncachableStripeClient();
 
     const session = await stripe.checkout.sessions.create({

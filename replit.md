@@ -71,7 +71,7 @@ All routes prefixed `/api`:
 - Credentials fetched per-request via Replit connector API (`getUncachableStripeClient()`) — NEVER cache the Stripe instance
 - Stripe customer IDs stored in `users/{uid}.stripeCustomerId` in Firestore (NOT PostgreSQL)
 - Webhook route mounted at `/api/webhooks` with `express.raw()` BEFORE `express.json()` in `app.ts`
-- Platform fee: `STRIPE_PLATFORM_FEE_PERCENT` env var (default 3%)
+- Platform fee: `STRIPE_PLATFORM_FEE_PERCENT` env var (default 5%)
 - On payment success webhook: creates donation doc in Firestore, auto-follows org, updates `totalRaised`
 
 ### Brevo
@@ -140,7 +140,7 @@ All routes prefixed `/api`:
 
 - `BREVO_NEWSLETTER_LIST_ID` — Brevo list ID for newsletter subscribers (optional)
 - `BREVO_SENDER_EMAIL` — sender email for transactional emails (optional, defaults to noreply@rootprojx.com)
-- `STRIPE_PLATFORM_FEE_PERCENT` — platform fee % (optional, defaults to 3)
+- `STRIPE_PLATFORM_FEE_PERCENT` — platform fee % (optional, defaults to 5)
 - `STRIPE_WEBHOOK_SECRET` — Stripe webhook signing secret (set in production for signature verification)
 - `ADMIN_PASSWORD` — password for `/admin` dashboard (set in Replit Secrets; defaults to `rootprojx-admin`)
 - `TEAM_EMAIL` — internal notification recipient (defaults to `info@rootprojx.com`)
