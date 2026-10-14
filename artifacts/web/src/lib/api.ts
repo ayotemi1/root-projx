@@ -122,6 +122,19 @@ export interface Donation {
   createdAt: string;
 }
 
+export interface RecurringDonation {
+  _id: string;
+  userId: string;
+  orgId: string;
+  orgName: string;
+  stripeSubscriptionId: string;
+  amountGbp: number;
+  status: "active" | "paused" | "past_due" | "canceled";
+  startedAt: string;
+  lastPaidAt: string;
+  canceledAt: string | null;
+}
+
 // ── Core fetch helper ─────────────────────────────────────────────────────────
 
 async function req<T>(
@@ -467,6 +480,8 @@ export const createSubscription = (
   );
 
 export const getMyDonations = (token: string) => req<Donation[]>("/donations/my", {}, token);
+export const getMyRecurringDonations = (token: string) =>
+  req<RecurringDonation[]>("/donations/recurring", { cache: "no-store" }, token);
 
 export const createPortalSession = (token: string) =>
   req<{ url: string }>("/donations/portal", { method: "POST" }, token);

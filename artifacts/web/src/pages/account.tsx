@@ -277,6 +277,15 @@ export default function AccountPage() {
     enabled: isAuthenticated,
   });
 
+  const recurringQ = useQuery({
+    queryKey: ["donations", "recurring", user?.id],
+    queryFn: () => api.getMyRecurringDonations(token!),
+    enabled: isAuthenticated && !!token,
+    staleTime: 0,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: "always",
+  });
+
   const myWallQ = useQuery({
     queryKey: ["my-wall"],
     queryFn: () => api.getMySupporterEntries(token!),
@@ -286,6 +295,7 @@ export default function AccountPage() {
   const profile = profileQ.data ?? user;
   const follows = followsQ.data ?? [];
   const donations = donationsQ.data ?? [];
+  const recurring = recurringQ.data ?? [];
 
   async function handleManageSubscriptions() {
     if (!token) return;
@@ -413,6 +423,48 @@ export default function AccountPage() {
             </CardTitle>
           </CardHeader>
           <CardContent>
+            <div className="mb-5">
+              <h3 className="text-sm font-semibold mb-2">Monthly donations</h3>
+              {recurringQ.isLoading ? (
+                <Skeleton className="h-16 w-full rounded-lg" />
+              ) : recurringQ.isError ? (
+                <div role="alert" className="text-sm text-destructive">
+                  <p>Could not load recurring donations.</p>
+                  <Button variant="outline" size="sm" className="mt-2" onClick={() => recurringQ.refetch()}>
+                    Try again
+                  </Button>
+                </div>
+              ) : recurring.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No monthly donations recorded yet.</p>
+              ) : (
+                <div className="divide-y divide-border">
+                  {recurring.map((donation) => (
+                    <div key={donation._id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                      <div className="min-w-0">
+                        <Link href={`/organisations/${donation.orgId}`} className="text-sm font-semibold hover:underline">
+                          {donation.orgName}
+                        </Link>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Last paid {new Date(donation.lastPaidAt).toLocaleDateString("en-GB")}
+                        </p>
+                        {donation.canceledAt && (
+                          <p className="text-xs text-muted-foreground">
+                            Canceled {new Date(donation.canceledAt).toLocaleDateString("en-GB")}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold">£{donation.amountGbp.toFixed(2)} / month</span>
+                        <Badge variant="secondary">
+                          {{ active: "Active", paused: "Paused", past_due: "Past due", canceled: "Canceled" }[donation.status]}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <h3 className="text-sm font-semibold mb-2">Payment history</h3>
             {donationsQ.isLoading ? (
               <div className="space-y-3">
                 {[0, 1, 2].map((i) => (
@@ -453,7 +505,7 @@ export default function AccountPage() {
                 })}
               </div>
             )}
-            {donations.some((d) => d.type === "recurring") && (
+            {(recurring.length > 0 || donations.some((d) => d.type === "recurring")) && (
               <div className="pt-3 mt-1 border-t border-border">
                 <Button
                   variant="outline"

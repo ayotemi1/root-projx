@@ -3,6 +3,7 @@ import { fsCreate, fsGet, fsIncrement, fsPatch, fsQuery, getServerToken } from "
 import { getUncachableStripeClient } from "../lib/stripeClient.js";
 import { brevoSendEmail, donationConfirmationHtml, shopOrderConfirmationHtml } from "../lib/brevo.js";
 import type Stripe from "stripe";
+import { recurringStatus } from "../lib/recurring-status.js";
 
 const router = Router();
 
@@ -64,6 +65,11 @@ router.post(
         event.type === "invoice.payment_succeeded"
       ) {
         await handlePaymentSuccess(event, req.log as { info: (obj: unknown, msg: string) => void; error: (obj: unknown, msg: string) => void });
+      } else if (
+        event.type === "customer.subscription.updated" ||
+        event.type === "customer.subscription.deleted"
+      ) {
+        await handleSubscriptionChange(event);
       }
       res.json({ received: true });
     } catch (err) {
@@ -72,6 +78,63 @@ router.post(
     }
   },
 );
+
+async function handleSubscriptionChange(event: Stripe.Event) {
+  const subscription = event.data.object as Stripe.Subscription;
+  const token = await getServerToken();
+  const records = await fsQuery("recurring", [
+    { field: "stripeSubscriptionId", op: "EQUAL", value: subscription.id },
+  ], token, { limit: 1 });
+  const record = records[0];
+  // Recurring records are first created by a successful invoice, not by an
+  // incomplete subscription or an unrelated subscription in the Stripe account.
+  if (!record) return;
+  if (typeof record.statusUpdatedAt === "number" && record.statusUpdatedAt > event.created) return;
+
+  const status = event.type === "customer.subscription.deleted"
+    ? "canceled"
+    : recurringStatus(subscription.status, !!subscription.pause_collection);
+  await fsPatch("recurring", String(record._id), {
+    status,
+    statusUpdatedAt: event.created,
+    canceledAt: status === "canceled"
+      ? new Date((subscription.canceled_at ?? subscription.ended_at ?? event.created) * 1000).toISOString()
+      : null,
+  }, token);
+}
+
+async function recordRecurringPayment(
+  invoice: Stripe.Invoice,
+  subscriptionId: string,
+  metadata: Record<string, string>,
+  paidAt: string,
+  token: string,
+) {
+  const records = await fsQuery("recurring", [
+    { field: "stripeSubscriptionId", op: "EQUAL", value: subscriptionId },
+  ], token, { limit: 1 });
+  const existing = records[0];
+  if (existing) {
+    // Older/repeated invoices cannot move lastPaidAt backwards or reactivate a
+    // subscription canceled/paused by a subsequent lifecycle event.
+    if (typeof existing.lastPaidAt !== "string" || existing.lastPaidAt < paidAt) {
+      await fsPatch("recurring", String(existing._id), { lastPaidAt: paidAt }, token);
+    }
+    return;
+  }
+  if (!metadata.userId || !metadata.orgId) return;
+  // Deterministic ID prevents duplicate recurring documents on invoice retries.
+  await fsPatch("recurring", subscriptionId, {
+    userId: metadata.userId,
+    orgId: metadata.orgId,
+    orgName: metadata.orgName ?? "",
+    stripeSubscriptionId: subscriptionId,
+    amountGbp: invoice.amount_paid / 100,
+    status: "active",
+    startedAt: paidAt,
+    lastPaidAt: paidAt,
+  }, token);
+}
 
 async function handlePaymentSuccess(
   event: Stripe.Event,
@@ -92,8 +155,30 @@ async function handlePaymentSuccess(
   } else if (event.type === "invoice.payment_succeeded") {
     const invoice = event.data.object as Stripe.Invoice & {
       subscription_details?: { metadata?: Record<string, string> };
+      subscription?: string | Stripe.Subscription | null;
     };
-    metadata = invoice.subscription_details?.metadata ?? {};
+    // Basil stores subscription information under parent; older events used
+    // invoice.subscription and invoice.subscription_details.
+    const details = invoice.parent?.subscription_details;
+    const reference = details?.subscription ?? invoice.subscription;
+    const subscriptionId = typeof reference === "string" ? reference : reference?.id;
+    metadata = {
+      ...(typeof reference === "object" && reference ? reference.metadata : {}),
+      ...invoice.subscription_details?.metadata,
+      ...details?.metadata,
+    };
+    if (subscriptionId && (!metadata.userId || !metadata.orgId)) {
+      const stripe = await getUncachableStripeClient();
+      const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+      metadata = { ...subscription.metadata, ...metadata };
+    }
+    if (subscriptionId) {
+      const paidAt = new Date((invoice.status_transitions?.paid_at ?? event.created) * 1000).toISOString();
+      // Do this before the donation dedup guard so an invoice retry can repair
+      // recurring tracking without creating another donation.
+      await recordRecurringPayment(invoice, subscriptionId, metadata, paidAt, serverToken);
+      metadata.type = "recurring";
+    }
     amountGbp = (invoice.amount_paid - ((invoice as Stripe.Invoice & { application_fee_amount?: number }).application_fee_amount ?? 0)) / 100;
     currency = invoice.currency ?? "gbp";
     stripeRef = invoice.id;

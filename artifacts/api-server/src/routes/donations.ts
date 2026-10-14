@@ -522,6 +522,33 @@ router.post("/donations/portal", requireAuth, async (req, res) => {
   }
 });
 
+// GET /donations/recurring — only the authenticated supporter's subscriptions
+router.get("/donations/recurring", requireAuth, async (req, res) => {
+  try {
+    const token = await getServerToken();
+    const records = await fsQuery("recurring", [
+      { field: "userId", op: "EQUAL", value: req.user!.userId },
+    ], token);
+    records.sort((a, b) => String(b.startedAt ?? "").localeCompare(String(a.startedAt ?? "")));
+    res.setHeader("Cache-Control", "no-store");
+    res.json(records.map((record) => ({
+      _id: record._id,
+      userId: record.userId,
+      orgId: record.orgId,
+      orgName: record.orgName,
+      stripeSubscriptionId: record.stripeSubscriptionId,
+      amountGbp: record.amountGbp,
+      status: record.status,
+      startedAt: record.startedAt,
+      lastPaidAt: record.lastPaidAt,
+      canceledAt: record.canceledAt ?? null,
+    })));
+  } catch (err) {
+    req.log.error({ err }, "GET /donations/recurring error");
+    res.status(500).json({ error: "Failed to fetch recurring donations" });
+  }
+});
+
 // ── GET /donations/my — authenticated user's donation history ──────────────────
 router.get("/donations/my", requireAuth, async (req, res) => {
   try {
