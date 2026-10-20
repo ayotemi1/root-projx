@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { fsGet, fsPatch, fsDelete, fsQuery } from "../lib/firebase-rest.js";
 import { requireAuth } from "../lib/auth.js";
+import { withoutPrivatePayoutSetup } from "../lib/payout-setup.js";
 
 const router = Router();
 
@@ -92,7 +93,7 @@ router.get("/follows/my", requireAuth, async (req, res) => {
       follows.map(async (f) => {
         const orgId = f["orgId"] as string;
         const org = await fsGet("organisations", orgId, token);
-        return org ? { _id: orgId, ...org } : null;
+        return org ? { _id: orgId, ...withoutPrivatePayoutSetup(org) } : null;
       }),
     );
 

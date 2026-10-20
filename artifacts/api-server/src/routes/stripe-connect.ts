@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Request, type Response } from "express";
 import { fsGet, fsPatch, getServerToken } from "../lib/firebase-rest.js";
 import { requireApprovedOrganisation, requireAuth } from "../lib/auth.js";
 import { getUncachableStripeClient } from "../lib/stripeClient.js";
@@ -12,7 +12,7 @@ const DOMAIN = process.env.REPLIT_DEV_DOMAIN
   : "http://localhost:3000";
 
 // ── GET /stripe/connect/onboard — initiate Stripe Express onboarding ──────────
-router.get("/stripe/connect/onboard", requireAuth, requireApprovedOrganisation, async (req, res) => {
+async function startOnboarding(req: Request, res: Response): Promise<void> {
   try {
     if (req.user!.accountType !== "organisation") {
       res.status(403).json({ error: "Only organisation accounts can connect to Stripe" });
@@ -52,7 +52,7 @@ router.get("/stripe/connect/onboard", requireAuth, requireApprovedOrganisation, 
       await fsPatch(
         "organisations",
         uid,
-        { ...org, stripe_account_id: stripeAccountId, payouts_enabled: false },
+        { stripe_account_id: stripeAccountId, payouts_enabled: false },
         serverToken,
       );
     }
@@ -65,12 +65,16 @@ router.get("/stripe/connect/onboard", requireAuth, requireApprovedOrganisation, 
       type: "account_onboarding",
     });
 
-    res.redirect(accountLink.url);
+    if (req.method === "POST") res.json({ url: accountLink.url });
+    else res.redirect(accountLink.url);
   } catch (err) {
     req.log.error({ err }, "GET /stripe/connect/onboard error");
     res.status(500).json({ error: "Failed to start Stripe Connect onboarding" });
   }
-});
+}
+
+router.get("/stripe/connect/onboard", requireAuth, requireApprovedOrganisation, startOnboarding);
+router.post("/stripe/connect/onboard", requireAuth, requireApprovedOrganisation, startOnboarding);
 
 // ── GET /stripe/connect/status — get org's Connect account status ─────────────
 router.get("/stripe/connect/status", requireAuth, requireApprovedOrganisation, async (req, res) => {
@@ -105,7 +109,7 @@ router.get("/stripe/connect/status", requireAuth, requireApprovedOrganisation, a
 
     // Sync to Firestore if status changed
     if (org["payouts_enabled"] !== payoutsEnabled) {
-      await fsPatch("organisations", uid, { ...org, payouts_enabled: payoutsEnabled }, serverToken);
+      await fsPatch("organisations", uid, { payouts_enabled: payoutsEnabled }, serverToken);
     }
 
     res.json({

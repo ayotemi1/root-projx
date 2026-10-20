@@ -1,5 +1,6 @@
 import { Router } from "express";
 import crypto from "crypto";
+import { activePayoutMethod, manualPayoutLabel } from "../lib/payout-setup.js";
 import {
   fsCreate,
   fsPatch,
@@ -54,8 +55,9 @@ function avatarInitials(name: string): string {
 // POST /applications/org
 router.post("/applications/org", async (req, res) => {
   try {
-    const { orgName, contactName, email, password, sectors, website, socialLinks } = req.body as {
+    const { orgName, country, contactName, email, password, sectors, website, socialLinks } = req.body as {
       orgName?: string;
+      country?: string;
       contactName?: string;
       email?: string;
       password?: string;
@@ -69,6 +71,10 @@ router.post("/applications/org", async (req, res) => {
       };
     };
 
+    if (typeof country !== "string" || !country.trim() || country.trim() === "All" || country.trim().length > 100) {
+      res.status(400).json({ error: "Country is required and must be 100 characters or fewer" });
+      return;
+    }
     if (!orgName?.trim() || !contactName?.trim() || !email?.trim() || !password) {
       res.status(400).json({ error: "orgName, contactName, email and password are required" });
       return;
@@ -108,6 +114,7 @@ router.post("/applications/org", async (req, res) => {
         const signedIn = await firebaseSignIn(normalisedEmail, password);
         const existingUid = existing[0]?.uid;
         if (existingUid && existingUid === signedIn.uid) {
+          await fsPatch("org_applications", String(existing[0]!._id), { country: country.trim() }, token);
           res.status(200).json({ id: existing[0]?._id, status: "pending", token: signedIn.idToken });
           return;
         }
@@ -164,6 +171,7 @@ router.post("/applications/org", async (req, res) => {
     const applicationId = await fsCreate("org_applications", {
       uid,
       orgName: orgName.trim(),
+      country: country.trim(),
       contactName: contactName.trim(),
       email: normalisedEmail,
       sectors,
@@ -323,7 +331,7 @@ router.post("/admin/applications/:id/approve", requireAdmin, async (req, res) =>
       name: orgName,
       category: sectors[0] ?? "Community Development",
       categories: sectors,
-      country: "Jamaica",
+      country: typeof app.country === "string" ? app.country.trim() || null : null,
       city: null,
       description: "",
       mission: null,
@@ -447,10 +455,50 @@ router.get("/admin/organisations", requireAdmin, async (req, res) => {
       const nb = typeof b.name === "string" ? b.name : "";
       return na.localeCompare(nb);
     });
-    res.json(orgs);
+    res.json(orgs.map((org) => ({ ...org, payoutMethod: activePayoutMethod(org) })));
   } catch (err) {
     req.log.error({ err }, "GET /admin/organisations error");
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// Manual bank-transfer setup stores no banking credentials, only a reminder
+// referencing the payee held in the operator's banking provider.
+router.patch("/admin/organisations/:id/manual-payout", requireAdmin, async (req, res) => {
+  try {
+    const body = req.body;
+    if (!body || typeof body !== "object" || Array.isArray(body) ||
+      Object.keys(body).some((key) => !["payoutManualApproved", "payoutManualLabel"].includes(key)) ||
+      body.payoutManualApproved !== true) {
+      res.status(400).json({ error: "Provide payoutManualApproved: true and an optional short payoutManualLabel only" });
+      return;
+    }
+    let label: string | null | undefined;
+    try {
+      if ("payoutManualLabel" in body) label = manualPayoutLabel(body.payoutManualLabel);
+    } catch (err) {
+      res.status(400).json({ error: err instanceof Error ? err.message : "Invalid payout label" });
+      return;
+    }
+    const id = String(req.params.id);
+    const token = await getServerToken();
+    const org = await fsGet("organisations", id, token);
+    if (!org) {
+      res.status(404).json({ error: "Organisation not found" });
+      return;
+    }
+    if (org.payoutManualRequested !== true || activePayoutMethod(org) !== "bank_transfer") {
+      res.status(409).json({ error: "The organisation must first request bank transfer as its payout method" });
+      return;
+    }
+    const updates: Record<string, unknown> = { payoutManualApproved: true };
+    if (label !== undefined) updates.payoutManualLabel = label;
+    await fsPatch("organisations", id, updates, token);
+    req.log.info({ organisationId: id }, "Admin confirmed off-platform bank transfer setup");
+    res.json({ ...org, ...updates, _id: id });
+  } catch (err) {
+    req.log.error({ err }, "Manual payout approval failed");
+    res.status(500).json({ error: "Could not confirm bank transfer setup" });
   }
 });
 

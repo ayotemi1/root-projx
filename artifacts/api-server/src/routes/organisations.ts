@@ -5,6 +5,7 @@ import { fsGet, fsPatch, fsList, fsQuery, fsCreate, getServerToken } from "../li
 import { requireApprovedOrganisation, requireAuth } from "../lib/auth.js";
 import { isCampaignPublished } from "../lib/campaign-publication.js";
 import { objectStorageClient } from "../lib/objectStorage.js";
+import { withoutPrivatePayoutSetup } from "../lib/payout-setup.js";
 
 const router = Router();
 const PUBLIC_CAMPAIGN_ID_PATTERN = /^cp_[a-f0-9]{24}$/;
@@ -149,7 +150,7 @@ router.get("/organisations", async (req, res) => {
     res.json(
       orgs
         .filter((org) => typeof org["name"] === "string" && org["name"].trim().length > 0)
-        .map(({ campaigns: _campaigns, ...org }) => org),
+        .map(({ campaigns: _campaigns, ...org }) => withoutPrivatePayoutSetup(org)),
     );
   } catch (err) {
     req.log.error({ err }, "GET /organisations error");
@@ -722,7 +723,7 @@ router.get("/organisations/:id", async (req, res) => {
       return;
     }
     const { campaigns: _campaigns, ...publicOrg } = org;
-    res.json({ _id: req.params.id, ...publicOrg });
+    res.json({ _id: req.params.id, ...withoutPrivatePayoutSetup(publicOrg) });
   } catch (err) {
     req.log.error({ err }, "GET /organisations/:id error");
     res.status(500).json({ error: "Failed to fetch organisation" });

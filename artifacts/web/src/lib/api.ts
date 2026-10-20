@@ -569,6 +569,26 @@ export const getConnectStatus = (token: string) =>
 export const getConnectDashboardLink = (token: string) =>
   req<{ url: string }>("/stripe/connect/dashboard-link", {}, token);
 
+export const startConnectOnboarding = (token: string) =>
+  req<{ url: string }>("/stripe/connect/onboard", { method: "POST" }, token);
+
+// ── Payout setup ───────────────────────────────────────────────────────────────
+
+export type PayoutMethod = "stripe" | "wise" | "bank_transfer";
+
+export interface PayoutSetup {
+  method: PayoutMethod | null;
+  payoutManualRequested: boolean;
+  payoutManualApproved: boolean;
+  payoutManualLabel: string | null;
+}
+
+export const getPayoutSetup = (token: string) =>
+  req<PayoutSetup>("/payout/setup", { cache: "no-store" }, token);
+
+export const selectPayoutMethod = (method: PayoutMethod, token: string) =>
+  req<PayoutSetup>("/payout/setup", { method: "PUT", body: JSON.stringify({ method }) }, token);
+
 // ── Wise Connect ───────────────────────────────────────────────────────────────
 
 export const getWiseStatus = (token: string) =>

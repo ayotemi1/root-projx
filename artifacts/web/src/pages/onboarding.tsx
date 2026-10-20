@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
+import { COUNTRIES } from "@/lib/countries";
 import { CheckCircle2, ChevronRight, ChevronLeft, Sprout, ClipboardList, Search, Rocket } from "lucide-react";
 
 const RED_DEEP = "#7A0000";
@@ -200,6 +201,7 @@ export default function OnboardingPage() {
 
   // Step 1 fields
   const [orgName, setOrgName] = useState("");
+  const [country, setCountry] = useState("");
   const [contactName, setContactName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -235,6 +237,7 @@ export default function OnboardingPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           orgName,
+          country,
           contactName,
           email: email.trim().toLowerCase(),
           password,
@@ -338,6 +341,21 @@ export default function OnboardingPage() {
               />
             </FieldGroup>
 
+            <FieldGroup label="Country" hint="Where your organisation is based">
+              <select
+                data-testid="select-country"
+                style={{ ...inputStyle, cursor: "pointer" }}
+                value={country}
+                onChange={(e) => setCountry(e.target.value)}
+                required
+              >
+                <option value="" disabled>Select a country</option>
+                {COUNTRIES.map(({ value }) => (
+                  <option key={value} value={value}>{value}</option>
+                ))}
+              </select>
+            </FieldGroup>
+
             <FieldGroup label="Point of contact (your name)">
               <input
                 data-testid="input-contact-name"
@@ -396,7 +414,7 @@ export default function OnboardingPage() {
               hideBack
               nextLabel="Next"
               nextTestId="button-next-step1"
-              nextDisabled={!orgName.trim() || !contactName.trim() || !email.trim() || !email.includes("@") || password.length < 6 || password !== confirmPassword}
+              nextDisabled={!orgName.trim() || !country || !contactName.trim() || !email.trim() || !email.includes("@") || password.length < 6 || password !== confirmPassword}
               onNext={() => { setError(""); setStep(2); }}
             />
           </Card>

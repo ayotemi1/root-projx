@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearch, Link } from "wouter";
 import { Switch } from "@/components/ui/switch";
 import {
-  CheckCircle, PlusCircle, Image as ImageIcon, X, Banknote, ExternalLink,
+  CheckCircle, PlusCircle, Image as ImageIcon, X, ExternalLink,
   AlertCircle, Target, Calendar, Users, Trash2, ChevronDown, ChevronUp,
   Edit3, Check, Upload, Camera, Palette, Link as LinkIcon, Copy, Video,
 } from "lucide-react";
@@ -16,7 +16,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/AuthContext";
 import * as api from "@/lib/api";
-import type { FeedUpdate, Campaign, CampaignPhase, WiseStatus } from "@/lib/api";
+import { PayoutSetup } from "@/components/payout-setup";
+import type { FeedUpdate, Campaign, CampaignPhase } from "@/lib/api";
 
 const UPDATE_TYPES = ["update", "milestone", "campaign"] as const;
 
@@ -995,10 +996,6 @@ export default function DashboardPage() {
   // Campaign form state
   const [showCampForm, setShowCampForm] = useState(false);
 
-  // Wise connect form state
-  const [wiseEmailInput, setWiseEmailInput] = useState("");
-  const [wiseError, setWiseError] = useState("");
-  const [showWiseInput, setShowWiseInput] = useState(false);
 
   // Funds usage form state
   const [fundsUsageInput, setFundsUsageInput] = useState({
@@ -1017,21 +1014,6 @@ export default function DashboardPage() {
     enabled: !!orgId,
   });
 
-  const connectQ = useQuery({
-    queryKey: ["connect-status", orgId],
-    queryFn: () => api.getConnectStatus(token!),
-    enabled: !!token,
-  });
-
-  useEffect(() => {
-    if (connectComplete) connectQ.refetch();
-  }, [connectComplete]);
-
-  useEffect(() => {
-    const refreshStripeStatus = () => connectQ.refetch();
-    window.addEventListener("focus", refreshStripeStatus);
-    return () => window.removeEventListener("focus", refreshStripeStatus);
-  }, [connectQ.refetch]);
 
   // Sync funds usage form from org data when it loads
   useEffect(() => {
@@ -1047,31 +1029,6 @@ export default function DashboardPage() {
     }
   }, [orgQ.data?._id]);
 
-  const wiseQ = useQuery({
-    queryKey: ["wise-status", orgId],
-    queryFn: () => api.getWiseStatus(token!),
-    enabled: !!token,
-  });
-
-  const wiseConnectMut = useMutation({
-    mutationFn: (email: string) => api.connectWise(email, token!),
-    onSuccess: (data: WiseStatus) => {
-      setWiseError("");
-      setWiseEmailInput(data.wise_email ?? "");
-      queryClient.invalidateQueries({ queryKey: ["wise-status", orgId] });
-    },
-    onError: (e: Error) => setWiseError(e.message),
-  });
-
-  const wiseDisconnectMut = useMutation({
-    mutationFn: () => api.disconnectWise(token!),
-    onSuccess: () => {
-      setWiseEmailInput("");
-      setWiseError("");
-      queryClient.invalidateQueries({ queryKey: ["wise-status", orgId] });
-    },
-    onError: (e: Error) => setWiseError(e.message),
-  });
 
   const updatesQ = useQuery({
     queryKey: ["org-feed", orgId],
@@ -1225,184 +1182,7 @@ export default function DashboardPage() {
             onUpdated={() => queryClient.invalidateQueries({ queryKey: ["org", orgId] })}
           />
 
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* Stripe Connect */}
-            <Card className="border-border shadow-sm overflow-hidden flex flex-col">
-              <CardHeader className="pb-3 border-b border-border/50">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Banknote className="w-4 h-4 text-primary" /> Payouts via Stripe
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-4 flex-1 flex flex-col">
-                {connectQ.isLoading ? (
-                  <div className="h-8 bg-secondary rounded animate-pulse" />
-                ) : connectQ.data?.payouts_enabled ? (
-                  <div className="space-y-4 flex-1 flex flex-col">
-                    <div className="flex items-center gap-2 mb-2">
-                      <CheckCircle className="w-5 h-5 text-green-500" />
-                      <span className="text-sm font-semibold text-green-700">Payouts enabled</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3 mb-auto">
-                      <div className="bg-secondary rounded-xl p-4 text-center border border-border/50">
-                        <div className="text-xl font-extrabold text-foreground">£{(org?.totalRaised ?? 0).toLocaleString()}</div>
-                        <div className="text-xs text-muted-foreground mt-0.5">Total donations</div>
-                      </div>
-                      <div className="bg-secondary rounded-xl p-4 text-center border border-border/50">
-                        <div className="text-xl font-extrabold text-foreground">—</div>
-                        <div className="text-xs text-muted-foreground mt-0.5">Pending payout</div>
-                      </div>
-                    </div>
-                    <Button variant="outline" className="w-full gap-2 mt-4 font-semibold" onClick={async () => {
-                      try {
-                        const { url } = await api.getConnectDashboardLink(token!);
-                        window.open(url, "_blank", "noopener,noreferrer");
-                      } catch { alert("Could not open Stripe dashboard. Please try again."); }
-                    }}>
-                      <ExternalLink className="w-4 h-4" /> View Stripe dashboard
-                    </Button>
-                  </div>
-                ) : connectQ.data?.stripe_account_id ? (
-                  <div className="space-y-4 flex-1 flex flex-col justify-between">
-                    <div className="flex items-start gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-3">
-                      <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                      Finish setting up your Stripe account to receive donations.
-                    </div>
-                    <Button className="w-full font-bold text-white bg-primary hover:bg-primary/90 mt-4" onClick={(e) => { window.open('/api/stripe/connect/onboard', '_blank', 'noopener,noreferrer'); e.preventDefault(); }}>
-                      Complete bank setup
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-4 flex-1 flex flex-col justify-between">
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      Connect your bank account so donors can send money directly to your organisation. Root ProjX takes a 5% platform fee automatically.
-                    </p>
-                    <Button className="w-full font-bold text-white bg-primary hover:bg-primary/90 mt-4" onClick={(e) => { window.open('/api/stripe/connect/onboard', '_blank', 'noopener,noreferrer'); e.preventDefault(); }}>
-                      Connect your bank account
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Wise Connect */}
-            <Card className="border-border shadow-sm overflow-hidden flex flex-col">
-              <CardHeader className="pb-3 border-b border-border/50">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Banknote className="w-4 h-4 text-primary" /> Payouts via Wise
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-4 flex-1 flex flex-col">
-                {wiseQ.isLoading ? (
-                  <div className="h-8 bg-secondary rounded animate-pulse" />
-                ) : wiseQ.data?.wise_email ? (
-                  <div className="space-y-4 flex-1 flex flex-col">
-                    <div className="flex items-center gap-2 mb-2">
-                      <CheckCircle className="w-5 h-5 text-green-500" />
-                      <span className="text-sm font-semibold text-green-700">
-                        {wiseQ.data.wise_verified ? "Connected & verified" : "Saved (pending verification)"}
-                      </span>
-                    </div>
-                    <div className="bg-secondary rounded-xl px-4 py-3 border border-border/50 mb-auto">
-                      <p className="text-xs text-muted-foreground mb-0.5">Wise account email</p>
-                      <p className="text-sm font-semibold text-foreground truncate">{wiseQ.data.wise_email}</p>
-                    </div>
-                    {wiseError && (
-                      <div className="flex items-start gap-2 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2 mt-3">
-                        <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                        {wiseError}
-                      </div>
-                    )}
-                    <div className="flex gap-2 mt-4">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1 font-semibold"
-                        onClick={() => {
-                          setWiseEmailInput(wiseQ.data?.wise_email ?? "");
-                          wiseDisconnectMut.mutate();
-                        }}
-                        disabled={wiseDisconnectMut.isPending}
-                      >
-                        {wiseDisconnectMut.isPending ? "Disconnecting…" : "Disconnect"}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex-1 font-semibold"
-                        onClick={() => {
-                          setWiseEmailInput(wiseQ.data?.wise_email ?? "");
-                          wiseDisconnectMut.reset();
-                          wiseConnectMut.reset();
-                          setWiseError("");
-                        }}
-                      >
-                        Change email
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-4 flex-1 flex flex-col justify-between">
-                    <p className="text-sm text-muted-foreground leading-relaxed">
-                      Connect your Wise account so Root ProjX can send your funds internationally.
-                    </p>
-
-                    {!showWiseInput ? (
-                      <div className="flex flex-col gap-2 mt-4">
-                        <Button
-                          className="w-full font-bold text-white bg-primary hover:bg-primary/90"
-                          onClick={() => window.open('https://wise.com/register', '_blank', 'noopener,noreferrer')}
-                        >
-                          Sign up for Wise
-                        </Button>
-                        <Button
-                          variant="outline"
-                          className="w-full font-bold"
-                          onClick={() => setShowWiseInput(true)}
-                        >
-                          I have a Wise account
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="space-y-3 animate-in fade-in slide-in-from-top-2 mt-2">
-                        <div className="space-y-2">
-                          <Label htmlFor="wise-email" className="text-sm font-semibold">Wise email</Label>
-                          <Input
-                            id="wise-email"
-                            type="email"
-                            placeholder="yourname@example.com"
-                            value={wiseEmailInput}
-                            onChange={(e) => {
-                              setWiseEmailInput(e.target.value);
-                              setWiseError("");
-                            }}
-                            disabled={wiseConnectMut.isPending}
-                          />
-                        </div>
-                        {wiseError && (
-                          <div className="flex items-start gap-2 text-sm text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-3 py-2">
-                            <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                            {wiseError}
-                          </div>
-                        )}
-                        <div className="flex gap-2">
-                          <Button
-                              className="flex-1 font-bold text-white bg-primary hover:bg-primary/90"
-                              disabled={!wiseEmailInput.trim() || wiseConnectMut.isPending}
-                              onClick={() => wiseConnectMut.mutate(wiseEmailInput.trim())}
-                            >
-                              {wiseConnectMut.isPending ? "Connecting…" : "Connect"}
-                          </Button>
-                          <Button variant="ghost" className="font-semibold" onClick={() => setShowWiseInput(false)} disabled={wiseConnectMut.isPending}>
-                            Cancel
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+          <PayoutSetup key={orgId} orgId={orgId} token={token!} totalRaised={org?.totalRaised ?? 0} connectComplete={connectComplete} />
 
           <details className="group border border-border shadow-sm rounded-xl bg-card overflow-hidden">
             <summary className="flex items-center justify-between p-4 cursor-pointer font-semibold text-base hover:bg-secondary/30 transition-colors">

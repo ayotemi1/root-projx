@@ -12,6 +12,7 @@ interface OrgApplication {
   contactName: string;
   email: string;
   sectors: string[];
+  country?: string | null;
   status: "pending" | "approved" | "declined";
   createdAt: string;
   approvedAt?: string;
@@ -44,6 +45,29 @@ interface Organisation {
   followerCount: number;
   totalRaised: number;
   createdAt: string | null;
+  payoutMethod?: "stripe" | "wise" | "bank_transfer" | null;
+  payoutManualRequested?: boolean;
+  payoutManualApproved?: boolean;
+  payoutManualLabel?: string | null;
+}
+
+function PayoutCell({ org, onManage }: { org: Organisation; onManage: () => void }) {
+  const m = org.payoutMethod ?? null;
+  if (m === "bank_transfer" && org.payoutManualRequested) {
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-start" }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: org.payoutManualApproved ? "#166534" : "#92400E", background: org.payoutManualApproved ? "#DCFCE7" : "#FEF9C3", borderRadius: 6, padding: "2px 8px" }}>
+          Bank transfer · {org.payoutManualApproved ? "Approved" : "Requested"}
+        </span>
+        {org.payoutManualLabel && <span style={{ fontSize: 12, color: "#666" }}>{org.payoutManualLabel}</span>}
+        <button data-testid={`button-manual-payout-${org._id}`} onClick={onManage} style={{ padding: "5px 9px", border: "1px solid #d8d0c5", borderRadius: 7, background: "#fff", color: RED_DEEP, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+          {org.payoutManualApproved ? "Edit label" : "Review & approve"}
+        </button>
+      </div>
+    );
+  }
+  const text = m === "stripe" ? "Stripe" : m === "wise" ? "Wise" : m === "bank_transfer" ? "Bank transfer" : "Not set";
+  return <span style={{ fontSize: 13, color: m ? "#555" : "#bbb" }}>{text}</span>;
 }
 
 type OrganisationForm = {
@@ -139,6 +163,38 @@ export default function AdminPage() {
   const [editingOrg, setEditingOrg] = useState<Organisation | null>(null);
   const [orgForm, setOrgForm] = useState<OrganisationForm | null>(null);
   const [savingOrg, setSavingOrg] = useState(false);
+  const [payoutOrg, setPayoutOrg] = useState<Organisation | null>(null);
+  const [payoutLabel, setPayoutLabel] = useState("");
+  const [savingPayout, setSavingPayout] = useState(false);
+  const [payoutError, setPayoutError] = useState("");
+
+  function openPayout(org: Organisation) {
+    setPayoutOrg(org);
+    setPayoutLabel(org.payoutManualLabel ?? "");
+    setPayoutError("");
+  }
+
+  async function saveManualPayout() {
+    if (!payoutOrg) return;
+    setSavingPayout(true);
+    setPayoutError("");
+    try {
+      const res = await fetch(`/api/admin/organisations/${payoutOrg._id}/manual-payout`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", "x-admin-token": token },
+        body: JSON.stringify({ payoutManualApproved: true, payoutManualLabel: payoutLabel.trim() || null }),
+      });
+      if (res.status === 401) { logout(); return; }
+      const data = await res.json() as Organisation & { error?: string };
+      if (!res.ok) { setPayoutError(data.error ?? "Failed to save bank transfer approval."); return; }
+      setOrganisations((current) => current.map((org) => org._id === data._id ? data : org));
+      setPayoutOrg(null);
+    } catch {
+      setPayoutError("Network error — please try again.");
+    } finally {
+      setSavingPayout(false);
+    }
+  }
 
   const token = typeof window !== "undefined" ? localStorage.getItem("admin_token") ?? "" : "";
 
@@ -262,7 +318,9 @@ export default function AdminPage() {
         method: "PATCH",
         headers: { "Content-Type": "application/json", "x-admin-token": token },
         body: JSON.stringify({
-          name: orgForm.name, category: orgForm.category, country: orgForm.country, city: orgForm.city,
+          name: orgForm.name, category: orgForm.category,
+          ...(orgForm.country.trim() ? { country: orgForm.country.trim() } : {}),
+          city: orgForm.city,
           description: orgForm.description, mission: orgForm.mission, logo: orgForm.logo, coverImage: orgForm.coverImage,
           contact: { email: orgForm.email, phone: orgForm.phone, website: orgForm.website },
           socialLinks: {
@@ -372,6 +430,9 @@ export default function AdminPage() {
                         <span style={{ fontWeight: 800, fontSize: 16, color: "#1a1a1a" }}>{app.orgName}</span>
                         <StatusBadge status={app.status} />
                       </div>
+                      <p data-testid={`text-app-country-${app._id}`} style={{ margin: "0 0 4px", fontSize: 13, color: app.country ? "#444" : "#bbb", fontWeight: 600 }}>
+                        {app.country || "Not set"}
+                      </p>
                       <p style={{ margin: "0 0 6px", fontSize: 13, color: "#666" }}>
                         {app.contactName} · <a href={`mailto:${app.email}`} style={{ color: RED }}>{app.email}</a>
                       </p>
@@ -435,13 +496,15 @@ export default function AdminPage() {
                 <p style={{ color: "#888", fontSize: 15 }}>No organisations yet</p>
               </div>
             ) : (
-              <div style={{ background: "#fff", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+              <div style={{ background: "#fff", borderRadius: 12, overflowX: "auto", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
                 <table style={{ width: "100%", borderCollapse: "collapse" }}>
                   <thead>
                     <tr style={{ background: "#f9f6f0" }}>
                       <th style={TH}>Organisation</th>
                       <th style={TH}>Category</th>
-                      <th style={TH}>Location</th>
+                      <th style={TH}>Country</th>
+                      <th style={TH}>City</th>
+                      <th style={TH}>Payout</th>
                       <th style={TH}>Contact</th>
                       <th style={TH}>Followers</th>
                       <th style={TH}>Total Raised</th>
@@ -465,8 +528,10 @@ export default function AdminPage() {
                         </td>
                         <td style={{ ...TD, fontSize: 13, color: "#555" }}>{org.category ?? "—"}</td>
                         <td style={{ ...TD, fontSize: 13, color: "#555" }}>
-                          {[org.city, org.country].filter(Boolean).join(", ") || "—"}
+                          {org.country ? org.country : <span style={{ color: "#bbb" }}>Not set</span>}
                         </td>
+                        <td style={{ ...TD, fontSize: 13, color: "#555" }}>{org.city || "—"}</td>
+                        <td style={TD}><PayoutCell org={org} onManage={() => openPayout(org)} /></td>
                         <td style={TD}>
                           {org.contact?.email
                             ? <a href={`mailto:${org.contact.email}`} style={{ color: RED, fontSize: 13, textDecoration: "none" }}>{org.contact.email}</a>
@@ -504,7 +569,7 @@ export default function AdminPage() {
               <div style={{ padding: 24, display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 16 }}>
                 {([
                   ["name", "Organisation name", true], ["category", "Category", true],
-                  ["country", "Country", true], ["city", "City", false],
+                  ["country", "Country", false], ["city", "City", false],
                   ["email", "Public email", false], ["phone", "Public phone", false],
                   ["website", "Website URL", false], ["logo", "Logo image URL", false],
                   ["coverImage", "Banner image URL", false], ["instagram", "Instagram URL", false],
@@ -526,8 +591,39 @@ export default function AdminPage() {
               </div>
               <div style={{ position: "sticky", bottom: 0, background: "#fff", borderTop: "1px solid #eee7dd", padding: "16px 24px", display: "flex", justifyContent: "flex-end", gap: 10 }}>
                 <button onClick={() => setEditingOrg(null)} disabled={savingOrg} style={{ padding: "10px 16px", border: "1px solid #d8d0c5", borderRadius: 8, background: "#fff", cursor: "pointer" }}>Cancel</button>
-                <button onClick={saveOrganisation} disabled={savingOrg || !orgForm.name.trim() || !orgForm.category.trim() || !orgForm.country.trim()} style={{ padding: "10px 18px", border: 0, borderRadius: 8, background: RED_DEEP, color: "#fff", fontWeight: 800, cursor: savingOrg ? "wait" : "pointer", opacity: savingOrg ? .65 : 1 }}>
+                <button onClick={saveOrganisation} disabled={savingOrg || !orgForm.name.trim() || !orgForm.category.trim()} style={{ padding: "10px 18px", border: 0, borderRadius: 8, background: RED_DEEP, color: "#fff", fontWeight: 800, cursor: savingOrg ? "wait" : "pointer", opacity: savingOrg ? .65 : 1 }}>
                   {savingOrg ? "Saving…" : "Save profile"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {payoutOrg && (
+          <div role="dialog" aria-modal="true" aria-labelledby="payout-editor-title" style={{ position: "fixed", inset: 0, background: "rgba(20,10,5,0.55)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+            <div style={{ width: "min(480px, 100%)", background: "#fff", borderRadius: 14, boxShadow: "0 20px 60px rgba(0,0,0,.25)" }}>
+              <div style={{ padding: "20px 24px", borderBottom: "1px solid #eee7dd", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div><h2 id="payout-editor-title" style={{ margin: 0, fontSize: 20 }}>Bank transfer payout</h2><p style={{ margin: "4px 0 0", color: "#777", fontSize: 13 }}>{payoutOrg.name}</p></div>
+                <button aria-label="Close" onClick={() => setPayoutOrg(null)} style={{ border: 0, background: "transparent", cursor: "pointer", padding: 6 }}><X size={20} /></button>
+              </div>
+              <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 14 }}>
+                <p style={{ margin: 0, fontSize: 13, color: "#555" }}>
+                  Status: <strong>{payoutOrg.payoutManualApproved ? "Approved" : "Requested — awaiting approval"}</strong>
+                </p>
+                <div style={{ background: "#FEF9C3", color: "#92400E", borderRadius: 8, padding: "10px 12px", fontSize: 12, lineHeight: 1.5 }}>
+                  Do not enter account numbers, routing numbers, sort codes, IBANs or any bank account details. Those are held with our banking provider, outside the platform.
+                </div>
+                <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13, fontWeight: 700, color: "#444" }}>
+                  Provider / payee label (optional)
+                  <input data-testid="input-manual-payout-label" maxLength={100} value={payoutLabel} onChange={(e) => setPayoutLabel(e.target.value)} placeholder="e.g. NCB Jamaica — payee saved 20 Oct" style={{ padding: "10px 12px", border: "1.5px solid #ddd5ca", borderRadius: 8, fontSize: 14 }} />
+                  <span style={{ fontSize: 11, fontWeight: 400, color: "#999" }}>{payoutLabel.length}/100</span>
+                </label>
+                {payoutError && <p style={{ margin: 0, color: RED, fontSize: 13 }}>{payoutError}</p>}
+              </div>
+              <div style={{ borderTop: "1px solid #eee7dd", padding: "16px 24px", display: "flex", justifyContent: "flex-end", gap: 10 }}>
+                <button onClick={() => setPayoutOrg(null)} disabled={savingPayout} style={{ padding: "10px 16px", border: "1px solid #d8d0c5", borderRadius: 8, background: "#fff", cursor: "pointer" }}>Cancel</button>
+                <button data-testid="button-save-manual-payout" onClick={saveManualPayout} disabled={savingPayout || payoutLabel.length > 100} style={{ padding: "10px 18px", border: 0, borderRadius: 8, background: "#16a34a", color: "#fff", fontWeight: 800, cursor: savingPayout ? "wait" : "pointer", opacity: savingPayout ? .65 : 1 }}>
+                  {savingPayout ? "Saving…" : payoutOrg.payoutManualApproved ? "Save label" : "Approve bank transfer"}
                 </button>
               </div>
             </div>

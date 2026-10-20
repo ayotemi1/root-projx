@@ -13,10 +13,12 @@ import shopRouter from "./shop.js";
 import stripeConnectRouter from "./stripe-connect.js";
 import wiseConnectRouter from "./wise-connect.js";
 import applicationsRouter from "./applications.js";
+import payoutSetupRouter from "./payout-setup.js";
 
 const router: IRouter = Router();
 
 router.use(applicationsRouter);
+router.use(payoutSetupRouter);
 router.use(healthRouter);
 router.use(authRouter);
 router.use(organisationsRouter);

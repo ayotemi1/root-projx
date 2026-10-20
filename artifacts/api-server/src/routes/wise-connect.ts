@@ -134,7 +134,6 @@ router.put("/wise/connect", requireAuth, requireApprovedOrganisation, async (req
       "organisations",
       uid,
       {
-        ...org,
         wise_email: trimmedEmail,
         wise_recipient_id: wiseRecipientId,
         wise_verified: wiseVerified,
@@ -174,7 +173,7 @@ router.delete("/wise/connect", requireAuth, requireApprovedOrganisation, async (
     await fsPatch(
       "organisations",
       uid,
-      { ...org, wise_email: null, wise_recipient_id: null, wise_verified: false },
+      { wise_email: null, wise_recipient_id: null, wise_verified: false },
       serverToken,
     );
 

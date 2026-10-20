@@ -1,0 +1,24 @@
+Phase 1, piece 0 — collect country at application, and give organisations a payout setup section.
+
+PART A — Country on the organisation application
+
+1. Add a required `country` field to the organisation application. In artifacts/web/src/pages/onboarding.tsx add a country select to the questionnaire (reuse the country list already used by the Discover page filter if one exists, otherwise a standard ISO country list). Place it after organisation name.
+2. Validate it in POST /applications/org in artifacts/api-server/src/routes/applications.ts — reject a submission with no country.
+3. Store it on the org_applications document, and carry it onto the organisations document when an application is approved.
+4. Show country in the admin Applications table and the Organisations table in artifacts/web/src/pages/admin.tsx.
+5. Existing organisations have no country. Treat a missing country as unknown rather than defaulting it, and show "Not set" in admin.
+
+PART B — Payout setup on the organisation dashboard
+
+In artifacts/web/src/pages/dashboard.tsx, turn the existing Wise area into a "How you get paid" section offering three options, with only one active at a time:
+
+1. **Stripe** — the existing Connect onboarding button. Note under it that this is available in some countries only.
+2. **Wise** — the existing email field and verification.
+3. **Bank transfer** — new. The organisation clicks "I'll receive payments by bank transfer", which sets a request flag on their org document. Root ProjX then confirms it from the admin, which sets `payoutManualApproved: true`. Once confirmed, the section reads "Set up: bank transfer — we hold your account details securely outside the platform."
+
+CRITICAL — do not build any field anywhere that collects or stores bank account numbers, sort codes, routing numbers or IBANs. We deliberately do not hold those. The bank transfer option stores only: the request flag, the approval flag, and an optional short admin-entered label such as "NCB Jamaica — payee saved 20 Oct". Account details are exchanged with the organisation off-platform and held in our banking provider. If you think a field is needed to make this work, stop and ask me instead of adding one.
+
+4. In admin, on the Organisations tab, add a control to approve a bank transfer request (sets `payoutManualApproved: true`) and to set that label.
+5. Whichever option is active, the section shows the organisation their current payout method in plain words, and prompts them to set one if they have none.
+
+Reply with files changed, and confirm no field anywhere stores bank account details.
