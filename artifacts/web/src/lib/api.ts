@@ -51,6 +51,7 @@ export interface FundsUsage {
 export interface Org {
   _id: string;
   name: string;
+  payoutMethod: "stripe_connect" | "wise" | "manual" | "none";
   country: string;
   city: string | null;
   category: string;

@@ -614,6 +614,10 @@ components:
     Organisation:
       type: object
       properties:
+        payoutMethod:
+          type: string
+          enum: [stripe_connect, wise, manual, none]
+          description: Resolved payout routing method; not a provider-readiness or settlement guarantee.
         id:
           type: integer
         userId:

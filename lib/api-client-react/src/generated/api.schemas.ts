@@ -62,7 +62,22 @@ export interface AuthResponse {
   user: PublicUser;
 }
 
+/**
+ * Resolved payout routing method; not a provider-readiness or settlement guarantee.
+ */
+export type OrganisationPayoutMethod =
+  (typeof OrganisationPayoutMethod)[keyof typeof OrganisationPayoutMethod];
+
+export const OrganisationPayoutMethod = {
+  stripe_connect: "stripe_connect",
+  wise: "wise",
+  manual: "manual",
+  none: "none",
+} as const;
+
 export interface Organisation {
+  /** Resolved payout routing method; not a provider-readiness or settlement guarantee. */
+  payoutMethod?: OrganisationPayoutMethod;
   id: number;
   userId?: number | null;
   orgName: string;

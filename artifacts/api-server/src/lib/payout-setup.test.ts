@@ -3,7 +3,7 @@ import { createHmac } from "node:crypto";
 import { createRequire } from "node:module";
 import test from "node:test";
 import { build } from "esbuild";
-import { activePayoutMethod, manualPayoutLabel, withoutPrivatePayoutSetup } from "./payout-setup.ts";
+import { activePayoutMethod, resolvePayoutMethod, manualPayoutLabel, withoutPrivatePayoutSetup } from "./payout-setup.ts";
 
 // Real route handlers and auth middleware, with every external-service boundary
 // replaced. Never creates a real account, onboarding link, email or bank payee.
@@ -138,13 +138,35 @@ test("manual payee labels accept short reminders but reject banking details", ()
   }
 });
 
-test("public organisation projections omit private payout setup metadata", () => {
+test("shared payout resolver maps selected and legacy methods without changing readiness", () => {
+  const cases: Array<[Record<string, unknown>, string]> = [
+    [{}, "none"],
+    [{ country: "Jamaica" }, "none"],
+    [{ payoutMethod: "stripe" }, "stripe_connect"],
+    [{ payoutMethod: "wise", stripe_account_id: "acct_old", payouts_enabled: true }, "wise"],
+    [{ payoutMethod: "bank_transfer", stripe_account_id: "acct_old", wise_email: "old@example.test" }, "manual"],
+    [{ stripe_account_id: "acct_old", payouts_enabled: true, wise_email: "old@example.test" }, "stripe_connect"],
+    [{ stripe_account_id: "acct_old" }, "stripe_connect"],
+    [{ wise_email: "old@example.test" }, "wise"],
+    [{ payoutManualRequested: true }, "manual"],
+    [{ payoutManualApproved: true }, "manual"],
+    [{ payoutMethod: "invalid" }, "none"],
+  ];
+  for (const [org, expected] of cases) {
+    const before = structuredClone(org);
+    assert.equal(resolvePayoutMethod(org), expected);
+    assert.deepEqual(org, before, "Resolving must not mutate the organisation");
+    assert.equal(withoutPrivatePayoutSetup(org).payoutMethod, expected);
+  }
+});
+
+test("public organisation projections expose the resolved method but omit private setup metadata", () => {
   const org = {
     name: "Test Org", country: null, payoutMethod: "bank_transfer",
     payoutManualRequested: true, payoutManualApproved: true,
     payoutManualLabel: "NCB Jamaica — payee saved 20 Oct",
   };
-  assert.deepEqual(withoutPrivatePayoutSetup(org), { name: "Test Org", country: null });
+  assert.deepEqual(withoutPrivatePayoutSetup(org), { name: "Test Org", country: null, payoutMethod: "manual" });
   assert.equal(org.payoutManualApproved, true, "Projection must not change the stored setup");
 });
 

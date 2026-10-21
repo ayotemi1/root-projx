@@ -78,6 +78,12 @@ export const ListOrganisationsQueryParams = zod.object({
 });
 
 export const ListOrganisationsResponseItem = zod.object({
+  payoutMethod: zod
+    .enum(["stripe_connect", "wise", "manual", "none"])
+    .optional()
+    .describe(
+      "Resolved payout routing method; not a provider-readiness or settlement guarantee.",
+    ),
   id: zod.number(),
   userId: zod.number().nullish(),
   orgName: zod.string(),
@@ -125,6 +131,12 @@ export const GetOrganisationParams = zod.object({
 });
 
 export const GetOrganisationResponse = zod.object({
+  payoutMethod: zod
+    .enum(["stripe_connect", "wise", "manual", "none"])
+    .optional()
+    .describe(
+      "Resolved payout routing method; not a provider-readiness or settlement guarantee.",
+    ),
   id: zod.number(),
   userId: zod.number().nullish(),
   orgName: zod.string(),
@@ -166,6 +178,12 @@ export const UpdateOrganisationBody = zod.object({
 });
 
 export const UpdateOrganisationResponse = zod.object({
+  payoutMethod: zod
+    .enum(["stripe_connect", "wise", "manual", "none"])
+    .optional()
+    .describe(
+      "Resolved payout routing method; not a provider-readiness or settlement guarantee.",
+    ),
   id: zod.number(),
   userId: zod.number().nullish(),
   orgName: zod.string(),
@@ -301,6 +319,12 @@ export const FollowOrgBody = zod.object({
  * @summary Get orgs the current user follows
  */
 export const GetMyFollowsResponseItem = zod.object({
+  payoutMethod: zod
+    .enum(["stripe_connect", "wise", "manual", "none"])
+    .optional()
+    .describe(
+      "Resolved payout routing method; not a provider-readiness or settlement guarantee.",
+    ),
   id: zod.number(),
   userId: zod.number().nullish(),
   orgName: zod.string(),
@@ -342,6 +366,12 @@ export const GetHelpOrgsQueryParams = zod.object({
 });
 
 export const GetHelpOrgsResponseItem = zod.object({
+  payoutMethod: zod
+    .enum(["stripe_connect", "wise", "manual", "none"])
+    .optional()
+    .describe(
+      "Resolved payout routing method; not a provider-readiness or settlement guarantee.",
+    ),
   id: zod.number(),
   userId: zod.number().nullish(),
   orgName: zod.string(),
@@ -419,6 +449,12 @@ export const GetProfileResponse = zod.object({
   }),
   organisation: zod
     .object({
+      payoutMethod: zod
+        .enum(["stripe_connect", "wise", "manual", "none"])
+        .optional()
+        .describe(
+          "Resolved payout routing method; not a provider-readiness or settlement guarantee.",
+        ),
       id: zod.number(),
       userId: zod.number().nullish(),
       orgName: zod.string(),

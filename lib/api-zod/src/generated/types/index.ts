@@ -26,6 +26,7 @@ export * from "./listOrganisationsParams";
 export * from "./loginRequest";
 export * from "./messageResponse";
 export * from "./organisation";
+export * from "./organisationPayoutMethod";
 export * from "./profileResponse";
 export * from "./publicUser";
 export * from "./publicUserAccountType";

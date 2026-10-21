@@ -1,4 +1,5 @@
 export type PayoutMethod = "stripe" | "wise" | "bank_transfer";
+export type ResolvedPayoutMethod = "stripe_connect" | "wise" | "manual" | "none";
 
 // Old organisations have connected-provider fields but no explicit selection.
 // A saved selection always wins; retaining another provider's credentials
@@ -12,6 +13,17 @@ export function activePayoutMethod(org: Record<string, unknown>): PayoutMethod |
   if (org.payoutManualRequested || org.payoutManualApproved) return "bank_transfer";
   if (org.stripe_account_id) return "stripe";
   return null;
+}
+
+// Resolve the selected routing method, not provider readiness or permission to
+// send funds. Keep the existing dashboard/storage values backwards compatible.
+export function resolvePayoutMethod(org: Record<string, unknown>): ResolvedPayoutMethod {
+  switch (activePayoutMethod(org)) {
+    case "stripe": return "stripe_connect";
+    case "wise": return "wise";
+    case "bank_transfer": return "manual";
+    default: return "none";
+  }
 }
 
 export function payoutSetup(org: Record<string, unknown>) {
@@ -32,7 +44,7 @@ export function withoutPrivatePayoutSetup(org: Record<string, unknown>) {
     payoutManualLabel: _label,
     ...publicFields
   } = org;
-  return publicFields;
+  return { ...publicFields, payoutMethod: resolvePayoutMethod(org) };
 }
 
 export function manualPayoutLabel(value: unknown): string | null {

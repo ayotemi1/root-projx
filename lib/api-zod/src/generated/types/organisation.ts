@@ -5,8 +5,11 @@
  * Root ProjX API — community giving platform
  * OpenAPI spec version: 0.1.0
  */
+import type { OrganisationPayoutMethod } from "./organisationPayoutMethod";
 
 export interface Organisation {
+  /** Resolved payout routing method; not a provider-readiness or settlement guarantee. */
+  payoutMethod?: OrganisationPayoutMethod;
   id: number;
   userId?: number | null;
   orgName: string;
