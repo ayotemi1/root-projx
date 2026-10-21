@@ -756,8 +756,84 @@ components:
         - token
         - user
 
+    OrganisationProfileFields:
+      type: object
+      properties:
+        name: {type: string, maxLength: 200}
+        country: {type: string, maxLength: 100}
+        city: {type: string, nullable: true, maxLength: 120}
+        shortDescription: {type: string, maxLength: 120}
+        description: {type: string, maxLength: 20000}
+        mission: {type: string, nullable: true, maxLength: 20000}
+        category: {type: string}
+        categories:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: {type: string}
+        logo: {type: string, nullable: true}
+        coverImage: {type: string, nullable: true}
+        contact:
+          type: object
+          nullable: true
+          properties:
+            email: {type: string}
+            phone: {type: string}
+            website: {type: string}
+        socialLinks:
+          type: object
+          nullable: true
+          properties:
+            instagram: {type: string}
+            facebook: {type: string}
+            twitter: {type: string}
+            linkedin: {type: string}
+            youtube: {type: string}
+            tiktok: {type: string}
+        impactMetrics:
+          type: object
+          nullable: true
+          properties:
+            peopleReached: {$ref: "#/components/schemas/ProfileImpactMetric"}
+            groundCovered: {$ref: "#/components/schemas/ProfileImpactMetric"}
+            resourcesDelivered: {$ref: "#/components/schemas/ProfileImpactMetric"}
+        team:
+          type: array
+          maxItems: 6
+          items: {$ref: "#/components/schemas/ProfileTeamMember"}
+        fundsUsage:
+          type: object
+          nullable: true
+          properties:
+            operations: {type: integer, minimum: 0, maximum: 100}
+            materials: {type: integer, minimum: 0, maximum: 100}
+            staff: {type: integer, minimum: 0, maximum: 100}
+            events: {type: integer, minimum: 0, maximum: 100}
+            other: {type: integer, minimum: 0, maximum: 100}
+          required: [operations, materials, staff, events, other]
+
+    ProfileImpactMetric:
+      type: object
+      properties:
+        label: {type: string, maxLength: 100}
+        value: {type: number, minimum: 0}
+        updatedAt:
+          type: string
+          description: Server-owned timestamp; client-supplied values are ignored.
+      required: [label, value]
+
+    ProfileTeamMember:
+      type: object
+      properties:
+        name: {type: string, maxLength: 100}
+        role: {type: string, maxLength: 120}
+        photoUrl: {type: string}
+      required: [name, role, photoUrl]
+
     Organisation:
       type: object
+      allOf:
+        - $ref: "#/components/schemas/OrganisationProfileFields"
       properties:
         payoutMethod:
           type: string
@@ -852,6 +928,8 @@ components:
 
     UpdateOrganisationRequest:
       type: object
+      allOf:
+        - $ref: "#/components/schemas/OrganisationProfileFields"
       properties:
         orgName:
           type: string

@@ -115,7 +115,7 @@ function OrgMap({ orgs, country }: { orgs: Org[]; country: string }) {
                   {[org.city, org.country].filter(Boolean).join(", ")}
                 </div>
                 <div style={{ fontSize: "12px", marginBottom: "10px", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>
-                  {org.description}
+                  {org.shortDescription?.trim() || org.description}
                 </div>
                 <a
                   href={`/organisations/${org._id}`}
@@ -183,7 +183,7 @@ function OrgCard({ org }: { org: Org }) {
       </Badge>
 
       <p className="text-foreground text-sm leading-relaxed line-clamp-2">
-        {org.description}
+        {org.shortDescription?.trim() || org.description}
       </p>
 
       <div className="flex items-center gap-4 text-sm text-muted-foreground">

@@ -5,7 +5,7 @@ import { Switch } from "@/components/ui/switch";
 import {
   CheckCircle, PlusCircle, Image as ImageIcon, X, ExternalLink,
   AlertCircle, Target, Calendar, Users, Trash2, ChevronDown, ChevronUp,
-  Edit3, Check, Upload, Camera, Palette, Link as LinkIcon, Copy, Video,
+  Edit3, Check, Palette, Link as LinkIcon, Copy, Video,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,7 @@ import { useAuth } from "@/context/AuthContext";
 import * as api from "@/lib/api";
 import { PayoutSetup } from "@/components/payout-setup";
 import { PendingPayout } from "@/components/pending-payout";
+import { ProfileEditor } from "@/components/profile-editor/profile-editor";
 import type { FeedUpdate, Campaign, CampaignPhase } from "@/lib/api";
 
 const UPDATE_TYPES = ["update", "milestone", "campaign"] as const;
@@ -783,199 +784,6 @@ function CampaignForm({
   );
 }
 
-// ── Profile Images card ───────────────────────────────────────────────────────
-
-function ProfileImagesCard({
-  org,
-  orgId,
-  token,
-  onUpdated,
-}: {
-  org: import("@/lib/api").Org | undefined;
-  orgId: string;
-  token: string;
-  onUpdated: () => void;
-}) {
-  const logoInputRef = useRef<HTMLInputElement>(null);
-  const coverInputRef = useRef<HTMLInputElement>(null);
-
-  const [logoUploading, setLogoUploading] = useState(false);
-  const [coverUploading, setCoverUploading] = useState(false);
-  const [logoPreview, setLogoPreview] = useState<string | null>(null);
-  const [coverPreview, setCoverPreview] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  function handleUploadError(err: unknown, fallback: string) {
-    const raw = err instanceof Error ? err.message : "";
-    return /load failed|failed to fetch|networkerror/i.test(raw)
-      ? "Upload failed — please check your connection and try again"
-      : raw || fallback;
-  }
-
-  async function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setLogoPreview(URL.createObjectURL(file));
-    setError(null);
-    setLogoUploading(true);
-    try {
-      // Single call: upload + save to org doc atomically
-      await api.uploadOrgProfileImage(file, orgId, "logo", token);
-      onUpdated();
-    } catch (err) {
-      setError(handleUploadError(err, "Failed to upload logo"));
-      setLogoPreview(null);
-    } finally {
-      setLogoUploading(false);
-      if (logoInputRef.current) logoInputRef.current.value = "";
-    }
-  }
-
-  async function handleCoverChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setCoverPreview(URL.createObjectURL(file));
-    setError(null);
-    setCoverUploading(true);
-    try {
-      // Single call: upload + save to org doc atomically
-      await api.uploadOrgProfileImage(file, orgId, "cover", token);
-      onUpdated();
-    } catch (err) {
-      setError(handleUploadError(err, "Failed to upload cover photo"));
-      setCoverPreview(null);
-    } finally {
-      setCoverUploading(false);
-      if (coverInputRef.current) coverInputRef.current.value = "";
-    }
-  }
-
-  const currentLogo = logoPreview ?? org?.logo ?? null;
-  const currentCover = coverPreview ?? org?.coverImage ?? null;
-  const initials = (org?.name ?? "").split(" ").map((w: string) => w[0]).slice(0, 2).join("").toUpperCase() || "??";
-
-  return (
-    <Card className="border-border shadow-sm overflow-hidden">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Camera className="w-4 h-4 text-primary" /> Profile Images
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-5">
-        {error && (
-          <div className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 flex-shrink-0" /> {error}
-          </div>
-        )}
-
-        {/* Banner */}
-        <div>
-          <Label className="text-sm font-semibold mb-1 block">Banner</Label>
-          <p className="text-xs text-muted-foreground mb-3">Recommended: 1200x400 pixels.</p>
-          <div className="relative rounded-xl overflow-hidden border border-border">
-            {currentCover ? (
-              <img src={currentCover} alt="banner" className="w-full h-36 object-cover" />
-            ) : (
-              <div
-                className="w-full h-36 flex items-center justify-center bg-primary"
-              >
-                <ImageIcon className="w-8 h-8 text-white/40" />
-              </div>
-            )}
-            <button
-              type="button"
-              onClick={() => coverInputRef.current?.click()}
-              disabled={coverUploading}
-              className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-black/40 opacity-0 hover:opacity-100 transition-opacity text-white disabled:cursor-wait"
-            >
-              {coverUploading ? (
-                <span className="text-sm font-semibold">Uploading…</span>
-              ) : (
-                <>
-                  <Upload className="w-6 h-6" />
-                  <span className="text-sm font-semibold">Change banner</span>
-                </>
-              )}
-            </button>
-          </div>
-          <input
-            ref={coverInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/gif,image/webp"
-            className="hidden"
-            onChange={handleCoverChange}
-          />
-          <button
-            type="button"
-            onClick={() => coverInputRef.current?.click()}
-            disabled={coverUploading}
-            className="mt-2 text-xs font-semibold flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-          >
-            <Upload className="w-3.5 h-3.5" />
-            {coverUploading ? "Uploading…" : currentCover ? "Replace banner" : "Upload banner"}
-          </button>
-        </div>
-
-        {/* Logo */}
-        <div>
-          <Label className="text-sm font-semibold mb-1 block">Logo</Label>
-          <p className="text-xs text-muted-foreground mb-3">Recommended: 400x400 pixels.</p>
-          <div className="flex items-center gap-4">
-            <div className="relative flex-shrink-0">
-              {currentLogo ? (
-                <img
-                  src={currentLogo}
-                  alt="logo"
-                  className="w-20 h-20 rounded-full object-cover border-2 border-border"
-                />
-              ) : (
-                <div
-                  className="w-20 h-20 rounded-full border-2 border-border flex items-center justify-center text-xl font-extrabold bg-accent text-accent-foreground"
-                >
-                  {initials}
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={() => logoInputRef.current?.click()}
-                disabled={logoUploading}
-                className="absolute inset-0 rounded-full flex items-center justify-center bg-black/50 opacity-0 hover:opacity-100 transition-opacity disabled:cursor-wait"
-              >
-                {logoUploading ? (
-                  <span className="text-white text-xs font-semibold">…</span>
-                ) : (
-                  <Camera className="w-6 h-6 text-white" />
-                )}
-              </button>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-muted-foreground mb-2">
-                Your logo appears as a circular avatar on your public profile page.
-              </p>
-              <button
-                type="button"
-                onClick={() => logoInputRef.current?.click()}
-                disabled={logoUploading}
-                className="text-xs font-semibold flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
-              >
-                <Upload className="w-3.5 h-3.5" />
-                {logoUploading ? "Uploading…" : currentLogo ? "Replace logo" : "Upload logo"}
-              </button>
-            </div>
-          </div>
-          <input
-            ref={logoInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/gif,image/webp"
-            className="hidden"
-            onChange={handleLogoChange}
-          />
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
 // ── Main dashboard page ───────────────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -998,15 +806,10 @@ export default function DashboardPage() {
   const [showCampForm, setShowCampForm] = useState(false);
 
 
-  // Funds usage form state
-  const [fundsUsageInput, setFundsUsageInput] = useState({
-    operations: 0, materials: 0, staff: 0, events: 0, other: 0,
-  });
-  const [fundsUsageSaving, setFundsUsageSaving] = useState(false);
-  const [fundsUsageError, setFundsUsageError] = useState("");
-  const [fundsUsageSaved, setFundsUsageSaved] = useState(false);
-
   const orgId = user?.id ?? "";
+  const initialTab = ["build", "campaigns", "profile"].includes(new URLSearchParams(search).get("tab") ?? "")
+    ? (new URLSearchParams(search).get("tab") as string)
+    : "profile";
   const connectComplete = new URLSearchParams(search).get("connect") === "complete";
 
   const orgQ = useQuery({
@@ -1014,21 +817,6 @@ export default function DashboardPage() {
     queryFn: () => api.getOrganisation(orgId, token),
     enabled: !!orgId,
   });
-
-
-  // Sync funds usage form from org data when it loads
-  useEffect(() => {
-    const fu = orgQ.data?.fundsUsage;
-    if (fu) {
-      setFundsUsageInput({
-        operations: fu.operations ?? 0,
-        materials:  fu.materials  ?? 0,
-        staff:      fu.staff      ?? 0,
-        events:     fu.events     ?? 0,
-        other:      fu.other      ?? 0,
-      });
-    }
-  }, [orgQ.data?._id]);
 
 
   const updatesQ = useQuery({
@@ -1097,26 +885,6 @@ export default function DashboardPage() {
     setSelectedFiles([]); setPreviewUrls([]); setUploadProgress("idle"); setFormError("");
   }
 
-  async function saveFundsUsage() {
-    const total = Object.values(fundsUsageInput).reduce((s, v) => s + v, 0);
-    if (total !== 100) {
-      setFundsUsageError(`Percentages must add up to 100 (currently ${total})`);
-      return;
-    }
-    setFundsUsageError("");
-    setFundsUsageSaving(true);
-    try {
-      await api.updateOrganisation(orgId, { fundsUsage: fundsUsageInput } as Partial<api.Org>, token!);
-      queryClient.invalidateQueries({ queryKey: ["org", orgId] });
-      setFundsUsageSaved(true);
-      setTimeout(() => setFundsUsageSaved(false), 3000);
-    } catch (e) {
-      setFundsUsageError(e instanceof Error ? e.message : "Save failed");
-    } finally {
-      setFundsUsageSaving(false);
-    }
-  }
-
   const org = orgQ.data;
   const updates = updatesQ.data ?? [];
   const campaigns = (campaignsQ.data ?? []).filter((c) => c.status !== "deleted");
@@ -1168,128 +936,18 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="profile" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 h-11 p-1 bg-secondary rounded-lg">
-          <TabsTrigger value="profile" className="rounded-md font-bold text-sm">Profile & Settings</TabsTrigger>
+      <Tabs defaultValue={initialTab} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-3 h-11 p-1 bg-secondary rounded-lg">
+          <TabsTrigger value="profile" className="rounded-md font-bold text-xs sm:text-sm">Updates & Payouts</TabsTrigger>
+          <TabsTrigger value="build" className="rounded-md font-bold text-xs sm:text-sm" data-testid="tab-build-profile" data-tour-id="dashboard-tab-build-profile">Build profile</TabsTrigger>
           <TabsTrigger value="campaigns" className="rounded-md font-bold text-sm">Campaigns</TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile" className="space-y-6 mt-6 animate-in fade-in slide-in-from-bottom-2">
 
-          <ProfileImagesCard
-            org={org}
-            orgId={orgId}
-            token={token!}
-            onUpdated={() => queryClient.invalidateQueries({ queryKey: ["org", orgId] })}
-          />
-
           <PendingPayout key={`pending-${orgId}`} orgId={orgId} token={token!} />
 
           <PayoutSetup key={orgId} orgId={orgId} token={token!} totalRaised={org?.totalRaised ?? 0} connectComplete={connectComplete} />
-
-          <details className="group border border-border shadow-sm rounded-xl bg-card overflow-hidden">
-            <summary className="flex items-center justify-between p-4 cursor-pointer font-semibold text-base hover:bg-secondary/30 transition-colors">
-              <span className="flex items-center gap-2"><Target className="w-4 h-4 text-primary" /> Funds usage breakdown (optional)</span>
-              <span className="text-muted-foreground group-open:rotate-180 transition-transform"><ChevronDown className="w-4 h-4" /></span>
-            </summary>
-            <div className="p-4 pt-0 border-t border-border mt-1">
-              <div className="space-y-4 mt-4">
-                <p className="text-sm text-muted-foreground leading-relaxed max-w-2xl">
-                  Show supporters how you allocate funds. Percentages must add up to 100.
-                  This is self-reported and displayed on your public profile.
-                </p>
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {(
-                    [
-                      { key: "operations", label: "Operations" },
-                      { key: "materials",  label: "Materials & Supplies" },
-                      { key: "staff",      label: "Staff & Volunteers" },
-                      { key: "events",     label: "Community Events" },
-                      { key: "other",      label: "Other" },
-                    ] as const
-                  ).map(({ key, label }) => (
-                    <div key={key} className="flex flex-col gap-1.5">
-                      <Label className="text-xs font-semibold text-muted-foreground">{label}</Label>
-                      <div className="relative">
-                        <Input
-                          type="number"
-                          min={0}
-                          max={100}
-                          value={fundsUsageInput[key]}
-                          onChange={(e) => {
-                            const val = Math.min(100, Math.max(0, parseInt(e.target.value) || 0));
-                            setFundsUsageInput((prev) => ({ ...prev, [key]: val }));
-                            setFundsUsageError("");
-                            setFundsUsageSaved(false);
-                          }}
-                          className="pr-8"
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-medium">%</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex items-center gap-4 flex-wrap pt-2">
-                  {(() => {
-                    const total = Object.values(fundsUsageInput).reduce((s, v) => s + v, 0);
-                    const ok = total === 100;
-                    return (
-                      <div
-                        className={`flex items-center px-3 py-1.5 rounded-lg border ${
-                          ok ? "bg-green-50 border-green-200" : "bg-amber-50 border-amber-200"
-                        }`}
-                      >
-                        <span className={`text-xs font-bold ${ok ? "text-green-700" : "text-amber-700"}`}>
-                          Total: {total}% {ok ? "✓" : total < 100 ? `(${100 - total}% remaining)` : `(over by ${total - 100}%)`}
-                        </span>
-                      </div>
-                    );
-                  })()}
-
-                  {fundsUsageError && (
-                    <div className="flex items-start gap-1.5 text-xs text-destructive bg-destructive/10 border border-destructive/20 rounded-lg px-2 py-1.5">
-                      <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                      {fundsUsageError}
-                    </div>
-                  )}
-
-                  {fundsUsageSaved && (
-                    <div className="flex items-center gap-1.5 text-xs text-green-700 bg-green-50 border border-green-200 rounded-lg px-2 py-1.5">
-                      <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" /> Saved.
-                    </div>
-                  )}
-                </div>
-
-                <div className="flex gap-2 pt-2 border-t border-border">
-                  <Button
-                    className="font-bold text-white bg-primary hover:bg-primary/90"
-                    disabled={
-                      fundsUsageSaving ||
-                      Object.values(fundsUsageInput).reduce((s, v) => s + v, 0) !== 100
-                    }
-                    onClick={saveFundsUsage}
-                  >
-                    {fundsUsageSaving ? "Saving…" : "Save breakdown"}
-                  </Button>
-                  {org?.fundsUsage && (
-                    <Button
-                      variant="outline"
-                      className="font-semibold"
-                      disabled={fundsUsageSaving}
-                      onClick={async () => {
-                        await api.updateOrganisation(orgId, { fundsUsage: null } as Partial<api.Org>, token!);
-                        setFundsUsageInput({ operations: 0, materials: 0, staff: 0, events: 0, other: 0 });
-                        queryClient.invalidateQueries({ queryKey: ["org", orgId] });
-                      }}
-                    >
-                      Clear
-                    </Button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </details>
 
           {/* ── Updates ────────────────────────────────────────────────────── */}
           <div className="grid lg:grid-cols-[1fr_300px] gap-6 items-start pt-6">
@@ -1391,6 +1049,23 @@ export default function DashboardPage() {
             </Card>
           </div>
 
+        </TabsContent>
+
+        <TabsContent value="build" className="mt-6">
+          {orgQ.isLoading ? (
+            <div className="space-y-4">
+              <Skeleton className="h-40 rounded-2xl" />
+              <Skeleton className="h-64 rounded-2xl" />
+            </div>
+          ) : org && user ? (
+            <ProfileEditor key={`${user.id}:${org._id}`} org={org} userId={user.id} token={token!} />
+          ) : (
+            <div className="text-center py-12 px-4 border border-dashed border-border rounded-2xl">
+              <AlertCircle className="w-6 h-6 text-primary mx-auto mb-2" />
+              <p className="font-semibold text-foreground">We couldn't load your profile.</p>
+              <Button variant="outline" className="mt-3" onClick={() => orgQ.refetch()} data-testid="button-retry-profile">Try again</Button>
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="campaigns" className="space-y-6 mt-6 animate-in fade-in slide-in-from-bottom-2">

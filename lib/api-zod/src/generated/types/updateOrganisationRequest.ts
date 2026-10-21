@@ -5,8 +5,9 @@
  * Root ProjX API — community giving platform
  * OpenAPI spec version: 0.1.0
  */
+import type { OrganisationProfileFields } from "./organisationProfileFields";
 
-export interface UpdateOrganisationRequest {
+export type UpdateOrganisationRequest = OrganisationProfileFields & {
   orgName?: string;
   mission?: string;
   location?: string;
@@ -17,4 +18,4 @@ export interface UpdateOrganisationRequest {
   helpServices?: string[];
   responseCommitment?: string;
   whatsappNumber?: string;
-}
+};

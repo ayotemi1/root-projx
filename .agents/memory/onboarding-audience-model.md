@@ -18,3 +18,16 @@ capacity to hand-hold each organisation.
 
 **How to apply:** Design organisation tools for independent use, with saved-data
 publish gates rather than an additional manual campaign-review requirement.
+
+Organisation representatives commonly use phones on slow connections. Treat
+390px usability and recovery from interrupted editing as requirements, not
+optional polish. Guided setup must advance on confirmed real actions/data,
+never merely on clicking through instructions.
+
+**Why:** The self-service specification explicitly identifies these working
+conditions and requires that organisations can leave and resume without losing
+their work.
+
+**How to apply:** Preserve unfinished edits on failures, distinguish drafts from
+confirmed saved data, and keep optional sections optional when deciding whether
+a profile is ready.

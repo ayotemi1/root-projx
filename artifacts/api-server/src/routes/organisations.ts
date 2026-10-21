@@ -1,4 +1,5 @@
 import { randomUUID } from "crypto";
+import { profilePatch, ProfileValidationError } from "../lib/organisation-profile.js";
 import { Router } from "express";
 import multer from "multer";
 import { fsGet, fsPatch, fsList, fsQuery, fsCreate, getServerToken } from "../lib/firebase-rest.js";
@@ -122,7 +123,7 @@ router.post(
       if (!existing) { res.status(404).json({ error: "Organisation not found" }); return; }
 
       const merged = { ...existing, [field]: imageUrl };
-      await fsPatch("organisations", orgId, merged, serverToken);
+      await fsPatch("organisations", orgId, { [field]: imageUrl }, serverToken);
 
       req.log.info({ orgId, type }, "Org profile image uploaded");
       res.json({ _id: orgId, ...merged });
@@ -783,7 +784,7 @@ router.patch("/organisations/:id", requireAuth, requireApprovedOrganisation, asy
   try {
     const uid = req.user!.userId;
     const orgId = req.params.id!;
-    if (uid !== orgId) {
+    if (uid !== orgId || req.user!.accountType !== "organisation") {
       res.status(403).json({ error: "You can only update your own organisation profile" });
       return;
     }
@@ -793,59 +794,18 @@ router.patch("/organisations/:id", requireAuth, requireApprovedOrganisation, asy
       res.status(404).json({ error: "Organisation not found" });
       return;
     }
-    const allowed = ["name", "country", "city", "category", "description", "mission",
-                     "contact", "socialLinks", "coverImage", "logo"];
-    const updates: Record<string, unknown> = {};
-    const body = req.body as Record<string, unknown>;
-    for (const key of allowed) {
-      if (key in body) {
-        updates[key] = body[key];
-      }
-    }
-
-    // fundsUsage — validated separately: 5 broad categories, 0-100 each, must sum to 100
-    if ("fundsUsage" in body) {
-      const fu = body.fundsUsage;
-      if (fu === null || fu === undefined) {
-        updates.fundsUsage = null;
-      } else if (typeof fu === "object" && !Array.isArray(fu)) {
-        const CATEGORIES = ["operations", "materials", "staff", "events", "other"] as const;
-        const parsed: Record<string, number> = {};
-        let total = 0;
-        for (const k of CATEGORIES) {
-          const v = (fu as Record<string, unknown>)[k];
-          if (typeof v !== "number" || !isFinite(v)) {
-            res.status(400).json({ error: `fundsUsage.${k} must be a finite number` });
-            return;
-          }
-          if (!Number.isInteger(v)) {
-            res.status(400).json({ error: `fundsUsage.${k} must be a whole number (no decimals)` });
-            return;
-          }
-          if (v < 0 || v > 100) {
-            res.status(400).json({ error: `fundsUsage.${k} must be between 0 and 100` });
-            return;
-          }
-          parsed[k] = v;
-          total += v;
-        }
-        if (total !== 100) {
-          res.status(400).json({
-            error: `fundsUsage percentages must sum to 100 (got ${total})`,
-          });
-          return;
-        }
-        updates.fundsUsage = parsed;
-      } else {
-        res.status(400).json({ error: "fundsUsage must be an object or null" });
-        return;
-      }
-    }
-
-    const merged = { ...existing, ...updates };
-    await fsPatch("organisations", orgId, merged, serverToken);
-    res.json({ _id: orgId, ...merged });
+    const updates = profilePatch(req.body, existing);
+    await fsPatch("organisations", orgId, updates, serverToken);
+    // A private snapshot must not escape through the edit response. Also re-read
+    // so a concurrent section save isn't replaced by this request's old snapshot.
+    const current = await fsGet("organisations", orgId, serverToken) ?? { ...existing, ...updates };
+    const { campaigns: _campaigns, ...publicOrg } = current;
+    res.json({ _id: orgId, ...withoutPrivatePayoutSetup(publicOrg) });
   } catch (err) {
+    if (err instanceof ProfileValidationError) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
     req.log.error({ err }, "PATCH /organisations/:id error");
     res.status(500).json({ error: "Failed to update organisation" });
   }

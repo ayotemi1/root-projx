@@ -181,6 +181,98 @@ export interface AuthResponse {
   user: PublicUser;
 }
 
+export type OrganisationProfileFieldsContact = {
+  email?: string;
+  phone?: string;
+  website?: string;
+} | null;
+
+export type OrganisationProfileFieldsSocialLinks = {
+  instagram?: string;
+  facebook?: string;
+  twitter?: string;
+  linkedin?: string;
+  youtube?: string;
+  tiktok?: string;
+} | null;
+
+export interface ProfileImpactMetric {
+  /** @maxLength 100 */
+  label: string;
+  /** @minimum 0 */
+  value: number;
+  /** Server-owned timestamp; client-supplied values are ignored. */
+  updatedAt?: string;
+}
+
+export type OrganisationProfileFieldsImpactMetrics = {
+  peopleReached?: ProfileImpactMetric;
+  groundCovered?: ProfileImpactMetric;
+  resourcesDelivered?: ProfileImpactMetric;
+} | null;
+
+export type OrganisationProfileFieldsFundsUsage = {
+  /**
+   * @minimum 0
+   * @maximum 100
+   */
+  operations: number;
+  /**
+   * @minimum 0
+   * @maximum 100
+   */
+  materials: number;
+  /**
+   * @minimum 0
+   * @maximum 100
+   */
+  staff: number;
+  /**
+   * @minimum 0
+   * @maximum 100
+   */
+  events: number;
+  /**
+   * @minimum 0
+   * @maximum 100
+   */
+  other: number;
+} | null;
+
+export interface ProfileTeamMember {
+  /** @maxLength 100 */
+  name: string;
+  /** @maxLength 120 */
+  role: string;
+  photoUrl: string;
+}
+
+export interface OrganisationProfileFields {
+  /** @maxLength 200 */
+  name?: string;
+  /** @maxLength 100 */
+  country?: string;
+  /** @maxLength 120 */
+  city?: string | null;
+  /** @maxLength 120 */
+  shortDescription?: string;
+  /** @maxLength 20000 */
+  description?: string;
+  /** @maxLength 20000 */
+  mission?: string | null;
+  category?: string;
+  /** @minItems 1 */
+  categories?: string[];
+  logo?: string | null;
+  coverImage?: string | null;
+  contact?: OrganisationProfileFieldsContact;
+  socialLinks?: OrganisationProfileFieldsSocialLinks;
+  impactMetrics?: OrganisationProfileFieldsImpactMetrics;
+  /** @maxItems 6 */
+  team?: ProfileTeamMember[];
+  fundsUsage?: OrganisationProfileFieldsFundsUsage;
+}
+
 /**
  * Resolved payout routing method; not a provider-readiness or settlement guarantee.
  */
@@ -194,7 +286,7 @@ export const OrganisationPayoutMethod = {
   none: "none",
 } as const;
 
-export interface Organisation {
+export type Organisation = OrganisationProfileFields & {
   /** Resolved payout routing method; not a provider-readiness or settlement guarantee. */
   payoutMethod?: OrganisationPayoutMethod;
   id: number;
@@ -215,7 +307,7 @@ export interface Organisation {
   responseCommitment?: string | null;
   whatsappNumber?: string | null;
   createdAt: string;
-}
+};
 
 export interface CreateOrganisationRequest {
   orgName: string;
@@ -230,7 +322,7 @@ export interface CreateOrganisationRequest {
   whatsappNumber?: string;
 }
 
-export interface UpdateOrganisationRequest {
+export type UpdateOrganisationRequest = OrganisationProfileFields & {
   orgName?: string;
   mission?: string;
   location?: string;
@@ -241,7 +333,7 @@ export interface UpdateOrganisationRequest {
   helpServices?: string[];
   responseCommitment?: string;
   whatsappNumber?: string;
-}
+};
 
 export type CreateDonationRequestType =
   (typeof CreateDonationRequestType)[keyof typeof CreateDonationRequestType];

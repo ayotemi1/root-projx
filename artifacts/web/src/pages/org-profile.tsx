@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRoute, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle, ArrowLeft, ChevronRight, Heart, HeartOff,
   MapPin, Tag, Users, TrendingUp, Zap, DollarSign,
-  ThumbsUp, MessageCircle, Share2, Clock,
+  ThumbsUp, MessageCircle, Share2, Clock, Mail, Phone, Globe,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -12,6 +12,40 @@ import { useAuth } from "@/context/AuthContext";
 import * as api from "@/lib/api";
 import type { FeedUpdate, Review, Org, VolunteerRole, Campaign } from "@/lib/api";
 import { GuestDonateSheet } from "@/components/GuestDonateSheet";
+import ReactMarkdown from "react-markdown";
+import { PROFILE_ANCHORS, orgSectors } from "@/lib/sectors";
+
+const ABOUT_ANCHORS: string[] = [PROFILE_ANCHORS.story, PROFILE_ANCHORS.funds, PROFILE_ANCHORS.contact, PROFILE_ANCHORS.team];
+
+/** Markdown story rendering. Raw HTML is skipped; links open safely. */
+function StoryText({ text }: { text: string }) {
+  return (
+    <div className="text-sm text-foreground/80 leading-relaxed space-y-3 break-words">
+      <ReactMarkdown
+        skipHtml
+        components={{
+          h1: ({ children }) => <h4 className="text-base font-extrabold text-foreground mt-4">{children}</h4>,
+          h2: ({ children }) => <h4 className="text-base font-extrabold text-foreground mt-4">{children}</h4>,
+          h3: ({ children }) => <h5 className="text-sm font-bold text-foreground mt-3">{children}</h5>,
+          h4: ({ children }) => <h5 className="text-sm font-bold text-foreground mt-3">{children}</h5>,
+          p: ({ children }) => <p>{children}</p>,
+          ul: ({ children }) => <ul className="list-disc pl-5 space-y-1">{children}</ul>,
+          ol: ({ children }) => <ol className="list-decimal pl-5 space-y-1">{children}</ol>,
+          strong: ({ children }) => <strong className="font-bold text-foreground">{children}</strong>,
+          blockquote: ({ children }) => <blockquote className="border-l-2 pl-3 italic" style={{ borderColor: RED }}>{children}</blockquote>,
+          a: ({ href, children }) => (
+            <a href={href} target="_blank" rel="noopener noreferrer nofollow" className="underline underline-offset-2" style={{ color: RED }}>{children}</a>
+          ),
+          img: () => null,
+        }}
+      >
+        {text}
+      </ReactMarkdown>
+    </div>
+  );
+}
+
+const METRIC_ORDER = ["peopleReached", "groundCovered", "resourcesDelivered"] as const;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -377,6 +411,18 @@ export default function OrgProfilePage() {
 
   const org = orgQ.data;
 
+  // Deep links from the profile editor: /organisations/:id#profile-story etc.
+  useEffect(() => {
+    if (!org) return;
+    const hash = window.location.hash.replace("#", "");
+    if (!hash) return;
+    if (ABOUT_ANCHORS.includes(hash)) setTab("about");
+    const timer = window.setTimeout(() => {
+      document.getElementById(hash)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, [org?._id]);
+
   if (orgQ.isLoading) {
     return (
       <div className="max-w-6xl mx-auto px-4 py-8 space-y-4">
@@ -416,6 +462,17 @@ export default function OrgProfilePage() {
     org.lastPostAt ??
     (allUpdates.length > 0 ? (allUpdates[0]?.createdAt ?? null) : null);
 
+  const sectors = orgSectors(org);
+  const metrics = METRIC_ORDER
+    .map((k) => ({ key: k, m: org.impactMetrics?.[k] }))
+    .filter((x): x is { key: typeof METRIC_ORDER[number]; m: NonNullable<typeof x.m> } =>
+      !!x.m && !!x.m.label && Number.isFinite(x.m.value));
+  const goalCampaign = realCampaigns.find(
+    (c) => c.status === "active" && c.enabled !== false && c.type === "fundraising" && c.goal > 0,
+  );
+  const goalPct = goalCampaign ? Math.min(100, Math.round((goalCampaign.amountRaised / goalCampaign.goal) * 100)) : 0;
+  const team = (org.team ?? []).filter((m) => m.name?.trim());
+
   function handleDonateClick() {
     if (isAuthenticated) {
       window.location.href = `/donate/${id}`;
@@ -454,7 +511,7 @@ export default function OrgProfilePage() {
         <div className="space-y-5">
 
           {/* Hero card */}
-          <div className="bg-white border border-border rounded-2xl overflow-hidden">
+          <div id={PROFILE_ANCHORS.identity} className="scroll-mt-20 bg-white border border-border rounded-2xl overflow-hidden">
 
             {/* Banner */}
             <div className="relative">
@@ -538,9 +595,18 @@ export default function OrgProfilePage() {
                       </span>
                     )}
                   </div>
-                  <p className="mt-3 text-sm text-foreground/80 leading-relaxed">
-                    {org.description}
+                  <p className="mt-3 text-sm text-foreground/80 leading-relaxed" data-testid="text-org-short-description">
+                    {org.shortDescription?.trim() || org.description}
                   </p>
+                  {sectors.length > 0 && (
+                    <ul id={PROFILE_ANCHORS.sectors} className="scroll-mt-20 mt-3 flex flex-wrap gap-1.5" aria-label="Sectors">
+                      {sectors.map((sec) => (
+                        <li key={sec} className="text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ backgroundColor: "#FFF7E6", color: "#B45309" }}>
+                          {sec}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
 
                   {/* Staleness notice — shown only when last post was 6+ months ago */}
                   {derivedLastPostAt && isStale(derivedLastPostAt) && (
@@ -612,6 +678,34 @@ export default function OrgProfilePage() {
               ))}
             </div>
           </div>
+
+          {(metrics.length > 0 || goalCampaign) && (
+            <section id={PROFILE_ANCHORS.impact} aria-labelledby="impact-title" className="scroll-mt-20 bg-white border border-border rounded-2xl p-5">
+              <h2 id="impact-title" className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4">Impact</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {metrics.map(({ key, m }) => (
+                  <div key={key} data-testid={`metric-${key}`}>
+                    <div className="text-2xl font-extrabold text-foreground tabular-nums">{m.value.toLocaleString()}</div>
+                    <div className="text-xs text-foreground/70 leading-snug mt-0.5">{m.label}</div>
+                    {m.updatedAt && (
+                      <div className="text-[10px] text-muted-foreground mt-1">
+                        as of {new Date(m.updatedAt).toLocaleDateString("en-GB", { month: "short", year: "numeric" })}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {goalCampaign && (
+                  <div className="col-span-2 sm:col-span-1" data-testid="metric-progress-to-goal">
+                    <div className="text-2xl font-extrabold tabular-nums" style={{ color: RED }}>{goalPct}%</div>
+                    <div className="text-xs text-foreground/70 leading-snug mt-0.5">to goal: {goalCampaign.name}</div>
+                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden mt-2">
+                      <div className="h-full rounded-full" style={{ width: `${goalPct}%`, backgroundColor: RED }} />
+                    </div>
+                  </div>
+                )}
+              </div>
+            </section>
+          )}
 
           {/* Tabs */}
           <div className="bg-white border border-border rounded-2xl overflow-hidden">
@@ -772,12 +866,14 @@ export default function OrgProfilePage() {
               {/* ── About ── */}
               {tab === "about" && (
                 <div className="space-y-5">
-                  <div>
-                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                      About
-                    </h3>
-                    <p className="text-sm text-foreground/80 leading-relaxed">{org.description}</p>
-                  </div>
+                  {org.description?.trim() && (
+                    <div id={PROFILE_ANCHORS.story} className="scroll-mt-20">
+                      <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                        Our story
+                      </h3>
+                      <StoryText text={org.description} />
+                    </div>
+                  )}
                   {org.mission && (
                     <div>
                       <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
@@ -798,7 +894,7 @@ export default function OrgProfilePage() {
                       { key: "other",      label: "Other",                color: "#7C3AED" },
                     ];
                     return (
-                      <div>
+                      <div id={PROFILE_ANCHORS.funds} className="scroll-mt-20">
                         <div className="flex items-center justify-between mb-2">
                           <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
                             How funds are used
@@ -844,7 +940,31 @@ export default function OrgProfilePage() {
                     );
                   })()}
 
-                  {org.contact && (
+                  {team.length > 0 && (
+                    <div id={PROFILE_ANCHORS.team} className="scroll-mt-20">
+                      <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Team</h3>
+                      <ul className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                        {team.slice(0, 6).map((m, i) => (
+                          <li key={i} className="flex items-center gap-3 min-w-0" data-testid={`team-member-${i}`}>
+                            {m.photoUrl ? (
+                              <img src={m.photoUrl} alt={m.name} loading="lazy" className="w-12 h-12 rounded-full object-cover flex-shrink-0" />
+                            ) : (
+                              <div className="w-12 h-12 rounded-full flex-shrink-0 flex items-center justify-center text-sm font-extrabold" style={{ backgroundColor: GOLD, color: "#111" }}>
+                                {m.name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()}
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold text-foreground truncate">{m.name}</p>
+                              {m.role && <p className="text-xs text-muted-foreground truncate">{m.role}</p>}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  <div id={PROFILE_ANCHORS.contact} className="scroll-mt-20 space-y-5">
+                  {org.contact && Object.values(org.contact).some(Boolean) && (
                     <div>
                       <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">
                         Contact
@@ -855,11 +975,11 @@ export default function OrgProfilePage() {
                             href={`mailto:${org.contact.email}`}
                             className="flex items-center gap-2 hover:text-primary transition-colors"
                           >
-                            ✉ {org.contact.email}
+                            <Mail className="w-3.5 h-3.5" /> {org.contact.email}
                           </a>
                         )}
                         {org.contact.phone && (
-                          <p>📞 {org.contact.phone}</p>
+                          <p className="flex items-center gap-2"><Phone className="w-3.5 h-3.5" /> {org.contact.phone}</p>
                         )}
                         {org.contact.website && (
                           <a
@@ -869,7 +989,7 @@ export default function OrgProfilePage() {
                             className="flex items-center gap-2 hover:text-primary transition-colors"
                             style={{ color: RED }}
                           >
-                            🌐 {org.contact.website}
+                            <Globe className="w-3.5 h-3.5" /> {org.contact.website}
                           </a>
                         )}
                       </div>
@@ -895,6 +1015,7 @@ export default function OrgProfilePage() {
                       </div>
                     </div>
                   )}
+                  </div>
                 </div>
               )}
 

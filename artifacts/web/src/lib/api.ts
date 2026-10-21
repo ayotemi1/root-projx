@@ -68,7 +68,37 @@ export interface Org {
   createdAt: string;
   lastPostAt: string | null;
   fundsUsage: FundsUsage | null;
+  /** One-line card description (max 120). Falls back to description when absent. */
+  shortDescription?: string | null;
+  /** Multi-select sectors; `category` stays the primary (first) sector. */
+  categories?: string[] | null;
+  impactMetrics?: ImpactMetrics | null;
+  team?: TeamMember[] | null;
 }
+
+export interface ImpactMetric {
+  label: string;
+  value: number;
+  /** Server-owned timestamp. */
+  updatedAt: string;
+}
+
+export type ImpactMetricKey = "peopleReached" | "groundCovered" | "resourcesDelivered";
+
+export type ImpactMetrics = Partial<Record<ImpactMetricKey, ImpactMetric>>;
+
+export interface TeamMember {
+  name: string;
+  role: string;
+  photoUrl: string | null;
+}
+
+/** Shape accepted by PATCH for impact metrics: server stamps updatedAt. */
+export type ImpactMetricsInput = Partial<Record<ImpactMetricKey, { label: string; value: number }>>;
+
+export type OrgProfilePatch = Partial<Omit<Org, "impactMetrics">> & {
+  impactMetrics?: ImpactMetricsInput | null;
+};
 
 export interface WiseStatus {
   wise_email: string | null;
@@ -223,7 +253,7 @@ export interface CreateOrgProfileInput {
 export const createOrgProfile = (data: CreateOrgProfileInput, token: string) =>
   req<Org>("/organisations", { method: "POST", body: JSON.stringify(data) }, token);
 
-export const updateOrganisation = (id: string, data: Partial<Org>, token: string) =>
+export const updateOrganisation = (id: string, data: Partial<Org> | OrgProfilePatch, token: string) =>
   req<Org>(`/organisations/${id}`, { method: "PATCH", body: JSON.stringify(data) }, token);
 
 // ── Feed ──────────────────────────────────────────────────────────────────────
@@ -257,6 +287,43 @@ export async function uploadMedia(files: File[], token: string): Promise<string[
 
   const result = await response.json() as { urls: string[] };
   return result.urls;
+}
+
+/**
+ * Upload files to POST /uploads/media?type=media (field `files`) with real
+ * upload progress via XMLHttpRequest. Resolves with the returned URLs.
+ */
+export function uploadMediaWithProgress(
+  files: Array<File | Blob>,
+  token: string,
+  onProgress?: (fraction: number) => void,
+): Promise<string[]> {
+  return new Promise((resolve, reject) => {
+    const formData = new FormData();
+    files.forEach((f, i) => {
+      const name = f instanceof File ? f.name : `image-${i}.jpg`;
+      formData.append("files", f, name);
+    });
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `${API_BASE}/uploads/media?type=media`);
+    xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable && onProgress) onProgress(e.loaded / e.total);
+    };
+    xhr.onload = () => {
+      let body: { urls?: string[]; error?: string } = {};
+      try { body = JSON.parse(xhr.responseText); } catch { /* ignore */ }
+      if (xhr.status >= 200 && xhr.status < 300 && Array.isArray(body.urls) && body.urls.length > 0) {
+        onProgress?.(1);
+        resolve(body.urls);
+      } else {
+        reject(new Error(body.error ?? `Upload failed (${xhr.status})`));
+      }
+    };
+    xhr.onerror = () => reject(new Error("Upload failed. Check your connection and try again."));
+    xhr.ontimeout = () => reject(new Error("Upload timed out. Try again on a stronger connection."));
+    xhr.send(formData);
+  });
 }
 
 /**

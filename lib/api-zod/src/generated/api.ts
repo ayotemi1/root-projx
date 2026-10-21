@@ -167,32 +167,216 @@ export const ListOrganisationsQueryParams = zod.object({
   category: zod.coerce.string().optional(),
 });
 
-export const ListOrganisationsResponseItem = zod.object({
-  payoutMethod: zod
-    .enum(["stripe_connect", "wise", "manual", "none"])
-    .optional()
-    .describe(
-      "Resolved payout routing method; not a provider-readiness or settlement guarantee.",
-    ),
-  id: zod.number(),
-  userId: zod.number().nullish(),
-  orgName: zod.string(),
-  mission: zod.string().nullish(),
-  location: zod.string().nullish(),
-  country: zod.string(),
-  causeCategory: zod.string().nullish(),
-  goalAmount: zod.string().nullish(),
-  raisedAmount: zod.string().nullish(),
-  distributedAmount: zod.string().nullish(),
-  donorCount: zod.number().nullish(),
-  followerCount: zod.number().nullish(),
-  verified: zod.boolean().nullish(),
-  helpOptedIn: zod.boolean().nullish(),
-  helpServices: zod.array(zod.string()).nullish(),
-  responseCommitment: zod.string().nullish(),
-  whatsappNumber: zod.string().nullish(),
-  createdAt: zod.string(),
-});
+export const listOrganisationsResponseOneNameMax = 200;
+
+export const listOrganisationsResponseOneCountryMax = 100;
+
+export const listOrganisationsResponseOneCityMax = 120;
+
+export const listOrganisationsResponseOneShortDescriptionMax = 120;
+
+export const listOrganisationsResponseOneDescriptionMax = 20000;
+
+export const listOrganisationsResponseOneMissionMax = 20000;
+
+export const listOrganisationsResponseOneImpactMetricsPeopleReachedLabelMax = 100;
+
+export const listOrganisationsResponseOneImpactMetricsPeopleReachedValueMin = 0;
+
+export const listOrganisationsResponseOneImpactMetricsGroundCoveredLabelMax = 100;
+
+export const listOrganisationsResponseOneImpactMetricsGroundCoveredValueMin = 0;
+
+export const listOrganisationsResponseOneImpactMetricsResourcesDeliveredLabelMax = 100;
+
+export const listOrganisationsResponseOneImpactMetricsResourcesDeliveredValueMin = 0;
+
+export const listOrganisationsResponseOneTeamItemNameMax = 100;
+
+export const listOrganisationsResponseOneTeamItemRoleMax = 120;
+
+export const listOrganisationsResponseOneTeamMax = 6;
+
+export const listOrganisationsResponseOneFundsUsageOperationsMin = 0;
+export const listOrganisationsResponseOneFundsUsageOperationsMax = 100;
+
+export const listOrganisationsResponseOneFundsUsageMaterialsMin = 0;
+export const listOrganisationsResponseOneFundsUsageMaterialsMax = 100;
+
+export const listOrganisationsResponseOneFundsUsageStaffMin = 0;
+export const listOrganisationsResponseOneFundsUsageStaffMax = 100;
+
+export const listOrganisationsResponseOneFundsUsageEventsMin = 0;
+export const listOrganisationsResponseOneFundsUsageEventsMax = 100;
+
+export const listOrganisationsResponseOneFundsUsageOtherMin = 0;
+export const listOrganisationsResponseOneFundsUsageOtherMax = 100;
+
+export const ListOrganisationsResponseItem = zod
+  .object({
+    name: zod.string().max(listOrganisationsResponseOneNameMax).optional(),
+    country: zod
+      .string()
+      .max(listOrganisationsResponseOneCountryMax)
+      .optional(),
+    city: zod.string().max(listOrganisationsResponseOneCityMax).nullish(),
+    shortDescription: zod
+      .string()
+      .max(listOrganisationsResponseOneShortDescriptionMax)
+      .optional(),
+    description: zod
+      .string()
+      .max(listOrganisationsResponseOneDescriptionMax)
+      .optional(),
+    mission: zod.string().max(listOrganisationsResponseOneMissionMax).nullish(),
+    category: zod.string().optional(),
+    categories: zod.array(zod.string()).min(1).optional(),
+    logo: zod.string().nullish(),
+    coverImage: zod.string().nullish(),
+    contact: zod
+      .object({
+        email: zod.string().optional(),
+        phone: zod.string().optional(),
+        website: zod.string().optional(),
+      })
+      .nullish(),
+    socialLinks: zod
+      .object({
+        instagram: zod.string().optional(),
+        facebook: zod.string().optional(),
+        twitter: zod.string().optional(),
+        linkedin: zod.string().optional(),
+        youtube: zod.string().optional(),
+        tiktok: zod.string().optional(),
+      })
+      .nullish(),
+    impactMetrics: zod
+      .object({
+        peopleReached: zod
+          .object({
+            label: zod
+              .string()
+              .max(
+                listOrganisationsResponseOneImpactMetricsPeopleReachedLabelMax,
+              ),
+            value: zod
+              .number()
+              .min(
+                listOrganisationsResponseOneImpactMetricsPeopleReachedValueMin,
+              ),
+            updatedAt: zod
+              .string()
+              .optional()
+              .describe(
+                "Server-owned timestamp; client-supplied values are ignored.",
+              ),
+          })
+          .optional(),
+        groundCovered: zod
+          .object({
+            label: zod
+              .string()
+              .max(
+                listOrganisationsResponseOneImpactMetricsGroundCoveredLabelMax,
+              ),
+            value: zod
+              .number()
+              .min(
+                listOrganisationsResponseOneImpactMetricsGroundCoveredValueMin,
+              ),
+            updatedAt: zod
+              .string()
+              .optional()
+              .describe(
+                "Server-owned timestamp; client-supplied values are ignored.",
+              ),
+          })
+          .optional(),
+        resourcesDelivered: zod
+          .object({
+            label: zod
+              .string()
+              .max(
+                listOrganisationsResponseOneImpactMetricsResourcesDeliveredLabelMax,
+              ),
+            value: zod
+              .number()
+              .min(
+                listOrganisationsResponseOneImpactMetricsResourcesDeliveredValueMin,
+              ),
+            updatedAt: zod
+              .string()
+              .optional()
+              .describe(
+                "Server-owned timestamp; client-supplied values are ignored.",
+              ),
+          })
+          .optional(),
+      })
+      .nullish(),
+    team: zod
+      .array(
+        zod.object({
+          name: zod.string().max(listOrganisationsResponseOneTeamItemNameMax),
+          role: zod.string().max(listOrganisationsResponseOneTeamItemRoleMax),
+          photoUrl: zod.string(),
+        }),
+      )
+      .max(listOrganisationsResponseOneTeamMax)
+      .optional(),
+    fundsUsage: zod
+      .object({
+        operations: zod
+          .number()
+          .min(listOrganisationsResponseOneFundsUsageOperationsMin)
+          .max(listOrganisationsResponseOneFundsUsageOperationsMax),
+        materials: zod
+          .number()
+          .min(listOrganisationsResponseOneFundsUsageMaterialsMin)
+          .max(listOrganisationsResponseOneFundsUsageMaterialsMax),
+        staff: zod
+          .number()
+          .min(listOrganisationsResponseOneFundsUsageStaffMin)
+          .max(listOrganisationsResponseOneFundsUsageStaffMax),
+        events: zod
+          .number()
+          .min(listOrganisationsResponseOneFundsUsageEventsMin)
+          .max(listOrganisationsResponseOneFundsUsageEventsMax),
+        other: zod
+          .number()
+          .min(listOrganisationsResponseOneFundsUsageOtherMin)
+          .max(listOrganisationsResponseOneFundsUsageOtherMax),
+      })
+      .nullish(),
+  })
+  .and(
+    zod.object({
+      payoutMethod: zod
+        .enum(["stripe_connect", "wise", "manual", "none"])
+        .optional()
+        .describe(
+          "Resolved payout routing method; not a provider-readiness or settlement guarantee.",
+        ),
+      id: zod.number(),
+      userId: zod.number().nullish(),
+      orgName: zod.string(),
+      mission: zod.string().nullish(),
+      location: zod.string().nullish(),
+      country: zod.string(),
+      causeCategory: zod.string().nullish(),
+      goalAmount: zod.string().nullish(),
+      raisedAmount: zod.string().nullish(),
+      distributedAmount: zod.string().nullish(),
+      donorCount: zod.number().nullish(),
+      followerCount: zod.number().nullish(),
+      verified: zod.boolean().nullish(),
+      helpOptedIn: zod.boolean().nullish(),
+      helpServices: zod.array(zod.string()).nullish(),
+      responseCommitment: zod.string().nullish(),
+      whatsappNumber: zod.string().nullish(),
+      createdAt: zod.string(),
+    }),
+  );
 export const ListOrganisationsResponse = zod.array(
   ListOrganisationsResponseItem,
 );
@@ -220,32 +404,213 @@ export const GetOrganisationParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const GetOrganisationResponse = zod.object({
-  payoutMethod: zod
-    .enum(["stripe_connect", "wise", "manual", "none"])
-    .optional()
-    .describe(
-      "Resolved payout routing method; not a provider-readiness or settlement guarantee.",
-    ),
-  id: zod.number(),
-  userId: zod.number().nullish(),
-  orgName: zod.string(),
-  mission: zod.string().nullish(),
-  location: zod.string().nullish(),
-  country: zod.string(),
-  causeCategory: zod.string().nullish(),
-  goalAmount: zod.string().nullish(),
-  raisedAmount: zod.string().nullish(),
-  distributedAmount: zod.string().nullish(),
-  donorCount: zod.number().nullish(),
-  followerCount: zod.number().nullish(),
-  verified: zod.boolean().nullish(),
-  helpOptedIn: zod.boolean().nullish(),
-  helpServices: zod.array(zod.string()).nullish(),
-  responseCommitment: zod.string().nullish(),
-  whatsappNumber: zod.string().nullish(),
-  createdAt: zod.string(),
-});
+export const getOrganisationResponseOneNameMax = 200;
+
+export const getOrganisationResponseOneCountryMax = 100;
+
+export const getOrganisationResponseOneCityMax = 120;
+
+export const getOrganisationResponseOneShortDescriptionMax = 120;
+
+export const getOrganisationResponseOneDescriptionMax = 20000;
+
+export const getOrganisationResponseOneMissionMax = 20000;
+
+export const getOrganisationResponseOneImpactMetricsPeopleReachedLabelMax = 100;
+
+export const getOrganisationResponseOneImpactMetricsPeopleReachedValueMin = 0;
+
+export const getOrganisationResponseOneImpactMetricsGroundCoveredLabelMax = 100;
+
+export const getOrganisationResponseOneImpactMetricsGroundCoveredValueMin = 0;
+
+export const getOrganisationResponseOneImpactMetricsResourcesDeliveredLabelMax = 100;
+
+export const getOrganisationResponseOneImpactMetricsResourcesDeliveredValueMin = 0;
+
+export const getOrganisationResponseOneTeamItemNameMax = 100;
+
+export const getOrganisationResponseOneTeamItemRoleMax = 120;
+
+export const getOrganisationResponseOneTeamMax = 6;
+
+export const getOrganisationResponseOneFundsUsageOperationsMin = 0;
+export const getOrganisationResponseOneFundsUsageOperationsMax = 100;
+
+export const getOrganisationResponseOneFundsUsageMaterialsMin = 0;
+export const getOrganisationResponseOneFundsUsageMaterialsMax = 100;
+
+export const getOrganisationResponseOneFundsUsageStaffMin = 0;
+export const getOrganisationResponseOneFundsUsageStaffMax = 100;
+
+export const getOrganisationResponseOneFundsUsageEventsMin = 0;
+export const getOrganisationResponseOneFundsUsageEventsMax = 100;
+
+export const getOrganisationResponseOneFundsUsageOtherMin = 0;
+export const getOrganisationResponseOneFundsUsageOtherMax = 100;
+
+export const GetOrganisationResponse = zod
+  .object({
+    name: zod.string().max(getOrganisationResponseOneNameMax).optional(),
+    country: zod.string().max(getOrganisationResponseOneCountryMax).optional(),
+    city: zod.string().max(getOrganisationResponseOneCityMax).nullish(),
+    shortDescription: zod
+      .string()
+      .max(getOrganisationResponseOneShortDescriptionMax)
+      .optional(),
+    description: zod
+      .string()
+      .max(getOrganisationResponseOneDescriptionMax)
+      .optional(),
+    mission: zod.string().max(getOrganisationResponseOneMissionMax).nullish(),
+    category: zod.string().optional(),
+    categories: zod.array(zod.string()).min(1).optional(),
+    logo: zod.string().nullish(),
+    coverImage: zod.string().nullish(),
+    contact: zod
+      .object({
+        email: zod.string().optional(),
+        phone: zod.string().optional(),
+        website: zod.string().optional(),
+      })
+      .nullish(),
+    socialLinks: zod
+      .object({
+        instagram: zod.string().optional(),
+        facebook: zod.string().optional(),
+        twitter: zod.string().optional(),
+        linkedin: zod.string().optional(),
+        youtube: zod.string().optional(),
+        tiktok: zod.string().optional(),
+      })
+      .nullish(),
+    impactMetrics: zod
+      .object({
+        peopleReached: zod
+          .object({
+            label: zod
+              .string()
+              .max(
+                getOrganisationResponseOneImpactMetricsPeopleReachedLabelMax,
+              ),
+            value: zod
+              .number()
+              .min(
+                getOrganisationResponseOneImpactMetricsPeopleReachedValueMin,
+              ),
+            updatedAt: zod
+              .string()
+              .optional()
+              .describe(
+                "Server-owned timestamp; client-supplied values are ignored.",
+              ),
+          })
+          .optional(),
+        groundCovered: zod
+          .object({
+            label: zod
+              .string()
+              .max(
+                getOrganisationResponseOneImpactMetricsGroundCoveredLabelMax,
+              ),
+            value: zod
+              .number()
+              .min(
+                getOrganisationResponseOneImpactMetricsGroundCoveredValueMin,
+              ),
+            updatedAt: zod
+              .string()
+              .optional()
+              .describe(
+                "Server-owned timestamp; client-supplied values are ignored.",
+              ),
+          })
+          .optional(),
+        resourcesDelivered: zod
+          .object({
+            label: zod
+              .string()
+              .max(
+                getOrganisationResponseOneImpactMetricsResourcesDeliveredLabelMax,
+              ),
+            value: zod
+              .number()
+              .min(
+                getOrganisationResponseOneImpactMetricsResourcesDeliveredValueMin,
+              ),
+            updatedAt: zod
+              .string()
+              .optional()
+              .describe(
+                "Server-owned timestamp; client-supplied values are ignored.",
+              ),
+          })
+          .optional(),
+      })
+      .nullish(),
+    team: zod
+      .array(
+        zod.object({
+          name: zod.string().max(getOrganisationResponseOneTeamItemNameMax),
+          role: zod.string().max(getOrganisationResponseOneTeamItemRoleMax),
+          photoUrl: zod.string(),
+        }),
+      )
+      .max(getOrganisationResponseOneTeamMax)
+      .optional(),
+    fundsUsage: zod
+      .object({
+        operations: zod
+          .number()
+          .min(getOrganisationResponseOneFundsUsageOperationsMin)
+          .max(getOrganisationResponseOneFundsUsageOperationsMax),
+        materials: zod
+          .number()
+          .min(getOrganisationResponseOneFundsUsageMaterialsMin)
+          .max(getOrganisationResponseOneFundsUsageMaterialsMax),
+        staff: zod
+          .number()
+          .min(getOrganisationResponseOneFundsUsageStaffMin)
+          .max(getOrganisationResponseOneFundsUsageStaffMax),
+        events: zod
+          .number()
+          .min(getOrganisationResponseOneFundsUsageEventsMin)
+          .max(getOrganisationResponseOneFundsUsageEventsMax),
+        other: zod
+          .number()
+          .min(getOrganisationResponseOneFundsUsageOtherMin)
+          .max(getOrganisationResponseOneFundsUsageOtherMax),
+      })
+      .nullish(),
+  })
+  .and(
+    zod.object({
+      payoutMethod: zod
+        .enum(["stripe_connect", "wise", "manual", "none"])
+        .optional()
+        .describe(
+          "Resolved payout routing method; not a provider-readiness or settlement guarantee.",
+        ),
+      id: zod.number(),
+      userId: zod.number().nullish(),
+      orgName: zod.string(),
+      mission: zod.string().nullish(),
+      location: zod.string().nullish(),
+      country: zod.string(),
+      causeCategory: zod.string().nullish(),
+      goalAmount: zod.string().nullish(),
+      raisedAmount: zod.string().nullish(),
+      distributedAmount: zod.string().nullish(),
+      donorCount: zod.number().nullish(),
+      followerCount: zod.number().nullish(),
+      verified: zod.boolean().nullish(),
+      helpOptedIn: zod.boolean().nullish(),
+      helpServices: zod.array(zod.string()).nullish(),
+      responseCommitment: zod.string().nullish(),
+      whatsappNumber: zod.string().nullish(),
+      createdAt: zod.string(),
+    }),
+  );
 
 /**
  * @summary Update organisation
@@ -254,45 +619,405 @@ export const UpdateOrganisationParams = zod.object({
   id: zod.coerce.number(),
 });
 
-export const UpdateOrganisationBody = zod.object({
-  orgName: zod.string().optional(),
-  mission: zod.string().optional(),
-  location: zod.string().optional(),
-  country: zod.string().optional(),
-  causeCategory: zod.string().optional(),
-  goalAmount: zod.string().optional(),
-  helpOptedIn: zod.boolean().optional(),
-  helpServices: zod.array(zod.string()).optional(),
-  responseCommitment: zod.string().optional(),
-  whatsappNumber: zod.string().optional(),
-});
+export const updateOrganisationBodyOneNameMax = 200;
 
-export const UpdateOrganisationResponse = zod.object({
-  payoutMethod: zod
-    .enum(["stripe_connect", "wise", "manual", "none"])
-    .optional()
-    .describe(
-      "Resolved payout routing method; not a provider-readiness or settlement guarantee.",
-    ),
-  id: zod.number(),
-  userId: zod.number().nullish(),
-  orgName: zod.string(),
-  mission: zod.string().nullish(),
-  location: zod.string().nullish(),
-  country: zod.string(),
-  causeCategory: zod.string().nullish(),
-  goalAmount: zod.string().nullish(),
-  raisedAmount: zod.string().nullish(),
-  distributedAmount: zod.string().nullish(),
-  donorCount: zod.number().nullish(),
-  followerCount: zod.number().nullish(),
-  verified: zod.boolean().nullish(),
-  helpOptedIn: zod.boolean().nullish(),
-  helpServices: zod.array(zod.string()).nullish(),
-  responseCommitment: zod.string().nullish(),
-  whatsappNumber: zod.string().nullish(),
-  createdAt: zod.string(),
-});
+export const updateOrganisationBodyOneCountryMax = 100;
+
+export const updateOrganisationBodyOneCityMax = 120;
+
+export const updateOrganisationBodyOneShortDescriptionMax = 120;
+
+export const updateOrganisationBodyOneDescriptionMax = 20000;
+
+export const updateOrganisationBodyOneMissionMax = 20000;
+
+export const updateOrganisationBodyOneImpactMetricsPeopleReachedLabelMax = 100;
+
+export const updateOrganisationBodyOneImpactMetricsPeopleReachedValueMin = 0;
+
+export const updateOrganisationBodyOneImpactMetricsGroundCoveredLabelMax = 100;
+
+export const updateOrganisationBodyOneImpactMetricsGroundCoveredValueMin = 0;
+
+export const updateOrganisationBodyOneImpactMetricsResourcesDeliveredLabelMax = 100;
+
+export const updateOrganisationBodyOneImpactMetricsResourcesDeliveredValueMin = 0;
+
+export const updateOrganisationBodyOneTeamItemNameMax = 100;
+
+export const updateOrganisationBodyOneTeamItemRoleMax = 120;
+
+export const updateOrganisationBodyOneTeamMax = 6;
+
+export const updateOrganisationBodyOneFundsUsageOperationsMin = 0;
+export const updateOrganisationBodyOneFundsUsageOperationsMax = 100;
+
+export const updateOrganisationBodyOneFundsUsageMaterialsMin = 0;
+export const updateOrganisationBodyOneFundsUsageMaterialsMax = 100;
+
+export const updateOrganisationBodyOneFundsUsageStaffMin = 0;
+export const updateOrganisationBodyOneFundsUsageStaffMax = 100;
+
+export const updateOrganisationBodyOneFundsUsageEventsMin = 0;
+export const updateOrganisationBodyOneFundsUsageEventsMax = 100;
+
+export const updateOrganisationBodyOneFundsUsageOtherMin = 0;
+export const updateOrganisationBodyOneFundsUsageOtherMax = 100;
+
+export const UpdateOrganisationBody = zod
+  .object({
+    name: zod.string().max(updateOrganisationBodyOneNameMax).optional(),
+    country: zod.string().max(updateOrganisationBodyOneCountryMax).optional(),
+    city: zod.string().max(updateOrganisationBodyOneCityMax).nullish(),
+    shortDescription: zod
+      .string()
+      .max(updateOrganisationBodyOneShortDescriptionMax)
+      .optional(),
+    description: zod
+      .string()
+      .max(updateOrganisationBodyOneDescriptionMax)
+      .optional(),
+    mission: zod.string().max(updateOrganisationBodyOneMissionMax).nullish(),
+    category: zod.string().optional(),
+    categories: zod.array(zod.string()).min(1).optional(),
+    logo: zod.string().nullish(),
+    coverImage: zod.string().nullish(),
+    contact: zod
+      .object({
+        email: zod.string().optional(),
+        phone: zod.string().optional(),
+        website: zod.string().optional(),
+      })
+      .nullish(),
+    socialLinks: zod
+      .object({
+        instagram: zod.string().optional(),
+        facebook: zod.string().optional(),
+        twitter: zod.string().optional(),
+        linkedin: zod.string().optional(),
+        youtube: zod.string().optional(),
+        tiktok: zod.string().optional(),
+      })
+      .nullish(),
+    impactMetrics: zod
+      .object({
+        peopleReached: zod
+          .object({
+            label: zod
+              .string()
+              .max(updateOrganisationBodyOneImpactMetricsPeopleReachedLabelMax),
+            value: zod
+              .number()
+              .min(updateOrganisationBodyOneImpactMetricsPeopleReachedValueMin),
+            updatedAt: zod
+              .string()
+              .optional()
+              .describe(
+                "Server-owned timestamp; client-supplied values are ignored.",
+              ),
+          })
+          .optional(),
+        groundCovered: zod
+          .object({
+            label: zod
+              .string()
+              .max(updateOrganisationBodyOneImpactMetricsGroundCoveredLabelMax),
+            value: zod
+              .number()
+              .min(updateOrganisationBodyOneImpactMetricsGroundCoveredValueMin),
+            updatedAt: zod
+              .string()
+              .optional()
+              .describe(
+                "Server-owned timestamp; client-supplied values are ignored.",
+              ),
+          })
+          .optional(),
+        resourcesDelivered: zod
+          .object({
+            label: zod
+              .string()
+              .max(
+                updateOrganisationBodyOneImpactMetricsResourcesDeliveredLabelMax,
+              ),
+            value: zod
+              .number()
+              .min(
+                updateOrganisationBodyOneImpactMetricsResourcesDeliveredValueMin,
+              ),
+            updatedAt: zod
+              .string()
+              .optional()
+              .describe(
+                "Server-owned timestamp; client-supplied values are ignored.",
+              ),
+          })
+          .optional(),
+      })
+      .nullish(),
+    team: zod
+      .array(
+        zod.object({
+          name: zod.string().max(updateOrganisationBodyOneTeamItemNameMax),
+          role: zod.string().max(updateOrganisationBodyOneTeamItemRoleMax),
+          photoUrl: zod.string(),
+        }),
+      )
+      .max(updateOrganisationBodyOneTeamMax)
+      .optional(),
+    fundsUsage: zod
+      .object({
+        operations: zod
+          .number()
+          .min(updateOrganisationBodyOneFundsUsageOperationsMin)
+          .max(updateOrganisationBodyOneFundsUsageOperationsMax),
+        materials: zod
+          .number()
+          .min(updateOrganisationBodyOneFundsUsageMaterialsMin)
+          .max(updateOrganisationBodyOneFundsUsageMaterialsMax),
+        staff: zod
+          .number()
+          .min(updateOrganisationBodyOneFundsUsageStaffMin)
+          .max(updateOrganisationBodyOneFundsUsageStaffMax),
+        events: zod
+          .number()
+          .min(updateOrganisationBodyOneFundsUsageEventsMin)
+          .max(updateOrganisationBodyOneFundsUsageEventsMax),
+        other: zod
+          .number()
+          .min(updateOrganisationBodyOneFundsUsageOtherMin)
+          .max(updateOrganisationBodyOneFundsUsageOtherMax),
+      })
+      .nullish(),
+  })
+  .and(
+    zod.object({
+      orgName: zod.string().optional(),
+      mission: zod.string().optional(),
+      location: zod.string().optional(),
+      country: zod.string().optional(),
+      causeCategory: zod.string().optional(),
+      goalAmount: zod.string().optional(),
+      helpOptedIn: zod.boolean().optional(),
+      helpServices: zod.array(zod.string()).optional(),
+      responseCommitment: zod.string().optional(),
+      whatsappNumber: zod.string().optional(),
+    }),
+  );
+
+export const updateOrganisationResponseOneNameMax = 200;
+
+export const updateOrganisationResponseOneCountryMax = 100;
+
+export const updateOrganisationResponseOneCityMax = 120;
+
+export const updateOrganisationResponseOneShortDescriptionMax = 120;
+
+export const updateOrganisationResponseOneDescriptionMax = 20000;
+
+export const updateOrganisationResponseOneMissionMax = 20000;
+
+export const updateOrganisationResponseOneImpactMetricsPeopleReachedLabelMax = 100;
+
+export const updateOrganisationResponseOneImpactMetricsPeopleReachedValueMin = 0;
+
+export const updateOrganisationResponseOneImpactMetricsGroundCoveredLabelMax = 100;
+
+export const updateOrganisationResponseOneImpactMetricsGroundCoveredValueMin = 0;
+
+export const updateOrganisationResponseOneImpactMetricsResourcesDeliveredLabelMax = 100;
+
+export const updateOrganisationResponseOneImpactMetricsResourcesDeliveredValueMin = 0;
+
+export const updateOrganisationResponseOneTeamItemNameMax = 100;
+
+export const updateOrganisationResponseOneTeamItemRoleMax = 120;
+
+export const updateOrganisationResponseOneTeamMax = 6;
+
+export const updateOrganisationResponseOneFundsUsageOperationsMin = 0;
+export const updateOrganisationResponseOneFundsUsageOperationsMax = 100;
+
+export const updateOrganisationResponseOneFundsUsageMaterialsMin = 0;
+export const updateOrganisationResponseOneFundsUsageMaterialsMax = 100;
+
+export const updateOrganisationResponseOneFundsUsageStaffMin = 0;
+export const updateOrganisationResponseOneFundsUsageStaffMax = 100;
+
+export const updateOrganisationResponseOneFundsUsageEventsMin = 0;
+export const updateOrganisationResponseOneFundsUsageEventsMax = 100;
+
+export const updateOrganisationResponseOneFundsUsageOtherMin = 0;
+export const updateOrganisationResponseOneFundsUsageOtherMax = 100;
+
+export const UpdateOrganisationResponse = zod
+  .object({
+    name: zod.string().max(updateOrganisationResponseOneNameMax).optional(),
+    country: zod
+      .string()
+      .max(updateOrganisationResponseOneCountryMax)
+      .optional(),
+    city: zod.string().max(updateOrganisationResponseOneCityMax).nullish(),
+    shortDescription: zod
+      .string()
+      .max(updateOrganisationResponseOneShortDescriptionMax)
+      .optional(),
+    description: zod
+      .string()
+      .max(updateOrganisationResponseOneDescriptionMax)
+      .optional(),
+    mission: zod
+      .string()
+      .max(updateOrganisationResponseOneMissionMax)
+      .nullish(),
+    category: zod.string().optional(),
+    categories: zod.array(zod.string()).min(1).optional(),
+    logo: zod.string().nullish(),
+    coverImage: zod.string().nullish(),
+    contact: zod
+      .object({
+        email: zod.string().optional(),
+        phone: zod.string().optional(),
+        website: zod.string().optional(),
+      })
+      .nullish(),
+    socialLinks: zod
+      .object({
+        instagram: zod.string().optional(),
+        facebook: zod.string().optional(),
+        twitter: zod.string().optional(),
+        linkedin: zod.string().optional(),
+        youtube: zod.string().optional(),
+        tiktok: zod.string().optional(),
+      })
+      .nullish(),
+    impactMetrics: zod
+      .object({
+        peopleReached: zod
+          .object({
+            label: zod
+              .string()
+              .max(
+                updateOrganisationResponseOneImpactMetricsPeopleReachedLabelMax,
+              ),
+            value: zod
+              .number()
+              .min(
+                updateOrganisationResponseOneImpactMetricsPeopleReachedValueMin,
+              ),
+            updatedAt: zod
+              .string()
+              .optional()
+              .describe(
+                "Server-owned timestamp; client-supplied values are ignored.",
+              ),
+          })
+          .optional(),
+        groundCovered: zod
+          .object({
+            label: zod
+              .string()
+              .max(
+                updateOrganisationResponseOneImpactMetricsGroundCoveredLabelMax,
+              ),
+            value: zod
+              .number()
+              .min(
+                updateOrganisationResponseOneImpactMetricsGroundCoveredValueMin,
+              ),
+            updatedAt: zod
+              .string()
+              .optional()
+              .describe(
+                "Server-owned timestamp; client-supplied values are ignored.",
+              ),
+          })
+          .optional(),
+        resourcesDelivered: zod
+          .object({
+            label: zod
+              .string()
+              .max(
+                updateOrganisationResponseOneImpactMetricsResourcesDeliveredLabelMax,
+              ),
+            value: zod
+              .number()
+              .min(
+                updateOrganisationResponseOneImpactMetricsResourcesDeliveredValueMin,
+              ),
+            updatedAt: zod
+              .string()
+              .optional()
+              .describe(
+                "Server-owned timestamp; client-supplied values are ignored.",
+              ),
+          })
+          .optional(),
+      })
+      .nullish(),
+    team: zod
+      .array(
+        zod.object({
+          name: zod.string().max(updateOrganisationResponseOneTeamItemNameMax),
+          role: zod.string().max(updateOrganisationResponseOneTeamItemRoleMax),
+          photoUrl: zod.string(),
+        }),
+      )
+      .max(updateOrganisationResponseOneTeamMax)
+      .optional(),
+    fundsUsage: zod
+      .object({
+        operations: zod
+          .number()
+          .min(updateOrganisationResponseOneFundsUsageOperationsMin)
+          .max(updateOrganisationResponseOneFundsUsageOperationsMax),
+        materials: zod
+          .number()
+          .min(updateOrganisationResponseOneFundsUsageMaterialsMin)
+          .max(updateOrganisationResponseOneFundsUsageMaterialsMax),
+        staff: zod
+          .number()
+          .min(updateOrganisationResponseOneFundsUsageStaffMin)
+          .max(updateOrganisationResponseOneFundsUsageStaffMax),
+        events: zod
+          .number()
+          .min(updateOrganisationResponseOneFundsUsageEventsMin)
+          .max(updateOrganisationResponseOneFundsUsageEventsMax),
+        other: zod
+          .number()
+          .min(updateOrganisationResponseOneFundsUsageOtherMin)
+          .max(updateOrganisationResponseOneFundsUsageOtherMax),
+      })
+      .nullish(),
+  })
+  .and(
+    zod.object({
+      payoutMethod: zod
+        .enum(["stripe_connect", "wise", "manual", "none"])
+        .optional()
+        .describe(
+          "Resolved payout routing method; not a provider-readiness or settlement guarantee.",
+        ),
+      id: zod.number(),
+      userId: zod.number().nullish(),
+      orgName: zod.string(),
+      mission: zod.string().nullish(),
+      location: zod.string().nullish(),
+      country: zod.string(),
+      causeCategory: zod.string().nullish(),
+      goalAmount: zod.string().nullish(),
+      raisedAmount: zod.string().nullish(),
+      distributedAmount: zod.string().nullish(),
+      donorCount: zod.number().nullish(),
+      followerCount: zod.number().nullish(),
+      verified: zod.boolean().nullish(),
+      helpOptedIn: zod.boolean().nullish(),
+      helpServices: zod.array(zod.string()).nullish(),
+      responseCommitment: zod.string().nullish(),
+      whatsappNumber: zod.string().nullish(),
+      createdAt: zod.string(),
+    }),
+  );
 
 /**
  * @summary Create a donation intent
@@ -408,32 +1133,205 @@ export const FollowOrgBody = zod.object({
 /**
  * @summary Get orgs the current user follows
  */
-export const GetMyFollowsResponseItem = zod.object({
-  payoutMethod: zod
-    .enum(["stripe_connect", "wise", "manual", "none"])
-    .optional()
-    .describe(
-      "Resolved payout routing method; not a provider-readiness or settlement guarantee.",
-    ),
-  id: zod.number(),
-  userId: zod.number().nullish(),
-  orgName: zod.string(),
-  mission: zod.string().nullish(),
-  location: zod.string().nullish(),
-  country: zod.string(),
-  causeCategory: zod.string().nullish(),
-  goalAmount: zod.string().nullish(),
-  raisedAmount: zod.string().nullish(),
-  distributedAmount: zod.string().nullish(),
-  donorCount: zod.number().nullish(),
-  followerCount: zod.number().nullish(),
-  verified: zod.boolean().nullish(),
-  helpOptedIn: zod.boolean().nullish(),
-  helpServices: zod.array(zod.string()).nullish(),
-  responseCommitment: zod.string().nullish(),
-  whatsappNumber: zod.string().nullish(),
-  createdAt: zod.string(),
-});
+export const getMyFollowsResponseOneNameMax = 200;
+
+export const getMyFollowsResponseOneCountryMax = 100;
+
+export const getMyFollowsResponseOneCityMax = 120;
+
+export const getMyFollowsResponseOneShortDescriptionMax = 120;
+
+export const getMyFollowsResponseOneDescriptionMax = 20000;
+
+export const getMyFollowsResponseOneMissionMax = 20000;
+
+export const getMyFollowsResponseOneImpactMetricsPeopleReachedLabelMax = 100;
+
+export const getMyFollowsResponseOneImpactMetricsPeopleReachedValueMin = 0;
+
+export const getMyFollowsResponseOneImpactMetricsGroundCoveredLabelMax = 100;
+
+export const getMyFollowsResponseOneImpactMetricsGroundCoveredValueMin = 0;
+
+export const getMyFollowsResponseOneImpactMetricsResourcesDeliveredLabelMax = 100;
+
+export const getMyFollowsResponseOneImpactMetricsResourcesDeliveredValueMin = 0;
+
+export const getMyFollowsResponseOneTeamItemNameMax = 100;
+
+export const getMyFollowsResponseOneTeamItemRoleMax = 120;
+
+export const getMyFollowsResponseOneTeamMax = 6;
+
+export const getMyFollowsResponseOneFundsUsageOperationsMin = 0;
+export const getMyFollowsResponseOneFundsUsageOperationsMax = 100;
+
+export const getMyFollowsResponseOneFundsUsageMaterialsMin = 0;
+export const getMyFollowsResponseOneFundsUsageMaterialsMax = 100;
+
+export const getMyFollowsResponseOneFundsUsageStaffMin = 0;
+export const getMyFollowsResponseOneFundsUsageStaffMax = 100;
+
+export const getMyFollowsResponseOneFundsUsageEventsMin = 0;
+export const getMyFollowsResponseOneFundsUsageEventsMax = 100;
+
+export const getMyFollowsResponseOneFundsUsageOtherMin = 0;
+export const getMyFollowsResponseOneFundsUsageOtherMax = 100;
+
+export const GetMyFollowsResponseItem = zod
+  .object({
+    name: zod.string().max(getMyFollowsResponseOneNameMax).optional(),
+    country: zod.string().max(getMyFollowsResponseOneCountryMax).optional(),
+    city: zod.string().max(getMyFollowsResponseOneCityMax).nullish(),
+    shortDescription: zod
+      .string()
+      .max(getMyFollowsResponseOneShortDescriptionMax)
+      .optional(),
+    description: zod
+      .string()
+      .max(getMyFollowsResponseOneDescriptionMax)
+      .optional(),
+    mission: zod.string().max(getMyFollowsResponseOneMissionMax).nullish(),
+    category: zod.string().optional(),
+    categories: zod.array(zod.string()).min(1).optional(),
+    logo: zod.string().nullish(),
+    coverImage: zod.string().nullish(),
+    contact: zod
+      .object({
+        email: zod.string().optional(),
+        phone: zod.string().optional(),
+        website: zod.string().optional(),
+      })
+      .nullish(),
+    socialLinks: zod
+      .object({
+        instagram: zod.string().optional(),
+        facebook: zod.string().optional(),
+        twitter: zod.string().optional(),
+        linkedin: zod.string().optional(),
+        youtube: zod.string().optional(),
+        tiktok: zod.string().optional(),
+      })
+      .nullish(),
+    impactMetrics: zod
+      .object({
+        peopleReached: zod
+          .object({
+            label: zod
+              .string()
+              .max(getMyFollowsResponseOneImpactMetricsPeopleReachedLabelMax),
+            value: zod
+              .number()
+              .min(getMyFollowsResponseOneImpactMetricsPeopleReachedValueMin),
+            updatedAt: zod
+              .string()
+              .optional()
+              .describe(
+                "Server-owned timestamp; client-supplied values are ignored.",
+              ),
+          })
+          .optional(),
+        groundCovered: zod
+          .object({
+            label: zod
+              .string()
+              .max(getMyFollowsResponseOneImpactMetricsGroundCoveredLabelMax),
+            value: zod
+              .number()
+              .min(getMyFollowsResponseOneImpactMetricsGroundCoveredValueMin),
+            updatedAt: zod
+              .string()
+              .optional()
+              .describe(
+                "Server-owned timestamp; client-supplied values are ignored.",
+              ),
+          })
+          .optional(),
+        resourcesDelivered: zod
+          .object({
+            label: zod
+              .string()
+              .max(
+                getMyFollowsResponseOneImpactMetricsResourcesDeliveredLabelMax,
+              ),
+            value: zod
+              .number()
+              .min(
+                getMyFollowsResponseOneImpactMetricsResourcesDeliveredValueMin,
+              ),
+            updatedAt: zod
+              .string()
+              .optional()
+              .describe(
+                "Server-owned timestamp; client-supplied values are ignored.",
+              ),
+          })
+          .optional(),
+      })
+      .nullish(),
+    team: zod
+      .array(
+        zod.object({
+          name: zod.string().max(getMyFollowsResponseOneTeamItemNameMax),
+          role: zod.string().max(getMyFollowsResponseOneTeamItemRoleMax),
+          photoUrl: zod.string(),
+        }),
+      )
+      .max(getMyFollowsResponseOneTeamMax)
+      .optional(),
+    fundsUsage: zod
+      .object({
+        operations: zod
+          .number()
+          .min(getMyFollowsResponseOneFundsUsageOperationsMin)
+          .max(getMyFollowsResponseOneFundsUsageOperationsMax),
+        materials: zod
+          .number()
+          .min(getMyFollowsResponseOneFundsUsageMaterialsMin)
+          .max(getMyFollowsResponseOneFundsUsageMaterialsMax),
+        staff: zod
+          .number()
+          .min(getMyFollowsResponseOneFundsUsageStaffMin)
+          .max(getMyFollowsResponseOneFundsUsageStaffMax),
+        events: zod
+          .number()
+          .min(getMyFollowsResponseOneFundsUsageEventsMin)
+          .max(getMyFollowsResponseOneFundsUsageEventsMax),
+        other: zod
+          .number()
+          .min(getMyFollowsResponseOneFundsUsageOtherMin)
+          .max(getMyFollowsResponseOneFundsUsageOtherMax),
+      })
+      .nullish(),
+  })
+  .and(
+    zod.object({
+      payoutMethod: zod
+        .enum(["stripe_connect", "wise", "manual", "none"])
+        .optional()
+        .describe(
+          "Resolved payout routing method; not a provider-readiness or settlement guarantee.",
+        ),
+      id: zod.number(),
+      userId: zod.number().nullish(),
+      orgName: zod.string(),
+      mission: zod.string().nullish(),
+      location: zod.string().nullish(),
+      country: zod.string(),
+      causeCategory: zod.string().nullish(),
+      goalAmount: zod.string().nullish(),
+      raisedAmount: zod.string().nullish(),
+      distributedAmount: zod.string().nullish(),
+      donorCount: zod.number().nullish(),
+      followerCount: zod.number().nullish(),
+      verified: zod.boolean().nullish(),
+      helpOptedIn: zod.boolean().nullish(),
+      helpServices: zod.array(zod.string()).nullish(),
+      responseCommitment: zod.string().nullish(),
+      whatsappNumber: zod.string().nullish(),
+      createdAt: zod.string(),
+    }),
+  );
 export const GetMyFollowsResponse = zod.array(GetMyFollowsResponseItem);
 
 /**
@@ -455,32 +1353,205 @@ export const GetHelpOrgsQueryParams = zod.object({
   country: zod.coerce.string().optional(),
 });
 
-export const GetHelpOrgsResponseItem = zod.object({
-  payoutMethod: zod
-    .enum(["stripe_connect", "wise", "manual", "none"])
-    .optional()
-    .describe(
-      "Resolved payout routing method; not a provider-readiness or settlement guarantee.",
-    ),
-  id: zod.number(),
-  userId: zod.number().nullish(),
-  orgName: zod.string(),
-  mission: zod.string().nullish(),
-  location: zod.string().nullish(),
-  country: zod.string(),
-  causeCategory: zod.string().nullish(),
-  goalAmount: zod.string().nullish(),
-  raisedAmount: zod.string().nullish(),
-  distributedAmount: zod.string().nullish(),
-  donorCount: zod.number().nullish(),
-  followerCount: zod.number().nullish(),
-  verified: zod.boolean().nullish(),
-  helpOptedIn: zod.boolean().nullish(),
-  helpServices: zod.array(zod.string()).nullish(),
-  responseCommitment: zod.string().nullish(),
-  whatsappNumber: zod.string().nullish(),
-  createdAt: zod.string(),
-});
+export const getHelpOrgsResponseOneNameMax = 200;
+
+export const getHelpOrgsResponseOneCountryMax = 100;
+
+export const getHelpOrgsResponseOneCityMax = 120;
+
+export const getHelpOrgsResponseOneShortDescriptionMax = 120;
+
+export const getHelpOrgsResponseOneDescriptionMax = 20000;
+
+export const getHelpOrgsResponseOneMissionMax = 20000;
+
+export const getHelpOrgsResponseOneImpactMetricsPeopleReachedLabelMax = 100;
+
+export const getHelpOrgsResponseOneImpactMetricsPeopleReachedValueMin = 0;
+
+export const getHelpOrgsResponseOneImpactMetricsGroundCoveredLabelMax = 100;
+
+export const getHelpOrgsResponseOneImpactMetricsGroundCoveredValueMin = 0;
+
+export const getHelpOrgsResponseOneImpactMetricsResourcesDeliveredLabelMax = 100;
+
+export const getHelpOrgsResponseOneImpactMetricsResourcesDeliveredValueMin = 0;
+
+export const getHelpOrgsResponseOneTeamItemNameMax = 100;
+
+export const getHelpOrgsResponseOneTeamItemRoleMax = 120;
+
+export const getHelpOrgsResponseOneTeamMax = 6;
+
+export const getHelpOrgsResponseOneFundsUsageOperationsMin = 0;
+export const getHelpOrgsResponseOneFundsUsageOperationsMax = 100;
+
+export const getHelpOrgsResponseOneFundsUsageMaterialsMin = 0;
+export const getHelpOrgsResponseOneFundsUsageMaterialsMax = 100;
+
+export const getHelpOrgsResponseOneFundsUsageStaffMin = 0;
+export const getHelpOrgsResponseOneFundsUsageStaffMax = 100;
+
+export const getHelpOrgsResponseOneFundsUsageEventsMin = 0;
+export const getHelpOrgsResponseOneFundsUsageEventsMax = 100;
+
+export const getHelpOrgsResponseOneFundsUsageOtherMin = 0;
+export const getHelpOrgsResponseOneFundsUsageOtherMax = 100;
+
+export const GetHelpOrgsResponseItem = zod
+  .object({
+    name: zod.string().max(getHelpOrgsResponseOneNameMax).optional(),
+    country: zod.string().max(getHelpOrgsResponseOneCountryMax).optional(),
+    city: zod.string().max(getHelpOrgsResponseOneCityMax).nullish(),
+    shortDescription: zod
+      .string()
+      .max(getHelpOrgsResponseOneShortDescriptionMax)
+      .optional(),
+    description: zod
+      .string()
+      .max(getHelpOrgsResponseOneDescriptionMax)
+      .optional(),
+    mission: zod.string().max(getHelpOrgsResponseOneMissionMax).nullish(),
+    category: zod.string().optional(),
+    categories: zod.array(zod.string()).min(1).optional(),
+    logo: zod.string().nullish(),
+    coverImage: zod.string().nullish(),
+    contact: zod
+      .object({
+        email: zod.string().optional(),
+        phone: zod.string().optional(),
+        website: zod.string().optional(),
+      })
+      .nullish(),
+    socialLinks: zod
+      .object({
+        instagram: zod.string().optional(),
+        facebook: zod.string().optional(),
+        twitter: zod.string().optional(),
+        linkedin: zod.string().optional(),
+        youtube: zod.string().optional(),
+        tiktok: zod.string().optional(),
+      })
+      .nullish(),
+    impactMetrics: zod
+      .object({
+        peopleReached: zod
+          .object({
+            label: zod
+              .string()
+              .max(getHelpOrgsResponseOneImpactMetricsPeopleReachedLabelMax),
+            value: zod
+              .number()
+              .min(getHelpOrgsResponseOneImpactMetricsPeopleReachedValueMin),
+            updatedAt: zod
+              .string()
+              .optional()
+              .describe(
+                "Server-owned timestamp; client-supplied values are ignored.",
+              ),
+          })
+          .optional(),
+        groundCovered: zod
+          .object({
+            label: zod
+              .string()
+              .max(getHelpOrgsResponseOneImpactMetricsGroundCoveredLabelMax),
+            value: zod
+              .number()
+              .min(getHelpOrgsResponseOneImpactMetricsGroundCoveredValueMin),
+            updatedAt: zod
+              .string()
+              .optional()
+              .describe(
+                "Server-owned timestamp; client-supplied values are ignored.",
+              ),
+          })
+          .optional(),
+        resourcesDelivered: zod
+          .object({
+            label: zod
+              .string()
+              .max(
+                getHelpOrgsResponseOneImpactMetricsResourcesDeliveredLabelMax,
+              ),
+            value: zod
+              .number()
+              .min(
+                getHelpOrgsResponseOneImpactMetricsResourcesDeliveredValueMin,
+              ),
+            updatedAt: zod
+              .string()
+              .optional()
+              .describe(
+                "Server-owned timestamp; client-supplied values are ignored.",
+              ),
+          })
+          .optional(),
+      })
+      .nullish(),
+    team: zod
+      .array(
+        zod.object({
+          name: zod.string().max(getHelpOrgsResponseOneTeamItemNameMax),
+          role: zod.string().max(getHelpOrgsResponseOneTeamItemRoleMax),
+          photoUrl: zod.string(),
+        }),
+      )
+      .max(getHelpOrgsResponseOneTeamMax)
+      .optional(),
+    fundsUsage: zod
+      .object({
+        operations: zod
+          .number()
+          .min(getHelpOrgsResponseOneFundsUsageOperationsMin)
+          .max(getHelpOrgsResponseOneFundsUsageOperationsMax),
+        materials: zod
+          .number()
+          .min(getHelpOrgsResponseOneFundsUsageMaterialsMin)
+          .max(getHelpOrgsResponseOneFundsUsageMaterialsMax),
+        staff: zod
+          .number()
+          .min(getHelpOrgsResponseOneFundsUsageStaffMin)
+          .max(getHelpOrgsResponseOneFundsUsageStaffMax),
+        events: zod
+          .number()
+          .min(getHelpOrgsResponseOneFundsUsageEventsMin)
+          .max(getHelpOrgsResponseOneFundsUsageEventsMax),
+        other: zod
+          .number()
+          .min(getHelpOrgsResponseOneFundsUsageOtherMin)
+          .max(getHelpOrgsResponseOneFundsUsageOtherMax),
+      })
+      .nullish(),
+  })
+  .and(
+    zod.object({
+      payoutMethod: zod
+        .enum(["stripe_connect", "wise", "manual", "none"])
+        .optional()
+        .describe(
+          "Resolved payout routing method; not a provider-readiness or settlement guarantee.",
+        ),
+      id: zod.number(),
+      userId: zod.number().nullish(),
+      orgName: zod.string(),
+      mission: zod.string().nullish(),
+      location: zod.string().nullish(),
+      country: zod.string(),
+      causeCategory: zod.string().nullish(),
+      goalAmount: zod.string().nullish(),
+      raisedAmount: zod.string().nullish(),
+      distributedAmount: zod.string().nullish(),
+      donorCount: zod.number().nullish(),
+      followerCount: zod.number().nullish(),
+      verified: zod.boolean().nullish(),
+      helpOptedIn: zod.boolean().nullish(),
+      helpServices: zod.array(zod.string()).nullish(),
+      responseCommitment: zod.string().nullish(),
+      whatsappNumber: zod.string().nullish(),
+      createdAt: zod.string(),
+    }),
+  );
 export const GetHelpOrgsResponse = zod.array(GetHelpOrgsResponseItem);
 
 /**
@@ -527,6 +1598,51 @@ export const SubmitHelpReviewBody = zod.object({
 /**
  * @summary Get current user profile
  */
+export const getProfileResponseOrganisationOneNameMax = 200;
+
+export const getProfileResponseOrganisationOneCountryMax = 100;
+
+export const getProfileResponseOrganisationOneCityMax = 120;
+
+export const getProfileResponseOrganisationOneShortDescriptionMax = 120;
+
+export const getProfileResponseOrganisationOneDescriptionMax = 20000;
+
+export const getProfileResponseOrganisationOneMissionMax = 20000;
+
+export const getProfileResponseOrganisationOneImpactMetricsPeopleReachedLabelMax = 100;
+
+export const getProfileResponseOrganisationOneImpactMetricsPeopleReachedValueMin = 0;
+
+export const getProfileResponseOrganisationOneImpactMetricsGroundCoveredLabelMax = 100;
+
+export const getProfileResponseOrganisationOneImpactMetricsGroundCoveredValueMin = 0;
+
+export const getProfileResponseOrganisationOneImpactMetricsResourcesDeliveredLabelMax = 100;
+
+export const getProfileResponseOrganisationOneImpactMetricsResourcesDeliveredValueMin = 0;
+
+export const getProfileResponseOrganisationOneTeamItemNameMax = 100;
+
+export const getProfileResponseOrganisationOneTeamItemRoleMax = 120;
+
+export const getProfileResponseOrganisationOneTeamMax = 6;
+
+export const getProfileResponseOrganisationOneFundsUsageOperationsMin = 0;
+export const getProfileResponseOrganisationOneFundsUsageOperationsMax = 100;
+
+export const getProfileResponseOrganisationOneFundsUsageMaterialsMin = 0;
+export const getProfileResponseOrganisationOneFundsUsageMaterialsMax = 100;
+
+export const getProfileResponseOrganisationOneFundsUsageStaffMin = 0;
+export const getProfileResponseOrganisationOneFundsUsageStaffMax = 100;
+
+export const getProfileResponseOrganisationOneFundsUsageEventsMin = 0;
+export const getProfileResponseOrganisationOneFundsUsageEventsMax = 100;
+
+export const getProfileResponseOrganisationOneFundsUsageOtherMin = 0;
+export const getProfileResponseOrganisationOneFundsUsageOtherMax = 100;
+
 export const GetProfileResponse = zod.object({
   user: zod.object({
     id: zod.number(),
@@ -539,31 +1655,182 @@ export const GetProfileResponse = zod.object({
   }),
   organisation: zod
     .object({
-      payoutMethod: zod
-        .enum(["stripe_connect", "wise", "manual", "none"])
-        .optional()
-        .describe(
-          "Resolved payout routing method; not a provider-readiness or settlement guarantee.",
-        ),
-      id: zod.number(),
-      userId: zod.number().nullish(),
-      orgName: zod.string(),
-      mission: zod.string().nullish(),
-      location: zod.string().nullish(),
-      country: zod.string(),
-      causeCategory: zod.string().nullish(),
-      goalAmount: zod.string().nullish(),
-      raisedAmount: zod.string().nullish(),
-      distributedAmount: zod.string().nullish(),
-      donorCount: zod.number().nullish(),
-      followerCount: zod.number().nullish(),
-      verified: zod.boolean().nullish(),
-      helpOptedIn: zod.boolean().nullish(),
-      helpServices: zod.array(zod.string()).nullish(),
-      responseCommitment: zod.string().nullish(),
-      whatsappNumber: zod.string().nullish(),
-      createdAt: zod.string(),
+      name: zod
+        .string()
+        .max(getProfileResponseOrganisationOneNameMax)
+        .optional(),
+      country: zod
+        .string()
+        .max(getProfileResponseOrganisationOneCountryMax)
+        .optional(),
+      city: zod
+        .string()
+        .max(getProfileResponseOrganisationOneCityMax)
+        .nullish(),
+      shortDescription: zod
+        .string()
+        .max(getProfileResponseOrganisationOneShortDescriptionMax)
+        .optional(),
+      description: zod
+        .string()
+        .max(getProfileResponseOrganisationOneDescriptionMax)
+        .optional(),
+      mission: zod
+        .string()
+        .max(getProfileResponseOrganisationOneMissionMax)
+        .nullish(),
+      category: zod.string().optional(),
+      categories: zod.array(zod.string()).min(1).optional(),
+      logo: zod.string().nullish(),
+      coverImage: zod.string().nullish(),
+      contact: zod
+        .object({
+          email: zod.string().optional(),
+          phone: zod.string().optional(),
+          website: zod.string().optional(),
+        })
+        .nullish(),
+      socialLinks: zod
+        .object({
+          instagram: zod.string().optional(),
+          facebook: zod.string().optional(),
+          twitter: zod.string().optional(),
+          linkedin: zod.string().optional(),
+          youtube: zod.string().optional(),
+          tiktok: zod.string().optional(),
+        })
+        .nullish(),
+      impactMetrics: zod
+        .object({
+          peopleReached: zod
+            .object({
+              label: zod
+                .string()
+                .max(
+                  getProfileResponseOrganisationOneImpactMetricsPeopleReachedLabelMax,
+                ),
+              value: zod
+                .number()
+                .min(
+                  getProfileResponseOrganisationOneImpactMetricsPeopleReachedValueMin,
+                ),
+              updatedAt: zod
+                .string()
+                .optional()
+                .describe(
+                  "Server-owned timestamp; client-supplied values are ignored.",
+                ),
+            })
+            .optional(),
+          groundCovered: zod
+            .object({
+              label: zod
+                .string()
+                .max(
+                  getProfileResponseOrganisationOneImpactMetricsGroundCoveredLabelMax,
+                ),
+              value: zod
+                .number()
+                .min(
+                  getProfileResponseOrganisationOneImpactMetricsGroundCoveredValueMin,
+                ),
+              updatedAt: zod
+                .string()
+                .optional()
+                .describe(
+                  "Server-owned timestamp; client-supplied values are ignored.",
+                ),
+            })
+            .optional(),
+          resourcesDelivered: zod
+            .object({
+              label: zod
+                .string()
+                .max(
+                  getProfileResponseOrganisationOneImpactMetricsResourcesDeliveredLabelMax,
+                ),
+              value: zod
+                .number()
+                .min(
+                  getProfileResponseOrganisationOneImpactMetricsResourcesDeliveredValueMin,
+                ),
+              updatedAt: zod
+                .string()
+                .optional()
+                .describe(
+                  "Server-owned timestamp; client-supplied values are ignored.",
+                ),
+            })
+            .optional(),
+        })
+        .nullish(),
+      team: zod
+        .array(
+          zod.object({
+            name: zod
+              .string()
+              .max(getProfileResponseOrganisationOneTeamItemNameMax),
+            role: zod
+              .string()
+              .max(getProfileResponseOrganisationOneTeamItemRoleMax),
+            photoUrl: zod.string(),
+          }),
+        )
+        .max(getProfileResponseOrganisationOneTeamMax)
+        .optional(),
+      fundsUsage: zod
+        .object({
+          operations: zod
+            .number()
+            .min(getProfileResponseOrganisationOneFundsUsageOperationsMin)
+            .max(getProfileResponseOrganisationOneFundsUsageOperationsMax),
+          materials: zod
+            .number()
+            .min(getProfileResponseOrganisationOneFundsUsageMaterialsMin)
+            .max(getProfileResponseOrganisationOneFundsUsageMaterialsMax),
+          staff: zod
+            .number()
+            .min(getProfileResponseOrganisationOneFundsUsageStaffMin)
+            .max(getProfileResponseOrganisationOneFundsUsageStaffMax),
+          events: zod
+            .number()
+            .min(getProfileResponseOrganisationOneFundsUsageEventsMin)
+            .max(getProfileResponseOrganisationOneFundsUsageEventsMax),
+          other: zod
+            .number()
+            .min(getProfileResponseOrganisationOneFundsUsageOtherMin)
+            .max(getProfileResponseOrganisationOneFundsUsageOtherMax),
+        })
+        .nullish(),
     })
+    .and(
+      zod.object({
+        payoutMethod: zod
+          .enum(["stripe_connect", "wise", "manual", "none"])
+          .optional()
+          .describe(
+            "Resolved payout routing method; not a provider-readiness or settlement guarantee.",
+          ),
+        id: zod.number(),
+        userId: zod.number().nullish(),
+        orgName: zod.string(),
+        mission: zod.string().nullish(),
+        location: zod.string().nullish(),
+        country: zod.string(),
+        causeCategory: zod.string().nullish(),
+        goalAmount: zod.string().nullish(),
+        raisedAmount: zod.string().nullish(),
+        distributedAmount: zod.string().nullish(),
+        donorCount: zod.number().nullish(),
+        followerCount: zod.number().nullish(),
+        verified: zod.boolean().nullish(),
+        helpOptedIn: zod.boolean().nullish(),
+        helpServices: zod.array(zod.string()).nullish(),
+        responseCommitment: zod.string().nullish(),
+        whatsappNumber: zod.string().nullish(),
+        createdAt: zod.string(),
+      }),
+    )
     .nullish(),
   donationCount: zod.number(),
   totalDonated: zod.string(),

@@ -7,3 +7,4 @@
 - [Mobile donation policy](mobile-donation-policy.md) — Apple rejected in-app donations; mobile must hand donations off to rootprojx.com.
 - [Payout data boundaries](payout-data-boundaries.md) — banking credentials stay off-platform; manual setup stores only request/approval and a short payee reminder.
 - [Node route-test bundling](node-route-test-bundling.md) — bundle generated workspace validators in raw Node tests; app-build module resolution does not carry over.
+- [Media attachment recovery](media-attachment-recovery.md) — an uploaded asset is not saved content until attachment succeeds; pending URLs need a usable recovery action.

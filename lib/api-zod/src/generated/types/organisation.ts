@@ -6,8 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { OrganisationPayoutMethod } from "./organisationPayoutMethod";
+import type { OrganisationProfileFields } from "./organisationProfileFields";
 
-export interface Organisation {
+export type Organisation = OrganisationProfileFields & {
   /** Resolved payout routing method; not a provider-readiness or settlement guarantee. */
   payoutMethod?: OrganisationPayoutMethod;
   id: number;
@@ -28,4 +29,4 @@ export interface Organisation {
   responseCommitment?: string | null;
   whatsappNumber?: string | null;
   createdAt: string;
-}
+};
