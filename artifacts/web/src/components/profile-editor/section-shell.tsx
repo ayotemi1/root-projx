@@ -1,4 +1,5 @@
-import type { ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { openPreviewAfterSave, registerProfileFlush, flushProfile } from "@/lib/preview-nav";
 import { AlertCircle, Check, ExternalLink, Loader2, RotateCcw, Circle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { SaveStatus } from "./use-section-autosave";
@@ -8,7 +9,7 @@ export function SaveIndicator({
   status, error, onRetry, section, storageWarning, manualSave = false,
 }: { status: SaveStatus; error: string | null; onRetry: () => void; section: string; storageWarning?: string | null; manualSave?: boolean }) {
   return (
-    <div className="min-h-[20px] space-y-2" aria-live="polite" data-testid={`status-save-${section}`}>
+    <div className="min-h-[20px] space-y-2" aria-live="polite" data-testid={`status-save-${section}`} data-save-state={status}>
       {storageWarning && (
         <div role="alert" className="flex items-start gap-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2.5 py-2" data-testid={`warning-storage-${section}`}>
           <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 mt-0.5" />
@@ -57,8 +58,10 @@ export function SaveIndicator({
 
 export function SectionShell({
   section, title, hint, optional, orgId, status, error, onRetry, onBlur,
-  wasRecovered, onDiscard, storageWarning, children,
+  wasRecovered, onDiscard, storageWarning, onFlush, children,
 }: {
+  /** Save this section and wait; true only when persisted. */
+  onFlush?: () => Promise<boolean>;
   section: ProfileSection;
   title: string;
   hint: string;
@@ -73,6 +76,15 @@ export function SectionShell({
   storageWarning?: string | null;
   children: ReactNode;
 }) {
+  const flushRef = useRef(onFlush);
+  flushRef.current = onFlush;
+  useEffect(() => registerProfileFlush(orgId, () => (flushRef.current ? flushRef.current() : Promise.resolve(true))), [orgId]);
+  const [previewState, setPreviewState] = useState<"idle" | "saving" | "failed">("idle");
+  async function preview() {
+    setPreviewState("saving");
+    const ok = await openPreviewAfterSave(() => flushProfile(orgId), `/organisations/${orgId}?preview=1#${PROFILE_ANCHORS[section]}`);
+    setPreviewState(ok ? "idle" : "failed");
+  }
   return (
     <section
       id={`edit-${section}`}
@@ -93,17 +105,23 @@ export function SectionShell({
           </h3>
           <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{hint}</p>
         </div>
-        <a
-          href={`/organisations/${orgId}?preview=1#${PROFILE_ANCHORS[section]}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex-shrink-0 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline underline-offset-2 py-1"
+        <button
+          type="button"
+          onClick={preview}
+          disabled={previewState === "saving"}
+          className="flex-shrink-0 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline underline-offset-2 py-1 disabled:opacity-60"
           data-testid={`link-public-${section}`}
           data-tour-id={`profile-view-public-${section}`}
         >
-          Preview as donor <ExternalLink className="w-3 h-3" />
-        </a>
+          {previewState === "saving" ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+          {previewState === "saving" ? "Saving" : "Preview as donor"} <ExternalLink className="w-3 h-3" />
+        </button>
       </header>
+      {previewState === "failed" && (
+        <p role="alert" className="mx-4 sm:mx-5 mt-3 text-xs text-destructive bg-destructive/10 rounded-lg px-3 py-2" data-testid={`error-preview-${section}`}>
+          Your edits haven't saved yet, so a preview would be out of date. Fix the message below or retry, then preview again. Nothing was lost.
+        </p>
+      )}
       {wasRecovered && onDiscard && (
         <div className="mx-4 sm:mx-5 mt-3 flex items-center gap-2 text-xs bg-accent/15 border border-accent/40 rounded-lg px-3 py-2">
           <span className="flex-1">We restored edits you hadn't saved yet. They save when you leave this section.</span>

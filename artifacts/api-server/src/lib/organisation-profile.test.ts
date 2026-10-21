@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 import test from "node:test";
 import { build } from "esbuild";
 import { profilePatch, PROFILE_SECTORS } from "./organisation-profile.ts";
+import { suggest } from "./campaign-assist.ts";
 
 test("profile patches are partial and cannot touch financial or campaign fields", () => {
   assert.deepEqual(profilePatch({
@@ -52,7 +53,7 @@ test("team and funds usage retain their bounded, backwards-compatible shapes", (
   assert.throws(() => profilePatch({ fundsUsage: { ...split, other: 20.5 } }, {}));
 });
 
-async function fixture() {
+async function fixture(assistSetting = "true") {
   const mocks: Record<string, string> = {
     state: `export const state={docs:new Map(),writes:[],assistInputs:[],queryFailure:false};`,
     "firebase-rest.js": `
@@ -86,7 +87,7 @@ async function fixture() {
       export const suggest=async(input)=>{state.assistInputs.push(input);return {unavailable:true};};`,
   };
   const bundle = await build({
-    define: { "process.env.CAMPAIGN_ASSIST_ENABLED": JSON.stringify("true") },
+    define: { "process.env.CAMPAIGN_ASSIST_ENABLED": assistSetting === "unset" ? "undefined" : JSON.stringify(assistSetting) },
     stdin: { contents: `export {default as router} from "./routes/organisations.ts";
       export {campaignPatch,campaignPublishGates,campaignForEditor} from "./lib/campaign-editor.ts";
       export {suggest} from "./lib/campaign-assist.ts";
@@ -353,6 +354,15 @@ test("direct draft preview is approved-owner-only, no-store and contains no paye
   assert.equal(response.body.organisation.payoutManualLabel, undefined);
   assert.equal(response.body.campaign.supporterCount, 0);
   assert.equal(response.headers["Cache-Control"], "no-store");
+  const org = f.state.docs.get("organisations/org");
+  org.campaigns[0].enabled = true;
+  const publicName = org.campaigns[0].name;
+  org.campaigns[0].editorDraft = { name: "Private revision for donor preview" };
+  const revisedPreview = await invoke(f.selfServiceRouter, "get", "org", {}, "org", path);
+  assert.equal(revisedPreview.body.campaign.name, "Private revision for donor preview");
+  assert.equal(revisedPreview.body.campaign.editorDraft, undefined);
+  const publicView = await invoke(f.router, "get", undefined, {}, "org", "/organisations/:id/campaigns");
+  assert.equal(publicView.body[0].name, publicName);
 });
 
 test("running dashboard uses actual unpaid ledger and real payout references, not accrued lifetime totals", async () => {
@@ -365,6 +375,7 @@ test("running dashboard uses actual unpaid ledger and real payout references, no
   const response = await invoke(f.selfServiceRouter, "get", "org", {}, "org", "/organisations/:id/dashboard-summary");
   assert.equal(response.status, 200);
   assert.equal(response.body.owedGbp, 300);
+  assert.equal(response.body.raisedGbp, org.totalRaised);
   assert.equal(response.body.nextPayoutAt, null);
   assert.equal(response.body.lastPayout.reference, "bank-confirmed-33");
   assert.equal(response.body.lastPayout.amountGbp, 33);
@@ -372,6 +383,20 @@ test("running dashboard uses actual unpaid ledger and real payout references, no
   assert.equal(response.body.campaignRaised[0].raisedGbp, 123);
   f.state.queryFailure = true;
   assert.equal((await invoke(f.selfServiceRouter, "get", "org", {}, "org", "/organisations/:id/dashboard-summary")).status, 503);
+});
+
+test("monthly impact reminder includes the active goal, not only the other three figures", async () => {
+  const f = await fixture();
+  const org = readyCampaignFixture(f);
+  const now = new Date().toISOString();
+  org.impactMetrics = Object.fromEntries(["peopleReached", "groundCovered", "resourcesDelivered"]
+    .map(key => [key, { value: 10, updatedAt: now }]));
+  org.activeGoal = { title: "Community target", current: 1, target: 5,
+    updatedAt: new Date(Date.now() - 31 * 86_400_000).toISOString() };
+  const path = "/organisations/:id/dashboard-summary";
+  assert.equal((await invoke(f.selfServiceRouter, "get", "org", {}, "org", path)).body.impactMetricsStale, true);
+  org.activeGoal.updatedAt = now;
+  assert.equal((await invoke(f.selfServiceRouter, "get", "org", {}, "org", path)).body.impactMetricsStale, false);
 });
 
 test("walkthrough resumes across requests, persists real preview opens and cannot fake completion", async () => {
@@ -389,10 +414,39 @@ test("walkthrough resumes across requests, persists real preview opens and canno
   await invoke(f.router, "patch", "org", { enabled: true }, "org", campaignRoute);
   await invoke(f.selfServiceRouter, "post", "org", { event: "campaign_preview", campaignId: "camp" }, "org", eventPath);
   assert.equal((await invoke(f.selfServiceRouter, "patch", "org", { campaignDone: true, campaignStep: null }, "org", path)).status, 200);
+  await invoke(f.router, "patch", "org", { saveAsDraft: true, tagline: "A private revision, not a new publication" }, "org", campaignRoute);
+  assert.equal((await invoke(f.selfServiceRouter, "patch", "org", { campaignDone: true }, "org", path)).status, 400);
+  await invoke(f.router, "patch", "org", { enabled: true }, "org", campaignRoute);
+  assert.equal((await invoke(f.selfServiceRouter, "patch", "org", { campaignDone: true }, "org", path)).status, 200);
   const publicOrg = (await invoke(f.router, "get", undefined)).body;
   assert.equal(publicOrg.walkthrough, undefined);
   assert.equal(publicOrg.profilePreviewedAt, undefined);
   assert.equal(f.state.docs.get("organisations/org").payoutSettlementBatchId, "locked");
+});
+
+test("assistant is default-off, returns 503 without calling a provider, and its real adapter is unavailable", async () => {
+  assert.deepEqual(await suggest({ field: "description", orgContext: {}, campaignDraft: {}, instruction: "" }), { unavailable: true });
+  const f = await fixture("unset");
+  readyCampaignFixture(f);
+  assert.equal((await invoke(f.assistRouter, "get", "org", {}, "org", "/campaigns/assist/status")).body.enabled, false);
+  const express = createRequire(import.meta.url)("express");
+  const app = express();
+  app.use(express.json());
+  app.use(f.assistRouter);
+  const server = app.listen(0, "127.0.0.1");
+  try {
+    await new Promise<void>(r => server.listening ? r() : server.once("listening", r));
+    const response = await fetch(`http://127.0.0.1:${(server.address() as any).port}/campaigns/assist`, {
+      method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer org" },
+      body: JSON.stringify({ campaignId: "camp", field: "description", instruction: "Shorten this" }),
+    });
+    assert.equal(response.status, 503);
+    assert.equal((await response.json() as any).unavailable, true);
+    assert.equal(f.state.assistInputs.length, 0);
+    assert.equal(f.state.writes.length, 0);
+  } finally {
+    await new Promise<void>(r => server.close(r));
+  }
 });
 
 test("assistant socket is authenticated, owner scoped, unavailable and rate limited; public routes remain public", async () => {

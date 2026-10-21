@@ -21,7 +21,7 @@ import * as api from "@/lib/api";
 import { PayoutSetup } from "@/components/payout-setup";
 import { PendingPayout } from "@/components/pending-payout";
 import { CampaignsManager } from "@/components/campaign-builder/campaigns-manager";
-import { ProfileEditor } from "@/components/profile-editor/profile-editor";
+import { ProfileEditor, ProfilePreviewButton } from "@/components/profile-editor/profile-editor";
 import type { FeedUpdate } from "@/lib/api";
 
 const UPDATE_TYPES = ["update", "milestone", "campaign"] as const;
@@ -178,50 +178,19 @@ export default function DashboardPage() {
                 {[org.city, org.country].filter(Boolean).join(", ")} &middot; {org.category}
               </p>
             )}
+            {orgId && (
+              <div className="mt-1.5 [&_[role=alert]]:text-white [&_[role=alert]]:font-semibold">
+                <ProfilePreviewButton orgId={orgId} tourId="dashboard-profile-preview" testId="link-dashboard-profile-preview"
+                  className="inline-flex items-center gap-1.5 text-xs font-bold text-accent hover:underline underline-offset-2 disabled:opacity-60" />
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="grid grid-cols-4 gap-3 mt-6 bg-white/10 rounded-xl p-4 border border-white/10 shadow-sm">
-          {[
-            { label: "Followers",  value: org?.followerCount ?? 0 },
-            { label: "Updates",    value: updates.length },
-            { label: "Campaigns",  value: campaigns.length },
-            { label: "Raised",     value: `£${(org?.totalRaised ?? 0).toLocaleString()}` },
-          ].map(({ label, value }) => (
-            <div key={label} className="text-center">
-              <div className="text-lg font-extrabold text-white">{value}</div>
-              <div className="text-xs text-white/70 mt-0.5 font-medium">{label}</div>
-            </div>
-          ))}
-        </div>
       </div>
 
       {tour.syncError && (
         <p role="alert" className="text-xs text-destructive bg-destructive/10 rounded-lg px-3 py-2" data-testid="text-tour-sync-error">{tour.syncError}</p>
-      )}
-
-      {!tour.allDone && org && (
-        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm" data-testid="block-setup-checklist">
-          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-            <h2 className="font-extrabold text-sm"><span className="text-primary">{doneCount} of 5 done</span> · Getting donor-ready</h2>
-            {!tour.active && (
-              <Button size="sm" className="h-8 font-bold" onClick={tour.resume} data-testid="button-resume-walkthrough">
-                <Compass className="w-3.5 h-3.5 mr-1" /> {tour.started ? "Resume walkthrough" : "Start walkthrough"}
-              </Button>
-            )}
-          </div>
-          <div className="h-1.5 rounded-full bg-secondary overflow-hidden mb-3"><div className="h-full bg-primary rounded-full" style={{ width: `${doneCount * 20}%` }} /></div>
-          <ul className="grid sm:grid-cols-2 gap-x-4 gap-y-1.5">
-            {tour.items.map((i) => (
-              <li key={i.id}>
-                <button type="button" onClick={() => setLocation(i.href)} className={`flex items-center gap-2 text-sm text-left ${i.done ? "text-muted-foreground line-through" : "font-semibold hover:text-primary"}`} data-testid={`checklist-${i.id}`}>
-                  {i.done ? <CheckCircle className="w-4 h-4 text-green-600 shrink-0" /> : <Circle className="w-4 h-4 text-muted-foreground shrink-0" />}
-                  {i.label}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
       )}
 
       <div className="flex justify-end gap-2 -mb-3">
@@ -392,6 +361,32 @@ export default function DashboardPage() {
         </TabsContent>
       </Tabs>
       )}
+
+      {/* Setup checklist sits below the main content so Money stays first. */}
+      {!tour.allDone && org && (
+        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm" id="setup-checklist" data-testid="block-setup-checklist">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <h2 className="font-extrabold text-sm"><span className="text-primary">{doneCount} of 5 done</span> · Getting donor-ready</h2>
+            {!tour.active && (
+              <Button size="sm" className="h-8 font-bold" onClick={tour.resume} data-testid="button-resume-walkthrough">
+                <Compass className="w-3.5 h-3.5 mr-1" /> {tour.started ? "Resume walkthrough" : "Start walkthrough"}
+              </Button>
+            )}
+          </div>
+          <div className="h-1.5 rounded-full bg-secondary overflow-hidden mb-3"><div className="h-full bg-primary rounded-full" style={{ width: `${doneCount * 20}%` }} /></div>
+          <ul className="grid sm:grid-cols-2 gap-x-4 gap-y-1.5">
+            {tour.items.map((i) => (
+              <li key={i.id}>
+                <button type="button" onClick={() => setLocation(i.href)} className={`flex items-center gap-2 text-sm text-left ${i.done ? "text-muted-foreground line-through" : "font-semibold hover:text-primary"}`} data-testid={`checklist-${i.id}`}>
+                  {i.done ? <CheckCircle className="w-4 h-4 text-green-600 shrink-0" /> : <Circle className="w-4 h-4 text-muted-foreground shrink-0" />}
+                  {i.label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
     </div>
   );
 

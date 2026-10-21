@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, ArrowLeft, ArrowRight, Check, Circle, Loader2, RotateCcw, Copy, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -20,7 +21,7 @@ const STEPS: Array<{ n: CampaignEditorStep; title: string; short: string }> = [
 
 function SaveBadge({ status, error, onRetry }: { status: DraftSaveStatus; error: string | null; onRetry: () => void }) {
   return (
-    <div className="text-xs font-medium min-h-[20px]" aria-live="polite" data-testid="status-campaign-save">
+    <div className="text-xs font-medium min-h-[20px]" aria-live="polite" data-testid="status-campaign-save" data-save-state={status}>
       {status === "saving" && <span className="inline-flex items-center gap-1.5 text-muted-foreground"><Loader2 className="w-3.5 h-3.5 animate-spin" /> Saving draft</span>}
       {status === "saved" && <span className="inline-flex items-center gap-1.5 text-green-700"><Check className="w-3.5 h-3.5" /> Draft saved</span>}
       {status === "dirty" && <span className="inline-flex items-center gap-1.5 text-amber-700"><Circle className="w-2.5 h-2.5 fill-current" /> Kept on this device, saving soon</span>}
@@ -145,7 +146,18 @@ export function CampaignWizard({ campaign, org, orgId, userId, token, onClose }:
     qc.setQueryData<Campaign[]>(["campaigns", orgId], (old) => old?.map((x) => (x._id === res._id ? res : x)));
   }
 
-  const stepProps = { d, update, token, campaignId: campaign._id, assistEnabled };
+  const stepProps = { d, update, token, campaignId: campaign._id, assistEnabled, beforeAssist: draft.flush };
+
+  // Preview as donor: save the latest draft first; never navigate on a save error.
+  const [, navigate] = useLocation();
+  const [previewState, setPreviewState] = useState<"idle" | "saving" | "failed">("idle");
+  async function openPreview() {
+    setPreviewState("saving");
+    const ok = await draft.flush().catch(() => false);
+    if (!ok) { setPreviewState("failed"); return; }
+    setPreviewState("idle");
+    navigate(`/campaign/preview/${orgId}/${campaign._id}`);
+  }
   const meta = STEPS[step - 1];
 
   return (
@@ -154,10 +166,10 @@ export function CampaignWizard({ campaign, org, orgId, userId, token, onClose }:
         <button type="button" onClick={close} disabled={closing} className="text-sm font-semibold text-muted-foreground hover:text-foreground inline-flex items-center gap-1" data-testid="button-close-wizard" data-tour-id="campaign-wizard-close">
           <ArrowLeft className="w-4 h-4" /> All campaigns
         </button>
-        <a href={`/campaign/preview/${orgId}/${campaign._id}`} onClick={async (e) => { e.preventDefault(); const ok = await draft.flush(); if (ok) window.location.href = `${import.meta.env.BASE_URL.replace(/\/$/, "")}/campaign/preview/${orgId}/${campaign._id}`; }}
-          className="text-xs font-bold text-primary inline-flex items-center gap-1 hover:underline underline-offset-2" data-testid="link-preview-as-donor" data-tour-id="campaign-preview-open">
-          <Eye className="w-3.5 h-3.5" /> Preview as donor
-        </a>
+        <button type="button" onClick={openPreview} disabled={previewState === "saving"}
+          className="text-xs font-bold text-primary inline-flex items-center gap-1 hover:underline underline-offset-2 disabled:opacity-60" data-testid="link-preview-as-donor" data-tour-id="campaign-preview-open">
+          <Eye className="w-3.5 h-3.5" /> {previewState === "saving" ? "Saving…" : "Preview as donor"}
+        </button>
         <SaveBadge status={draft.status} error={draft.error} onRetry={() => void draft.commit()} />
       </div>
 
@@ -223,6 +235,19 @@ export function CampaignWizard({ campaign, org, orgId, userId, token, onClose }:
           <PublishStep d={d} campaign={current} org={org} gates={gates} serverGates={serverGates}
             publishing={publishing} publishError={publishError} onPublish={publish} onUnpublish={unpublish}
             goToStep={go} saveBlocked={saveBlocked} />
+        )}
+      </div>
+
+      <div className="flex flex-col items-start gap-1" data-testid={`block-step-preview-${step}`}>
+        <button type="button" onClick={openPreview} disabled={previewState === "saving"}
+          className="text-sm font-bold text-primary inline-flex items-center gap-1.5 hover:underline underline-offset-2 disabled:opacity-60"
+          data-testid={`button-preview-step-${step}`}>
+          <Eye className="w-4 h-4" /> {previewState === "saving" ? "Saving your draft…" : "Preview this as a donor"}
+        </button>
+        {previewState === "failed" && (
+          <p role="alert" className="text-xs text-destructive" data-testid="error-preview-unsaved">
+            Your latest edits didn't save, so we didn't open the preview. Nothing was lost — fix the message above or retry saving, then preview again.
+          </p>
         )}
       </div>
 

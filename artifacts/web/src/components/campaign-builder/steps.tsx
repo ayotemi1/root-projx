@@ -1,3 +1,4 @@
+import { acceptPatch } from "./assist-logic";
 import { AccumulationField } from "@/components/campaign/accumulation-field";
 import { Plus, Trash2, Info, Captions } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,8 @@ export interface StepProps {
   token: string;
   campaignId: string;
   assistEnabled: boolean;
+  /** Flush the draft before any writing-help request (draft.flush). */
+  beforeAssist?: () => Promise<boolean>;
 }
 
 const IMAGE_ACCEPT = "image/jpeg,image/png,image/webp,image/gif";
@@ -30,7 +33,7 @@ function Choice({ active, onClick, title, body, testId }: { active: boolean; onC
   );
 }
 
-export function StepBasics({ d, update, token, campaignId, assistEnabled }: StepProps) {
+export function StepBasics({ d, update, token, campaignId, assistEnabled, beforeAssist }: StepProps) {
   return (
     <div className="space-y-6">
       <FieldBlock label="Campaign name" htmlFor="cb-name">
@@ -43,7 +46,7 @@ export function StepBasics({ d, update, token, campaignId, assistEnabled }: Step
         error={d.tagline.length > TAGLINE_MAX ? `Shorten by ${d.tagline.length - TAGLINE_MAX} characters.` : null}
       >
         <Textarea id="cb-tagline" rows={2} value={d.tagline} onChange={(e) => update({ tagline: e.target.value })} aria-describedby="cb-tagline-count" aria-invalid={d.tagline.length > TAGLINE_MAX} placeholder="Help 30 children read after school with a dry, lit room." data-testid="input-campaign-tagline" data-tour-id="campaign-tagline" />
-        <AssistButton enabled={assistEnabled} campaignId={campaignId} field="tagline" token={token} fieldLabel="your one-line ask" onAccept={(t) => update({ tagline: t.slice(0, TAGLINE_MAX), assistUsed: true })} />
+        <AssistButton beforeRequest={beforeAssist} enabled={assistEnabled} campaignId={campaignId} field="tagline" token={token} fieldLabel="your one-line ask" onAccept={(t) => update(acceptPatch(d, "tagline", t, 0, TAGLINE_MAX))} />
       </FieldBlock>
       <div className="space-y-2" data-tour-id="campaign-type">
         <p className="text-sm font-semibold">What kind of campaign?</p>
@@ -145,7 +148,7 @@ export function StepMoney({ d, update }: StepProps) {
   );
 }
 
-export function StepStory({ d, update, token, campaignId, assistEnabled }: StepProps) {
+export function StepStory({ d, update, token, campaignId, assistEnabled, beforeAssist }: StepProps) {
   const len = d.description.trim().length;
   const setBreak = (i: number, patch: Partial<CampaignDraft["breakdown"][number]>) =>
     update({ breakdown: d.breakdown.map((b, j) => (j === i ? { ...b, ...patch } : b)) });
@@ -159,7 +162,7 @@ export function StepStory({ d, update, token, campaignId, assistEnabled }: StepP
         counter={<Counter id="cb-story-count" n={len} min={STORY_MIN} />}
       >
         <Textarea id="cb-story" rows={9} value={d.description} onChange={(e) => update({ description: e.target.value })} aria-describedby="cb-story-count" data-testid="input-campaign-story" data-tour-id="campaign-story" />
-        <AssistButton enabled={assistEnabled} campaignId={campaignId} field="description" token={token} fieldLabel="your story" onAccept={(t) => update({ description: t, assistUsed: true })} />
+        <AssistButton beforeRequest={beforeAssist} enabled={assistEnabled} campaignId={campaignId} field="description" token={token} fieldLabel="your story" onAccept={(t) => update(acceptPatch(d, "description", t))} />
       </FieldBlock>
 
       <section className="space-y-3" data-tour-id="campaign-breakdown">
@@ -174,7 +177,7 @@ export function StepStory({ d, update, token, campaignId, assistEnabled }: StepP
               <Button type="button" variant="ghost" size="sm" className="h-9 w-9 p-0 text-muted-foreground" onClick={() => update({ breakdown: d.breakdown.filter((_, j) => j !== i) })} aria-label={`Remove item ${i + 1}`} data-testid={`button-remove-breakdown-${i}`}><Trash2 className="w-4 h-4" /></Button>
             </div>
             <Textarea rows={2} aria-label={`Item ${i + 1} what it covers`} value={b.detail} onChange={(e) => setBreak(i, { detail: e.target.value })} placeholder="childcare for single mothers on site" data-testid={`input-breakdown-detail-${i}`} />
-            <AssistButton enabled={assistEnabled} campaignId={campaignId} field="breakdown.detail" token={token} fieldLabel="this item" testSuffix={String(i)} onAccept={(t) => { setBreak(i, { detail: t }); update({ assistUsed: true }); }} />
+            <AssistButton beforeRequest={beforeAssist} enabled={assistEnabled} campaignId={campaignId} field="breakdown.detail" token={token} fieldLabel="this item" testSuffix={String(i)} onAccept={(t) => update(acceptPatch(d, "breakdown.detail", t, i))} />
           </div>
         ))}
         <Button type="button" variant="outline" size="sm" onClick={() => update({ breakdown: [...d.breakdown, { label: "", detail: "" }] })} data-testid="button-add-breakdown">
@@ -194,7 +197,7 @@ export function StepStory({ d, update, token, campaignId, assistEnabled }: StepP
               <Button type="button" variant="ghost" size="sm" className="h-9 w-9 p-0 text-muted-foreground" onClick={() => update({ locations: d.locations.filter((_, j) => j !== i) })} aria-label={`Remove location ${i + 1}`} data-testid={`button-remove-location-${i}`}><Trash2 className="w-4 h-4" /></Button>
             </div>
             <Input aria-label={`Location ${i + 1} description`} value={l.description} onChange={(e) => setLoc(i, { description: e.target.value })} placeholder="Where the Saturday classes meet" data-testid={`input-location-description-${i}`} />
-            <AssistButton enabled={assistEnabled} campaignId={campaignId} field="locations.description" token={token} fieldLabel="this location" testSuffix={String(i)} onAccept={(t) => { setLoc(i, { description: t }); update({ assistUsed: true }); }} />
+            <AssistButton beforeRequest={beforeAssist} enabled={assistEnabled} campaignId={campaignId} field="locations.description" token={token} fieldLabel="this location" testSuffix={String(i)} onAccept={(t) => update(acceptPatch(d, "locations.description", t, i))} />
             <MediaUpload id={`location-photo-${i}`} label="Add a photo (optional)" accept={IMAGE_ACCEPT} url={l.photoUrl} token={token} aspect="aspect-[16/10]" onUploaded={(u) => setLoc(i, { photoUrl: u })} onRemove={() => setLoc(i, { photoUrl: null })} />
           </div>
         ))}

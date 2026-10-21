@@ -63,7 +63,7 @@ export function DashboardOverview({ orgId, token, org, campaigns }: { orgId: str
             <p className="text-2xl font-extrabold tabular-nums" data-testid="text-raised">{s ? gbp(s.raisedGbp) : "Couldn't load"}</p>
           </div>
           <div>
-            <p className="text-xs text-muted-foreground font-semibold">Owed to you</p>
+            <p className="text-xs text-muted-foreground font-semibold">Owed to you now</p>
             <p className={`tabular-nums font-extrabold ${s?.owedGbp == null ? "text-base text-muted-foreground pt-1.5" : "text-2xl"}`} data-testid="text-owed">
               {s?.owedGbp == null ? "Couldn't load" : gbp(s.owedGbp)}
             </p>
@@ -82,6 +82,20 @@ export function DashboardOverview({ orgId, token, org, campaigns }: { orgId: str
             ) : <p className="text-sm font-bold text-muted-foreground" data-testid="text-last-payout">{s ? "None yet" : "Couldn't load"}</p>}
           </div>
         </div>
+        {s && s.campaignRaised.length > 0 && (
+          <div className="mt-4 pt-3 border-t border-border" data-testid="block-money-per-campaign">
+            <p className="text-xs text-muted-foreground font-semibold mb-1.5">Raised on each campaign</p>
+            <ul className="space-y-1">
+              {s.campaignRaised.map((r) => (
+                <li key={r.campaignId} className="flex items-baseline justify-between gap-3 text-sm" data-testid={`text-campaign-raised-${r.campaignId}`}>
+                  <span className="truncate">{r.name || "Untitled campaign"}</span>
+                  <span className="font-extrabold tabular-nums">{gbp(r.raisedGbp)}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <p className="mt-3 text-[11px] text-muted-foreground">Raised is what donors chose to give, before fees. Owed is what our ledger says we still need to pay you.</p>
       </Block>
 
       <Block label="Supporters" testId="block-overview-supporters">
@@ -120,7 +134,10 @@ export function DashboardOverview({ orgId, token, org, campaigns }: { orgId: str
                       <p className="text-xs text-muted-foreground mt-1 tabular-nums">{gbp(raised)} of {gbp(c.goal)}</p>
                     </>
                   )}
-                  <Link href={`/dashboard?tab=campaigns&campaign=${encodeURIComponent(c._id)}`} className="text-xs font-bold text-primary hover:underline" data-testid={`link-overview-edit-${c._id}`}>Edit</Link>
+                  <div className="flex gap-3">
+                    <Link href={`/dashboard?tab=campaigns&campaign=${encodeURIComponent(c._id)}`} className="text-xs font-bold text-primary hover:underline" data-testid={`link-overview-edit-${c._id}`}>Edit</Link>
+                    <Link href={`/campaign/preview/${orgId}/${c._id}`} className="text-xs font-bold text-primary hover:underline" data-testid={`link-overview-preview-${c._id}`}>Preview as donor</Link>
+                  </div>
                 </li>
               );
             })}

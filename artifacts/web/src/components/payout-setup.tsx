@@ -196,7 +196,7 @@ export function PayoutSetup({
       <p className="text-sm font-semibold text-green-700 flex items-center gap-1.5"><CheckCircle className="w-4 h-4" /> Payouts enabled</p>
       <div className="bg-secondary rounded-lg p-3 text-center border border-border/50">
         <div className="text-lg font-extrabold">£{totalRaised.toLocaleString()}</div>
-        <div className="text-xs text-muted-foreground">Total donations</div>
+        <div className="text-xs text-muted-foreground">Donations given to you, all time (before fees)</div>
       </div>
       <Button variant="outline" size="sm" className="w-full gap-2" onClick={openStripeDashboard} data-testid="button-stripe-dashboard">
         <ExternalLink className="w-4 h-4" /> View Stripe dashboard

@@ -137,12 +137,19 @@ Draft preview links are `/campaign/preview/:orgId/:campId`, owner-only and
 non-cacheable. They show "Draft — only you can see this", disable donations and
 sharing, and record an actual preview-open event for the walkthrough. Unpublish
 preserves the draft and can be reversed by publishing after gates pass.
+Dashboard and editor preview actions save the latest open-editor changes first.
+Profile previews wait for all mounted sections; campaign previews flush the
+wizard draft. Failed saves block navigation and preserve recovery data.
 
 The main dashboard defaults to Overview: money, supporters, campaigns, updates,
 then impact metrics. Outstanding owed comes from unpaid payout ledger entries,
 not lifetime `totalOwedGbp`. A next payout date is shown only when actually
 scheduled; otherwise it says "Not scheduled". The summary requires the existing
 server-side payout/disbursement collection permissions from the payout phase.
+Money includes per-campaign intended totals. The setup checklist sits below the
+main dashboard content, not above Money. Monthly impact reminders include the
+active goal as well as the three impact metrics. Monetary examples use the shared
+accounting helper; never describe organisation proceeds as a blanket percentage.
 
 The guided setup uses Driver.js and declarative, stable-anchor steps. It checks
 saved content, not typing or clicking Next; payout selection cannot be skipped.
@@ -150,11 +157,19 @@ Preview steps require recorded opens. Exit/resume/replay progress lives on the
 organisation document, separate from editable content and financial fields.
 Pending progress remains in memory even if device storage fails, and only the
 acknowledged snapshot is cleared after a successful save.
+The profile tour has 10 steps and the campaign tour 12. Manual and delayed
+automatic advancement both recheck current save/error state. Dirty, saving or
+failed editors cannot advance, even if an older saved value met the content
+check. Campaign preview completion must match the selected campaign; publication
+completion also requires that no private revision remains unpublished.
 
 `CAMPAIGN_ASSIST_ENABLED` defaults off. The writing-assistant endpoint is an
 authenticated, owner-scoped, rate-limited socket only; its provider-free adapter
 returns unavailable. Manual writing/saving never depends on it. A future
 suggestion must be explicitly accepted before `assistUsed` is saved.
+Requests flush the current campaign draft first so the socket receives the latest
+saved context. A failed flush makes no assistant request. Acceptance applies the
+chosen text and `assistUsed` together; editing a suggestion alone never saves it.
 
 ## Stack
 

@@ -1,0 +1,11 @@
+Status check, then finish the spec. Tell me where each of these stands — done, partially done, or not started — then build whatever is missing, in this order, reporting after each.
+
+1. Part 5 — preview and the donor view. "Preview as a donor" from the dashboard and every editor section. Preview renders the real public component with draft data, not a mock. A draft campaign is reachable by direct link for the organisation only, with a "Draft — only you can see this" banner. Publishing flips enabled; unpublishing is available and reversible.
+
+2. Part 6 — running it. The organisation dashboard in exactly this order: money first (raised on this campaign, what Root ProjX owes them, when the next payout runs, their last payout with its reference), then supporters, then campaigns live and draft, then updates with a prompt if they haven't posted in 30 days, then impact metrics with a monthly refresh prompt.
+
+3. The writing-assistant socket. lib/campaign-assist.ts exporting suggest({ field, orgContext, campaignDraft, instruction }) and returning { unavailable: true }. POST /campaigns/assist, organisation-auth, rate-limited, 503 while unconfigured. CAMPAIGN_ASSIST_ENABLED env var default off. The "Help me write this" control built with loading, error and unavailable states, wired to the endpoint, not rendered while the flag is off. Suggestions are drafts a person accepts — never auto-saved. assistUsed recorded on a campaign where one was accepted. Context scoped to that organisation only.
+
+4. Part 1 — the walkthrough. You mentioned updating "the tour", so tell me what already exists. Both tours as specified: profile (10 steps) then campaign (12 steps), gated on the real saved data rather than on pressing Next, always an exit to the checklist with progress intact, resumable across sessions, skippable only where the spec allows, replayable from the dashboard menu, working at 390px, and never advancing on an error. Steps as declarative data in one file, anchored by data-tour-id attributes.
+
+After each part, audit your own work against the spec before telling me it's done — the way you did for Part 5, which found three real gaps I'd otherwise have shipped. In particular, every time you touch anything that displays money, check it uses the canonical accounting fields and has no blanket percentage figure anywhere.

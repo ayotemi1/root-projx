@@ -31,6 +31,8 @@ export interface TourStep {
   completionCheck: ((c: TourCtx) => boolean) | null;
   skippable: boolean;
   place: TourPlace;
+  /** Optional side-trip when a required field lives elsewhere (e.g. country in Identity). */
+  helper?: (c: TourCtx) => { label: string; target: string; doneWhen: (c: TourCtx) => boolean } | null;
   /** Label for action steps (completionCheck === null). */
   actionLabel?: string;
 }
@@ -59,6 +61,7 @@ export const TOUR_STEPS: TourStep[] = [
     title: "Your full story", body: `At least 200 characters. ${STORY_EXAMPLE}` },
   { id: "p-where", tour: "profile", anchor: "profile-section-sectors", place: { tab: "build" }, skippable: false,
     completionCheck: (c) => !!c.org?.country?.trim() && ((c.org?.categories?.length ?? 0) > 0 || !!c.org?.category),
+    helper: (c) => (c.org?.country?.trim() ? null : { label: "Add your country first", target: "edit-identity", doneWhen: (x) => !!x.org?.country?.trim() }),
     title: "Where you work", body: "Pick at least one sector. Your country and city sit in the identity section above — make sure the country is saved too." },
   { id: "p-metrics", tour: "profile", anchor: "profile-section-impact", place: { tab: "build" }, skippable: true,
     completionCheck: (c) => !!c.org?.impactMetrics && Object.keys(c.org.impactMetrics).length > 0,
@@ -75,7 +78,8 @@ export const TOUR_STEPS: TourStep[] = [
 
   // ── Tour 2: Your first campaign ─────────────────────────────────────────
   { id: "c-create", tour: "campaign", anchor: "campaign-new", place: { tab: "campaigns" }, skippable: false,
-    completionCheck: (c) => !!c.campaign,
+    // A saved draft from an earlier run legitimately counts (resume/replay): no duplicate needed.
+    completionCheck: (c) => !!c.campaign && c.campaigns.some((x) => x._id === c.campaign!._id),
     title: "Start a campaign", body: "A campaign is one thing you're raising for. Tap New campaign to start a draft — nothing goes live yet." },
   { id: "c-name", tour: "campaign", anchor: "campaign-name", place: { tab: "campaigns", inWizard: true, wizardStep: 1 }, skippable: false,
     completionCheck: (c) => len(c.campaign?.name) > 0 && len(c.campaign?.tagline) > 0,
@@ -105,10 +109,11 @@ export const TOUR_STEPS: TourStep[] = [
     completionCheck: (c) => c.campaign?.unitChosen === true,
     title: "What does each donor add?", body: "Pick a hand, a brick, a seedling, a drop — or your own. Watch the field fill with it. Every donor adds one: this is the moment the page becomes yours." },
   { id: "c-preview", tour: "campaign", anchor: "campaign-preview-open", place: { tab: "campaigns", inWizard: true }, skippable: false,
-    completionCheck: (c) => !!c.wt?.campaignPreviewedAt && (c.wt.campaignPreviewedId == null || c.wt.campaignPreviewedId === c.campaign?._id),
+    completionCheck: (c) => !!c.wt?.campaignPreviewedAt && !!c.campaign && c.wt.campaignPreviewedId === c.campaign._id,
     title: "Preview as a donor", body: "Open the real page with your draft in it. Donations are switched off there. Come back when you've looked." },
   { id: "c-publish", tour: "campaign", anchor: "campaign-publish-gates", place: { tab: "campaigns", inWizard: true, wizardStep: 5 }, skippable: false,
-    completionCheck: (c) => c.campaign?.enabled === true,
+    // Published AND no saved private revision waiting: only an explicit publish promotes the draft.
+    completionCheck: (c) => c.campaign?.enabled === true && c.campaign.hasUnpublishedChanges !== true && c.campaigns.some((x) => x._id === c.campaign!._id),
     title: "Publish", body: "Anything still missing is listed here with a link to fix it. When the list is clear, publish." },
 ];
 

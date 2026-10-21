@@ -6,6 +6,7 @@ import "driver.js/dist/driver.css";
 import "./tour.css";
 import * as api from "@/lib/api";
 import type { Campaign, Org, WalkthroughProgress, WalkthroughState } from "@/lib/api";
+import { gate, worstSaveState, type Gate } from "@/lib/tour/gate";
 import { checklist, stepsFor, type TourCtx, type TourId, type TourStep } from "@/lib/tour/steps";
 
 const QUEUE_KEY = (orgId: string) => `rpx_walkthrough_queue_${orgId}`;
@@ -140,6 +141,10 @@ export function useWalkthrough({ orgId, token, org, campaigns, explicitTab }: {
   const finishLater = useCallback(() => {
     setActive(null);
     persist({ exitedAt: new Date().toISOString() });
+    // Land on the checklist (below the tabs) so they can see what's left.
+    window.setTimeout(() => {
+      document.getElementById("setup-checklist")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 120);
   }, [persist]);
 
   const next = useCallback(() => {
@@ -212,6 +217,34 @@ export function useWalkthrough({ orgId, token, org, campaigns, explicitTab }: {
     const check = step.completionCheck;
     const wasDoneOnArrival = check ? check(ctxRef.current) : false;
     const total = stepsFor(active.tour).length;
+    let helping = false;
+    let backBtn: HTMLButtonElement | null = null;
+
+    /** Latest gate: saved-data check + editor save state + visible error, read now. */
+    const readGate = (): Gate => {
+      const el = step.anchor ? document.querySelector(`[data-tour-id="${step.anchor}"]`) : null;
+      const scope = el ? (el.closest("section") ?? el.parentElement ?? el) : null;
+      const wizard = step.place.inWizard ? el?.closest('[data-tour-id="campaign-wizard"]') : null;
+      const saveAlert = wizard?.querySelector('[data-testid="status-campaign-save"][data-save-state="error"] [role="alert"]');
+      const alert = saveAlert?.textContent?.trim() || scope?.querySelector('[role="alert"]')?.textContent?.trim() || null;
+      const states: (string | null)[] = [];
+      scope?.querySelectorAll("[data-save-state]").forEach((n) => states.push(n.getAttribute("data-save-state")));
+      if (step.place.inWizard) {
+        document.querySelectorAll('[data-tour-id="campaign-wizard"] [data-testid="status-campaign-save"][data-save-state]')
+          .forEach((n) => states.push(n.getAttribute("data-save-state")));
+      }
+      return gate({ checkPassed: check ? check(ctxRef.current) : null, alert, saveState: worstSaveState(states) });
+    };
+    const tryNext = () => {
+      const g = readGate();
+      if (!g.ok && (check || g.reason !== "not-done")) { if (statusEl) statusEl.textContent = g.message; return; }
+      handlers.current.next();
+    };
+    const endHelp = () => {
+      helping = false;
+      backBtn?.remove(); backBtn = null;
+      suspended = true; // forces a re-render on the next poll
+    };
 
     const drv = driver({
       allowClose: false,
@@ -267,11 +300,30 @@ export function useWalkthrough({ orgId, token, org, campaigns, explicitTab }: {
               primaryBtn.type = "button"; primaryBtn.className = "rpx-tour-btn rpx-tour-primary";
               primaryBtn.textContent = !check ? (step.actionLabel ?? "Continue") : "Continue";
               primaryBtn.setAttribute("data-testid", "button-tour-primary");
-              primaryBtn.onclick = () => handlers.current.next();
+              primaryBtn.onclick = tryNext;
               foot.appendChild(primaryBtn);
               if (wasDoneOnArrival && statusEl) statusEl.textContent = "Already done and saved.";
             } else if (statusEl) {
               statusEl.textContent = "Waiting for this to save…";
+            }
+            const help = step.helper?.(ctxRef.current);
+            if (help) {
+              const hb = document.createElement("button");
+              hb.type = "button"; hb.className = "rpx-tour-btn rpx-tour-help"; hb.textContent = help.label;
+              hb.setAttribute("data-testid", "button-tour-helper");
+              hb.onclick = () => {
+                // Step aside so the other section is fully usable; no spotlight trap.
+                helping = true;
+                drv.destroy();
+                document.getElementById(help.target)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                backBtn = document.createElement("button");
+                backBtn.type = "button"; backBtn.className = "rpx-tour-btn rpx-tour-primary rpx-tour-back";
+                backBtn.textContent = "Back to the tour";
+                backBtn.setAttribute("data-testid", "button-tour-back");
+                backBtn.onclick = endHelp;
+                document.body.appendChild(backBtn);
+              };
+              pop.description.after(hb);
             }
             pop.wrapper.setAttribute("data-testid", `popover-tour-${step.id}`);
           },
@@ -283,6 +335,11 @@ export function useWalkthrough({ orgId, token, org, campaigns, explicitTab }: {
     let advanceTimer = 0;
     const poll = () => {
       if (cancelled) return;
+      if (helping) {
+        const h = step.helper?.(ctxRef.current);
+        if (!h) endHelp(); // the side-trip field is saved: return to the step
+        return;
+      }
       // Hide while a dialog (e.g. image crop) is open, so it's usable; return after.
       const dialogOpen = !!document.querySelector('[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"]');
       if (dialogOpen) {
@@ -302,23 +359,34 @@ export function useWalkthrough({ orgId, token, org, campaigns, explicitTab }: {
       }
       const scope = el ? (el.closest("section") ?? el.parentElement ?? el) : null;
       const msg = scope?.querySelector('[role="alert"]')?.textContent?.trim();
+      const wizard = step.place.inWizard ? el?.closest('[data-tour-id="campaign-wizard"]') : null;
+      const wizardSaveFailed = wizard?.querySelector('[data-testid="status-campaign-save"][data-save-state="error"]');
       // A field-only spotlight blocks its section's recovery controls. On error,
       // expose the whole section so Retry remains usable by touch and pointer.
-      const target = msg && scope ? scope : el;
+      // Campaign Retry lives in the wizard header, outside the field section.
+      // Expose both the field and its recovery controls rather than blocking Retry.
+      const target = wizardSaveFailed && wizard ? wizard : msg && scope ? scope : el;
       if (suspended || shownFor !== target) { suspended = false; render(target); }
+      const g = readGate();
       if (el && statusEl && check && !advanceTimer) {
-        if (msg) statusEl.textContent = `That didn't save: ${msg} Fix it and try again — we'll wait here.`;
-        else if (!wasDoneOnArrival) statusEl.textContent = "Waiting for this to save…";
+        if (!g.ok) { if (g.reason !== "not-done" || !wasDoneOnArrival) statusEl.textContent = g.message; }
+        else if (wasDoneOnArrival) statusEl.textContent = "Already done and saved.";
       }
-      // Auto-advance only when the saved data flips from not-done to done.
-      if (check && !wasDoneOnArrival && !advanceTimer && check(ctxRef.current)) {
+      // Auto-advance only when the saved data flips to done AND the editor is clean.
+      if (check && !wasDoneOnArrival && !advanceTimer && g.ok) {
         if (statusEl) statusEl.textContent = "Saved. Moving on…";
-        advanceTimer = window.setTimeout(() => { if (!cancelled) handlers.current.next(); }, 900);
+        advanceTimer = window.setTimeout(() => {
+          advanceTimer = 0;
+          if (cancelled) return;
+          const again = readGate(); // re-check at fire time: a new edit or error cancels
+          if (again.ok) handlers.current.next();
+          else if (statusEl) statusEl.textContent = again.message;
+        }, 900);
       }
     };
     const iv = window.setInterval(poll, 400);
     poll();
-    return () => { cancelled = true; window.clearInterval(iv); window.clearTimeout(advanceTimer); drv.destroy(); };
+    return () => { cancelled = true; window.clearInterval(iv); window.clearTimeout(advanceTimer); backBtn?.remove(); drv.destroy(); };
   }, [step, active]);
 
   useEffect(() => () => { drvRef.current?.destroy(); }, []);

@@ -42,7 +42,7 @@ export function walkthroughPatch(org: Record<string, unknown>, input: unknown) {
   }
   if (body.campaignDone === true) {
     const campaign = campaigns.find(c => c._id === next.selectedCampaignId && c.enabled === true && c.status !== "deleted");
-    if (!campaign || campaignPublishGates(org, campaign).length || !org.campaignPreviewedAt || org.campaignPreviewedId !== campaign._id) {
+    if (!campaign || campaign.editorDraft || campaignPublishGates(org, campaign).length || !org.campaignPreviewedAt || org.campaignPreviewedId !== campaign._id) {
       throw new Error("Preview and publish your selected campaign before finishing the walkthrough.");
     }
   }

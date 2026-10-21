@@ -1,4 +1,5 @@
-import { useCallback } from "react";
+import { openPreviewAfterSave, flushProfile } from "@/lib/preview-nav";
+import { useCallback, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, Circle, ExternalLink } from "lucide-react";
 import type { Org, OrgProfilePatch } from "@/lib/api";
@@ -98,11 +99,7 @@ export function ProfileEditor({ org, userId, token }: { org: Org; userId: string
           <h2 className="text-xl font-extrabold text-foreground">Build your profile</h2>
           <p className="text-sm text-muted-foreground">Each section saves on its own when you move on. Edits are kept on this device until saved.</p>
         </div>
-        <a href={`/organisations/${orgId}?preview=1`} target="_blank" rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 text-sm font-bold text-primary hover:underline underline-offset-2"
-          data-testid="link-public-profile" data-tour-id="profile-view-public">
-          Preview as a donor <ExternalLink className="w-3.5 h-3.5" />
-        </a>
+        <ProfilePreviewButton orgId={orgId} />
       </div>
 
       <nav aria-label="Profile sections" className="-mx-4 px-4 overflow-x-auto sticky top-0 z-10 bg-background/95 backdrop-blur py-2">
@@ -132,5 +129,25 @@ export function ProfileEditor({ org, userId, token }: { org: Org; userId: string
         </div>
       </div>
     </div>
+  );
+}
+
+/** Saves every section first; opens the donor view only when all saved. */
+export function ProfilePreviewButton({ orgId, className, tourId = "profile-view-public", testId = "link-public-profile" }: { orgId: string; className?: string; tourId?: string; testId?: string }) {
+  const [state, setState] = useState<"idle" | "saving" | "failed">("idle");
+  return (
+    <span className="inline-flex flex-col items-start gap-1">
+      <button type="button" disabled={state === "saving"}
+        onClick={async () => { setState("saving"); const ok = await openPreviewAfterSave(() => flushProfile(orgId), `/organisations/${orgId}?preview=1`); setState(ok ? "idle" : "failed"); }}
+        className={className ?? "inline-flex items-center gap-1.5 text-sm font-bold text-primary hover:underline underline-offset-2 disabled:opacity-60"}
+        data-testid={testId} data-tour-id={tourId}>
+        {state === "saving" ? "Saving…" : "Preview as a donor"} <ExternalLink className="w-3.5 h-3.5" />
+      </button>
+      {state === "failed" && (
+        <span role="alert" className="text-xs text-destructive" data-testid="error-preview-profile">
+          Some edits haven't saved, so we didn't open the preview. Check the sections marked in red. Nothing was lost.
+        </span>
+      )}
+    </span>
   );
 }

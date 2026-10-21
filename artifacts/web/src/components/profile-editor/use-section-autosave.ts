@@ -173,6 +173,21 @@ export function useSectionAutosave<T>(opts: Options<T>) {
     }
   }, [key]);
 
+  /** Save now and wait. True only when the latest value is persisted (never on error). */
+  const flush = useCallback(async (): Promise<boolean> => {
+    const started = Date.now();
+    await commit();
+    while (inFlightRef.current && Date.now() - started < 20_000) {
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    if (inFlightRef.current) return false;
+    if (JSON.stringify(valueRef.current) !== lastSavedRef.current) {
+      await commit();
+      while (inFlightRef.current && Date.now() - started < 20_000) await new Promise((r) => setTimeout(r, 100));
+    }
+    return !inFlightRef.current && JSON.stringify(valueRef.current) === lastSavedRef.current;
+  }, [commit]);
+
   /** Attach to a section wrapper: commits when focus leaves the section. */
   const onSectionBlur = useCallback((e: React.FocusEvent<HTMLElement>) => {
     const next = e.relatedTarget as Node | null;
@@ -193,5 +208,5 @@ export function useSectionAutosave<T>(opts: Options<T>) {
 
   const storageWarning = storageFailed && status !== "saved" && status !== "idle" ? STORAGE_WARNING : null;
 
-  return { value, setValue, commit, onSectionBlur, status, error, wasRecovered, discardDraft, storageWarning };
+  return { value, setValue, commit, flush, onSectionBlur, status, error, wasRecovered, discardDraft, storageWarning };
 }

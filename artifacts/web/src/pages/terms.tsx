@@ -1,3 +1,44 @@
+import { calculateDonationAccounting, estimateStripeFeePence } from "../../../api-server/src/lib/donation-accounting";
+const money = (n: number) => `£${n.toFixed(2)}`;
+
+/** Worked examples from the same accounting helper used at checkout and on receipts. */
+export function FeeExamples() {
+  const rows = [3, 10, 25].flatMap((gbp) => {
+    const intendedPence = gbp * 100;
+    const coverPence = estimateStripeFeePence(intendedPence, "GB");
+    return [
+      { key: `${gbp}-u`, label: `${money(gbp)}, fees not covered`, a: calculateDonationAccounting({ chargedPence: intendedPence, intendedPence, feeCovered: false, cardCountry: "GB" }) },
+      { key: `${gbp}-c`, label: `${money(gbp)}, card fee covered`, a: calculateDonationAccounting({ chargedPence: intendedPence + coverPence, intendedPence, feeCovered: true, cardCountry: "GB" }) },
+    ];
+  });
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm border border-[#E0D8CC] rounded-lg overflow-hidden" data-testid="table-fee-examples">
+        <thead>
+          <tr style={{ backgroundColor: "#B50000" }}>
+            <th className="text-left px-3 py-3 font-semibold text-white">Example</th>
+            <th className="text-left px-3 py-3 font-semibold text-white">You pay</th>
+            <th className="text-left px-3 py-3 font-semibold text-white">Platform fee (5%)</th>
+            <th className="text-left px-3 py-3 font-semibold text-white">Card processing (est.)</th>
+            <th className="text-left px-3 py-3 font-semibold text-white">Organisation receives (est.)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(({ key, label, a }, i) => (
+            <tr key={key} className="border-t border-[#E0D8CC]" style={{ backgroundColor: i % 2 === 0 ? "#FFFFFF" : "#F9F6F0" }}>
+              <td className="px-3 py-3 font-medium text-foreground">{label}</td>
+              <td className="px-3 py-3">{money(a.chargedGbp)}</td>
+              <td className="px-3 py-3 text-muted-foreground">{money(a.platformFeeGbp)}</td>
+              <td className="px-3 py-3 text-muted-foreground">{a.feeCovered ? `${money(a.feeCoverGbp)} fee cover, included in what you pay` : `${money(a.estimatedStripeFeeGbp)}, taken from the gift`}</td>
+              <td className="px-3 py-3 font-semibold" style={{ color: "#B50000" }}>{money(a.toOrgGbp)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 export default function TermsPage() {
   return (
     <div className="max-w-[800px] mx-auto px-6 py-16">
@@ -45,8 +86,9 @@ export default function TermsPage() {
             <li>We maintain transparent records of all donations collected and fees charged</li>
           </ul>
           <p className="mt-3">
-            Root ProjX does not solicit donations for its own charitable purposes. All donations, less the
-            5% platform fee, are passed directly to the intended organisation.
+            Root ProjX does not solicit donations for its own charitable purposes. Each donation goes to the
+            intended organisation after the 5% platform fee and card processing fees, which are itemised
+            before you pay (see section 4).
           </p>
         </Section>
 
@@ -54,55 +96,26 @@ export default function TermsPage() {
           <p className="mb-3">When you make a donation through Root ProjX:</p>
           <ul className="list-disc list-inside space-y-2">
             <li>Your payment is processed securely by Stripe, a PCI DSS Level 1 certified payment processor</li>
-            <li>95% of your donation is transferred directly to the organisation's connected Stripe bank account</li>
-            <li>5% is retained by Root ProjX Ltd as a platform fee to cover operational costs</li>
-            <li>The platform fee is clearly displayed before you complete your donation</li>
+            <li>Root ProjX Ltd keeps a 5% platform fee, worked out on the amount you chose to give, to cover operational costs</li>
+            <li>Card processing fees also apply. You can choose to cover them so they don't come out of your gift; the platform fee still applies</li>
+            <li>The exact split (your donation, any fee cover, the total charged, what the organisation receives, the platform fee and card processing) is shown before you pay and on your receipt</li>
             <li>All donations are processed in GBP (British Pounds Sterling)</li>
             <li>You will receive an email confirmation of your donation</li>
           </ul>
           <p className="mt-4">
-            Root ProjX acts as a payment facilitator, not as a fundraising agent or trustee. We do not hold
-            donor funds. All funds flow directly to organisations through Stripe Connect.
+            Depending on how an approved organisation is set up, its share is paid out either through its
+            connected Stripe account or, for organisations approved for bank payouts (via Wise or a manual
+            transfer), it settles to Root ProjX first and is held until the organisation's next payout.
+            Every payout carries a reference the organisation can match against its records.
           </p>
         </Section>
 
         <Section title="4. Platform Fee Disclosure">
           <p className="mb-4">
-            Root ProjX charges a 5% platform fee on all donations, deducted automatically at the point of payment:
+            Root ProjX charges a 5% platform fee on the amount you choose to give. Card processing is a
+            separate fee. These examples use a UK card; card processing is an estimate and can vary by card.
           </p>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm border border-[#E0D8CC] rounded-lg overflow-hidden">
-              <thead>
-                <tr style={{ backgroundColor: "#B50000" }}>
-                  <th className="text-left px-4 py-3 font-semibold text-white">Donation</th>
-                  <th className="text-left px-4 py-3 font-semibold text-white">To Organisation (95%)</th>
-                  <th className="text-left px-4 py-3 font-semibold text-white">Platform Fee (5%)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[
-                  ["£10.00", "£9.50", "£0.50"],
-                  ["£25.00", "£23.75", "£1.25"],
-                  ["£50.00", "£47.50", "£2.50"],
-                  ["£100.00", "£95.00", "£5.00"],
-                ].map(([donation, toOrg, fee], i) => (
-                  <tr
-                    key={donation}
-                    className="border-t border-[#E0D8CC]"
-                    style={{ backgroundColor: i % 2 === 0 ? "#FFFFFF" : "#F9F6F0" }}
-                  >
-                    <td className="px-4 py-3 font-medium text-foreground">{donation}</td>
-                    <td className="px-4 py-3 font-semibold" style={{ color: "#B50000" }}>{toOrg}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{fee}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <p className="mt-3 text-sm text-muted-foreground">
-            Stripe's standard payment processing fees (approx. 1.4–2.9% + 20–30p per transaction) are
-            absorbed by Root ProjX and not passed on to donors or organisations.
-          </p>
+          <FeeExamples />
         </Section>
 
         <Section title="5. Organisation Verification">
@@ -159,7 +172,7 @@ export default function TermsPage() {
             <li>Provide regular impact updates to their supporters on the platform</li>
             <li>Comply with all applicable laws in their country of operation</li>
             <li>Notify Root ProjX immediately of any change in registration status, legal standing, or operational circumstances</li>
-            <li>Complete Stripe Connect onboarding to receive payouts</li>
+            <li>Set up how they receive payouts: Stripe Connect, or a bank payout (via Wise or manual transfer) where approved</li>
             <li>Not misrepresent their activities, impact, or use of funds</li>
           </ul>
           <p className="mt-4">

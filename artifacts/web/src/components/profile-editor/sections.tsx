@@ -64,7 +64,7 @@ export function IdentitySection(ctx: SectionCtx) {
   const v = s.value;
   return (
     <SectionShell section="identity" title="Identity" hint="Who you are, where you work, and the one line donors see on Discover."
-      orgId={ctx.orgId} status={s.status} error={s.error} onRetry={s.commit} onBlur={s.onSectionBlur}
+      orgId={ctx.orgId} status={s.status} error={s.error} onRetry={s.commit} onFlush={s.flush} onBlur={s.onSectionBlur}
       wasRecovered={s.wasRecovered} onDiscard={s.discardDraft} storageWarning={s.storageWarning}>
       <div>
         <Label htmlFor="pe-name" className="font-semibold">Organisation name</Label>
@@ -129,7 +129,7 @@ export function StorySection(ctx: SectionCtx) {
   const v = s.value;
   return (
     <SectionShell section="story" title="Your story" hint="The full picture for donors. Markdown works: blank lines for paragraphs, **bold**, - for lists, ## for headings. No HTML."
-      orgId={ctx.orgId} status={s.status} error={s.error} onRetry={s.commit} onBlur={s.onSectionBlur}
+      orgId={ctx.orgId} status={s.status} error={s.error} onRetry={s.commit} onFlush={s.flush} onBlur={s.onSectionBlur}
       wasRecovered={s.wasRecovered} onDiscard={s.discardDraft} storageWarning={s.storageWarning}>
       <details className="rounded-xl bg-accent/10 border border-accent/30 px-3 py-2 text-xs group">
         <summary className="font-bold cursor-pointer text-foreground py-1">See a worked example</summary>
@@ -178,7 +178,7 @@ export function SectorsSection(ctx: SectionCtx) {
   }
   return (
     <SectionShell section="sectors" title="Sectors" hint="Pick every area you work in. The first one is shown as your main sector."
-      orgId={ctx.orgId} status={s.status} error={s.error} onRetry={s.commit}
+      orgId={ctx.orgId} status={s.status} error={s.error} onRetry={s.commit} onFlush={s.flush}
       wasRecovered={s.wasRecovered} onDiscard={s.discardDraft} storageWarning={s.storageWarning}>
       <div role="group" aria-label="Sectors" className="flex flex-wrap gap-2" data-tour-id="profile-sectors-list">
         {SECTORS.map((sector) => {
@@ -238,7 +238,7 @@ export function ImpactSection(ctx: SectionCtx) {
   });
   return (
     <SectionShell section="impact" optional title="Impact metrics" hint="Up to three honest numbers. Leave any blank and it won't appear. Progress to goal comes from your active campaign."
-      orgId={ctx.orgId} status={s.status} error={s.error} onRetry={s.commit} onBlur={s.onSectionBlur}
+      orgId={ctx.orgId} status={s.status} error={s.error} onRetry={s.commit} onFlush={s.flush} onBlur={s.onSectionBlur}
       wasRecovered={s.wasRecovered} onDiscard={s.discardDraft} storageWarning={s.storageWarning}>
       {METRICS.map(({ key, title, example }) => (
         <fieldset key={key} className="grid grid-cols-[1fr_110px] gap-2" data-tour-id={`profile-impact-${key}`}>
@@ -292,7 +292,7 @@ export function FundsSection(ctx: SectionCtx) {
   const total = FUNDS.reduce((a, { key }) => a + (Number(s.value[key]) || 0), 0);
   return (
     <SectionShell section="funds" optional title="How funds are used" hint="Self-reported split across five categories. Must add to 100."
-      orgId={ctx.orgId} status={s.status} error={s.error} onRetry={s.commit} onBlur={s.onSectionBlur}
+      orgId={ctx.orgId} status={s.status} error={s.error} onRetry={s.commit} onFlush={s.flush} onBlur={s.onSectionBlur}
       wasRecovered={s.wasRecovered} onDiscard={s.discardDraft} storageWarning={s.storageWarning}>
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3" data-tour-id="profile-funds-inputs">
         {FUNDS.map(({ key, label }) => (
@@ -354,7 +354,7 @@ export function ContactSection(ctx: SectionCtx) {
   const extraKeys = Object.keys(v.social).filter((k) => !(SOCIALS as readonly string[]).includes(k));
   return (
     <SectionShell section="contact" title="Contact and links" hint="How donors reach you. Leave anything blank to keep it off your profile."
-      orgId={ctx.orgId} status={s.status} error={s.error} onRetry={s.commit} onBlur={s.onSectionBlur}
+      orgId={ctx.orgId} status={s.status} error={s.error} onRetry={s.commit} onFlush={s.flush} onBlur={s.onSectionBlur}
       wasRecovered={s.wasRecovered} onDiscard={s.discardDraft} storageWarning={s.storageWarning}>
       <div className="grid sm:grid-cols-2 gap-3">
         <div>
@@ -414,7 +414,7 @@ export function TeamSection(ctx: SectionCtx) {
   }
   return (
     <SectionShell section="team" optional title="Team" hint="Up to six faces. Donors give to people they can picture."
-      orgId={ctx.orgId} status={s.status} error={s.error} onRetry={s.commit} onBlur={s.onSectionBlur}
+      orgId={ctx.orgId} status={s.status} error={s.error} onRetry={s.commit} onFlush={s.flush} onBlur={s.onSectionBlur}
       wasRecovered={s.wasRecovered} onDiscard={s.discardDraft} storageWarning={s.storageWarning}>
       {v.length === 0 && (
         <p className="text-sm text-muted-foreground bg-secondary/50 rounded-xl px-3 py-4 text-center">

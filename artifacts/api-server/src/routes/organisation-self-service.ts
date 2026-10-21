@@ -108,6 +108,8 @@ router.get("/organisations/:id/dashboard-summary", ...owner, async (req, res) =>
     }
     const dates = updates.map(u => typeof u.createdAt === "string" ? u.createdAt : "").filter(Boolean).sort().reverse();
     const metrics = org.impactMetrics && typeof org.impactMetrics === "object" ? Object.values(org.impactMetrics) : [];
+    // The active goal is the fourth impact figure and also needs a monthly refresh.
+    const refreshableMetrics = org.activeGoal && typeof org.activeGoal === "object" ? [...metrics, org.activeGoal] : metrics;
     const staleBefore = Date.now() - 30 * 86_400_000;
     const nextPayoutAt = typeof org.nextPayoutAt === "string" && Number.isFinite(Date.parse(org.nextPayoutAt)) && Date.parse(org.nextPayoutAt) >= Date.now() ? org.nextPayoutAt : null;
     res.json({ raisedGbp: Number(org.totalRaised ?? 0), owedGbp: roundedSum(unpaid), nextPayoutAt, lastPayout,
@@ -115,7 +117,7 @@ router.get("/organisations/:id/dashboard-summary", ...owner, async (req, res) =>
       campaignRaised: campaignsOf(org).filter(c => c.status !== "deleted").map(c => ({
         campaignId: String(c._id), name: String(c.name ?? ""), raisedGbp: Number(c.amountRaised ?? 0) })),
       latestUpdateAt: dates[0] ?? null,
-      impactMetricsStale: !metrics.length || metrics.some(m => !m || typeof m !== "object" || !("updatedAt" in m) ||
+      impactMetricsStale: !metrics.length || refreshableMetrics.some(m => !m || typeof m !== "object" || !("updatedAt" in m) ||
         !Number.isFinite(Date.parse(String(m.updatedAt))) || Date.parse(String(m.updatedAt)) < staleBefore),
     });
   } catch (err) {

@@ -1,3 +1,4 @@
+import { runAssistRequest } from "./assist-logic";
 import { useRef, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AlertCircle, Check, FileText, Loader2, RotateCcw, Sparkles, Upload, X } from "lucide-react";
@@ -137,9 +138,11 @@ type AssistState =
   | { k: "suggestion"; text: string; editing: boolean };
 
 /** "Help me write". Hidden when the flag is off. Nothing changes until the user accepts. */
-export function AssistButton({ enabled, campaignId, field, token, onAccept, fieldLabel, testSuffix }: {
+export function AssistButton({ enabled, campaignId, field, token, onAccept, fieldLabel, testSuffix, beforeRequest }: {
   enabled: boolean; campaignId: string; field: CampaignAssistField; token: string;
   onAccept: (text: string) => void; fieldLabel: string; testSuffix?: string;
+  /** Saves pending edits so the server reads the current draft. False = no request. */
+  beforeRequest?: () => Promise<boolean>;
 }) {
   const [st, setSt] = useState<AssistState>({ k: "idle" });
   const [instruction, setInstruction] = useState("");
@@ -148,15 +151,12 @@ export function AssistButton({ enabled, campaignId, field, token, onAccept, fiel
 
   async function ask() {
     setSt({ k: "loading" });
-    try {
-      const res = await api.requestCampaignAssist({ campaignId, field, instruction: instruction.trim() }, token);
-      const text = (res as { suggestion?: unknown } | null)?.suggestion;
-      if (typeof text !== "string" || !text.trim()) {
-        setSt({ k: "error", msg: "The writing helper sent back an invalid response. Nothing was changed. Try again." });
-        return;
-      }
-      setSt({ k: "suggestion", text, editing: false });
-    } catch (e) {
+    const r = await runAssistRequest(beforeRequest, () => api.requestCampaignAssist({ campaignId, field, instruction: instruction.trim() }, token));
+    if (r.k === "suggestion") setSt({ k: "suggestion", text: r.text, editing: false });
+    else if (r.k === "unsaved") setSt({ k: "error", msg: "Your latest edits haven't saved yet, so the helper would read an old version. Nothing was sent. Fix the save message above, then try again." });
+    else if (r.k === "invalid") setSt({ k: "error", msg: "The writing helper sent back an invalid response. Nothing was changed. Try again." });
+    else {
+      const e = r.error;
       if (e instanceof ApiError && (e.status === 503 || (e.body as { unavailable?: boolean })?.unavailable)) {
         setSt({ k: "unavailable", msg: "Writing help is not available right now. You can keep writing yourself." });
       } else {

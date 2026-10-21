@@ -25,3 +25,8 @@
 }
 .rpx-tour-later { margin-right: auto; border-color: transparent; background: transparent; color: hsl(var(--muted-foreground)); padding: 0 6px; text-decoration: underline; text-underline-offset: 3px; }
 .rpx-tour-primary { background: hsl(var(--primary)); border-color: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
+/* Tall anchors / 390px: popover never exceeds the viewport; footer stays reachable. */
+.driver-popover.rpx-tour { max-height: calc(100dvh - 24px); overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; overflow-wrap: anywhere; box-sizing: border-box; }
+.driver-popover.rpx-tour .driver-popover-footer { position: sticky; bottom: -16px; background: hsl(var(--card)); padding: 8px 0 16px; margin-bottom: -16px; z-index: 1; }
+.rpx-tour-help { margin-top: 10px; width: 100%; color: hsl(var(--primary)); border-color: hsl(var(--primary) / 0.4); }
+.rpx-tour-back { position: fixed; z-index: 1000000002; right: 12px; bottom: max(12px, env(safe-area-inset-bottom)); box-shadow: var(--shadow-xl); }
