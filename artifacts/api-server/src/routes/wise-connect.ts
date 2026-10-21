@@ -17,6 +17,31 @@ async function createWiseRecipient(
   profileId: number,
   email: string,
 ): Promise<number> {
+  const existingRes = await fetch(
+    `${WISE_BASE}/v1/accounts?profileId=${encodeURIComponent(profileId)}&currency=GBP`,
+    {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+    },
+  );
+
+  if (!existingRes.ok) {
+    throw new Error("Failed to check existing Wise recipients.");
+  }
+
+  const existingAccounts = (await existingRes.json()) as Array<{
+    id: number;
+    details?: { email?: string };
+  }>;
+  const existingRecipient = existingAccounts.find(
+    (account) => account.details?.email?.trim().toLowerCase() === email,
+  );
+  if (existingRecipient) {
+    return existingRecipient.id;
+  }
+
   const res = await fetch(`${WISE_BASE}/v1/accounts`, {
     method: "POST",
     headers: {
