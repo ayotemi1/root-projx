@@ -32,3 +32,15 @@ authorization remain separate concerns.
 
 **How to apply:** Reuse the shared resolver for future Checkout metadata and
 payout records; validate readiness and authorization separately before transfers.
+
+An interrupted settlement must be reconciled with provider records before any
+resend. Do not automatically expire settlement locks or retry failed payouts:
+a timeout can happen after the provider has already accepted money movement.
+
+**Why:** Automatically treating an ambiguous result as “not paid” risks paying
+an organisation twice. Unrelated profile writes must never clear a settlement
+lock, including legacy writes that pass an entire organisation snapshot.
+
+**How to apply:** Preserve exclusive settlement across concurrent requests and
+server processes. Any future recovery control must distinguish known failures
+from funded transfers whose ledger update failed.

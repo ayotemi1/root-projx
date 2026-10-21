@@ -5,6 +5,7 @@ import { brevoSendEmail, donationConfirmationHtml, shopOrderConfirmationHtml } f
 import type Stripe from "stripe";
 import { recurringStatus } from "../lib/recurring-status.js";
 import { donationAccounting, PLATFORM_FEE_PERCENT } from "../lib/fees.js";
+import { queueDonationPayout } from "../lib/payouts.js";
 
 const router = Router();
 
@@ -220,6 +221,11 @@ async function handlePaymentSuccess(
       { limit: 1 },
     );
     if (existing.length > 0) {
+      // Repair a ledger write that failed after the donation was recorded.
+      // Atomic create-only semantics preserve sent/failed rows on every replay.
+      if (dedupCollection === "donations") {
+        await queueDonationPayout(String(existing[0]!._id), existing[0]!, serverToken);
+      }
       log.info({ stripeRef, type: type ?? "one_time" }, "Webhook: event already processed — skipping (idempotent)");
       return;
     }
@@ -257,6 +263,7 @@ async function handlePaymentSuccess(
       orgName: orgName ?? "",
       ...(campaignId ? { campaignId } : {}),
       ...accounting,
+      ...(metadata.payoutMethod ? { payoutMethod: metadata.payoutMethod } : {}),
       feeAmountGbp: accounting.feeCoverGbp, // legacy top-up field
       currency,
       type: type ?? "one_time",
@@ -401,6 +408,12 @@ async function handlePaymentSuccess(
       log.error({ wallErr }, "Supporter wall write failed (non-fatal)");
     }
   }
+  // Propagate ledger failures so Stripe retries. The donation dedup branch
+  // repairs only this create-only write without repeating other side effects.
+  await queueDonationPayout(donationId, {
+    orgId, orgName: orgName ?? "", stripeRef, toOrgGbp, currency,
+    payoutMethod: metadata.payoutMethod, createdAt: donationDate,
+  }, serverToken);
 }
 
 // ── Shop order handler ────────────────────────────────────────────────────────

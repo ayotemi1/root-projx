@@ -5,6 +5,125 @@
  * Root ProjX API — community giving platform
  * OpenAPI spec version: 0.1.0
  */
+export type PayoutRowMethod =
+  (typeof PayoutRowMethod)[keyof typeof PayoutRowMethod];
+
+export const PayoutRowMethod = {
+  wise: "wise",
+  manual: "manual",
+} as const;
+
+export type PayoutRowStatus =
+  (typeof PayoutRowStatus)[keyof typeof PayoutRowStatus];
+
+export const PayoutRowStatus = {
+  queued: "queued",
+  sent: "sent",
+  failed: "failed",
+} as const;
+
+export interface PayoutRow {
+  _id: string;
+  orgId: string;
+  orgName: string;
+  donationId: string;
+  stripeRef: string;
+  amountGbp: number;
+  currency: string;
+  method: PayoutRowMethod;
+  status: PayoutRowStatus;
+  createdAt: string;
+  batchId?: string;
+  wiseTransferId?: number;
+  sentAt?: string;
+  sentBy?: string;
+  reference?: string;
+  error?: string;
+}
+
+export type PayoutOrgSummaryMethod =
+  (typeof PayoutOrgSummaryMethod)[keyof typeof PayoutOrgSummaryMethod];
+
+export const PayoutOrgSummaryMethod = {
+  stripe_connect: "stripe_connect",
+  wise: "wise",
+  manual: "manual",
+  none: "none",
+} as const;
+
+export interface PayoutOrgSummary {
+  orgId: string;
+  orgName: string;
+  method: PayoutOrgSummaryMethod;
+  queuedTotalGbp: number;
+  eligibleTotalGbp: number;
+  due: boolean;
+  settlementLocked: boolean;
+}
+
+export interface PayoutOverview {
+  payouts: PayoutRow[];
+  organisations: PayoutOrgSummary[];
+  totalQueuedGbp: number;
+  failureCount: number;
+}
+
+export interface PayoutSettlementInput {
+  /** @minLength 1 */
+  orgId: string;
+  /**
+   * @minLength 1
+   * @maxLength 120
+   */
+  reference: string;
+}
+
+export type PayoutSettlementResultStatus =
+  (typeof PayoutSettlementResultStatus)[keyof typeof PayoutSettlementResultStatus];
+
+export const PayoutSettlementResultStatus = {
+  sent: "sent",
+  failed: "failed",
+  not_due: "not_due",
+  needs_manual_settlement: "needs_manual_settlement",
+  locked: "locked",
+} as const;
+
+export interface PayoutSettlementResult {
+  orgId: string;
+  orgName: string;
+  amountGbp: number;
+  status: PayoutSettlementResultStatus;
+  batchId?: string;
+  wiseTransferId?: number;
+  error?: string;
+}
+
+export interface PayoutRunResult {
+  results: PayoutSettlementResult[];
+}
+
+export type OrgPayoutSummaryPayoutMethod =
+  (typeof OrgPayoutSummaryPayoutMethod)[keyof typeof OrgPayoutSummaryPayoutMethod];
+
+export const OrgPayoutSummaryPayoutMethod = {
+  stripe_connect: "stripe_connect",
+  wise: "wise",
+  manual: "manual",
+  none: "none",
+} as const;
+
+export type OrgPayoutSummaryLastSettled = {
+  amountGbp: number;
+  sentAt: string | null;
+} | null;
+
+export interface OrgPayoutSummary {
+  pendingGbp: number;
+  payoutMethod: OrgPayoutSummaryPayoutMethod;
+  lastSettled: OrgPayoutSummaryLastSettled;
+}
+
 export interface HealthStatus {
   status: string;
 }

@@ -1,0 +1,354 @@
+# Root ProjX — Organisation Self-Service Build Spec
+
+Hand this whole document to Replit. It is a specification, not a conversation.
+
+**How to work through it:** build in the six parts below, in order. After each part, stop and report what you changed and anything you were unsure about. Do not move to the next part until I reply. Do not edit `firestore.rules` directly — print any rules I need and I will publish them. Do not change the colour system in `replit.md`.
+
+**The goal:** an approved organisation can build a donor-ready profile and launch a campaign page entirely on their own, without anyone at Root ProjX touching it. We are onboarding organisations faster than we can hand-hold them.
+
+---
+
+## The journey, end to end
+
+| Stage | Who | What happens |
+|---|---|---|
+| Apply | Org | Questionnaire. Includes country. |
+| Approve | Root ProjX | Admin approves. The only manual gate. |
+| Set up | Org | Guided walkthrough: profile → payout method → first campaign |
+| Build | Org | Campaign builder, with preview |
+| Publish | Org | Self-service, once the publish gates pass |
+| Run | Org | Post updates, see supporters and payouts |
+
+Root ProjX touches two things: approving the application, and confirming a bank-transfer payout method. Everything else is the organisation's own.
+
+---
+
+## What already exists (do not rebuild)
+
+- Org profile fields on the organisations doc: `name`, `country`, `city`, `category`, `description`, `mission`, `contact`, `socialLinks`, `coverImage`, `logo`, `fundsUsage`
+- Campaign CRUD: `POST/PATCH/DELETE /organisations/:id/campaigns`, `GET /organisations/:id/campaigns/manage`
+- Campaign fields: `name`, `description`, `type`, `goal`, `amountRaised`, `volunteersNeeded`, `deadline`, `imageUrl`, `phases`, `theme`, `enabled`, slugs and `sharePath`
+- Campaigns already start with `enabled: false` — a draft state exists
+- Media upload: `POST /uploads/media`
+- Updates/feed posting
+- Donor-facing pages: `org-profile.tsx`, `org-about.tsx`, `org-campaigns.tsx`, `org-updates.tsx`, `org-volunteer.tsx`, `campaign-landing.tsx`
+
+**Note:** there are two dashboard files — `dashboard.tsx` (1700+ lines, the real one) and `org-dashboard.tsx` (366 lines, appears vestigial). Tell me which is actually routed before you build, and if `org-dashboard.tsx` is dead, say so and I'll decide whether to delete it.
+
+---
+
+## Part 1 — First run: a guided walkthrough
+
+An approved organisation logs in and lands in **one place** — the Build area, which holds both their profile and their campaigns. They are not dropped into a dashboard to work it out. They are walked through it.
+
+### The walkthrough
+
+An interactive coached tour: it spotlights the element in question, dims everything else, explains what that field is for in one line, and waits for the organisation to actually do it before advancing.
+
+**Two tours, back to back.**
+
+**Tour 1 — Your profile** (what donors see about you)
+
+| Step | Spotlight | Advances when |
+|---|---|---|
+| 1 | Welcome panel | They press Start. Tell them it takes about 10 minutes and they can stop any time. |
+| 2 | Logo upload | A logo is uploaded |
+| 3 | Cover image upload | A cover image is uploaded |
+| 4 | One-line description | 20+ characters saved |
+| 5 | Full story | 200+ characters saved. Show the worked example here, not before. |
+| 6 | Country, city, sectors | Country and at least one sector saved |
+| 7 | Impact metrics | They save one, or press Skip — explain in one line what donors see |
+| 8 | **How you get paid** | A payout method is selected. **Not skippable.** |
+| 9 | Preview as a donor | They open the preview |
+| 10 | Handoff | "Your profile is ready. Now let's build something to raise for." → starts Tour 2 |
+
+**Tour 2 — Your first campaign**
+
+| Step | Spotlight | Advances when |
+|---|---|---|
+| 1 | New campaign button | They create a draft |
+| 2 | Name and one-line ask | Both saved |
+| 3 | Goal | A goal above zero |
+| 4 | Match funding | They answer yes or no. Explain what it means — most won't have met the term. |
+| 5 | Story | 200+ characters |
+| 6 | What the money buys | One item added, or Skip |
+| 7 | Where it happens | One location added, or Skip |
+| 8 | Hero image | Uploaded |
+| 9 | Video | Added, or Skip |
+| 10 | Unit picker | A unit chosen. Show the hero filling with it as they pick — this is the moment the page becomes theirs. |
+| 11 | Preview | They open the preview |
+| 12 | Publish | Gates listed; publish when they pass |
+
+### Rules the walkthrough must follow
+
+- **Gated on the real action, not on pressing Next.** A step advances because the data saved, not because they clicked through. This is the difference between a tour and a slideshow.
+- **Always an exit.** A persistent "Finish later" on every step. Leaving drops them into the checklist below with their progress intact, and a "Resume walkthrough" button. Never trap anyone.
+- **Resumable.** Progress persists across sessions and devices. Closing the browser at step 6 means reopening at step 6.
+- **Skippable where it's safe.** Impact metrics, breakdown, locations and video may be skipped. Logo, story, sectors, payout method, goal and hero image may not — those are the publish gates, and skipping them just moves the problem.
+- **Replayable.** A "Show me around again" item in the dashboard menu restarts either tour.
+- **Works at 390px.** Most organisations will do this on a phone. Spotlighting on a small screen is the hard case — build and test that first, then desktop.
+- **Survives failure.** If an upload or save fails mid-step, the tour says what to do and stays put. It must never advance on an error or strand someone on a broken step.
+
+### Implementation
+
+- Use an existing tour library rather than hand-rolling the spotlight — `driver.js` is small and framework-agnostic, `react-joyride` is the React-native option. Your call, but say which and why.
+- **Steps are declarative data**, not logic buried in components: an array of `{ id, tour, anchor, title, body, completionCheck, skippable }` in one file, so we can reorder and reword without touching the builder.
+- Anchor by stable `data-tour-id` attributes on the real elements. Never by CSS class or DOM position.
+- `completionCheck` reads the actual saved data. No separate "step done" flags that can drift.
+
+### The checklist underneath
+
+The checklist stays, as the fallback for anyone who exits the tour and as the at-a-glance state afterwards:
+
+- [ ] Logo and cover image
+- [ ] Your story
+- [ ] Where you work
+- [ ] How you get paid
+- [ ] Your first campaign
+
+Derived from the real data, with progress shown ("3 of 5 done"). It disappears once complete.
+
+---
+
+## Part 2 — The profile builder
+
+One page, sections that save independently. Never a single giant form with one Save button at the bottom — a partial save must never be lost.
+
+### Sections
+
+**Identity**
+Logo (square, min 400×400), cover image (wide, min 1600×600), organisation name, one-line description (max 120 characters, shown on cards in Discover), country, city.
+
+**Story**
+Full description (rich text or markdown, no HTML paste). Show a short inline example of a good story — three sentences on who you serve, what you do, and what changes — so an organisation facing a blank box has a model.
+
+**Sectors**
+Multi-select, the existing list. At least one required.
+
+**Impact metrics** — new
+Four fixed categories. The organisation names their own metric inside each, then updates the number monthly. The category is the constant; the metric is theirs.
+
+| Category | They define | Example |
+|---|---|---|
+| People reached | the unit | "trainees on the programme" |
+| Ground covered | the unit | "communities served" |
+| Resources delivered | the unit | "tools distributed" |
+| Progress to goal | — | derived from their active campaign |
+
+Store as `impactMetrics: { peopleReached: {label, value, updatedAt}, groundCovered: {...}, resourcesDelivered: {...} }`. All optional — an organisation with none still has a valid profile, and the donor-facing page simply omits the block.
+
+**How funds are used**
+The existing `fundsUsage` five-category split. Keep as is.
+
+**Contact and links**
+Website, email, social links. Existing fields.
+
+**Team**
+Up to 6 photos with a name and role each. New field `team: [{name, role, photoUrl}]`.
+
+### Behaviour
+
+- Autosave each section on blur, with a visible "Saved" state.
+- A completeness meter at the top: which sections are done, what's missing.
+- Image uploads go through the existing `/uploads/media` route, with client-side resizing before upload and a visible progress state.
+- Every section has a "See how this looks" link to the relevant part of the public profile.
+
+---
+
+## Part 3 — The campaign builder
+
+A stepped wizard, not a form dump. Saves a draft at every step so nothing is lost. An organisation can leave and come back.
+
+### Step 1 — What are you raising for?
+
+Campaign name. One-line ask (max 140 characters — this is the line that appears on the share card). Type: fundraising or volunteer.
+
+### Step 2 — The money
+
+- Goal amount
+- **Match funding** — new. A toggle: "Is part of this already funded?" If yes: matched amount, and who by (free text, e.g. "the High Commission of Canada"). Store as `matchFunding: {amount, funderName}`. This drives the three-part funding display on the campaign page: committed, raised here, still needed.
+- Deadline (optional)
+
+### Step 3 — Your story
+
+- The full campaign story
+- **What the money buys** — an itemised list of `{amount or quantity, what it covers}`. Concrete beats abstract: "30 places on the programme", "childcare for single mothers on site". Store as `breakdown: [{label, detail}]`.
+- **Where it happens** — up to three locations, each with a name, a line of description, and an optional photo. Store as `locations: [{name, description, photoUrl}]`.
+
+### Step 4 — How it looks
+
+- Hero image (required to publish)
+- **Video** — new. A URL (YouTube/Vimeo) or an uploaded file, with a poster frame. Must lazy-load and must not autoplay. Captions are strongly encouraged — show a note saying most people watch with the sound off. Store as `video: {url, posterUrl, captionsUrl}`.
+- **The unit of accumulation** — new, and this is what makes a campaign page feel like itself rather than a progress bar. The organisation picks a countable unit for their campaign: a hand, a brick, a seedling, a coconut. They give it a singular and plural label and an image. Every donor adds one. Store in `theme` as `unit: {singular, plural, imageUrl}`. Provide three or four built-in defaults with artwork so an organisation can pick one and move on.
+
+### Step 5 — Preview and publish
+
+Full preview of the real campaign page with their content in it, at phone width by default with a desktop toggle.
+
+**Publish gates.** The Publish button is disabled until all of these pass, and each unmet one is listed in plain words with a link to fix it:
+
+- Campaign name and one-line ask
+- Goal amount above zero
+- Story of at least 200 characters
+- Hero image
+- Organisation profile is complete (identity, story, sectors)
+- A payout method is set up
+
+That last gate matters most: **an organisation must not be able to publish a campaign that can collect money it cannot receive.**
+
+---
+
+## Part 4 — The campaign page itself
+
+This is the page the builder produces. **Zero campaign content is hard-coded.** Every org that completes the builder gets this page, rendered from their own data. It must look good for an organisation that filled in only the required fields, and better for one that filled in everything.
+
+### Two numbers, never collapsed into one bar
+
+1. **Supporters** — how many people have given, one per donor regardless of amount. This is the hero.
+2. **Funding** — three parts: committed by a funder (from `matchFunding`), raised here, still needed. If there's no match funding, show two parts.
+
+### The hero: accumulation, not a progress bar
+
+A horizontal progress bar treats a thousand individual acts as one continuous quantity. Instead, render the campaign's chosen unit (`theme.unit`) accumulating in a field — a wall, a basket, a pile, depending on the artwork — with the live count beside it. Every donor adds one.
+
+- Vary rotation, size, opacity and position within a loose grid so it reads as a crowd, not a pattern.
+- Render in a single canvas or SVG field. Draw the most recent ~300 individually and carry the remainder as mass plus the number. Never thousands of DOM nodes.
+- One orchestrated animation on load, filling to the current state. One when a new unit lands after a donation. Nothing else on the page animates on scroll.
+- Respect `prefers-reduced-motion`. Give the canvas `role="img"` with a written description including the count.
+- Ship three or four built-in units with artwork (hands, bricks, seedlings, drops) so an organisation can pick one and move on. The unit is per campaign, not per platform.
+
+### The match is structural
+
+Where a campaign has `matchFunding`, the donate sheet shows what an amount becomes — "£10 → £20 toward the programme" — and the funding display shows all three segments with their own labels. This is the single strongest conversion mechanic available and it must not be reduced to a line of copy.
+
+### Page order
+
+1. Organisation name and photo, linked to their profile
+2. Campaign name and tagline, the accumulation hero, the donate button
+3. Video, if present — poster frame, lazy-loaded, no autoplay, captions supported
+4. The campaign story
+5. What the money buys, from `breakdown`
+6. Where it happens, from `locations`
+7. Who's running it, from the organisation profile
+8. Where your money goes (exact wording below)
+9. Recent supporters — first name and last initial, newest first. Empty state: "Be the first."
+10. Share — existing button, copy-link fallback, and the **server-rendered OG metadata**. Do not move metadata into client-side JS; crawlers don't run it.
+
+### After donating
+
+- Name what they did in the campaign's own unit, and highlight their unit in the field.
+- Then the ongoing ask, secondary and below it: "This campaign ends. The work doesn't. Support [org] every month from £3." It must not compete with the donation that just completed.
+
+### Money wording — get this exactly right
+
+The organisation receives £2.85 of a £3 gift when the donor covers the card fee, or £2.60 when they don't. Root ProjX keeps 5% — 15p — either way. Use the canonical fields from the Phase 0 accounting helper; never recompute. **No "100% reaches the organisation" claim anywhere** — that was removed deliberately and must not return.
+
+### Rules carried from Phase 0
+
+- £3 minimum. Presets £3 / £5 / £10 / £25 / £50 / £100 / custom.
+- The donate sheet passes `campaignId` so the campaign is credited.
+- The fee-cover toggle shows the itemised breakdown.
+
+### Graceful with sparse data
+
+A campaign with a name, tagline, goal, story and hero image must still produce a page worth sharing. No empty containers, no "no data" placeholders — sections with nothing in them simply don't render.
+
+---
+
+## Part 5 — Preview and the donor view
+
+- "Preview as a donor" available from the dashboard and from every editor section.
+- Preview renders the actual public component with draft data, not a mock.
+- A draft campaign is reachable by direct link for the organisation only, with a clear "Draft — only you can see this" banner.
+- Publishing flips `enabled` to true and makes the share URL live.
+- Unpublishing is available and reversible.
+
+---
+
+## Part 6 — Running it
+
+Once live, the dashboard shows, in this order:
+
+1. **Money** — raised on this campaign, what Root ProjX owes them, when the next payout runs, their last payout with its reference.
+2. **Supporters** — recent donors, first name and last initial, most recent first.
+3. **Campaigns** — live and draft, each with progress and an edit link.
+4. **Updates** — post an update, with photos. Prompt them if they haven't posted in 30 days, since a stale campaign converts badly.
+5. **Impact metrics** — their four numbers, with a prompt to refresh them monthly.
+
+---
+
+## Built-in room for a writing assistant
+
+We will later add an AI assistant inside the campaign builder so an organisation can talk through their campaign and have the page drafted with them. **Do not build the assistant now.** Build the socket it plugs into, so adding it later is one module and a key, not a refactor.
+
+What that means concretely:
+
+1. **Keep campaign content as structured fields, never freeform HTML.** Every field in Part 3 is separately readable and writable. An assistant that can only replace one blob is useless; one that can suggest a tagline, then a breakdown, then rewrite a story, is not.
+
+2. **One module boundary.** Create `artifacts/api-server/src/lib/campaign-assist.ts` exporting a single function with a settled shape:
+
+   `suggest({ field, orgContext, campaignDraft, instruction }) -> { suggestion: string } | { unavailable: true }`
+
+   Ship it returning `{ unavailable: true }`. No provider, no key, no prompt. When we add a provider later, this file is the only one that changes.
+
+3. **One endpoint.** `POST /campaigns/assist`, organisation-auth only, rate-limited, which calls that function and passes the result through. It returns 503 with a clear message while the assistant is unconfigured.
+
+4. **A feature flag.** `CAMPAIGN_ASSIST_ENABLED` env var, default off. Every assistant affordance in the UI is hidden when off, and the builder must be fully usable with it off — permanently, for any organisation that prefers to write their own.
+
+5. **The affordance in the UI.** Next to each long-text field in the builder (tagline, story, breakdown items, location descriptions), leave space for a "Help me write this" control. Build the component with its loading, error and unavailable states, wired to the endpoint. With the flag off it simply doesn't render.
+
+6. **Suggestions are drafts, never writes.** A returned suggestion appears for the organisation to accept, edit or reject. Nothing an assistant produces is ever saved to a campaign without a person accepting it. Record `assistUsed: true` on a campaign where a suggestion was accepted, so we can tell later whether it helped.
+
+7. **Context is scoped.** The assist function receives only that organisation's own profile and the campaign draft in progress. Never other organisations' content, never donor data.
+
+---
+
+## Data model additions
+
+New fields only. Nothing existing changes shape.
+
+On the organisation document:
+```
+impactMetrics: { peopleReached: {label, value, updatedAt}, groundCovered: {...}, resourcesDelivered: {...} }
+team: [{name, role, photoUrl}]
+```
+
+On a campaign (inside the org's embedded `campaigns` array):
+```
+tagline: string (max 140)
+matchFunding: { amount: number, funderName: string } | null
+breakdown: [{label, detail}]
+locations: [{name, description, photoUrl}]
+video: { url, posterUrl, captionsUrl } | null
+theme.unit: { singular, plural, imageUrl }
+```
+
+All optional, all with sensible empty defaults. Existing campaigns must keep working untouched.
+
+---
+
+## Walkthrough state
+
+On the organisation document:
+```
+walkthrough: { profileStep: number|null, campaignStep: number|null, profileDone: bool, campaignDone: bool, exitedAt: string|null }
+```
+
+Used only to resume and to decide whether to show the tour. Step completion itself is always derived from the real data, never from this.
+
+---
+
+## Constraints
+
+- Mobile-first. Organisations will do this on a phone, often on a slow connection. The walkthrough and campaign builder must work fully at 390px.
+- Use the existing colour system and component patterns. Do not introduce a new design language.
+- Never lose a draft. Autosave everywhere.
+- Every error message says what to do, not what went wrong.
+- No field anywhere collects or stores bank account numbers, sort codes or IBANs.
+- Keep every existing route working.
+
+---
+
+## Report back after each part
+
+For each part: the files you changed, any rules I need to publish, anything you had to decide that this spec didn't cover, and a screenshot of the main screen at 390px wide.

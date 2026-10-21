@@ -7,6 +7,96 @@
  */
 import * as zod from "zod";
 
+export const GetAdminPayoutsResponse = zod.object({
+  payouts: zod.array(
+    zod.object({
+      _id: zod.string(),
+      orgId: zod.string(),
+      orgName: zod.string(),
+      donationId: zod.string(),
+      stripeRef: zod.string(),
+      amountGbp: zod.number(),
+      currency: zod.string(),
+      method: zod.enum(["wise", "manual"]),
+      status: zod.enum(["queued", "sent", "failed"]),
+      createdAt: zod.string(),
+      batchId: zod.string().optional(),
+      wiseTransferId: zod.number().optional(),
+      sentAt: zod.string().optional(),
+      sentBy: zod.string().optional(),
+      reference: zod.string().optional(),
+      error: zod.string().optional(),
+    }),
+  ),
+  organisations: zod.array(
+    zod.object({
+      orgId: zod.string(),
+      orgName: zod.string(),
+      method: zod.enum(["stripe_connect", "wise", "manual", "none"]),
+      queuedTotalGbp: zod.number(),
+      eligibleTotalGbp: zod.number(),
+      due: zod.boolean(),
+      settlementLocked: zod.boolean(),
+    }),
+  ),
+  totalQueuedGbp: zod.number(),
+  failureCount: zod.number(),
+});
+
+export const RunAdminPayoutsResponse = zod.object({
+  results: zod.array(
+    zod.object({
+      orgId: zod.string(),
+      orgName: zod.string(),
+      amountGbp: zod.number(),
+      status: zod.enum([
+        "sent",
+        "failed",
+        "not_due",
+        "needs_manual_settlement",
+        "locked",
+      ]),
+      batchId: zod.string().optional(),
+      wiseTransferId: zod.number().optional(),
+      error: zod.string().optional(),
+    }),
+  ),
+});
+
+export const markAdminPayoutsSentBodyReferenceMax = 120;
+
+export const MarkAdminPayoutsSentBody = zod.object({
+  orgId: zod.string().min(1),
+  reference: zod.string().min(1).max(markAdminPayoutsSentBodyReferenceMax),
+});
+
+export const MarkAdminPayoutsSentResponse = zod.object({
+  orgId: zod.string(),
+  orgName: zod.string(),
+  amountGbp: zod.number(),
+  status: zod.enum([
+    "sent",
+    "failed",
+    "not_due",
+    "needs_manual_settlement",
+    "locked",
+  ]),
+  batchId: zod.string().optional(),
+  wiseTransferId: zod.number().optional(),
+  error: zod.string().optional(),
+});
+
+export const GetMyPayoutSummaryResponse = zod.object({
+  pendingGbp: zod.number(),
+  payoutMethod: zod.enum(["stripe_connect", "wise", "manual", "none"]),
+  lastSettled: zod
+    .object({
+      amountGbp: zod.number(),
+      sentAt: zod.string().nullable(),
+    })
+    .nullable(),
+});
+
 /**
  * @summary Health check
  */

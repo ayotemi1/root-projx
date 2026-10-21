@@ -6,3 +6,4 @@
 - [Stabilisation boundaries](stabilisation-boundaries.md) — one fix at a time, existing API tests after each fix, no unrelated refactors or automatic rules edits
 - [Mobile donation policy](mobile-donation-policy.md) — Apple rejected in-app donations; mobile must hand donations off to rootprojx.com.
 - [Payout data boundaries](payout-data-boundaries.md) — banking credentials stay off-platform; manual setup stores only request/approval and a short payee reminder.
+- [Node route-test bundling](node-route-test-bundling.md) — bundle generated workspace validators in raw Node tests; app-build module resolution does not carry over.

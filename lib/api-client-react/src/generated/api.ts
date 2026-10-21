@@ -32,7 +32,12 @@ import type {
   ListOrganisationsParams,
   LoginRequest,
   MessageResponse,
+  OrgPayoutSummary,
   Organisation,
+  PayoutOverview,
+  PayoutRunResult,
+  PayoutSettlementInput,
+  PayoutSettlementResult,
   ProfileResponse,
   PublicUser,
   RegisterRequest,
@@ -51,6 +56,298 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+export const getGetAdminPayoutsUrl = () => {
+  return `/api/admin/payouts`;
+};
+
+export const getAdminPayouts = async (
+  options?: RequestInit,
+): Promise<PayoutOverview> => {
+  return customFetch<PayoutOverview>(getGetAdminPayoutsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetAdminPayoutsQueryKey = () => {
+  return [`/api/admin/payouts`] as const;
+};
+
+export const getGetAdminPayoutsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAdminPayouts>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminPayouts>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetAdminPayoutsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getAdminPayouts>>> = ({
+    signal,
+  }) => getAdminPayouts({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminPayouts>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetAdminPayoutsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAdminPayouts>>
+>;
+export type GetAdminPayoutsQueryError = ErrorType<void>;
+
+export function useGetAdminPayouts<
+  TData = Awaited<ReturnType<typeof getAdminPayouts>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminPayouts>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetAdminPayoutsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getRunAdminPayoutsUrl = () => {
+  return `/api/admin/payouts/run`;
+};
+
+export const runAdminPayouts = async (
+  options?: RequestInit,
+): Promise<PayoutRunResult> => {
+  return customFetch<PayoutRunResult>(getRunAdminPayoutsUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getRunAdminPayoutsMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof runAdminPayouts>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof runAdminPayouts>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["runAdminPayouts"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof runAdminPayouts>>,
+    void
+  > = () => {
+    return runAdminPayouts(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RunAdminPayoutsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof runAdminPayouts>>
+>;
+
+export type RunAdminPayoutsMutationError = ErrorType<void>;
+
+export const useRunAdminPayouts = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof runAdminPayouts>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof runAdminPayouts>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getRunAdminPayoutsMutationOptions(options));
+};
+
+export const getMarkAdminPayoutsSentUrl = () => {
+  return `/api/admin/payouts/mark-sent`;
+};
+
+export const markAdminPayoutsSent = async (
+  payoutSettlementInput: PayoutSettlementInput,
+  options?: RequestInit,
+): Promise<PayoutSettlementResult> => {
+  return customFetch<PayoutSettlementResult>(getMarkAdminPayoutsSentUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(payoutSettlementInput),
+  });
+};
+
+export const getMarkAdminPayoutsSentMutationOptions = <
+  TError = ErrorType<void | PayoutSettlementResult>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof markAdminPayoutsSent>>,
+    TError,
+    { data: BodyType<PayoutSettlementInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof markAdminPayoutsSent>>,
+  TError,
+  { data: BodyType<PayoutSettlementInput> },
+  TContext
+> => {
+  const mutationKey = ["markAdminPayoutsSent"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof markAdminPayoutsSent>>,
+    { data: BodyType<PayoutSettlementInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return markAdminPayoutsSent(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type MarkAdminPayoutsSentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof markAdminPayoutsSent>>
+>;
+export type MarkAdminPayoutsSentMutationBody = BodyType<PayoutSettlementInput>;
+export type MarkAdminPayoutsSentMutationError =
+  ErrorType<void | PayoutSettlementResult>;
+
+export const useMarkAdminPayoutsSent = <
+  TError = ErrorType<void | PayoutSettlementResult>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof markAdminPayoutsSent>>,
+    TError,
+    { data: BodyType<PayoutSettlementInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof markAdminPayoutsSent>>,
+  TError,
+  { data: BodyType<PayoutSettlementInput> },
+  TContext
+> => {
+  return useMutation(getMarkAdminPayoutsSentMutationOptions(options));
+};
+
+export const getGetMyPayoutSummaryUrl = () => {
+  return `/api/payouts/my`;
+};
+
+export const getMyPayoutSummary = async (
+  options?: RequestInit,
+): Promise<OrgPayoutSummary> => {
+  return customFetch<OrgPayoutSummary>(getGetMyPayoutSummaryUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetMyPayoutSummaryQueryKey = () => {
+  return [`/api/payouts/my`] as const;
+};
+
+export const getGetMyPayoutSummaryQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMyPayoutSummary>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getMyPayoutSummary>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetMyPayoutSummaryQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getMyPayoutSummary>>
+  > = ({ signal }) => getMyPayoutSummary({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMyPayoutSummary>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetMyPayoutSummaryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getMyPayoutSummary>>
+>;
+export type GetMyPayoutSummaryQueryError = ErrorType<void>;
+
+export function useGetMyPayoutSummary<
+  TData = Awaited<ReturnType<typeof getMyPayoutSummary>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getMyPayoutSummary>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMyPayoutSummaryQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Health check

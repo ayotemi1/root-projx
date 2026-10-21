@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import * as api from "@/lib/api";
+import { myPayoutsKey } from "@/lib/payouts-api";
 import type { PayoutMethod, PayoutSetup as PayoutSetupData, WiseStatus } from "@/lib/api";
 
 export const BANK_APPROVED_TEXT = "Set up: bank transfer — we hold your account details securely outside the platform.";
@@ -79,6 +80,7 @@ export function PayoutSetup({
       setSelectError("");
       queryClient.setQueryData(["payout-setup", orgId], data);
       queryClient.invalidateQueries({ queryKey: ["payout-setup", orgId] });
+      queryClient.invalidateQueries({ queryKey: myPayoutsKey(orgId) });
     },
     onError: (e: Error) => setSelectError(e.message || "Could not change payout method."),
   });

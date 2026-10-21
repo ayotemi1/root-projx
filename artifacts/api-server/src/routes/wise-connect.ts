@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { randomUUID } from "crypto";
+import { disburseToOrg, getWisePlatformProfileId } from "../lib/wise.js";
 import { fsGet, fsPatch, getServerToken } from "../lib/firebase-rest.js";
 import { requireApprovedOrganisation, requireAuth, requireAdmin } from "../lib/auth.js";
 
@@ -11,19 +11,6 @@ const WISE_BASE =
     : "https://api.sandbox.transferwise.tech";
 
 // ── Wise API helpers ───────────────────────────────────────────────────────────
-
-async function getWisePlatformProfileId(apiKey: string): Promise<number> {
-  const res = await fetch(`${WISE_BASE}/v1/profiles`, {
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-  });
-  if (!res.ok) {
-    throw new Error("Failed to reach the Wise API — check that WISE_API_KEY is valid.");
-  }
-  const profiles = (await res.json()) as Array<{ id: number; type: string }>;
-  const biz = profiles.find((p) => p.type === "BUSINESS") ?? profiles[0];
-  if (!biz) throw new Error("No Wise profile found on this API key.");
-  return biz.id;
-}
 
 async function createWiseRecipient(
   apiKey: string,
@@ -243,99 +230,20 @@ router.post("/wise/disburse", requireAdmin, async (req, res) => {
       return;
     }
 
-    // ── Step 1: platform profile ───────────────────────────────────────────────
-    const profileId = await getWisePlatformProfileId(apiKey);
-
-    // ── Step 2: create quote — locks in GBP→GBP amount + rate ─────────────────
-    const quoteRes = await fetch(`${WISE_BASE}/v3/profiles/${profileId}/quotes`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        sourceCurrency: "GBP",
-        targetCurrency: "GBP",
-        sourceAmount: amountGbp,
-        payOut: "BALANCE",
-      }),
-    });
-
-    if (!quoteRes.ok) {
-      throw new Error(`Failed to create Wise quote: ${await quoteRes.text()}`);
-    }
-    const quote = (await quoteRes.json()) as { id: string };
-
-    // ── Step 3: create transfer instruction ────────────────────────────────────
-    const transferRes = await fetch(`${WISE_BASE}/v1/transfers`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        targetAccount: wiseRecipientId,
-        quoteUuid: quote.id,
-        customerTransactionId: randomUUID(),
-        details: {
-          reference: reference?.trim() || `Root ProjX — ${(org["name"] as string) ?? orgId}`,
-          transferPurpose: "verification.transfers.purpose.pay.bills",
-          sourceOfFunds: "verification.source.of.funds.other",
-        },
-      }),
-    });
-
-    if (!transferRes.ok) {
-      throw new Error(`Failed to create Wise transfer: ${await transferRes.text()}`);
-    }
-    const transfer = (await transferRes.json()) as { id: number; status: string };
-
-    // ── Step 4: fund from platform's Wise balance ──────────────────────────────
-    const payRes = await fetch(
-      `${WISE_BASE}/v3/profiles/${profileId}/transfers/${transfer.id}/payments`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ type: "BALANCE" }),
-      },
-    );
-
-    if (!payRes.ok) {
-      // Transfer was created but funding failed — tell admin so they can handle it in Wise dashboard
-      throw new Error(
-        `Transfer created (ID: ${transfer.id}) but funding from Wise balance failed: ${await payRes.text()}. ` +
-          `You can retry or cancel this transfer from wise.com.`,
-      );
-    }
-    const payment = (await payRes.json()) as { type: string; status: string };
-
-    // ── Step 5: record disbursement in Firestore ───────────────────────────────
-    const disbursedAt = new Date().toISOString();
-    await fsPatch(
-      "organisations",
-      orgId,
-      {
-        ...org,
-        lastDisbursementAt: disbursedAt,
-        lastDisbursementAmountGbp: amountGbp,
-        lastDisbursementTransferId: transfer.id,
-      },
-      serverToken,
-    );
+    const transferId = await disburseToOrg(orgId, amountGbp, reference?.trim() ?? "");
+    const settled = await fsGet("organisations", orgId, serverToken);
+    const disbursedAt = settled?.lastDisbursementAt;
 
     req.log.info(
-      { orgId, amountGbp, transferId: transfer.id, paymentStatus: payment.status },
+      { orgId, amountGbp, transferId },
       "Wise disbursement initiated",
     );
 
     res.json({
       ok: true,
-      transferId: transfer.id,
-      transferStatus: transfer.status,
-      paymentStatus: payment.status,
+      transferId,
+      transferStatus: settled?.lastDisbursementTransferStatus,
+      paymentStatus: settled?.lastDisbursementPaymentStatus,
       amountGbp,
       recipientEmail: wiseEmail,
       disbursedAt,

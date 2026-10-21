@@ -17,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useAuth } from "@/context/AuthContext";
 import * as api from "@/lib/api";
 import { PayoutSetup } from "@/components/payout-setup";
+import { PendingPayout } from "@/components/pending-payout";
 import type { FeedUpdate, Campaign, CampaignPhase } from "@/lib/api";
 
 const UPDATE_TYPES = ["update", "milestone", "campaign"] as const;
@@ -1181,6 +1182,8 @@ export default function DashboardPage() {
             token={token!}
             onUpdated={() => queryClient.invalidateQueries({ queryKey: ["org", orgId] })}
           />
+
+          <PendingPayout key={`pending-${orgId}`} orgId={orgId} token={token!} />
 
           <PayoutSetup key={orgId} orgId={orgId} token={token!} totalRaised={org?.totalRaised ?? 0} connectComplete={connectComplete} />
 

@@ -43,6 +43,7 @@ export function withoutPrivatePayoutSetup(org: Record<string, unknown>) {
     payoutManualRequested: _requested,
     payoutManualApproved: _approved,
     payoutManualLabel: _label,
+    payoutSettlementBatchId: _settlementBatch,
     ...publicFields
   } = org;
   return { ...publicFields, payoutMethod: resolvePayoutMethod(org) };

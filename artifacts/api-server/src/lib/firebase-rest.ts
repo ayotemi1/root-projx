@@ -164,20 +164,71 @@ export async function fsGet(
   return fromFsDoc(doc.fields ?? {});
 }
 
+// Atomic create-only write: retries/concurrent deliveries cannot overwrite a
+// ledger row that has already been settled.
+export async function fsCreateIfAbsent(
+  collection: string, docId: string, data: Record<string, unknown>, idToken: string,
+): Promise<boolean> {
+  const fields = Object.fromEntries(Object.entries(data).map(([k, v]) => [k, toFsVal(v)]));
+  const res = await fetch(`${FIRESTORE}/${collection}?documentId=${encodeURIComponent(docId)}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${idToken}` },
+    body: JSON.stringify({ fields }),
+  });
+  if (res.status === 409) return false;
+  if (!res.ok) throw new Error(`Firestore create-only ${collection} failed ${res.status}`);
+  return true;
+}
+
+// Cross-process settlement mutex. Never expires automatically: an interrupted
+// transfer must be reconciled before another run may send more money.
+export async function fsTrySettlementLock(orgId: string, batchId: string, token: string): Promise<boolean> {
+  const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+  const response = await fetch(`${FIRESTORE}/organisations/${encodeURIComponent(orgId)}`, { headers });
+  if (!response.ok) throw new Error("Cannot load organisation for settlement lock");
+  const doc = await response.json() as { name: string; updateTime: string; fields: Record<string, FsValue> };
+  if (fromFsVal(doc.fields.payoutSettlementBatchId ?? { nullValue: null })) return false;
+  const result = await fetch(`${FIRESTORE}:commit`, { method: "POST", headers, body: JSON.stringify({
+    writes: [{ update: { name: doc.name, fields: { payoutSettlementBatchId: { stringValue: batchId } } },
+      updateMask: { fieldPaths: ["payoutSettlementBatchId"] }, currentDocument: { updateTime: doc.updateTime } }],
+  }) });
+  if (result.status === 409 || result.status === 400 && (await result.clone().text()).includes("FAILED_PRECONDITION")) return false;
+  if (!result.ok) throw new Error(`Cannot acquire settlement lock (${result.status})`);
+  return true;
+}
+
+export async function fsReleaseSettlementLock(orgId: string, token: string): Promise<void> {
+  const response = await fetch(`${FIRESTORE}:commit`, {
+    method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ writes: [{
+      update: { name: `projects/${PROJECT_ID}/databases/(default)/documents/organisations/${orgId}`,
+        fields: { payoutSettlementBatchId: { nullValue: null } } },
+      updateMask: { fieldPaths: ["payoutSettlementBatchId"] }, currentDocument: { exists: true },
+    }] }),
+  });
+  if (!response.ok) throw new Error("Could not release settlement lock; reconcile before retrying");
+}
+
 export async function fsPatch(
   collection: string,
   docId: string,
   data: Record<string, unknown>,
   idToken?: string,
 ): Promise<void> {
+  // Some legacy callers still pass a whole org snapshot. They must never clear
+  // or restore a stale settlement lock. Only the dedicated atomic helpers own it.
+  const updates = collection === "organisations"
+    ? Object.fromEntries(Object.entries(data).filter(([key]) => key !== "payoutSettlementBatchId"))
+    : data;
+  if (Object.keys(updates).length === 0) return;
   const fields: Record<string, FsValue> = {};
-  for (const [k, v] of Object.entries(data)) fields[k] = toFsVal(v);
+  for (const [k, v] of Object.entries(updates)) fields[k] = toFsVal(v);
 
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (idToken) headers["Authorization"] = `Bearer ${idToken}`;
 
   const updateMask = new URLSearchParams();
-  for (const field of Object.keys(data)) updateMask.append("updateMask.fieldPaths", field);
+  for (const field of Object.keys(updates)) updateMask.append("updateMask.fieldPaths", field);
   const query = updateMask.toString();
   const res = await fetch(`${FIRESTORE}/${collection}/${docId}${query ? `?${query}` : ""}`, {
     method: "PATCH",

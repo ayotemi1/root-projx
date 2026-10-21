@@ -1,5 +1,6 @@
 import { Router } from "express";
 import crypto from "crypto";
+import { getAdminTokenValue, requireAdmin } from "../lib/admin-auth.js";
 import { activePayoutMethod, manualPayoutLabel } from "../lib/payout-setup.js";
 import {
   fsCreate,
@@ -26,20 +27,6 @@ const router = Router();
 const TEAM_EMAIL = process.env.TEAM_EMAIL ?? "info@rootprojx.com";
 
 // ── Admin auth ────────────────────────────────────────────────────────────────
-
-function getAdminTokenValue(): string {
-  const pwd = process.env.ADMIN_PASSWORD ?? "rootprojx-admin";
-  return crypto.createHmac("sha256", pwd).update("rootprojx-admin-session").digest("hex");
-}
-
-function requireAdmin(req: import("express").Request, res: import("express").Response, next: import("express").NextFunction): void {
-  const token = req.headers["x-admin-token"] as string | undefined;
-  if (!token || token !== getAdminTokenValue()) {
-    res.status(401).json({ error: "Admin authentication required" });
-    return;
-  }
-  next();
-}
 
 function avatarInitials(name: string): string {
   return name

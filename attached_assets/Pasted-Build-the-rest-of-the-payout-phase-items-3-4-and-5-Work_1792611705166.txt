@@ -1,0 +1,32 @@
+Build the rest of the payout phase — items 3, 4 and 5. Work through them in order. Report after each, then continue without waiting for me unless something contradicts this spec.
+
+ITEM 3 — the ledger
+
+Create a `payouts` Firestore collection, one document per donation Root ProjX must forward:
+{ orgId, orgName, donationId, stripeRef, amountGbp, currency, method,
+  status: "queued"|"sent"|"failed", batchId?, wiseTransferId?, sentAt?, sentBy?,
+  reference?, error?, createdAt }
+
+- In routes/webhooks.ts handlePaymentSuccess: if metadata.payoutMethod is "wise" or "manual", write a queued payout. amountGbp is the toOrgGbp value from the Phase 0 accounting helper — what the org is owed, not what was charged. Nothing for stripe_connect.
+- Idempotent on stripeRef, like the donation write. Stripe retries; we must never double-count what we owe.
+- Add settlement constants to lib/payouts.ts: PAYOUT_HOLD_DAYS = 7, PAYOUT_THRESHOLD_GBP = 250, PAYOUT_MAX_AGE_DAYS = 30. Export a helper that takes an org's queued payouts and today's date and returns whether they're due plus the eligible total: exclude anything younger than the hold period; due if the eligible total >= threshold OR the oldest eligible payout is older than max age.
+- Print the firestore.rules block for `payouts` (server-only read and write). Do not edit the rules file.
+
+ITEM 4 — settlement
+
+- Extract the Wise logic inside POST /wise/disburse in routes/wise-connect.ts into lib/wise.ts as disburseToOrg(orgId, amountGbp, reference), doing the existing profile → quote → transfer → fund sequence and returning the transfer id. Keep the existing route working by calling it.
+- GET /admin/payouts — all payouts newest first, plus a per-organisation summary of queued totals and whether each is due.
+- POST /admin/payouts/run — group eligible queued payouts by organisation using the due helper. For a "wise" org, sum and call disburseToOrg ONCE for the total, then mark those payouts sent with the transfer id and a shared batchId. For a "manual" org, or if WISE_API_KEY is missing, leave them queued and return them as "needs manual settlement" with the total owed. A failure for one organisation marks that org's payouts failed with the error and continues to the next — one failure must never abort the run.
+- POST /admin/payouts/mark-sent — body { orgId, reference }. Marks that org's eligible queued payouts sent, sentBy "manual", with the reference and a shared batchId. This is how I record a bank transfer I made by hand.
+- Use the same admin auth as the other /admin/* routes. Tell me which that is.
+- One transfer per organisation per run, never one per donation.
+
+ITEM 5 — the screens
+
+- admin.tsx: a Payouts tab. Total queued across all orgs and a count of failures at the top. A row per organisation: queued balance, payout method, due or not, a "Mark as sent" button opening a small dialog for a reference. A "Run payouts" button showing per-org results afterwards, with anything needing manual settlement listed clearly. Below, payout history — date, org, amount, method, status, reference or transfer id. Failures in red with the error.
+- dashboard.tsx: a pending payout line for the organisation — "Pending payout: £X" when they have queued payouts, plus the date and amount of their last settled one. If their payout method is "none", prompt them to set one.
+- Existing colour system and component patterns. Mobile-first.
+
+Tests across all three: a wise/manual donation creates one queued payout at the right amount; stripe_connect creates none; replay creates no duplicate; the due helper respects hold, threshold and max age; a run with no WISE_API_KEY leaves everything queued with correct totals; a mocked Wise failure for one org doesn't affect another's.
+
+Reply after each item with files changed and test output, and give me the rules block when you reach it.

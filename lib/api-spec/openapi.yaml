@@ -25,6 +25,66 @@ tags:
   - name: profile
     description: User profile
 paths:
+  /admin/payouts:
+    get:
+      operationId: getAdminPayouts
+      security: [{adminToken: []}]
+      responses:
+        "200":
+          description: Payout ledger and organisation balances
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/PayoutOverview"}
+        "401": {description: Admin authentication required}
+        "500": {description: Payout ledger unavailable}
+  /admin/payouts/run:
+    post:
+      operationId: runAdminPayouts
+      security: [{adminToken: []}]
+      responses:
+        "200":
+          description: Per-organisation settlement outcomes
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/PayoutRunResult"}
+        "401": {description: Admin authentication required}
+        "500": {description: Run could not start}
+  /admin/payouts/mark-sent:
+    post:
+      operationId: markAdminPayoutsSent
+      security: [{adminToken: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/PayoutSettlementInput"}
+      responses:
+        "200":
+          description: Eligible queued payouts marked sent
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/PayoutSettlementResult"}
+        "400": {description: Invalid organisation or reference}
+        "401": {description: Admin authentication required}
+        "409":
+          description: No eligible payouts or settlement locked
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/PayoutSettlementResult"}
+        "500": {description: Recording failed; reconcile before retrying}
+  /payouts/my:
+    get:
+      operationId: getMyPayoutSummary
+      security: [{bearerAuth: []}]
+      responses:
+        "200":
+          description: Authenticated organisation's private payout summary
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/OrgPayoutSummary"}
+        "401": {description: Authentication required}
+        "403": {description: Approved organisation required}
+        "500": {description: Payout summary unavailable}
   /healthz:
     get:
       operationId: healthCheck
@@ -509,12 +569,97 @@ paths:
 
 components:
   securitySchemes:
+    adminToken:
+      type: apiKey
+      in: header
+      name: x-admin-token
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
 
   schemas:
+    PayoutRow:
+      type: object
+      required: [_id, orgId, orgName, donationId, stripeRef, amountGbp, currency, method, status, createdAt]
+      properties:
+        _id: {type: string}
+        orgId: {type: string}
+        orgName: {type: string}
+        donationId: {type: string}
+        stripeRef: {type: string}
+        amountGbp: {type: number}
+        currency: {type: string}
+        method: {type: string, enum: [wise, manual]}
+        status: {type: string, enum: [queued, sent, failed]}
+        createdAt: {type: string}
+        batchId: {type: string}
+        wiseTransferId: {type: number}
+        sentAt: {type: string}
+        sentBy: {type: string}
+        reference: {type: string}
+        error: {type: string}
+    PayoutOrgSummary:
+      type: object
+      required: [orgId, orgName, method, queuedTotalGbp, eligibleTotalGbp, due, settlementLocked]
+      properties:
+        orgId: {type: string}
+        orgName: {type: string}
+        method: {type: string, enum: [stripe_connect, wise, manual, none]}
+        queuedTotalGbp: {type: number}
+        eligibleTotalGbp: {type: number}
+        due: {type: boolean}
+        settlementLocked: {type: boolean}
+    PayoutOverview:
+      type: object
+      required: [payouts, organisations, totalQueuedGbp, failureCount]
+      properties:
+        payouts:
+          type: array
+          items: {$ref: "#/components/schemas/PayoutRow"}
+        organisations:
+          type: array
+          items: {$ref: "#/components/schemas/PayoutOrgSummary"}
+        totalQueuedGbp: {type: number}
+        failureCount: {type: integer}
+    PayoutSettlementInput:
+      type: object
+      additionalProperties: false
+      required: [orgId, reference]
+      properties:
+        orgId: {type: string, minLength: 1}
+        reference: {type: string, minLength: 1, maxLength: 120}
+    PayoutSettlementResult:
+      type: object
+      required: [orgId, orgName, amountGbp, status]
+      properties:
+        orgId: {type: string}
+        orgName: {type: string}
+        amountGbp: {type: number}
+        status: {type: string, enum: [sent, failed, not_due, needs_manual_settlement, locked]}
+        batchId: {type: string}
+        wiseTransferId: {type: number}
+        error: {type: string}
+    PayoutRunResult:
+      type: object
+      required: [results]
+      properties:
+        results:
+          type: array
+          items: {$ref: "#/components/schemas/PayoutSettlementResult"}
+    OrgPayoutSummary:
+      type: object
+      required: [pendingGbp, lastSettled, payoutMethod]
+      properties:
+        pendingGbp: {type: number}
+        payoutMethod: {type: string, enum: [stripe_connect, wise, manual, none]}
+        lastSettled:
+          type: object
+          nullable: true
+          required: [amountGbp, sentAt]
+          properties:
+            amountGbp: {type: number}
+            sentAt: {type: string, nullable: true}
     HealthStatus:
       type: object
       properties:

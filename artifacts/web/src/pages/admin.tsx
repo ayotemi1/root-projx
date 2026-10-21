@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
-import { CheckCircle2, XCircle, Clock, Users, FileText, LogOut, RefreshCw, Building2, CreditCard, Pencil, X } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, Users, FileText, LogOut, RefreshCw, Building2, CreditCard, Pencil, X, Wallet } from "lucide-react";
+import { AdminPayouts } from "@/components/admin-payouts";
 
 const RED_DEEP = "#7A0000";
 const RED = "#B50000";
@@ -145,7 +146,7 @@ const TD: React.CSSProperties = { padding: "14px 20px", borderTop: "1px solid #f
 
 export default function AdminPage() {
   const [, setLocation] = useLocation();
-  const [tab, setTab] = useState<"applications" | "supporters" | "organisations" | "donations">("applications");
+  const [tab, setTab] = useState<"applications" | "supporters" | "organisations" | "donations" | "payouts">("applications");
 
   const [applications, setApplications]   = useState<OrgApplication[]>([]);
   const [supporters,   setSupporters]     = useState<Supporter[]>([]);
@@ -354,10 +355,10 @@ export default function AdminPage() {
 
       {/* ── Top bar ──────────────────────────────────────────────────── */}
       <div style={{ background: RED_DEEP, padding: "0 24px" }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
+        <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", flex: "1 1 640px", minWidth: 0, flexWrap: "wrap", alignItems: "center", gap: 16 }}>
             <img src="/logo-stylised.png" alt="Root ProjX" style={{ height: 36, objectFit: "contain", padding: "12px 0" }} />
-            <div style={{ display: "flex" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", minWidth: 0 }}>
               <button style={tabStyle(tab === "applications")} onClick={() => setTab("applications")}>
                 <FileText size={14} />Applications
               </button>
@@ -369,6 +370,9 @@ export default function AdminPage() {
               </button>
               <button style={tabStyle(tab === "donations")} onClick={() => setTab("donations")}>
                 <CreditCard size={14} />Donations
+              </button>
+              <button style={tabStyle(tab === "payouts")} onClick={() => setTab("payouts")} data-testid="tab-payouts">
+                <Wallet size={14} />Payouts
               </button>
             </div>
           </div>
@@ -384,6 +388,8 @@ export default function AdminPage() {
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px" }}>
 
         {error && <p style={{ color: RED, marginBottom: 16 }}>{error}</p>}
+
+        {tab === "payouts" && <AdminPayouts token={token} onUnauthorized={logout} />}
 
         {/* ── Applications tab ──────────────────────────────────────── */}
         {tab === "applications" && (

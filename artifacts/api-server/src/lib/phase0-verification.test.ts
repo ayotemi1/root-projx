@@ -9,7 +9,8 @@ async function isolatedRouters() {
   const mocks: Record<string, string> = {
     state: `
       export const state = {
-        documents: new Map(), writes: [], errors: [], emails: [], checkout: null, event: null
+        documents: new Map(), writes: [], errors: [], emails: [], checkout: null, event: null,
+        failLedgerOnce: false
       };
       state.documents.set("organisations/test-org", {
         _id: "test-org", name: "Test Organisation", stripe_account_id: "acct_synthetic",
@@ -37,6 +38,14 @@ async function isolatedRouters() {
         state.writes.push({collection, id, data:structuredClone(data)});
         state.documents.set(collection + "/" + id, structuredClone(data));
         return id;
+      };
+      export const fsCreateIfAbsent = async (collection,id,data) => {
+        if (state.failLedgerOnce) { state.failLedgerOnce=false; throw Error("Synthetic ledger outage"); }
+        const key=collection+"/"+id;
+        if(state.documents.has(key)) return false;
+        state.documents.set(key,structuredClone(data));
+        state.writes.push({collection,id,data:structuredClone(data)});
+        return true;
       };
       export const fsPatch = async (collection, id, patch) => {
         const key = collection + "/" + id;
@@ -211,6 +220,49 @@ for (const path of ["/donations/checkout", "/donations/anonymous-checkout"]) {
     }
   });
 }
+
+for (const method of ["wise", "manual", "stripe_connect"]) {
+  test(`webhook payout ledger: ${method}, replay and canonical amount`, async () => {
+    const {webhooks, state} = await isolatedRouters();
+    const event = {id:"evt_ledger", type:"payment_intent.succeeded", created:1791979200, data:{object:{
+      id:"pi_ledger", amount:325, currency:"gbp", metadata:{
+        orgId:"test-org", orgName:"Test Organisation", originalAmountPence:"300",
+        feeCovered:"true", payoutMethod:method,
+      },
+    }}};
+    const req = {body:Buffer.from(JSON.stringify(event)),headers:{"stripe-signature":"synthetic-signature"},
+      log:{info(){},error(){}}};
+    await invoke(webhooks,"/stripe",req);
+    await invoke(webhooks,"/stripe",req);
+    const rows = state.writes.filter((w:any)=>w.collection==="payouts");
+    assert.equal(rows.length, method === "stripe_connect" ? 0 : 1);
+    if(rows.length) {
+      assert.equal(rows[0].data.amountGbp,2.85);
+      assert.equal(rows[0].data.status,"queued");
+      assert.equal(rows[0].data.method,method);
+      assert.equal(rows[0].data.stripeRef,"pi_ledger");
+      // A replay must never reset a settled row to queued.
+      state.documents.get("payouts/"+rows[0].id).status="sent";
+      await invoke(webhooks,"/stripe",req);
+      assert.equal(state.documents.get("payouts/"+rows[0].id).status,"sent");
+    }
+    assert.equal(state.writes.filter((w:any)=>w.collection==="donations").length,1);
+  });
+}
+
+test("webhook retry repairs a failed ledger write after donation recording", async () => {
+  const {webhooks,state}=await isolatedRouters();
+  state.failLedgerOnce=true;
+  const event={type:"payment_intent.succeeded",data:{object:{id:"pi_repair",amount:300,currency:"gbp",
+    metadata:{orgId:"test-org",originalAmountPence:"300",payoutMethod:"manual"}}}};
+  const req={body:Buffer.from(JSON.stringify(event)),headers:{"stripe-signature":"synthetic-signature"},log:{info(){},error(){}}};
+  await invoke(webhooks,"/stripe",req,500);
+  await invoke(webhooks,"/stripe",req);
+  assert.equal(state.writes.filter((w:any)=>w.collection==="payouts").length,1);
+  assert.equal(state.writes.filter((w:any)=>w.collection==="payouts")[0].data.amountGbp,2.60);
+  assert.equal(state.writes.filter((w:any)=>w.collection==="donations").length,1);
+  assert.equal(state.documents.get("organisations/test-org").totalRaised,13);
+});
 
 for (const feeCovered of [true, false]) {
   test(`Phase 0 synthetic Checkout webhook: £3, campaign set, fee coverage ${feeCovered ? "ON" : "OFF"}`, async (t) => {
