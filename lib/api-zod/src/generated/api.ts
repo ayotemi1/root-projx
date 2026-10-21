@@ -7,6 +7,25 @@
  */
 import * as zod from "zod";
 
+export const getWiseDisbursementsQueryOrgIdRegExp = new RegExp("^[^\/\\s]+$");
+
+export const GetWiseDisbursementsQueryParams = zod.object({
+  orgId: zod.coerce.string().min(1).regex(getWiseDisbursementsQueryOrgIdRegExp),
+});
+
+export const GetWiseDisbursementsResponse = zod.object({
+  disbursements: zod.array(
+    zod.object({
+      _id: zod.string(),
+      orgId: zod.string(),
+      amountGbp: zod.number(),
+      transferId: zod.number(),
+      disbursedAt: zod.string(),
+      recipientEmail: zod.string().nullable(),
+    }),
+  ),
+});
+
 export const GetPublicCampaignsParams = zod.object({
   id: zod.coerce.string(),
 });

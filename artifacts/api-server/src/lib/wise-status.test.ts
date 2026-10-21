@@ -8,6 +8,12 @@ test("Wise status returns the organisation's last payout or explicit nulls", asy
     entryPoints: [new URL("../routes/wise-connect.ts", import.meta.url).pathname],
     bundle: true, write: false, platform: "node", format: "cjs", packages: "external",
     plugins: [{ name: "mock-boundaries", setup(b) {
+      b.onResolve({ filter: /^@workspace\/api-zod$/ }, () => ({
+        path: new URL("../../../../lib/api-zod/src/generated/api.ts", import.meta.url).pathname,
+      }));
+      b.onResolve({ filter: /^zod$/ }, () => ({
+        path: new URL("../../../../lib/api-zod/node_modules/zod/index.cjs", import.meta.url).pathname,
+      }));
       b.onResolve({ filter: /\/(auth|firebase-rest|wise)\.js$/ }, args => ({
         path: args.path.split("/").at(-1)!, namespace: "mock",
       }));
@@ -20,6 +26,7 @@ test("Wise status returns the organisation's last payout or explicit nulls", asy
           export const getServerToken=async()=>"synthetic";
           export const fsGet=async()=>globalThis.wiseStatusTestOrg;
           export const fsPatch=async()=>{throw Error("Unexpected write")};
+          export const fsQuery=async()=>{throw Error("Unexpected query")};
         ` : `
           export const disburseToOrg=async()=>{throw Error("Unexpected transfer")};
           export const getWisePlatformProfileId=async()=>{throw Error("Unexpected Wise call")};

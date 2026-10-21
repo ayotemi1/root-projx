@@ -31,6 +31,8 @@ import type {
   FollowRequest,
   GetCampaignAssistStatus200,
   GetHelpOrgsParams,
+  GetWiseDisbursements200,
+  GetWiseDisbursementsParams,
   HealthStatus,
   HelpReview,
   ListOrganisationsParams,
@@ -62,6 +64,102 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+export const getGetWiseDisbursementsUrl = (
+  params: GetWiseDisbursementsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/wise/disbursements?${stringifiedParams}`
+    : `/api/wise/disbursements`;
+};
+
+export const getWiseDisbursements = async (
+  params: GetWiseDisbursementsParams,
+  options?: RequestInit,
+): Promise<GetWiseDisbursements200> => {
+  return customFetch<GetWiseDisbursements200>(
+    getGetWiseDisbursementsUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetWiseDisbursementsQueryKey = (
+  params?: GetWiseDisbursementsParams,
+) => {
+  return [`/api/wise/disbursements`, ...(params ? [params] : [])] as const;
+};
+
+export const getGetWiseDisbursementsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getWiseDisbursements>>,
+  TError = ErrorType<void>,
+>(
+  params: GetWiseDisbursementsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getWiseDisbursements>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetWiseDisbursementsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getWiseDisbursements>>
+  > = ({ signal }) =>
+    getWiseDisbursements(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getWiseDisbursements>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetWiseDisbursementsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getWiseDisbursements>>
+>;
+export type GetWiseDisbursementsQueryError = ErrorType<void>;
+
+export function useGetWiseDisbursements<
+  TData = Awaited<ReturnType<typeof getWiseDisbursements>>,
+  TError = ErrorType<void>,
+>(
+  params: GetWiseDisbursementsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getWiseDisbursements>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetWiseDisbursementsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 export const getGetPublicCampaignsUrl = (id: string) => {
   return `/api/organisations/${id}/campaigns`;

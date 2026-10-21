@@ -25,6 +25,34 @@ tags:
   - name: profile
     description: User profile
 paths:
+  /wise/disbursements:
+    get:
+      operationId: getWiseDisbursements
+      security: [{adminSecret: []}]
+      parameters:
+        - in: query
+          name: orgId
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            pattern: '^[^/\s]+$'
+      responses:
+        "200":
+          description: Full organisation disbursement history, newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [disbursements]
+                properties:
+                  disbursements:
+                    type: array
+                    items: {$ref: "#/components/schemas/WiseDisbursement"}
+        "400": {description: Invalid or missing organisation ID}
+        "401": {description: Admin secret required}
+        "503": {description: Admin access not configured}
+        "500": {description: History unavailable}
   /organisations/{id}/campaigns:
     parameters:
       - {name: id, in: path, required: true, schema: {type: string}}
@@ -678,6 +706,10 @@ paths:
 
 components:
   securitySchemes:
+    adminSecret:
+      type: apiKey
+      in: header
+      name: X-Admin-Secret
     adminToken:
       type: apiKey
       in: header
@@ -688,6 +720,16 @@ components:
       bearerFormat: JWT
 
   schemas:
+    WiseDisbursement:
+      type: object
+      required: [_id, orgId, amountGbp, transferId, disbursedAt, recipientEmail]
+      properties:
+        _id: {type: string}
+        orgId: {type: string}
+        amountGbp: {type: number}
+        transferId: {type: integer}
+        disbursedAt: {type: string}
+        recipientEmail: {type: [string, "null"]}
     PayoutRow:
       type: object
       required: [_id, orgId, orgName, donationId, stripeRef, amountGbp, currency, method, status, createdAt]

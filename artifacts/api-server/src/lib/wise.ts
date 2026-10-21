@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { fsGet, fsPatch, getServerToken } from "./firebase-rest.js";
+import { fsCreate, fsGet, fsPatch, fsQuery, getServerToken } from "./firebase-rest.js";
 
 const WISE_BASE = process.env.REPLIT_DEPLOYMENT === "1"
   ? "https://api.wise.com" : "https://api.sandbox.transferwise.tech";
@@ -28,6 +28,9 @@ export async function disburseToOrg(orgId: string, amountGbp: number, reference:
     throw new Error("This organisation is not approved for payouts");
   }
   if (!org.wise_recipient_id) throw new Error("This organisation has not connected a Wise account yet.");
+  // The history collection needs server-only Firestore rules. Fail before
+  // contacting Wise if those rules have not been published yet.
+  await fsQuery("disbursements", [{ field: "orgId", op: "EQUAL", value: orgId }], token, { limit: 1 });
   const profileId = await getWisePlatformProfileId(apiKey);
   async function post(path: string, body: Record<string, unknown>) {
     const result = await fetch(`${WISE_BASE}${path}`, { method: "POST",
@@ -53,8 +56,15 @@ export async function disburseToOrg(orgId: string, amountGbp: number, reference:
       { wiseTransferId: transfer.id });
   }
   try {
+    const disbursedAt = new Date().toISOString();
+    // Keep the audit record before updating the display-only summary. A failed
+    // summary update must not erase the record of an already funded transfer.
+    await fsCreate("disbursements", {
+      orgId, amountGbp, transferId: transfer.id, disbursedAt,
+      recipientEmail: org.wise_email ?? null,
+    }, token);
     await fsPatch("organisations", orgId, {
-      lastDisbursementAt: new Date().toISOString(), lastDisbursementAmountGbp: amountGbp,
+      lastDisbursementAt: disbursedAt, lastDisbursementAmountGbp: amountGbp,
       lastDisbursementTransferId: transfer.id, lastDisbursementTransferStatus: transfer.status,
       lastDisbursementPaymentStatus: payment.status,
     }, token);

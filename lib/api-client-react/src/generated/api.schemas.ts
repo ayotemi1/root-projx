@@ -5,6 +5,16 @@
  * Root ProjX API — community giving platform
  * OpenAPI spec version: 0.1.0
  */
+export interface WiseDisbursement {
+  _id: string;
+  orgId: string;
+  amountGbp: number;
+  transferId: number;
+  disbursedAt: string;
+  /** @nullable */
+  recipientEmail: string | null;
+}
+
 export type PayoutRowMethod =
   (typeof PayoutRowMethod)[keyof typeof PayoutRowMethod];
 
@@ -579,6 +589,18 @@ export interface UpdateProfileRequest {
   email?: string;
   phone?: string;
 }
+
+export type GetWiseDisbursementsParams = {
+  /**
+   * @minLength 1
+   * @pattern ^[^/\s]+$
+   */
+  orgId: string;
+};
+
+export type GetWiseDisbursements200 = {
+  disbursements: WiseDisbursement[];
+};
 
 export type SaveCampaignDraft400UnmetGatesItem = {
   id?: string;

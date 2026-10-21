@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { disburseToOrg, getWisePlatformProfileId } from "../lib/wise.js";
-import { fsGet, fsPatch, getServerToken } from "../lib/firebase-rest.js";
+import { fsGet, fsPatch, fsQuery, getServerToken } from "../lib/firebase-rest.js";
+import { GetWiseDisbursementsQueryParams, GetWiseDisbursementsResponse } from "@workspace/api-zod";
 import { requireApprovedOrganisation, requireAuth, requireAdmin } from "../lib/auth.js";
 
 const router = Router();
@@ -207,7 +208,7 @@ router.delete("/wise/connect", requireAuth, requireApprovedOrganisation, async (
 //   3. POST /v3/profiles/{id}/quotes → lock in amount + exchange rate (quoteId)
 //   4. POST /v1/transfers         → create transfer instruction (transferId)
 //   5. POST /v3/profiles/{id}/transfers/{id}/payments → fund from Wise balance
-//   6. Patch Firestore org doc with disbursement record
+//   6. Append permanent history and update the org's last-paid summary
 //
 // Auth: X-Admin-Secret header must match ADMIN_SECRET env var.
 //
@@ -280,6 +281,27 @@ router.post("/wise/disburse", requireAdmin, async (req, res) => {
     req.log.error({ err }, "POST /wise/disburse error");
     const msg = err instanceof Error ? err.message : "Disbursement failed";
     res.status(500).json({ error: msg });
+  }
+});
+
+// ── GET /wise/disbursements — full history, platform administrators only ──────
+router.get("/wise/disbursements", requireAdmin, async (req, res): Promise<void> => {
+  const query = GetWiseDisbursementsQueryParams.safeParse(req.query);
+  if (typeof req.query.orgId !== "string" || !query.success) {
+    res.status(400).json({ error: "orgId must be a non-empty organisation ID" });
+    return;
+  }
+  try {
+    const token = await getServerToken();
+    const history = await fsQuery("disbursements", [
+      { field: "orgId", op: "EQUAL", value: query.data.orgId },
+    ], token);
+    // No limit: return the full history. Sort locally to avoid a composite index.
+    history.sort((a, b) => String(b.disbursedAt).localeCompare(String(a.disbursedAt)));
+    res.json(GetWiseDisbursementsResponse.parse({ disbursements: history }));
+  } catch (err) {
+    req.log.error({ err }, "GET /wise/disbursements error");
+    res.status(500).json({ error: "Failed to fetch disbursement history" });
   }
 });
 
