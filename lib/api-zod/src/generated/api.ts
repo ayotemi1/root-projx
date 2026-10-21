@@ -7,6 +7,618 @@
  */
 import * as zod from "zod";
 
+export const GetPublicCampaignsParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const getPublicCampaignsResponseOneNameMax = 200;
+
+export const getPublicCampaignsResponseOneTaglineMax = 140;
+
+export const getPublicCampaignsResponseOneDescriptionMax = 20000;
+
+export const getPublicCampaignsResponseOneGoalMin = 0;
+
+export const getPublicCampaignsResponseOneVolunteersNeededMin = 0;
+
+export const getPublicCampaignsResponseOneMatchFundingAmountMin = 0;
+
+export const getPublicCampaignsResponseOneMatchFundingFunderNameMax = 200;
+
+export const getPublicCampaignsResponseOneBreakdownMax = 50;
+
+export const getPublicCampaignsResponseOneLocationsMax = 3;
+
+export const getPublicCampaignsResponseOneThemeUnitSingularMax = 60;
+
+export const getPublicCampaignsResponseOneThemeUnitPluralMax = 60;
+
+export const getPublicCampaignsResponseOneEditorStepMax = 5;
+
+export const GetPublicCampaignsResponseItem = zod
+  .object({
+    name: zod.string().max(getPublicCampaignsResponseOneNameMax).optional(),
+    tagline: zod
+      .string()
+      .max(getPublicCampaignsResponseOneTaglineMax)
+      .optional(),
+    description: zod
+      .string()
+      .max(getPublicCampaignsResponseOneDescriptionMax)
+      .optional(),
+    type: zod.enum(["fundraising", "volunteer"]).optional(),
+    goal: zod.number().min(getPublicCampaignsResponseOneGoalMin).optional(),
+    volunteersNeeded: zod
+      .number()
+      .min(getPublicCampaignsResponseOneVolunteersNeededMin)
+      .optional(),
+    deadline: zod.string().nullish(),
+    imageUrl: zod.string().nullish(),
+    matchFunding: zod
+      .object({
+        amount: zod
+          .number()
+          .min(getPublicCampaignsResponseOneMatchFundingAmountMin),
+        funderName: zod
+          .string()
+          .max(getPublicCampaignsResponseOneMatchFundingFunderNameMax),
+      })
+      .nullish(),
+    breakdown: zod
+      .array(
+        zod.object({
+          label: zod.string(),
+          detail: zod.string(),
+        }),
+      )
+      .max(getPublicCampaignsResponseOneBreakdownMax)
+      .optional(),
+    locations: zod
+      .array(
+        zod.object({
+          name: zod.string(),
+          description: zod.string(),
+          photoUrl: zod.string(),
+        }),
+      )
+      .max(getPublicCampaignsResponseOneLocationsMax)
+      .optional(),
+    video: zod
+      .object({
+        url: zod.string(),
+        posterUrl: zod.string(),
+        captionsUrl: zod.string(),
+      })
+      .nullish(),
+    theme: zod
+      .object({
+        primaryColor: zod.string().optional(),
+        accentColor: zod.string().optional(),
+        backgroundColor: zod.string().optional(),
+        textColor: zod.string().optional(),
+        unit: zod
+          .object({
+            singular: zod
+              .string()
+              .max(getPublicCampaignsResponseOneThemeUnitSingularMax),
+            plural: zod
+              .string()
+              .max(getPublicCampaignsResponseOneThemeUnitPluralMax),
+            imageUrl: zod.string(),
+          })
+          .optional(),
+      })
+      .optional(),
+    enabled: zod.boolean().optional(),
+    saveAsDraft: zod.boolean().optional(),
+    editorStep: zod
+      .number()
+      .min(1)
+      .max(getPublicCampaignsResponseOneEditorStepMax)
+      .optional(),
+    assistUsed: zod.boolean().optional(),
+  })
+  .and(
+    zod.object({
+      _id: zod.string(),
+      publicId: zod.string().optional(),
+      amountRaised: zod.number(),
+      status: zod.string().optional(),
+      hasUnpublishedChanges: zod.boolean().optional(),
+      sharePath: zod.string().optional(),
+      createdAt: zod.string().optional(),
+      updatedAt: zod.string().optional(),
+    }),
+  );
+export const GetPublicCampaignsResponse = zod.array(
+  GetPublicCampaignsResponseItem,
+);
+
+export const CreateCampaignDraftParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const createCampaignDraftBodyNameMax = 200;
+
+export const createCampaignDraftBodyTaglineMax = 140;
+
+export const createCampaignDraftBodyDescriptionMax = 20000;
+
+export const createCampaignDraftBodyGoalMin = 0;
+
+export const createCampaignDraftBodyVolunteersNeededMin = 0;
+
+export const createCampaignDraftBodyMatchFundingAmountMin = 0;
+
+export const createCampaignDraftBodyMatchFundingFunderNameMax = 200;
+
+export const createCampaignDraftBodyBreakdownMax = 50;
+
+export const createCampaignDraftBodyLocationsMax = 3;
+
+export const createCampaignDraftBodyThemeUnitSingularMax = 60;
+
+export const createCampaignDraftBodyThemeUnitPluralMax = 60;
+
+export const createCampaignDraftBodyEditorStepMax = 5;
+
+export const CreateCampaignDraftBody = zod.object({
+  name: zod.string().max(createCampaignDraftBodyNameMax).optional(),
+  tagline: zod.string().max(createCampaignDraftBodyTaglineMax).optional(),
+  description: zod
+    .string()
+    .max(createCampaignDraftBodyDescriptionMax)
+    .optional(),
+  type: zod.enum(["fundraising", "volunteer"]).optional(),
+  goal: zod.number().min(createCampaignDraftBodyGoalMin).optional(),
+  volunteersNeeded: zod
+    .number()
+    .min(createCampaignDraftBodyVolunteersNeededMin)
+    .optional(),
+  deadline: zod.string().nullish(),
+  imageUrl: zod.string().nullish(),
+  matchFunding: zod
+    .object({
+      amount: zod.number().min(createCampaignDraftBodyMatchFundingAmountMin),
+      funderName: zod
+        .string()
+        .max(createCampaignDraftBodyMatchFundingFunderNameMax),
+    })
+    .nullish(),
+  breakdown: zod
+    .array(
+      zod.object({
+        label: zod.string(),
+        detail: zod.string(),
+      }),
+    )
+    .max(createCampaignDraftBodyBreakdownMax)
+    .optional(),
+  locations: zod
+    .array(
+      zod.object({
+        name: zod.string(),
+        description: zod.string(),
+        photoUrl: zod.string(),
+      }),
+    )
+    .max(createCampaignDraftBodyLocationsMax)
+    .optional(),
+  video: zod
+    .object({
+      url: zod.string(),
+      posterUrl: zod.string(),
+      captionsUrl: zod.string(),
+    })
+    .nullish(),
+  theme: zod
+    .object({
+      primaryColor: zod.string().optional(),
+      accentColor: zod.string().optional(),
+      backgroundColor: zod.string().optional(),
+      textColor: zod.string().optional(),
+      unit: zod
+        .object({
+          singular: zod
+            .string()
+            .max(createCampaignDraftBodyThemeUnitSingularMax),
+          plural: zod.string().max(createCampaignDraftBodyThemeUnitPluralMax),
+          imageUrl: zod.string(),
+        })
+        .optional(),
+    })
+    .optional(),
+  enabled: zod.boolean().optional(),
+  saveAsDraft: zod.boolean().optional(),
+  editorStep: zod
+    .number()
+    .min(1)
+    .max(createCampaignDraftBodyEditorStepMax)
+    .optional(),
+  assistUsed: zod.boolean().optional(),
+});
+
+export const GetManagedCampaignDraftsParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const getManagedCampaignDraftsResponseOneNameMax = 200;
+
+export const getManagedCampaignDraftsResponseOneTaglineMax = 140;
+
+export const getManagedCampaignDraftsResponseOneDescriptionMax = 20000;
+
+export const getManagedCampaignDraftsResponseOneGoalMin = 0;
+
+export const getManagedCampaignDraftsResponseOneVolunteersNeededMin = 0;
+
+export const getManagedCampaignDraftsResponseOneMatchFundingAmountMin = 0;
+
+export const getManagedCampaignDraftsResponseOneMatchFundingFunderNameMax = 200;
+
+export const getManagedCampaignDraftsResponseOneBreakdownMax = 50;
+
+export const getManagedCampaignDraftsResponseOneLocationsMax = 3;
+
+export const getManagedCampaignDraftsResponseOneThemeUnitSingularMax = 60;
+
+export const getManagedCampaignDraftsResponseOneThemeUnitPluralMax = 60;
+
+export const getManagedCampaignDraftsResponseOneEditorStepMax = 5;
+
+export const GetManagedCampaignDraftsResponseItem = zod
+  .object({
+    name: zod
+      .string()
+      .max(getManagedCampaignDraftsResponseOneNameMax)
+      .optional(),
+    tagline: zod
+      .string()
+      .max(getManagedCampaignDraftsResponseOneTaglineMax)
+      .optional(),
+    description: zod
+      .string()
+      .max(getManagedCampaignDraftsResponseOneDescriptionMax)
+      .optional(),
+    type: zod.enum(["fundraising", "volunteer"]).optional(),
+    goal: zod
+      .number()
+      .min(getManagedCampaignDraftsResponseOneGoalMin)
+      .optional(),
+    volunteersNeeded: zod
+      .number()
+      .min(getManagedCampaignDraftsResponseOneVolunteersNeededMin)
+      .optional(),
+    deadline: zod.string().nullish(),
+    imageUrl: zod.string().nullish(),
+    matchFunding: zod
+      .object({
+        amount: zod
+          .number()
+          .min(getManagedCampaignDraftsResponseOneMatchFundingAmountMin),
+        funderName: zod
+          .string()
+          .max(getManagedCampaignDraftsResponseOneMatchFundingFunderNameMax),
+      })
+      .nullish(),
+    breakdown: zod
+      .array(
+        zod.object({
+          label: zod.string(),
+          detail: zod.string(),
+        }),
+      )
+      .max(getManagedCampaignDraftsResponseOneBreakdownMax)
+      .optional(),
+    locations: zod
+      .array(
+        zod.object({
+          name: zod.string(),
+          description: zod.string(),
+          photoUrl: zod.string(),
+        }),
+      )
+      .max(getManagedCampaignDraftsResponseOneLocationsMax)
+      .optional(),
+    video: zod
+      .object({
+        url: zod.string(),
+        posterUrl: zod.string(),
+        captionsUrl: zod.string(),
+      })
+      .nullish(),
+    theme: zod
+      .object({
+        primaryColor: zod.string().optional(),
+        accentColor: zod.string().optional(),
+        backgroundColor: zod.string().optional(),
+        textColor: zod.string().optional(),
+        unit: zod
+          .object({
+            singular: zod
+              .string()
+              .max(getManagedCampaignDraftsResponseOneThemeUnitSingularMax),
+            plural: zod
+              .string()
+              .max(getManagedCampaignDraftsResponseOneThemeUnitPluralMax),
+            imageUrl: zod.string(),
+          })
+          .optional(),
+      })
+      .optional(),
+    enabled: zod.boolean().optional(),
+    saveAsDraft: zod.boolean().optional(),
+    editorStep: zod
+      .number()
+      .min(1)
+      .max(getManagedCampaignDraftsResponseOneEditorStepMax)
+      .optional(),
+    assistUsed: zod.boolean().optional(),
+  })
+  .and(
+    zod.object({
+      _id: zod.string(),
+      publicId: zod.string().optional(),
+      amountRaised: zod.number(),
+      status: zod.string().optional(),
+      hasUnpublishedChanges: zod.boolean().optional(),
+      sharePath: zod.string().optional(),
+      createdAt: zod.string().optional(),
+      updatedAt: zod.string().optional(),
+    }),
+  );
+export const GetManagedCampaignDraftsResponse = zod.array(
+  GetManagedCampaignDraftsResponseItem,
+);
+
+export const SaveCampaignDraftParams = zod.object({
+  id: zod.coerce.string(),
+  campId: zod.coerce.string(),
+});
+
+export const saveCampaignDraftBodyNameMax = 200;
+
+export const saveCampaignDraftBodyTaglineMax = 140;
+
+export const saveCampaignDraftBodyDescriptionMax = 20000;
+
+export const saveCampaignDraftBodyGoalMin = 0;
+
+export const saveCampaignDraftBodyVolunteersNeededMin = 0;
+
+export const saveCampaignDraftBodyMatchFundingAmountMin = 0;
+
+export const saveCampaignDraftBodyMatchFundingFunderNameMax = 200;
+
+export const saveCampaignDraftBodyBreakdownMax = 50;
+
+export const saveCampaignDraftBodyLocationsMax = 3;
+
+export const saveCampaignDraftBodyThemeUnitSingularMax = 60;
+
+export const saveCampaignDraftBodyThemeUnitPluralMax = 60;
+
+export const saveCampaignDraftBodyEditorStepMax = 5;
+
+export const SaveCampaignDraftBody = zod.object({
+  name: zod.string().max(saveCampaignDraftBodyNameMax).optional(),
+  tagline: zod.string().max(saveCampaignDraftBodyTaglineMax).optional(),
+  description: zod.string().max(saveCampaignDraftBodyDescriptionMax).optional(),
+  type: zod.enum(["fundraising", "volunteer"]).optional(),
+  goal: zod.number().min(saveCampaignDraftBodyGoalMin).optional(),
+  volunteersNeeded: zod
+    .number()
+    .min(saveCampaignDraftBodyVolunteersNeededMin)
+    .optional(),
+  deadline: zod.string().nullish(),
+  imageUrl: zod.string().nullish(),
+  matchFunding: zod
+    .object({
+      amount: zod.number().min(saveCampaignDraftBodyMatchFundingAmountMin),
+      funderName: zod
+        .string()
+        .max(saveCampaignDraftBodyMatchFundingFunderNameMax),
+    })
+    .nullish(),
+  breakdown: zod
+    .array(
+      zod.object({
+        label: zod.string(),
+        detail: zod.string(),
+      }),
+    )
+    .max(saveCampaignDraftBodyBreakdownMax)
+    .optional(),
+  locations: zod
+    .array(
+      zod.object({
+        name: zod.string(),
+        description: zod.string(),
+        photoUrl: zod.string(),
+      }),
+    )
+    .max(saveCampaignDraftBodyLocationsMax)
+    .optional(),
+  video: zod
+    .object({
+      url: zod.string(),
+      posterUrl: zod.string(),
+      captionsUrl: zod.string(),
+    })
+    .nullish(),
+  theme: zod
+    .object({
+      primaryColor: zod.string().optional(),
+      accentColor: zod.string().optional(),
+      backgroundColor: zod.string().optional(),
+      textColor: zod.string().optional(),
+      unit: zod
+        .object({
+          singular: zod.string().max(saveCampaignDraftBodyThemeUnitSingularMax),
+          plural: zod.string().max(saveCampaignDraftBodyThemeUnitPluralMax),
+          imageUrl: zod.string(),
+        })
+        .optional(),
+    })
+    .optional(),
+  enabled: zod.boolean().optional(),
+  saveAsDraft: zod.boolean().optional(),
+  editorStep: zod
+    .number()
+    .min(1)
+    .max(saveCampaignDraftBodyEditorStepMax)
+    .optional(),
+  assistUsed: zod.boolean().optional(),
+});
+
+export const saveCampaignDraftResponseOneNameMax = 200;
+
+export const saveCampaignDraftResponseOneTaglineMax = 140;
+
+export const saveCampaignDraftResponseOneDescriptionMax = 20000;
+
+export const saveCampaignDraftResponseOneGoalMin = 0;
+
+export const saveCampaignDraftResponseOneVolunteersNeededMin = 0;
+
+export const saveCampaignDraftResponseOneMatchFundingAmountMin = 0;
+
+export const saveCampaignDraftResponseOneMatchFundingFunderNameMax = 200;
+
+export const saveCampaignDraftResponseOneBreakdownMax = 50;
+
+export const saveCampaignDraftResponseOneLocationsMax = 3;
+
+export const saveCampaignDraftResponseOneThemeUnitSingularMax = 60;
+
+export const saveCampaignDraftResponseOneThemeUnitPluralMax = 60;
+
+export const saveCampaignDraftResponseOneEditorStepMax = 5;
+
+export const SaveCampaignDraftResponse = zod
+  .object({
+    name: zod.string().max(saveCampaignDraftResponseOneNameMax).optional(),
+    tagline: zod
+      .string()
+      .max(saveCampaignDraftResponseOneTaglineMax)
+      .optional(),
+    description: zod
+      .string()
+      .max(saveCampaignDraftResponseOneDescriptionMax)
+      .optional(),
+    type: zod.enum(["fundraising", "volunteer"]).optional(),
+    goal: zod.number().min(saveCampaignDraftResponseOneGoalMin).optional(),
+    volunteersNeeded: zod
+      .number()
+      .min(saveCampaignDraftResponseOneVolunteersNeededMin)
+      .optional(),
+    deadline: zod.string().nullish(),
+    imageUrl: zod.string().nullish(),
+    matchFunding: zod
+      .object({
+        amount: zod
+          .number()
+          .min(saveCampaignDraftResponseOneMatchFundingAmountMin),
+        funderName: zod
+          .string()
+          .max(saveCampaignDraftResponseOneMatchFundingFunderNameMax),
+      })
+      .nullish(),
+    breakdown: zod
+      .array(
+        zod.object({
+          label: zod.string(),
+          detail: zod.string(),
+        }),
+      )
+      .max(saveCampaignDraftResponseOneBreakdownMax)
+      .optional(),
+    locations: zod
+      .array(
+        zod.object({
+          name: zod.string(),
+          description: zod.string(),
+          photoUrl: zod.string(),
+        }),
+      )
+      .max(saveCampaignDraftResponseOneLocationsMax)
+      .optional(),
+    video: zod
+      .object({
+        url: zod.string(),
+        posterUrl: zod.string(),
+        captionsUrl: zod.string(),
+      })
+      .nullish(),
+    theme: zod
+      .object({
+        primaryColor: zod.string().optional(),
+        accentColor: zod.string().optional(),
+        backgroundColor: zod.string().optional(),
+        textColor: zod.string().optional(),
+        unit: zod
+          .object({
+            singular: zod
+              .string()
+              .max(saveCampaignDraftResponseOneThemeUnitSingularMax),
+            plural: zod
+              .string()
+              .max(saveCampaignDraftResponseOneThemeUnitPluralMax),
+            imageUrl: zod.string(),
+          })
+          .optional(),
+      })
+      .optional(),
+    enabled: zod.boolean().optional(),
+    saveAsDraft: zod.boolean().optional(),
+    editorStep: zod
+      .number()
+      .min(1)
+      .max(saveCampaignDraftResponseOneEditorStepMax)
+      .optional(),
+    assistUsed: zod.boolean().optional(),
+  })
+  .and(
+    zod.object({
+      _id: zod.string(),
+      publicId: zod.string().optional(),
+      amountRaised: zod.number(),
+      status: zod.string().optional(),
+      hasUnpublishedChanges: zod.boolean().optional(),
+      sharePath: zod.string().optional(),
+      createdAt: zod.string().optional(),
+      updatedAt: zod.string().optional(),
+    }),
+  );
+
+export const DeleteManagedCampaignParams = zod.object({
+  id: zod.coerce.string(),
+  campId: zod.coerce.string(),
+});
+
+export const GetCampaignAssistStatusResponse = zod.object({
+  enabled: zod.boolean(),
+});
+
+export const requestCampaignWritingSuggestionBodyInstructionMax = 1000;
+
+export const RequestCampaignWritingSuggestionBody = zod.object({
+  campaignId: zod.string(),
+  field: zod.enum([
+    "tagline",
+    "description",
+    "breakdown.detail",
+    "locations.description",
+  ]),
+  instruction: zod
+    .string()
+    .max(requestCampaignWritingSuggestionBodyInstructionMax),
+});
+
+export const RequestCampaignWritingSuggestionResponse = zod.object({
+  suggestion: zod.string().optional(),
+});
+
 export const GetAdminPayoutsResponse = zod.object({
   payouts: zod.array(
     zod.object({

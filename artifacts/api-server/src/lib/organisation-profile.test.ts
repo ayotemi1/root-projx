@@ -68,11 +68,22 @@ async function fixture() {
       export const fsList=async(c)=>[...state.docs].filter(([key])=>key.startsWith(c+"/")).map(([key,d])=>({...structuredClone(d),_id:key.split("/")[1]}));
       export const fsQuery=async()=>[];
       export const fsCreate=async()=>{throw Error("Unexpected write");};
+      export const fsMutateCampaigns=async(id,token,mutate)=>{
+        const key="organisations/"+id;
+        const current=structuredClone(state.docs.get(key));
+        const {campaigns,result}=mutate(current);
+        state.docs.set(key,{...current,campaigns});
+        state.writes.push({c:"organisations",id,patch:{campaigns}});
+        return result;
+      };
     `,
     "objectStorage.js": `export const objectStorageClient={bucket(){throw Error("No storage calls permitted");}};`,
   };
   const bundle = await build({
-    stdin: { contents: `export {default as router} from "./routes/organisations.ts";export {state} from "profile-test:state";`,
+    stdin: { contents: `export {default as router} from "./routes/organisations.ts";
+      export {campaignPatch,campaignPublishGates,campaignForEditor} from "./lib/campaign-editor.ts";
+      export {suggest} from "./lib/campaign-assist.ts";
+      export {state} from "profile-test:state";`,
       resolveDir: new URL("../", import.meta.url).pathname, loader: "ts" },
     bundle: true, write: false, platform: "node", format: "cjs", packages: "external",
     plugins: [{ name: "synthetic-profile-services", setup(b) {
@@ -96,12 +107,12 @@ async function fixture() {
   return api;
 }
 
-async function invoke(router: any, method: string, token?: string, body: unknown = {}, orgId = "org") {
-  const route = router.stack.find((l: any) => l.route?.path === "/organisations/:id" && l.route.methods[method])?.route;
+async function invoke(router: any, method: string, token?: string, body: unknown = {}, orgId = "org", path = "/organisations/:id") {
+  const route = router.stack.find((l: any) => l.route?.path === path && l.route.methods[method])?.route;
   assert.ok(route);
   let status = 200;
   let result: any;
-  const req = { body, params: { id: orgId }, headers: token ? { authorization: "Bearer " + token } : {},
+  const req = { body, params: { id: orgId, campId: "camp" }, headers: token ? { authorization: "Bearer " + token } : {},
     query: {}, log: { error() {}, info() {} } };
   const res = { status(code: number) { status = code; return this; }, json(data: unknown) { result = data; } };
   for (const layer of route.stack) {
@@ -147,4 +158,128 @@ test("independent section saves preserve campaigns, settlement locks and balance
   assert.equal(publicResponse.body.shortDescription, "Learning together");
   assert.equal(publicResponse.body.impactMetrics, null);
   assert.equal(publicResponse.body.payoutManualLabel, undefined);
+});
+
+const campaignRoute = "/organisations/:id/campaigns/:campId";
+function readyCampaignFixture(f: any, enabled = false) {
+  const org = f.state.docs.get("organisations/org");
+  Object.assign(org, {
+    logo: "/api/logo.jpg", coverImage: "/api/cover.jpg", country: "Jamaica",
+    shortDescription: "Training the next generation together", description: "Our community story. ".repeat(15),
+    categories: ["Education"], payoutMethod: "bank_transfer", payoutManualApproved: true,
+    campaigns: [{ _id: "camp", name: "Community learning", tagline: "Help fund 30 places",
+      description: "Our campaign story. ".repeat(15), goal: 3000, imageUrl: "/api/hero.jpg",
+      amountRaised: 123, enabled, status: "active", theme: { primaryColor: "#B50000", accentColor: "#F5B800" } }],
+  });
+  return org;
+}
+
+test("campaign creation accepts empty private drafts and initialises structured optional content", async () => {
+  const f = await fixture();
+  const result = await invoke(f.router, "post", "org", { amountRaised: 999, enabled: true }, "org", "/organisations/:id/campaigns");
+  assert.equal(result.status, 201);
+  assert.equal(result.body.enabled, false);
+  assert.equal(result.body.name, "");
+  assert.equal(result.body.amountRaised, 0);
+  assert.deepEqual(result.body.breakdown, []);
+  assert.deepEqual(result.body.locations, []);
+  assert.equal(result.body.matchFunding, null);
+  assert.equal(result.body.video, null);
+  assert.equal(result.body.editorStep, 1);
+  assert.equal(result.body.sharePath, undefined); // Acquire the readable name on first publish, not from an empty draft.
+});
+
+test("campaign structured drafts round trip without changing totals or requiring publish completeness", async () => {
+  const f = await fixture();
+  const org = readyCampaignFixture(f);
+  const patch = {
+    saveAsDraft: true, editorStep: 4, tagline: "A revised ask", description: "An unfinished draft",
+    matchFunding: { amount: 500, funderName: "Community Foundation" },
+    breakdown: [{ label: "30 places", detail: "Training and childcare" }],
+    locations: [{ name: "Kingston", description: "At our community centre", photoUrl: "/api/place.jpg" }],
+    video: { url: "https://youtu.be/test123", posterUrl: "/api/poster.jpg", captionsUrl: "/api/captions.vtt" },
+    theme: { unit: { singular: "seedling", plural: "seedlings", imageUrl: "/campaign-units/seedling.svg" } },
+    amountRaised: 0,
+  };
+  const result = await invoke(f.router, "patch", "org", patch, "org", campaignRoute);
+  assert.equal(result.status, 200);
+  assert.equal(result.body.amountRaised, 123);
+  assert.equal(result.body.editorStep, 4);
+  assert.equal(result.body.theme.primaryColor, "#B50000");
+  for (const key of ["matchFunding", "breakdown", "locations", "video"]) assert.deepEqual(result.body[key], patch[key as keyof typeof patch]);
+  const stored = f.state.docs.get("organisations/org");
+  assert.equal(stored.totalRaised, org.totalRaised);
+  assert.equal(stored.payoutSettlementBatchId, "locked");
+});
+
+test("publish gates are server enforced, including unapproved manual and unset payouts", async () => {
+  const f = await fixture();
+  readyCampaignFixture(f);
+  const current = () => f.state.docs.get("organisations/org");
+  current().payoutManualApproved = false;
+  const pending = await invoke(f.router, "patch", "org", { enabled: true }, "org", campaignRoute);
+  assert.equal(pending.status, 400);
+  assert.ok(pending.body.unmetGates.some((g: any) => g.id === "payout"));
+  assert.equal(current().campaigns[0].enabled, false);
+  current().payoutMethod = "none";
+  assert.equal((await invoke(f.router, "patch", "org", { enabled: true }, "org", campaignRoute)).status, 400);
+  current().payoutMethod = "bank_transfer"; current().payoutManualApproved = true;
+  current().campaigns[0].description = "Too short";
+  const short = await invoke(f.router, "patch", "org", { enabled: true }, "org", campaignRoute);
+  assert.ok(short.body.unmetGates.some((g: any) => g.id === "story" && g.step === 3));
+  current().campaigns[0].description = "Campaign story. ".repeat(20);
+  current().logo = null;
+  const profile = await invoke(f.router, "patch", "org", { enabled: true }, "org", campaignRoute);
+  assert.ok(profile.body.unmetGates.some((g: any) => g.id === "profile"));
+});
+
+test("published edits stay private until publish; unpublish preserves pending edits and is reversible", async () => {
+  const f = await fixture();
+  readyCampaignFixture(f);
+  assert.equal((await invoke(f.router, "patch", "org", { enabled: true }, "org", campaignRoute)).status, 200);
+  const edited = await invoke(f.router, "patch", "org", { saveAsDraft: true, name: "Unpublished new title", editorStep: 2 }, "org", campaignRoute);
+  assert.equal(edited.body.name, "Unpublished new title");
+  assert.equal(edited.body.enabled, true);
+  assert.equal(edited.body.hasUnpublishedChanges, true);
+  const stored = () => f.state.docs.get("organisations/org").campaigns[0];
+  assert.equal(stored().name, "Community learning");
+  assert.equal(stored().editorDraft.name, "Unpublished new title");
+  const publicList = await invoke(f.router, "get", undefined, {}, "org", "/organisations/:id/campaigns");
+  assert.equal(publicList.body[0].name, "Community learning");
+  assert.equal(publicList.body[0].editorDraft, undefined);
+  const managed = await invoke(f.router, "get", "org", {}, "org", "/organisations/:id/campaigns/manage");
+  assert.equal(managed.body[0].name, "Unpublished new title");
+  await invoke(f.router, "patch", "org", { enabled: false }, "org", campaignRoute);
+  assert.equal(stored().enabled, false);
+  assert.equal(stored().editorDraft.name, "Unpublished new title");
+  await invoke(f.router, "patch", "org", { saveAsDraft: true, name: "Final title" }, "org", campaignRoute);
+  assert.equal(stored().name, "Final title");
+  assert.equal(stored().editorDraft, undefined);
+  const published = await invoke(f.router, "patch", "org", { enabled: true }, "org", campaignRoute);
+  assert.equal(published.status, 200);
+  assert.equal(stored().name, "Final title");
+  assert.equal(stored().amountRaised, 123);
+  assert.equal(stored().enabled, true);
+  assert.match(stored().sharePath, /community-learning/); // Published share links remain stable after a rename.
+});
+
+test("campaign validation bounds structured fields and never accepts financial edits", async () => {
+  const f = await fixture();
+  for (const body of [
+    { tagline: "x".repeat(141) }, { locations: Array(4).fill({}) }, { goal: -1 },
+    { description: "<script>bad</script>" }, { theme: { unit: { singular: "a", plural: "b", imageUrl: "javascript:bad" } } },
+    { video: { url: "https://unrecognised.example/video", posterUrl: "", captionsUrl: "" } },
+  ]) assert.throws(() => f.campaignPatch(body));
+  assert.deepEqual(f.campaignPatch({ amountRaised: 0, _id: "overwritten", stripeRef: "bad" }), {});
+  assert.deepEqual(await f.suggest({ field: "description", orgContext: {}, campaignDraft: {}, instruction: "" }), { unavailable: true });
+});
+
+test("campaign mutations require approved ownership", async () => {
+  const f = await fixture();
+  readyCampaignFixture(f);
+  for (const token of ["other", "supporter", "pending"]) {
+    assert.equal((await invoke(f.router, "post", token, {}, "org", "/organisations/:id/campaigns")).status, 403);
+    assert.equal((await invoke(f.router, "patch", token, { name: "Not mine" }, "org", campaignRoute)).status, 403);
+  }
+  assert.equal(f.state.writes.length, 0);
 });

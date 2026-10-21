@@ -18,14 +18,18 @@ import type {
 
 import type {
   AuthResponse,
+  CampaignAssistRequest,
+  CampaignEditorRequest,
   ContactEventRequest,
   CreateDonationRequest,
   CreateOrganisationRequest,
   CreateUpdateRequest,
   DonationIntentResponse,
   DonationWithOrg,
+  EditorCampaign,
   ErrorResponse,
   FollowRequest,
+  GetCampaignAssistStatus200,
   GetHelpOrgsParams,
   HealthStatus,
   HelpReview,
@@ -41,6 +45,8 @@ import type {
   ProfileResponse,
   PublicUser,
   RegisterRequest,
+  RequestCampaignWritingSuggestion200,
+  SaveCampaignDraft400,
   SubmitHelpReviewRequest,
   Update,
   UpdateOrganisationRequest,
@@ -56,6 +62,568 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+export const getGetPublicCampaignsUrl = (id: string) => {
+  return `/api/organisations/${id}/campaigns`;
+};
+
+export const getPublicCampaigns = async (
+  id: string,
+  options?: RequestInit,
+): Promise<EditorCampaign[]> => {
+  return customFetch<EditorCampaign[]>(getGetPublicCampaignsUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPublicCampaignsQueryKey = (id: string) => {
+  return [`/api/organisations/${id}/campaigns`] as const;
+};
+
+export const getGetPublicCampaignsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPublicCampaigns>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPublicCampaigns>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetPublicCampaignsQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getPublicCampaigns>>
+  > = ({ signal }) => getPublicCampaigns(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPublicCampaigns>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPublicCampaignsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPublicCampaigns>>
+>;
+export type GetPublicCampaignsQueryError = ErrorType<unknown>;
+
+export function useGetPublicCampaigns<
+  TData = Awaited<ReturnType<typeof getPublicCampaigns>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPublicCampaigns>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPublicCampaignsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getCreateCampaignDraftUrl = (id: string) => {
+  return `/api/organisations/${id}/campaigns`;
+};
+
+export const createCampaignDraft = async (
+  id: string,
+  campaignEditorRequest: CampaignEditorRequest,
+  options?: RequestInit,
+): Promise<EditorCampaign> => {
+  return customFetch<EditorCampaign>(getCreateCampaignDraftUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(campaignEditorRequest),
+  });
+};
+
+export const getCreateCampaignDraftMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCampaignDraft>>,
+    TError,
+    { id: string; data: BodyType<CampaignEditorRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createCampaignDraft>>,
+  TError,
+  { id: string; data: BodyType<CampaignEditorRequest> },
+  TContext
+> => {
+  const mutationKey = ["createCampaignDraft"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createCampaignDraft>>,
+    { id: string; data: BodyType<CampaignEditorRequest> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return createCampaignDraft(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateCampaignDraftMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createCampaignDraft>>
+>;
+export type CreateCampaignDraftMutationBody = BodyType<CampaignEditorRequest>;
+export type CreateCampaignDraftMutationError = ErrorType<unknown>;
+
+export const useCreateCampaignDraft = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createCampaignDraft>>,
+    TError,
+    { id: string; data: BodyType<CampaignEditorRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createCampaignDraft>>,
+  TError,
+  { id: string; data: BodyType<CampaignEditorRequest> },
+  TContext
+> => {
+  return useMutation(getCreateCampaignDraftMutationOptions(options));
+};
+
+export const getGetManagedCampaignDraftsUrl = (id: string) => {
+  return `/api/organisations/${id}/campaigns/manage`;
+};
+
+export const getManagedCampaignDrafts = async (
+  id: string,
+  options?: RequestInit,
+): Promise<EditorCampaign[]> => {
+  return customFetch<EditorCampaign[]>(getGetManagedCampaignDraftsUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetManagedCampaignDraftsQueryKey = (id: string) => {
+  return [`/api/organisations/${id}/campaigns/manage`] as const;
+};
+
+export const getGetManagedCampaignDraftsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getManagedCampaignDrafts>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getManagedCampaignDrafts>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetManagedCampaignDraftsQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getManagedCampaignDrafts>>
+  > = ({ signal }) =>
+    getManagedCampaignDrafts(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getManagedCampaignDrafts>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetManagedCampaignDraftsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getManagedCampaignDrafts>>
+>;
+export type GetManagedCampaignDraftsQueryError = ErrorType<unknown>;
+
+export function useGetManagedCampaignDrafts<
+  TData = Awaited<ReturnType<typeof getManagedCampaignDrafts>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getManagedCampaignDrafts>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetManagedCampaignDraftsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getSaveCampaignDraftUrl = (id: string, campId: string) => {
+  return `/api/organisations/${id}/campaigns/${campId}`;
+};
+
+export const saveCampaignDraft = async (
+  id: string,
+  campId: string,
+  campaignEditorRequest: CampaignEditorRequest,
+  options?: RequestInit,
+): Promise<EditorCampaign> => {
+  return customFetch<EditorCampaign>(getSaveCampaignDraftUrl(id, campId), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(campaignEditorRequest),
+  });
+};
+
+export const getSaveCampaignDraftMutationOptions = <
+  TError = ErrorType<SaveCampaignDraft400>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveCampaignDraft>>,
+    TError,
+    { id: string; campId: string; data: BodyType<CampaignEditorRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof saveCampaignDraft>>,
+  TError,
+  { id: string; campId: string; data: BodyType<CampaignEditorRequest> },
+  TContext
+> => {
+  const mutationKey = ["saveCampaignDraft"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof saveCampaignDraft>>,
+    { id: string; campId: string; data: BodyType<CampaignEditorRequest> }
+  > = (props) => {
+    const { id, campId, data } = props ?? {};
+
+    return saveCampaignDraft(id, campId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SaveCampaignDraftMutationResult = NonNullable<
+  Awaited<ReturnType<typeof saveCampaignDraft>>
+>;
+export type SaveCampaignDraftMutationBody = BodyType<CampaignEditorRequest>;
+export type SaveCampaignDraftMutationError = ErrorType<SaveCampaignDraft400>;
+
+export const useSaveCampaignDraft = <
+  TError = ErrorType<SaveCampaignDraft400>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveCampaignDraft>>,
+    TError,
+    { id: string; campId: string; data: BodyType<CampaignEditorRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof saveCampaignDraft>>,
+  TError,
+  { id: string; campId: string; data: BodyType<CampaignEditorRequest> },
+  TContext
+> => {
+  return useMutation(getSaveCampaignDraftMutationOptions(options));
+};
+
+export const getDeleteManagedCampaignUrl = (id: string, campId: string) => {
+  return `/api/organisations/${id}/campaigns/${campId}`;
+};
+
+export const deleteManagedCampaign = async (
+  id: string,
+  campId: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteManagedCampaignUrl(id, campId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteManagedCampaignMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteManagedCampaign>>,
+    TError,
+    { id: string; campId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteManagedCampaign>>,
+  TError,
+  { id: string; campId: string },
+  TContext
+> => {
+  const mutationKey = ["deleteManagedCampaign"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteManagedCampaign>>,
+    { id: string; campId: string }
+  > = (props) => {
+    const { id, campId } = props ?? {};
+
+    return deleteManagedCampaign(id, campId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteManagedCampaignMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteManagedCampaign>>
+>;
+
+export type DeleteManagedCampaignMutationError = ErrorType<unknown>;
+
+export const useDeleteManagedCampaign = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteManagedCampaign>>,
+    TError,
+    { id: string; campId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteManagedCampaign>>,
+  TError,
+  { id: string; campId: string },
+  TContext
+> => {
+  return useMutation(getDeleteManagedCampaignMutationOptions(options));
+};
+
+export const getGetCampaignAssistStatusUrl = () => {
+  return `/api/campaigns/assist/status`;
+};
+
+export const getCampaignAssistStatus = async (
+  options?: RequestInit,
+): Promise<GetCampaignAssistStatus200> => {
+  return customFetch<GetCampaignAssistStatus200>(
+    getGetCampaignAssistStatusUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetCampaignAssistStatusQueryKey = () => {
+  return [`/api/campaigns/assist/status`] as const;
+};
+
+export const getGetCampaignAssistStatusQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCampaignAssistStatus>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getCampaignAssistStatus>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetCampaignAssistStatusQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getCampaignAssistStatus>>
+  > = ({ signal }) => getCampaignAssistStatus({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCampaignAssistStatus>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCampaignAssistStatusQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCampaignAssistStatus>>
+>;
+export type GetCampaignAssistStatusQueryError = ErrorType<unknown>;
+
+export function useGetCampaignAssistStatus<
+  TData = Awaited<ReturnType<typeof getCampaignAssistStatus>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getCampaignAssistStatus>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCampaignAssistStatusQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getRequestCampaignWritingSuggestionUrl = () => {
+  return `/api/campaigns/assist`;
+};
+
+export const requestCampaignWritingSuggestion = async (
+  campaignAssistRequest: CampaignAssistRequest,
+  options?: RequestInit,
+): Promise<RequestCampaignWritingSuggestion200> => {
+  return customFetch<RequestCampaignWritingSuggestion200>(
+    getRequestCampaignWritingSuggestionUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(campaignAssistRequest),
+    },
+  );
+};
+
+export const getRequestCampaignWritingSuggestionMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestCampaignWritingSuggestion>>,
+    TError,
+    { data: BodyType<CampaignAssistRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof requestCampaignWritingSuggestion>>,
+  TError,
+  { data: BodyType<CampaignAssistRequest> },
+  TContext
+> => {
+  const mutationKey = ["requestCampaignWritingSuggestion"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof requestCampaignWritingSuggestion>>,
+    { data: BodyType<CampaignAssistRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return requestCampaignWritingSuggestion(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RequestCampaignWritingSuggestionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof requestCampaignWritingSuggestion>>
+>;
+export type RequestCampaignWritingSuggestionMutationBody =
+  BodyType<CampaignAssistRequest>;
+export type RequestCampaignWritingSuggestionMutationError = ErrorType<void>;
+
+export const useRequestCampaignWritingSuggestion = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestCampaignWritingSuggestion>>,
+    TError,
+    { data: BodyType<CampaignAssistRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof requestCampaignWritingSuggestion>>,
+  TError,
+  { data: BodyType<CampaignAssistRequest> },
+  TContext
+> => {
+  return useMutation(
+    getRequestCampaignWritingSuggestionMutationOptions(options),
+  );
+};
 
 export const getGetAdminPayoutsUrl = () => {
   return `/api/admin/payouts`;

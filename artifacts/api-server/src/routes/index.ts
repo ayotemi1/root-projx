@@ -15,12 +15,14 @@ import wiseConnectRouter from "./wise-connect.js";
 import applicationsRouter from "./applications.js";
 import payoutSetupRouter from "./payout-setup.js";
 import payoutsRouter from "./payouts.js";
+import campaignAssistRouter from "./campaign-assist.js";
 
 const router: IRouter = Router();
 
 router.use(applicationsRouter);
 router.use(payoutSetupRouter);
 router.use(payoutsRouter);
+router.use(campaignAssistRouter);
 router.use(healthRouter);
 router.use(authRouter);
 router.use(organisationsRouter);

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { fsCreate, fsGet, fsIncrement, fsPatch, fsQuery, getServerToken } from "../lib/firebase-rest.js";
+import { fsCreate, fsGet, fsIncrement, fsPatch, fsQuery, fsMutateCampaigns, getServerToken } from "../lib/firebase-rest.js";
 import { getUncachableStripeClient } from "../lib/stripeClient.js";
 import { brevoSendEmail, donationConfirmationHtml, shopOrderConfirmationHtml } from "../lib/brevo.js";
 import type Stripe from "stripe";
@@ -349,8 +349,8 @@ async function handlePaymentSuccess(
 
   if (campaignId) {
     try {
-      const orgDoc = await fsGet("organisations", orgId, serverToken);
-      const campaigns = orgDoc?.campaigns;
+      await fsMutateCampaigns(orgId, serverToken, orgDoc => {
+      const campaigns = orgDoc.campaigns;
       if (!Array.isArray(campaigns)) throw new Error("Organisation has no campaigns array");
       const index = campaigns.findIndex((campaign: Record<string, unknown>) => campaign?._id === campaignId);
       if (index < 0) throw new Error("Campaign not found on organisation");
@@ -364,7 +364,8 @@ async function handlePaymentSuccess(
         ...current,
         amountRaised: Math.round((previousAmount + intendedGbp) * 100) / 100,
       };
-      await fsPatch("organisations", orgId, { campaigns: updatedCampaigns }, serverToken);
+      return { campaigns: updatedCampaigns, result: undefined };
+      });
       log.info({ orgId, campaignId, intendedGbp }, "Updated campaign amountRaised");
     } catch (campaignErr) {
       log.error({ campaignErr, orgId, campaignId }, "Campaign amountRaised update failed (non-fatal)");

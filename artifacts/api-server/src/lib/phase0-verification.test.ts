@@ -47,6 +47,13 @@ async function isolatedRouters() {
         state.writes.push({collection,id,data:structuredClone(data)});
         return true;
       };
+      export const fsMutateCampaigns = async (id,token,mutate) => {
+        const key="organisations/"+id;
+        const current=structuredClone(state.documents.get(key));
+        const {campaigns,result}=mutate(current);
+        state.documents.set(key,{...current,campaigns});
+        return result;
+      };
       export const fsPatch = async (collection, id, patch) => {
         const key = collection + "/" + id;
         state.documents.set(key, {...state.documents.get(key), ...structuredClone(patch)});

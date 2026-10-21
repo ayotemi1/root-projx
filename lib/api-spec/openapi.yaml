@@ -25,6 +25,115 @@ tags:
   - name: profile
     description: User profile
 paths:
+  /organisations/{id}/campaigns:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: string}}
+    get:
+      operationId: getPublicCampaigns
+      responses:
+        "200":
+          description: Published campaigns only
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: "#/components/schemas/EditorCampaign"}}
+    post:
+      operationId: createCampaignDraft
+      security: [{bearerAuth: []}]
+      requestBody:
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/CampaignEditorRequest"}
+      responses:
+        "201":
+          description: New private draft; empty content is allowed
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/EditorCampaign"}
+  /organisations/{id}/campaigns/manage:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: string}}
+    get:
+      operationId: getManagedCampaignDrafts
+      security: [{bearerAuth: []}]
+      responses:
+        "200":
+          description: Owner-only campaigns with pending revisions overlaid
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: "#/components/schemas/EditorCampaign"}}
+  /organisations/{id}/campaigns/{campId}:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: string}}
+      - {name: campId, in: path, required: true, schema: {type: string}}
+    patch:
+      operationId: saveCampaignDraft
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/CampaignEditorRequest"}
+      responses:
+        "200":
+          description: Updated owner view; published content remains unchanged when saveAsDraft is true
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/EditorCampaign"}
+        "400":
+          description: Correct the fields or unmet publish gates and retry
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error: {type: string}
+                  unmetGates:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: {type: string}
+                        message: {type: string}
+                        step: {type: integer}
+    delete:
+      operationId: deleteManagedCampaign
+      security: [{bearerAuth: []}]
+      responses:
+        "200": {description: Campaign deleted}
+  /campaigns/assist/status:
+    get:
+      operationId: getCampaignAssistStatus
+      security: [{bearerAuth: []}]
+      responses:
+        "200":
+          description: Feature flag; defaults off
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {enabled: {type: boolean}}
+                required: [enabled]
+  /campaigns/assist:
+    post:
+      operationId: requestCampaignWritingSuggestion
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CampaignAssistRequest"
+      responses:
+        "200":
+          description: A suggestion only; no campaign is written
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {suggestion: {type: string}}
+        "503":
+          description: Writing assistant is unconfigured; manual editing remains available
+        "429": {description: Wait a minute before requesting another suggestion}
   /admin/payouts:
     get:
       operationId: getAdminPayouts
@@ -755,6 +864,78 @@ components:
       required:
         - token
         - user
+
+    CampaignAssistRequest:
+      type: object
+      properties:
+        campaignId: {type: string}
+        field: {type: string, enum: [tagline, description, breakdown.detail, locations.description]}
+        instruction: {type: string, maxLength: 1000}
+      required: [campaignId, field, instruction]
+    CampaignEditorRequest:
+      type: object
+      properties:
+        name: {type: string, maxLength: 200}
+        tagline: {type: string, maxLength: 140}
+        description: {type: string, maxLength: 20000}
+        type: {type: string, enum: [fundraising, volunteer]}
+        goal: {type: number, minimum: 0}
+        volunteersNeeded: {type: number, minimum: 0}
+        deadline: {type: string, nullable: true}
+        imageUrl: {type: string, nullable: true}
+        matchFunding:
+          type: object
+          nullable: true
+          properties: {amount: {type: number, minimum: 0}, funderName: {type: string, maxLength: 200}}
+          required: [amount, funderName]
+        breakdown:
+          type: array
+          maxItems: 50
+          items:
+            type: object
+            properties: {label: {type: string}, detail: {type: string}}
+            required: [label, detail]
+        locations:
+          type: array
+          maxItems: 3
+          items:
+            type: object
+            properties: {name: {type: string}, description: {type: string}, photoUrl: {type: string}}
+            required: [name, description, photoUrl]
+        video:
+          type: object
+          nullable: true
+          properties: {url: {type: string}, posterUrl: {type: string}, captionsUrl: {type: string}}
+          required: [url, posterUrl, captionsUrl]
+        theme:
+          type: object
+          properties:
+            primaryColor: {type: string}
+            accentColor: {type: string}
+            backgroundColor: {type: string}
+            textColor: {type: string}
+            unit:
+              type: object
+              properties: {singular: {type: string, maxLength: 60}, plural: {type: string, maxLength: 60}, imageUrl: {type: string}}
+              required: [singular, plural, imageUrl]
+        enabled: {type: boolean}
+        saveAsDraft: {type: boolean}
+        editorStep: {type: integer, minimum: 1, maximum: 5}
+        assistUsed: {type: boolean}
+    EditorCampaign:
+      allOf:
+        - $ref: "#/components/schemas/CampaignEditorRequest"
+        - type: object
+          properties:
+            _id: {type: string}
+            publicId: {type: string}
+            amountRaised: {type: number}
+            status: {type: string}
+            hasUnpublishedChanges: {type: boolean}
+            sharePath: {type: string}
+            createdAt: {type: string}
+            updatedAt: {type: string}
+          required: [_id, amountRaised, enabled]
 
     OrganisationProfileFields:
       type: object

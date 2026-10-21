@@ -81,6 +81,32 @@ Older admin rows show — where canonical accounting fields are unavailable.
 yet a complete historical payable balance and must not drive payouts until
 historical reconciliation is explicitly completed.
 
+## Organisation self-service — campaign builder
+
+The main organisation dashboard is `/dashboard` (`pages/dashboard.tsx`).
+`/org-dashboard` remains a separate routed dashboard; it is not dead code.
+The Campaigns tab uses a five-step editor: ask, money, story, appearance,
+and preview/publish. Drafts save on every step and autosave during editing;
+device recovery is scoped to the account, organisation and campaign.
+Existing live campaigns stay public while revisions are saved privately.
+Publishing explicitly promotes those revisions after server-side content,
+organisation-profile and payout-readiness checks. Pending manual bank-transfer
+requests do not satisfy the payout gate.
+
+Campaigns remain an embedded array on the organisation. Editor writes, deletion
+and webhook campaign credits use update-time preconditions and retry conflicts,
+so a save cannot replace a concurrent donation credit. The editor cannot write
+financial totals. New optional content includes tagline, committed funding,
+itemised breakdown, three locations, lazy video with poster/captions, and a
+custom visual donor unit with four built-in SVG choices. The editor preview
+and public landing page render the same component. The full accumulating-donor
+page and walkthrough are separate later parts.
+
+`CAMPAIGN_ASSIST_ENABLED` defaults off. The writing-assistant endpoint is an
+authenticated, owner-scoped, rate-limited socket only; its provider-free adapter
+returns unavailable. Manual writing/saving never depends on it. A future
+suggestion must be explicitly accepted before `assistUsed` is saved.
+
 ## Stack
 
 - **Monorepo tool**: pnpm workspaces

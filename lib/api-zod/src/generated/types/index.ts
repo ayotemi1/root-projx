@@ -7,6 +7,16 @@
  */
 
 export * from "./authResponse";
+export * from "./campaignAssistRequest";
+export * from "./campaignAssistRequestField";
+export * from "./campaignEditorRequest";
+export * from "./campaignEditorRequestBreakdownItem";
+export * from "./campaignEditorRequestLocationsItem";
+export * from "./campaignEditorRequestMatchFunding";
+export * from "./campaignEditorRequestTheme";
+export * from "./campaignEditorRequestThemeUnit";
+export * from "./campaignEditorRequestType";
+export * from "./campaignEditorRequestVideo";
 export * from "./contactEventRequest";
 export * from "./contactEventRequestChannel";
 export * from "./createDonationRequest";
@@ -17,8 +27,10 @@ export * from "./createUpdateRequest";
 export * from "./createUpdateRequestTag";
 export * from "./donationIntentResponse";
 export * from "./donationWithOrg";
+export * from "./editorCampaign";
 export * from "./errorResponse";
 export * from "./followRequest";
+export * from "./getCampaignAssistStatus200";
 export * from "./getHelpOrgsParams";
 export * from "./healthStatus";
 export * from "./helpReview";
@@ -52,6 +64,9 @@ export * from "./publicUser";
 export * from "./publicUserAccountType";
 export * from "./registerRequest";
 export * from "./registerRequestAccountType";
+export * from "./requestCampaignWritingSuggestion200";
+export * from "./saveCampaignDraft400";
+export * from "./saveCampaignDraft400UnmetGatesItem";
 export * from "./submitHelpReviewRequest";
 export * from "./update";
 export * from "./updateOrganisationRequest";

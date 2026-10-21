@@ -37,7 +37,7 @@ router.get("/campaigns/:organisationSlug/:campaignSlug", async (req, res) => {
         ? new URL(String(organisation["logo"]), origin).href
         : `${origin}/opengraph.jpg`;
     const title = `${String(campaign["name"] ?? "Campaign")} — ${String(organisation["name"] ?? "Organisation")}`;
-    const description = String(campaign["description"] ?? "").slice(0, 200);
+    const description = String(campaign["tagline"] || campaign["description"] || "").slice(0, 200);
 
     res
       .status(200)

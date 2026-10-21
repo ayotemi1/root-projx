@@ -6,6 +6,7 @@ import { objectStorageClient } from "../lib/objectStorage.js";
 const router = Router();
 
 const ALLOWED_MIME_TYPES = new Set([
+  "text/vtt",
   "image/jpeg",
   "image/png",
   "image/gif",

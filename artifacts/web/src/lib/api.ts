@@ -169,6 +169,18 @@ export interface RecurringDonation {
   canceledAt: string | null;
 }
 
+/** Error carrying HTTP status and parsed JSON body. Subclass of Error, so existing catches still work. */
+export class ApiError extends Error {
+  status: number;
+  body: unknown;
+  constructor(message: string, status: number, body: unknown) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.body = body;
+  }
+}
+
 // ── Core fetch helper ─────────────────────────────────────────────────────────
 
 async function req<T>(
@@ -184,11 +196,13 @@ async function req<T>(
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
   if (!res.ok) {
     let msg = `Request failed (${res.status})`;
+    let body: unknown = null;
     try {
-      const body = (await res.json()) as { error?: string };
-      if (body.error) msg = body.error;
+      body = await res.json();
+      const b = body as { error?: string };
+      if (b && b.error) msg = b.error;
     } catch { /* ignore */ }
-    throw new Error(msg);
+    throw new ApiError(msg, res.status, body);
   }
   return res.json() as Promise<T>;
 }
@@ -393,11 +407,49 @@ export interface CampaignPhase {
   completed: boolean;
 }
 
+export interface CampaignUnit {
+  singular: string;
+  plural: string;
+  imageUrl: string | null;
+}
+
 export interface CampaignTheme {
   primaryColor: string;
   accentColor: string;
   backgroundColor: string;
   textColor: string;
+  unit?: CampaignUnit | null;
+}
+
+export interface CampaignMatchFunding {
+  amount: number;
+  funderName: string;
+}
+
+export interface CampaignBreakdownItem {
+  label: string;
+  detail: string;
+}
+
+export interface CampaignLocation {
+  name: string;
+  description: string;
+  photoUrl: string | null;
+}
+
+export interface CampaignVideo {
+  url: string;
+  posterUrl: string | null;
+  captionsUrl: string | null;
+}
+
+export type CampaignEditorStep = 1 | 2 | 3 | 4 | 5;
+
+export interface CampaignGate {
+  id: string;
+  message: string;
+  /** 0 = outside the campaign editor (profile or payouts). */
+  step: number;
 }
 
 export interface Campaign {
@@ -420,6 +472,36 @@ export interface Campaign {
   campaignSlug?: string | null;
   sharePath?: string | null;
   theme?: CampaignTheme;
+  // Part 3 structured content (additive, optional for legacy campaigns)
+  tagline?: string | null;
+  matchFunding?: CampaignMatchFunding | null;
+  breakdown?: CampaignBreakdownItem[] | null;
+  locations?: CampaignLocation[] | null;
+  video?: CampaignVideo | null;
+  editorStep?: CampaignEditorStep | null;
+  hasUnpublishedChanges?: boolean;
+  assistUsed?: boolean;
+  publishedAt?: string | null;
+}
+
+/** Editable fields accepted by PATCH, plus editor flags. Never includes amountRaised. */
+export interface CampaignEditorPatch {
+  name?: string;
+  tagline?: string;
+  type?: "fundraising" | "volunteer";
+  goal?: number;
+  volunteersNeeded?: number;
+  matchFunding?: CampaignMatchFunding | null;
+  deadline?: string | null;
+  description?: string;
+  breakdown?: CampaignBreakdownItem[];
+  locations?: CampaignLocation[];
+  imageUrl?: string | null;
+  video?: CampaignVideo | null;
+  theme?: CampaignTheme;
+  assistUsed?: boolean;
+  saveAsDraft?: true;
+  editorStep?: CampaignEditorStep;
 }
 
 export interface PublicCampaignLanding {
@@ -480,6 +562,39 @@ export const updateCampaign = (
     { method: "PATCH", body: JSON.stringify(data) },
     token,
   );
+
+/** Private full editor models (draft content flattened, hasUnpublishedChanges). */
+export const getOrgCampaigns = (orgId: string, token: string) => getManagedCampaigns(orgId, token);
+
+/** POST with an empty body creates an empty draft. */
+export const createCampaignDraft = (orgId: string, token: string) =>
+  req<Campaign>(`/organisations/${orgId}/campaigns`, { method: "POST", body: JSON.stringify({}) }, token);
+
+export const saveCampaignDraft = (orgId: string, campId: string, data: CampaignEditorPatch, token: string) =>
+  req<Campaign>(
+    `/organisations/${orgId}/campaigns/${campId}`,
+    { method: "PATCH", body: JSON.stringify({ ...data, saveAsDraft: true }) },
+    token,
+  );
+
+/** Publishes the latest persisted draft. Throws ApiError; 400 body has unmetGates. */
+export const setCampaignPublished = (orgId: string, campId: string, enabled: boolean, token: string) =>
+  req<Campaign>(
+    `/organisations/${orgId}/campaigns/${campId}`,
+    { method: "PATCH", body: JSON.stringify({ enabled }) },
+    token,
+  );
+
+export const getCampaignAssistStatus = (token: string) =>
+  req<{ enabled: boolean }>("/campaigns/assist/status", {}, token);
+
+export type CampaignAssistField = "tagline" | "description" | "breakdown.detail" | "locations.description";
+
+export const requestCampaignAssist = (
+  data: { campaignId: string; field: CampaignAssistField; instruction: string },
+  token: string,
+) =>
+  req<{ suggestion: string }>("/campaigns/assist", { method: "POST", body: JSON.stringify(data) }, token);
 
 export const deleteCampaign = (orgId: string, campId: string, token: string) =>
   req<{ ok: boolean }>(

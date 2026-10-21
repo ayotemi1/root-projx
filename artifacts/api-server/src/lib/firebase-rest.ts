@@ -209,6 +209,34 @@ export async function fsReleaseSettlementLock(orgId: string, token: string): Pro
   if (!response.ok) throw new Error("Could not release settlement lock; reconcile before retrying");
 }
 
+/** Compare-and-swap the embedded campaign array; preserve concurrent donation
+ * totals, other campaigns, and every non-campaign organisation field. */
+export async function fsMutateCampaigns<T>(
+  orgId: string, token: string,
+  mutate: (org: Record<string, unknown>) => { campaigns: Record<string, unknown>[]; result: T },
+): Promise<T> {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const response = await fetch(`${FIRESTORE}/organisations/${encodeURIComponent(orgId)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!response.ok) throw new Error("Could not load the latest campaign draft. Retry saving.");
+    const doc = await response.json() as { name: string; fields: Record<string, FsValue>; updateTime: string };
+    const { campaigns, result } = mutate(fromFsDoc(doc.fields ?? {}));
+    const saved = await fetch(`${FIRESTORE}:commit`, {
+      method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ writes: [{
+        update: { name: doc.name, fields: { campaigns: toFsVal(campaigns) } },
+        updateMask: { fieldPaths: ["campaigns"] }, currentDocument: { updateTime: doc.updateTime },
+      }] }),
+    });
+    if (saved.ok) return result;
+    const error = await saved.text();
+    if (saved.status === 409 || (saved.status === 400 && /FAILED_PRECONDITION/.test(error))) continue;
+    throw new Error("Your campaign was not saved. Keep this page open and retry.");
+  }
+  throw new Error("Your organisation changed while saving. Your draft is kept; retry saving.");
+}
+
 export async function fsPatch(
   collection: string,
   docId: string,

@@ -1,8 +1,9 @@
 import { randomUUID } from "crypto";
 import { profilePatch, ProfileValidationError } from "../lib/organisation-profile.js";
+import { campaignPatch, campaignForEditor, campaignPublishGates, CampaignInputError } from "../lib/campaign-editor.js";
 import { Router } from "express";
 import multer from "multer";
-import { fsGet, fsPatch, fsList, fsQuery, fsCreate, getServerToken } from "../lib/firebase-rest.js";
+import { fsGet, fsPatch, fsList, fsQuery, fsCreate, fsMutateCampaigns, getServerToken } from "../lib/firebase-rest.js";
 import { requireApprovedOrganisation, requireAuth } from "../lib/auth.js";
 import { isCampaignPublished } from "../lib/campaign-publication.js";
 import { objectStorageClient } from "../lib/objectStorage.js";
@@ -302,13 +303,14 @@ function normalizeHexColor(value: unknown, fallback: string): string {
   return /^#[0-9A-F]{6}$/.test(trimmed) ? trimmed : fallback;
 }
 
-function parseCampaignTheme(theme: unknown): Record<string, string> {
+function parseCampaignTheme(theme: unknown): Record<string, unknown> {
   const input = (theme && typeof theme === "object" ? theme : {}) as Record<string, unknown>;
   return {
     primaryColor: normalizeHexColor(input["primaryColor"], DEFAULT_CAMPAIGN_THEME.primaryColor),
     accentColor: normalizeHexColor(input["accentColor"], DEFAULT_CAMPAIGN_THEME.accentColor),
     backgroundColor: normalizeHexColor(input["backgroundColor"], DEFAULT_CAMPAIGN_THEME.backgroundColor),
     textColor: normalizeHexColor(input["textColor"], DEFAULT_CAMPAIGN_THEME.textColor),
+    ...(input.unit && typeof input.unit === "object" ? { unit: input.unit } : {}),
   };
 }
 
@@ -379,6 +381,11 @@ function publicCampaignFields(campaign: Record<string, unknown>): Record<string,
     createdAt: campaign["createdAt"] ?? null,
     updatedAt: campaign["updatedAt"] ?? null,
     theme: parseCampaignTheme(campaign["theme"]),
+    tagline: campaign.tagline ?? "",
+    matchFunding: campaign.matchFunding ?? null,
+    breakdown: Array.isArray(campaign.breakdown) ? campaign.breakdown : [],
+    locations: Array.isArray(campaign.locations) ? campaign.locations : [],
+    video: campaign.video ?? null,
     organisationSlug: campaign["organisationSlug"] ?? null,
     campaignSlug: campaign["campaignSlug"] ?? null,
     sharePath: campaign["sharePath"] ?? null,
@@ -390,14 +397,6 @@ async function getStoredCampaigns(orgId: string): Promise<Record<string, unknown
   const org = await fsGet("organisations", orgId, serverToken);
   if (!org || !Array.isArray(org.campaigns)) return [];
   return org.campaigns as Record<string, unknown>[];
-}
-
-async function saveCampaigns(
-  orgId: string,
-  campaigns: Record<string, unknown>[],
-): Promise<void> {
-  const serverToken = await getServerToken();
-  await fsPatch("organisations", orgId, { campaigns }, serverToken);
 }
 
 // GET /organisations/:id/campaigns/manage — private full campaign list for owner dashboard
@@ -419,7 +418,7 @@ router.get("/organisations/:id/campaigns/manage", requireAuth, requireApprovedOr
     const campaigns = (await getStoredCampaigns(orgId))
       .filter((campaign) => campaign["status"] !== "deleted")
       .map((campaign) => ({ ...campaign, ...campaignSharePath(orgWithIdentity, campaign) }));
-    res.json(campaigns);
+    res.json(campaigns.map(campaignForEditor));
   } catch (err) {
     req.log.error({ err }, "GET /organisations/:id/campaigns/manage error");
     res.status(500).json({ error: "Failed to fetch campaigns" });
@@ -551,46 +550,38 @@ router.post("/organisations/:id/campaigns", requireAuth, requireApprovedOrganisa
       name: organisationDisplayName(org, owner),
     };
 
-    const { name, description, type, goal, volunteersNeeded, deadline, imageUrl, phases } =
-      req.body as Record<string, unknown>;
-
-    if (!name || typeof name !== "string" || name.trim().length === 0) {
-      res.status(400).json({ error: "Campaign name is required" });
-      return;
-    }
-    if (!description || typeof description !== "string" || description.trim().length === 0) {
-      res.status(400).json({ error: "Campaign description is required" });
-      return;
-    }
-
+    const body = (req.body ?? {}) as Record<string, unknown>;
+    const content = campaignPatch(body, { theme: DEFAULT_CAMPAIGN_THEME });
     const now = new Date().toISOString();
     const campaignId = randomUUID().replace(/-/g, "").slice(0, 20);
-    const share = campaignSharePath(orgWithIdentity, { _id: campaignId, name });
+    const share = campaignSharePath(orgWithIdentity, { _id: campaignId, name: content.name });
     const newCampaign: Record<string, unknown> = {
       _id: campaignId,
       publicId: createPublicCampaignId(),
       enabled: false,
-      ...share,
-      name: name.trim().slice(0, 200),
-      description: description.trim().slice(0, 2000),
-      type: type === "volunteer" ? "volunteer" : "fundraising",
-      goal: typeof goal === "number" && goal > 0 ? goal : 0,
+      ...(typeof content.name === "string" && content.name.trim() ? share : {}),
+      name: "", tagline: "", description: "",
+      type: "fundraising", goal: 0,
       amountRaised: 0,
-      volunteersNeeded: typeof volunteersNeeded === "number" ? volunteersNeeded : 0,
+      volunteersNeeded: 0,
       status: "active",
-      deadline: typeof deadline === "string" && deadline ? deadline : null,
-      imageUrl: typeof imageUrl === "string" && imageUrl ? imageUrl : null,
-      phases: parsePhases(phases),
+      deadline: null, imageUrl: null,
+      matchFunding: null, breakdown: [], locations: [], video: null, editorStep: 1,
+      phases: parsePhases(body.phases),
       theme: { ...DEFAULT_CAMPAIGN_THEME },
       createdAt: now,
       updatedAt: now,
+      ...content,
     };
 
-    const existing = Array.isArray(org["campaigns"]) ? org["campaigns"] as Record<string, unknown>[] : [];
-    await saveCampaigns(orgId, [...existing, newCampaign]);
+    await fsMutateCampaigns(orgId, serverToken, latest => ({
+      campaigns: [...(Array.isArray(latest.campaigns) ? latest.campaigns as Record<string, unknown>[] : []), newCampaign],
+      result: newCampaign,
+    }));
     req.log.info({ orgId, campaignId: newCampaign._id }, "Campaign created");
     res.status(201).json(newCampaign);
   } catch (err) {
+    if (err instanceof CampaignInputError) { res.status(400).json({ error: err.message }); return; }
     req.log.error({ err }, "POST /organisations/:id/campaigns error");
     res.status(500).json({ error: "Failed to create campaign" });
   }
@@ -619,57 +610,52 @@ router.patch("/organisations/:id/campaigns/:campId", requireAuth, requireApprove
       _id: orgId,
       name: organisationDisplayName(org, owner),
     };
-    const allCampaigns = Array.isArray(org["campaigns"]) ? org["campaigns"] as Record<string, unknown>[] : [];
-    const idx = allCampaigns.findIndex((c) => c._id === campId && c["status"] !== "deleted");
-    if (idx === -1) {
-      res.status(404).json({ error: "Campaign not found" });
-      return;
-    }
-
-    const allowed = ["name", "description", "goal", "amountRaised", "volunteersNeeded",
-                     "status", "deadline", "imageUrl", "phases", "enabled", "theme"] as const;
-    const updates: Record<string, unknown> = {};
     const body = req.body as Record<string, unknown>;
-    for (const key of allowed) {
-      if (key in body) updates[key] = body[key];
-    }
-    if ("phases" in updates) {
-      updates["phases"] = parsePhases(updates["phases"]);
-    }
-    if ("enabled" in updates && typeof updates["enabled"] !== "boolean") {
-      res.status(400).json({ error: "enabled must be a boolean" });
-      return;
-    }
-    if (updates["enabled"] === true) {
-      const hasPublicOrganisationName =
-        (typeof org?.["name"] === "string" && org["name"].trim()) ||
-        (typeof owner?.["orgName"] === "string" && owner["orgName"].trim());
-      if (!hasPublicOrganisationName) {
-        res.status(400).json({ error: "Add an organisation name before publishing a campaign page" });
-        return;
+    if ("enabled" in body && typeof body.enabled !== "boolean") throw new CampaignInputError("Choose publish or unpublish and try again.");
+    const result = await fsMutateCampaigns(orgId, serverToken, latest => {
+      const campaigns = Array.isArray(latest.campaigns) ? latest.campaigns as Record<string, unknown>[] : [];
+      const idx = campaigns.findIndex(c => c._id === campId && c.status !== "deleted");
+      if (idx < 0) throw Object.assign(new Error("Campaign not found"), { status: 404 });
+      const current = campaigns[idx]!;
+      const editor = campaignForEditor(current);
+      const updates = campaignPatch(body, editor);
+      if ("phases" in body) updates.phases = parsePhases(body.phases);
+      if ("status" in body) {
+        if (!["active", "completed"].includes(String(body.status))) throw new CampaignInputError("Choose active or completed.");
+        updates.status = body.status;
       }
-    }
-    if ("theme" in updates) {
-      updates["theme"] = parseCampaignTheme(updates["theme"]);
-    }
-
-    const merged: Record<string, unknown> = {
-      ...allCampaigns[idx],
-      ...updates,
-      updatedAt: new Date().toISOString(),
-    };
-    if (merged["enabled"] === true && !PUBLIC_CAMPAIGN_ID_PATTERN.test(String(merged["publicId"] ?? ""))) {
-      merged["publicId"] = createPublicCampaignId();
-    }
-    if (merged["enabled"] === true) {
-      Object.assign(merged, campaignSharePath(orgWithIdentity, merged));
-    }
-    if (!merged["theme"]) merged["theme"] = { ...DEFAULT_CAMPAIGN_THEME };
-    allCampaigns[idx] = merged;
-    await saveCampaigns(orgId, allCampaigns);
+      let merged: Record<string, unknown>;
+      if (body.saveAsDraft === true && isCampaignPublished(current)) {
+        // Keep the published version available while the owner builds revisions.
+        const { editorStep, ...contentUpdates } = updates;
+        merged = { ...current,
+          editorDraft: { ...((current.editorDraft ?? {}) as Record<string, unknown>), ...contentUpdates },
+          ...(editorStep ? { editorStep } : {}), updatedAt: new Date().toISOString() };
+      } else {
+        let base = current;
+        if (body.enabled === true || !isCampaignPublished(current)) {
+          const { editorDraft: _draft, hasUnpublishedChanges: _changes, ...content } = { ...current, ...editor };
+          base = content;
+        }
+        merged = { ...base, ...updates, ...(typeof body.enabled === "boolean" ? { enabled: body.enabled } : {}),
+          updatedAt: new Date().toISOString() };
+        if (body.enabled === true || (isCampaignPublished(merged) && Object.keys(updates).length > 0)) {
+          const unmetGates = campaignPublishGates(latest, merged);
+          if (unmetGates.length) throw Object.assign(new CampaignInputError("Finish the listed steps before publishing."), { unmetGates });
+          if (!PUBLIC_CAMPAIGN_ID_PATTERN.test(String(merged.publicId ?? ""))) merged.publicId = createPublicCampaignId();
+          Object.assign(merged, campaignSharePath({ ...orgWithIdentity, ...latest }, merged));
+        }
+      }
+      campaigns[idx] = merged;
+      return { campaigns, result: campaignForEditor(merged) };
+    });
     req.log.info({ orgId, campId }, "Campaign updated");
-    res.json(merged);
+    res.json(result);
   } catch (err) {
+    if (err instanceof CampaignInputError) {
+      res.status(400).json({ error: err.message, ...("unmetGates" in err ? { unmetGates: err.unmetGates } : {}) }); return;
+    }
+    if (err && typeof err === "object" && "status" in err && err.status === 404) { res.status(404).json({ error: "Campaign not found" }); return; }
     req.log.error({ err }, "PATCH /organisations/:id/campaigns/:campId error");
     res.status(500).json({ error: "Failed to update campaign" });
   }
@@ -699,13 +685,13 @@ router.delete("/organisations/:id/campaigns/:campId", requireAuth, requireApprov
       return;
     }
 
-    // Soft-delete: keep the entry so array indices are stable, but mark deleted
-    allCampaigns[idx] = {
-      ...allCampaigns[idx],
-      status: "deleted",
-      updatedAt: new Date().toISOString(),
-    };
-    await saveCampaigns(orgId, allCampaigns);
+    // Soft-delete against the latest array, preserving concurrent edits and credits.
+    await fsMutateCampaigns(orgId, serverToken, latest => {
+      const campaigns = Array.isArray(latest.campaigns) ? latest.campaigns as Record<string, unknown>[] : [];
+      const index = campaigns.findIndex(c => c._id === campId);
+      if (index >= 0) campaigns[index] = { ...campaigns[index], status: "deleted", updatedAt: new Date().toISOString() };
+      return { campaigns, result: undefined };
+    });
     req.log.info({ orgId, campId }, "Campaign deleted");
     res.json({ ok: true });
   } catch (err) {

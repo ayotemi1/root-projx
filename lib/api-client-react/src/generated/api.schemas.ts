@@ -181,6 +181,113 @@ export interface AuthResponse {
   user: PublicUser;
 }
 
+export type CampaignAssistRequestField =
+  (typeof CampaignAssistRequestField)[keyof typeof CampaignAssistRequestField];
+
+export const CampaignAssistRequestField = {
+  tagline: "tagline",
+  description: "description",
+  breakdowndetail: "breakdown.detail",
+  locationsdescription: "locations.description",
+} as const;
+
+export interface CampaignAssistRequest {
+  campaignId: string;
+  field: CampaignAssistRequestField;
+  /** @maxLength 1000 */
+  instruction: string;
+}
+
+export type CampaignEditorRequestType =
+  (typeof CampaignEditorRequestType)[keyof typeof CampaignEditorRequestType];
+
+export const CampaignEditorRequestType = {
+  fundraising: "fundraising",
+  volunteer: "volunteer",
+} as const;
+
+export type CampaignEditorRequestMatchFunding = {
+  /** @minimum 0 */
+  amount: number;
+  /** @maxLength 200 */
+  funderName: string;
+} | null;
+
+export type CampaignEditorRequestBreakdownItem = {
+  label: string;
+  detail: string;
+};
+
+export type CampaignEditorRequestLocationsItem = {
+  name: string;
+  description: string;
+  photoUrl: string;
+};
+
+export type CampaignEditorRequestVideo = {
+  url: string;
+  posterUrl: string;
+  captionsUrl: string;
+} | null;
+
+export type CampaignEditorRequestThemeUnit = {
+  /** @maxLength 60 */
+  singular: string;
+  /** @maxLength 60 */
+  plural: string;
+  imageUrl: string;
+};
+
+export type CampaignEditorRequestTheme = {
+  primaryColor?: string;
+  accentColor?: string;
+  backgroundColor?: string;
+  textColor?: string;
+  unit?: CampaignEditorRequestThemeUnit;
+};
+
+export interface CampaignEditorRequest {
+  /** @maxLength 200 */
+  name?: string;
+  /** @maxLength 140 */
+  tagline?: string;
+  /** @maxLength 20000 */
+  description?: string;
+  type?: CampaignEditorRequestType;
+  /** @minimum 0 */
+  goal?: number;
+  /** @minimum 0 */
+  volunteersNeeded?: number;
+  deadline?: string | null;
+  imageUrl?: string | null;
+  matchFunding?: CampaignEditorRequestMatchFunding;
+  /** @maxItems 50 */
+  breakdown?: CampaignEditorRequestBreakdownItem[];
+  /** @maxItems 3 */
+  locations?: CampaignEditorRequestLocationsItem[];
+  video?: CampaignEditorRequestVideo;
+  theme?: CampaignEditorRequestTheme;
+  enabled?: boolean;
+  saveAsDraft?: boolean;
+  /**
+   * @minimum 1
+   * @maximum 5
+   */
+  editorStep?: number;
+  assistUsed?: boolean;
+}
+
+export type EditorCampaign = CampaignEditorRequest & {
+  _id: string;
+  publicId?: string;
+  amountRaised: number;
+  status?: string;
+  hasUnpublishedChanges?: boolean;
+  sharePath?: string;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 export type OrganisationProfileFieldsContact = {
   email?: string;
   phone?: string;
@@ -472,6 +579,25 @@ export interface UpdateProfileRequest {
   email?: string;
   phone?: string;
 }
+
+export type SaveCampaignDraft400UnmetGatesItem = {
+  id?: string;
+  message?: string;
+  step?: number;
+};
+
+export type SaveCampaignDraft400 = {
+  error?: string;
+  unmetGates?: SaveCampaignDraft400UnmetGatesItem[];
+};
+
+export type GetCampaignAssistStatus200 = {
+  enabled: boolean;
+};
+
+export type RequestCampaignWritingSuggestion200 = {
+  suggestion?: string;
+};
 
 export type ListOrganisationsParams = {
   country?: string;
