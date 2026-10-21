@@ -8,4 +8,5 @@
 - [Payout data boundaries](payout-data-boundaries.md) — banking credentials stay off-platform; manual setup stores only request/approval and a short payee reminder.
 - [Node route-test bundling](node-route-test-bundling.md) — bundle generated workspace validators in raw Node tests; app-build module resolution does not carry over.
 - [Media attachment recovery](media-attachment-recovery.md) — an uploaded asset is not saved content until attachment succeeds; pending URLs need a usable recovery action.
-- [Campaign publication safety](campaign-publication-safety.md) — keep live pages separate from revisions; a committed grant alone is not a one-to-one matching pledge.
+- [Campaign publication safety](campaign-publication-safety.md) — keep revisions private; committed funding is not matching; default and migrate legacy funding to committed.
+- [Workflow port ownership](workflow-port-ownership.md) — orphan servers after merges can make managed Vite silently drift away from the artifact router's assigned port.

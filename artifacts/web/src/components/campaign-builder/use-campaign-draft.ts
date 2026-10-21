@@ -61,7 +61,7 @@ export function useCampaignDraft(opts: {
   const [init] = useState(() => {
     const env = readLocal(key);
     if (env && JSON.stringify({ value: env.value, step: env.step }) !== serverSerialized) {
-      return { value: { ...serverDraft, ...env.value }, step: env.step, recovered: true };
+      return { value: { ...serverDraft, ...migrateLegacyDraft(env.value) }, step: env.step, recovered: true };
     }
     return { value: serverDraft, step: serverStep, recovered: false };
   });
@@ -214,4 +214,19 @@ export function useCampaignDraft(opts: {
       ? "This browser is not keeping a backup copy (private mode or storage full). Stay on this page until you see Saved."
       : null,
   };
+}
+
+/** Old local drafts used match* keys. All legacy funding is committed, never matching. */
+function migrateLegacyDraft(v: CampaignDraft): CampaignDraft {
+  const old = v as CampaignDraft & { matchOn?: boolean; matchAnswer?: "yes" | "no" | null; matchAmount?: string; matchFunder?: string };
+  if (!("matchOn" in old || "matchAnswer" in old || "matchAmount" in old || "matchFunder" in old)) return v;
+  const { matchOn, matchAnswer, matchAmount, matchFunder, ...rest } = old;
+  return {
+    ...rest,
+    partnerOn: rest.partnerOn ?? !!matchOn,
+    partnerAnswer: rest.partnerAnswer ?? matchAnswer ?? null,
+    partnerType: rest.partnerType ?? "committed",
+    partnerAmount: rest.partnerAmount ?? matchAmount ?? "",
+    partnerFunder: rest.partnerFunder ?? matchFunder ?? "",
+  } as CampaignDraft;
 }

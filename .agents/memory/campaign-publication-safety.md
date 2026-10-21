@@ -1,6 +1,6 @@
 ---
 name: Campaign publication safety
-description: Why live campaigns and unpublished revisions are separate, and why committed funding is not automatically donor matching
+description: Live revisions stay private; already committed funding and donation-triggered matching are distinct
 ---
 
 Keep an already published campaign available while its organisation edits.
@@ -15,10 +15,18 @@ existing donor links.
 edits when unpublishing, and keep previously published links stable after renames.
 Blank drafts should acquire readable links from the final name at first publish.
 
-A committed grant amount alone does not establish a one-to-one matching pledge.
+Keep two distinct partner-funding types. **Committed** money is secured
+regardless of donations and never multiplies a donor's gift. **Matching**
+money is triggered by gifts, with an explicit ratio and cap; stop showing a
+multiplier when the cap is used. Default to committed. All legacy `matchFunding`
+data must mean committed, not matching.
 
-**Why:** Claiming that a donor's contribution doubles would promise money without
-established matching terms, eligibility or ratio.
+**Why:** The user corrected the conflation on 2026-10-22. Their first campaign
+has a government commitment for about half the programme cost before any donation
+existed: a donor's £10 only reduces the remaining gap. The earlier note claiming
+they confirmed a general matching model was incorrect.
 
-**How to apply:** Show fixed committed funding separately from donations raised.
-Only introduce doubling claims when actual matching terms are explicitly established.
+**How to apply:** Ask which type in plain language. For committed funding say
+"£X already committed by [funder]"; never imply donations unlock it. Track actual
+matching allocation separately from donations raised, cap it atomically, and
+never treat a pledge as another card payment or settled payout money.

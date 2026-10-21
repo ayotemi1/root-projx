@@ -2,7 +2,7 @@ import { Router } from "express";
 import { fsGet, fsPatch, fsQuery, getServerToken } from "../lib/firebase-rest.js";
 import { requireAuth, optionalAuth } from "../lib/auth.js";
 import { getUncachableStripeClient, getStripePublishableKey } from "../lib/stripeClient.js";
-import { MIN_DONATION_PENCE, PLATFORM_FEE_PERCENT, platformFeePence } from "../lib/fees.js";
+import { MIN_DONATION_PENCE, PLATFORM_FEE_PERCENT, platformFeePence, donationAccounting } from "../lib/fees.js";
 import { resolvePayoutMethod } from "../lib/payout-setup.js";
 
 const DOMAIN = process.env.REPLIT_DEV_DOMAIN
@@ -12,6 +12,10 @@ const DOMAIN = process.env.REPLIT_DEV_DOMAIN
   : "http://localhost:3000";
 
 const router = Router();
+function anonymousIdentityMetadata(body: Record<string, unknown>): Record<string, string> {
+  return typeof body.anonymousDonorId === "string" && /^[a-f0-9-]{36}$/i.test(body.anonymousDonorId)
+    ? { anonymousDonorId: body.anonymousDonorId } : {};
+}
 
 // ── Get / upsert Stripe customer — stored in Firestore users/{uid} ─────────────
 async function ensureStripeCustomer(userId: string, email: string, token: string): Promise<string> {
@@ -194,6 +198,7 @@ router.post("/donations/anonymous-checkout", async (req, res) => {
         metadata: {
           userId: "anonymous",
           payoutMethod,
+          ...anonymousIdentityMetadata(req.body),
           orgId,
           orgName: (org["name"] as string) ?? "",
           amountPence: String(amountPence),
@@ -459,6 +464,7 @@ router.post("/donations/checkout", optionalAuth, async (req, res) => {
         metadata: {
           userId: uid ?? "guest",
           payoutMethod,
+          ...anonymousIdentityMetadata(req.body),
           orgId,
           orgName: (org["name"] as string) ?? "",
           amountPence: String(amountPence),
@@ -524,13 +530,33 @@ router.get("/donations/confirm", async (req, res) => {
       { limit: 1 },
     );
 
+    const accounting = donationAccounting({
+      chargedPence: paymentIntent.amount,
+      intendedPence: Number(meta.originalAmountPence ?? amountPence),
+      feeCovered: meta.feeCovered === "true",
+    });
+    const saved = existing[0];
+    if (saved && typeof saved.toOrgGbp === "number") {
+      for (const key of ["chargedGbp", "intendedGbp", "platformFeeGbp", "feeCovered", "feeCoverGbp", "toOrgGbp",
+        "grossAmountGbp", "netAmountGbp", "amountGbp"] as const) {
+        if (saved[key] !== undefined) (accounting as Record<string, unknown>)[key] = saved[key];
+      }
+    }
+    const campaignId = meta.campaignId ?? null;
+    const org = campaignId ? await fsGet("organisations", orgId, serverToken) : null;
+    const campaign = (Array.isArray(org?.campaigns) ? org.campaigns as Record<string, unknown>[] : []).find(c => c._id === campaignId);
+    const theme = campaign?.theme as { unit?: { singular?: string; plural?: string; imageUrl?: string } } | undefined;
+    const campaignPath = campaign && campaign.enabled !== false && campaign.status !== "deleted"
+      ? (typeof campaign.sharePath === "string" ? campaign.sharePath : typeof campaign.publicId === "string" ? `/campaigns/${encodeURIComponent(campaign.publicId)}` : null) : null;
     res.json({
       orgId,
       orgName,
-      amountGbp: amountPence / 100,
-      feePence,
+      ...accounting,
+      feePence: Math.round(accounting.platformFeeGbp * 100),
       donorEmail: session.customer_details?.email ?? session.customer_email,
       recorded: existing.length > 0,
+      campaignId, campaignPath, campaignName: typeof campaign?.name === "string" ? campaign.name : null,
+      unit: theme?.unit ?? null,
     });
   } catch (err) {
     req.log.error({ err }, "GET /donations/confirm error");

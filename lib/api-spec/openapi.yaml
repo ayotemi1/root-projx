@@ -25,6 +25,82 @@ tags:
   - name: profile
     description: User profile
 paths:
+  /organisations/{id}/campaigns/{campId}/preview:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: string}}
+      - {name: campId, in: path, required: true, schema: {type: string}}
+    get:
+      operationId: getOwnerCampaignPreview
+      security: [{bearerAuth: []}]
+      responses:
+        "200":
+          description: Owner-only actual campaign render data; never publicly cached
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/CampaignLandingView"}
+        "403": {description: Only the approved owning organisation may preview}
+  /organisations/{id}/dashboard-summary:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: string}}
+    get:
+      operationId: getOrganisationRunningSummary
+      security: [{bearerAuth: []}]
+      responses:
+        "200":
+          description: Real ledger balances, recent consent-safe supporters and activity
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/OrganisationRunningSummary"}
+        "503": {description: Retry loading balances; no zero fallback}
+  /organisations/{id}/walkthrough:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: string}}
+    get:
+      operationId: getOrganisationWalkthrough
+      security: [{bearerAuth: []}]
+      responses:
+        "200":
+          description: Private resume state and actual preview interactions
+          content:
+            application/json:
+              schema: {$ref: "#/components/schemas/WalkthroughView"}
+    patch:
+      operationId: saveOrganisationWalkthrough
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/WalkthroughProgress"}
+      responses:
+        "200":
+          description: Saved resume pointer; completion must satisfy actual saved content
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  walkthrough: {$ref: "#/components/schemas/WalkthroughProgress"}
+        "400": {description: Complete the required saved actions before finishing}
+  /organisations/{id}/walkthrough/events:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: string}}
+    post:
+      operationId: recordOrganisationPreviewOpen
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: "#/components/schemas/WalkthroughPreviewEvent"}
+      responses:
+        "200":
+          description: Preview interaction recorded separately from resume state
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {recorded: {type: boolean}, at: {type: string}}
   /wise/disbursements:
     get:
       operationId: getWiseDisbursements
@@ -925,11 +1001,16 @@ components:
         volunteersNeeded: {type: number, minimum: 0}
         deadline: {type: string, nullable: true}
         imageUrl: {type: string, nullable: true}
-        matchFunding:
+        partnerFunding:
           type: object
           nullable: true
-          properties: {amount: {type: number, minimum: 0}, funderName: {type: string, maxLength: 200}}
-          required: [amount, funderName]
+          properties:
+            amount: {type: number, minimum: 0}
+            funderName: {type: string, maxLength: 200}
+            type: {type: string, enum: [committed, matching], default: committed}
+            matchRatio: {type: number, exclusiveMinimum: 0, default: 1}
+            matchCap: {type: number, minimum: 0, description: "Matching only; defaults to amount."}
+          required: [amount, funderName, type]
         breakdown:
           type: array
           maxItems: 50
@@ -964,6 +1045,8 @@ components:
         saveAsDraft: {type: boolean}
         editorStep: {type: integer, minimum: 1, maximum: 5}
         assistUsed: {type: boolean}
+        partnerFundingAnswer: {type: string, nullable: true, enum: [yes, no, null]}
+        unitChosen: {type: boolean}
     EditorCampaign:
       allOf:
         - $ref: "#/components/schemas/CampaignEditorRequest"
@@ -972,12 +1055,81 @@ components:
             _id: {type: string}
             publicId: {type: string}
             amountRaised: {type: number}
+            partnerFundingMatchedGbp: {type: number, minimum: 0, readOnly: true}
             status: {type: string}
             hasUnpublishedChanges: {type: boolean}
             sharePath: {type: string}
             createdAt: {type: string}
             updatedAt: {type: string}
+            supporterCount: {type: integer, minimum: 0}
+            unidentifiedGifts: {type: integer, minimum: 0}
+            recentSupporters:
+              type: array
+              items: {$ref: "#/components/schemas/RecentCampaignSupporter"}
           required: [_id, amountRaised, enabled]
+
+    RecentCampaignSupporter:
+      type: object
+      properties: {displayName: {type: string}, createdAt: {type: string}}
+      required: [displayName, createdAt]
+    CampaignLandingView:
+      type: object
+      properties:
+        campaign: {$ref: "#/components/schemas/EditorCampaign"}
+        organisation:
+          type: object
+          additionalProperties: true
+          properties: {_id: {type: string}, name: {type: string}}
+          required: [_id, name]
+        preview: {type: boolean}
+      required: [campaign, organisation]
+    WalkthroughProgress:
+      type: object
+      properties:
+        profileStep: {type: integer, minimum: 1, maximum: 10, nullable: true}
+        campaignStep: {type: integer, minimum: 1, maximum: 12, nullable: true}
+        profileDone: {type: boolean}
+        campaignDone: {type: boolean}
+        exitedAt: {type: string, nullable: true}
+        selectedCampaignId: {type: string, nullable: true}
+    WalkthroughView:
+      type: object
+      properties:
+        walkthrough: {$ref: "#/components/schemas/WalkthroughProgress"}
+        profilePreviewedAt: {type: string, nullable: true}
+        campaignPreviewedAt: {type: string, nullable: true}
+        campaignPreviewedId: {type: string, nullable: true}
+        payoutSetupSelected: {type: boolean}
+      required: [walkthrough, payoutSetupSelected]
+    WalkthroughPreviewEvent:
+      type: object
+      properties:
+        event: {type: string, enum: [profile_preview, campaign_preview]}
+        campaignId: {type: string}
+      required: [event]
+    OrganisationRunningSummary:
+      type: object
+      properties:
+        raisedGbp: {type: number}
+        owedGbp: {type: number}
+        nextPayoutAt: {type: string, nullable: true}
+        lastPayout:
+          type: object
+          nullable: true
+          properties: {amountGbp: {type: number}, reference: {type: string}, sentAt: {type: string}}
+          required: [amountGbp, reference, sentAt]
+        recentSupporters:
+          type: array
+          items: {$ref: "#/components/schemas/RecentCampaignSupporter"}
+        campaignRaised:
+          type: array
+          items:
+            type: object
+            properties: {campaignId: {type: string}, name: {type: string}, raisedGbp: {type: number}}
+            required: [campaignId, name, raisedGbp]
+        latestUpdateAt: {type: string, nullable: true}
+        impactMetricsStale: {type: boolean}
+      required: [raisedGbp, owedGbp, nextPayoutAt, lastPayout, recentSupporters, campaignRaised, latestUpdateAt, impactMetricsStale]
 
     OrganisationProfileFields:
       type: object

@@ -216,11 +216,27 @@ export const CampaignEditorRequestType = {
   volunteer: "volunteer",
 } as const;
 
-export type CampaignEditorRequestMatchFunding = {
+export type CampaignEditorRequestPartnerFundingType =
+  (typeof CampaignEditorRequestPartnerFundingType)[keyof typeof CampaignEditorRequestPartnerFundingType];
+
+export const CampaignEditorRequestPartnerFundingType = {
+  committed: "committed",
+  matching: "matching",
+} as const;
+
+export type CampaignEditorRequestPartnerFunding = {
   /** @minimum 0 */
   amount: number;
   /** @maxLength 200 */
   funderName: string;
+  type: CampaignEditorRequestPartnerFundingType;
+  /** @exclusiveMinimum 0 */
+  matchRatio?: number;
+  /**
+   * Matching only; defaults to amount.
+   * @minimum 0
+   */
+  matchCap?: number;
 } | null;
 
 export type CampaignEditorRequestBreakdownItem = {
@@ -256,6 +272,15 @@ export type CampaignEditorRequestTheme = {
   unit?: CampaignEditorRequestThemeUnit;
 };
 
+export type CampaignEditorRequestPartnerFundingAnswer =
+  | (typeof CampaignEditorRequestPartnerFundingAnswer)[keyof typeof CampaignEditorRequestPartnerFundingAnswer]
+  | null;
+
+export const CampaignEditorRequestPartnerFundingAnswer = {
+  yes: "yes",
+  no: "no",
+} as const;
+
 export interface CampaignEditorRequest {
   /** @maxLength 200 */
   name?: string;
@@ -270,7 +295,7 @@ export interface CampaignEditorRequest {
   volunteersNeeded?: number;
   deadline?: string | null;
   imageUrl?: string | null;
-  matchFunding?: CampaignEditorRequestMatchFunding;
+  partnerFunding?: CampaignEditorRequestPartnerFunding;
   /** @maxItems 50 */
   breakdown?: CampaignEditorRequestBreakdownItem[];
   /** @maxItems 3 */
@@ -285,18 +310,105 @@ export interface CampaignEditorRequest {
    */
   editorStep?: number;
   assistUsed?: boolean;
+  partnerFundingAnswer?: CampaignEditorRequestPartnerFundingAnswer;
+  unitChosen?: boolean;
+}
+
+export interface RecentCampaignSupporter {
+  displayName: string;
+  createdAt: string;
 }
 
 export type EditorCampaign = CampaignEditorRequest & {
   _id: string;
   publicId?: string;
   amountRaised: number;
+  /** @minimum 0 */
+  readonly partnerFundingMatchedGbp?: number;
   status?: string;
   hasUnpublishedChanges?: boolean;
   sharePath?: string;
   createdAt?: string;
   updatedAt?: string;
+  /** @minimum 0 */
+  supporterCount?: number;
+  /** @minimum 0 */
+  unidentifiedGifts?: number;
+  recentSupporters?: RecentCampaignSupporter[];
 };
+
+export type CampaignLandingViewOrganisation = {
+  _id: string;
+  name: string;
+  [key: string]: unknown;
+};
+
+export interface CampaignLandingView {
+  campaign: EditorCampaign;
+  organisation: CampaignLandingViewOrganisation;
+  preview?: boolean;
+}
+
+export interface WalkthroughProgress {
+  /**
+   * @minimum 1
+   * @maximum 10
+   */
+  profileStep?: number | null;
+  /**
+   * @minimum 1
+   * @maximum 12
+   */
+  campaignStep?: number | null;
+  profileDone?: boolean;
+  campaignDone?: boolean;
+  exitedAt?: string | null;
+  selectedCampaignId?: string | null;
+}
+
+export interface WalkthroughView {
+  walkthrough: WalkthroughProgress;
+  profilePreviewedAt?: string | null;
+  campaignPreviewedAt?: string | null;
+  campaignPreviewedId?: string | null;
+  payoutSetupSelected: boolean;
+}
+
+export type WalkthroughPreviewEventEvent =
+  (typeof WalkthroughPreviewEventEvent)[keyof typeof WalkthroughPreviewEventEvent];
+
+export const WalkthroughPreviewEventEvent = {
+  profile_preview: "profile_preview",
+  campaign_preview: "campaign_preview",
+} as const;
+
+export interface WalkthroughPreviewEvent {
+  event: WalkthroughPreviewEventEvent;
+  campaignId?: string;
+}
+
+export type OrganisationRunningSummaryLastPayout = {
+  amountGbp: number;
+  reference: string;
+  sentAt: string;
+} | null;
+
+export type OrganisationRunningSummaryCampaignRaisedItem = {
+  campaignId: string;
+  name: string;
+  raisedGbp: number;
+};
+
+export interface OrganisationRunningSummary {
+  raisedGbp: number;
+  owedGbp: number;
+  nextPayoutAt: string | null;
+  lastPayout: OrganisationRunningSummaryLastPayout;
+  recentSupporters: RecentCampaignSupporter[];
+  campaignRaised: OrganisationRunningSummaryCampaignRaisedItem[];
+  latestUpdateAt: string | null;
+  impactMetricsStale: boolean;
+}
 
 export type OrganisationProfileFieldsContact = {
   email?: string;
@@ -589,6 +701,15 @@ export interface UpdateProfileRequest {
   email?: string;
   phone?: string;
 }
+
+export type SaveOrganisationWalkthrough200 = {
+  walkthrough?: WalkthroughProgress;
+};
+
+export type RecordOrganisationPreviewOpen200 = {
+  recorded?: boolean;
+  at?: string;
+};
 
 export type GetWiseDisbursementsParams = {
   /**

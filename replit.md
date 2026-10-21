@@ -98,9 +98,58 @@ and webhook campaign credits use update-time preconditions and retry conflicts,
 so a save cannot replace a concurrent donation credit. The editor cannot write
 financial totals. New optional content includes tagline, committed funding,
 itemised breakdown, three locations, lazy video with poster/captions, and a
-custom visual donor unit with four built-in SVG choices. The editor preview
-and public landing page render the same component. The full accumulating-donor
-page and walkthrough are separate later parts.
+custom visual donor unit with four built-in SVG choices. Editor previews,
+owner-only direct draft links and public landing pages render the same component.
+The hero uses one accessible canvas: up to 300 units are drawn individually,
+with mass for the remainder, one fill animation and a reduced-motion still state.
+Supporters are deduplicated from successful payments; consent controls names.
+Historical anonymous gifts without a reusable identity are shown separately,
+never presented as a count of distinct people.
+
+`partnerFunding` distinguishes **committed** funding already secured regardless
+of donations from **matching** pledges triggered by donations. Committed is the
+default: show "£X already committed by [funder]" and the three programme-funding
+segments, never a donation multiplier. Matching alone uses `matchRatio` (default
+1) and `matchCap` (default `amount`). Successful donation webhooks atomically
+increase the server-owned `partnerFundingMatchedGbp`, capped at the remainder.
+That allocation is neither another card charge nor a Root ProjX payout liability.
+The multiplier disappears once exhausted and says matching has been fully claimed.
+Editors cannot reset used matching or publish a cap below money already matched.
+
+Legacy `matchFunding`, including private unpublished revisions, is migrated to
+committed funding on read/save. For bulk persisted migration use
+`node --experimental-strip-types artifacts/api-server/scripts/migrate-partner-funding.mjs`;
+it is dry-run by default, with `--apply` for update-time-protected writes. It
+changes funding metadata only, never donation, organisation or campaign totals.
+Public pages retain the canonical £3 fee example.
+Recorded donation receipts link back to the campaign with a one-time unit
+highlight; client code never fabricates an increased supporter count.
+
+**Accounting follow-up before publication:** destination-charge Checkout still
+sets Stripe `application_fee_amount` to the platform fee alone. That does not
+withhold the processing estimate used by the canonical `toOrgGbp` model. The
+displayed £2.85/£2.60 examples describe the accounting model, not a verified
+Connect destination-transfer amount. Financial routing was not changed in this
+self-service UI pass; reconcile that split explicitly rather than silently
+changing live payment behaviour.
+
+Draft preview links are `/campaign/preview/:orgId/:campId`, owner-only and
+non-cacheable. They show "Draft — only you can see this", disable donations and
+sharing, and record an actual preview-open event for the walkthrough. Unpublish
+preserves the draft and can be reversed by publishing after gates pass.
+
+The main dashboard defaults to Overview: money, supporters, campaigns, updates,
+then impact metrics. Outstanding owed comes from unpaid payout ledger entries,
+not lifetime `totalOwedGbp`. A next payout date is shown only when actually
+scheduled; otherwise it says "Not scheduled". The summary requires the existing
+server-side payout/disbursement collection permissions from the payout phase.
+
+The guided setup uses Driver.js and declarative, stable-anchor steps. It checks
+saved content, not typing or clicking Next; payout selection cannot be skipped.
+Preview steps require recorded opens. Exit/resume/replay progress lives on the
+organisation document, separate from editable content and financial fields.
+Pending progress remains in memory even if device storage fails, and only the
+acknowledged snapshot is cleared after a successful save.
 
 `CAMPAIGN_ASSIST_ENABLED` defaults off. The writing-assistant endpoint is an
 authenticated, owner-scoped, rate-limited socket only; its provider-free adapter

@@ -1,6 +1,6 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { AlertCircle, ArrowLeft, ArrowRight, Check, Circle, Loader2, RotateCcw, Copy } from "lucide-react";
+import { AlertCircle, ArrowLeft, ArrowRight, Check, Circle, Loader2, RotateCcw, Copy, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import * as api from "@/lib/api";
 import { ApiError, type Campaign, type CampaignEditorStep, type CampaignGate, type Org } from "@/lib/api";
@@ -70,6 +70,18 @@ export function CampaignWizard({ campaign, org, orgId, userId, token, onClose }:
     setPublishError(null);
     topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
+
+  // The guided tour asks the wizard to open a step so its anchor can mount.
+  const goRef = useRef(go);
+  goRef.current = go;
+  useEffect(() => {
+    const onTour = (e: Event) => {
+      const n = (e as CustomEvent<{ campaignId: string; step: number }>).detail;
+      if (n && n.campaignId === campaign._id && n.step !== step) goRef.current(n.step);
+    };
+    window.addEventListener("rpx-tour-wizard-step", onTour);
+    return () => window.removeEventListener("rpx-tour-wizard-step", onTour);
+  }, [campaign._id, step]);
 
   async function publish() {
     setPublishing(true);
@@ -142,6 +154,10 @@ export function CampaignWizard({ campaign, org, orgId, userId, token, onClose }:
         <button type="button" onClick={close} disabled={closing} className="text-sm font-semibold text-muted-foreground hover:text-foreground inline-flex items-center gap-1" data-testid="button-close-wizard" data-tour-id="campaign-wizard-close">
           <ArrowLeft className="w-4 h-4" /> All campaigns
         </button>
+        <a href={`/campaign/preview/${orgId}/${campaign._id}`} onClick={async (e) => { e.preventDefault(); const ok = await draft.flush(); if (ok) window.location.href = `${import.meta.env.BASE_URL.replace(/\/$/, "")}/campaign/preview/${orgId}/${campaign._id}`; }}
+          className="text-xs font-bold text-primary inline-flex items-center gap-1 hover:underline underline-offset-2" data-testid="link-preview-as-donor" data-tour-id="campaign-preview-open">
+          <Eye className="w-3.5 h-3.5" /> Preview as donor
+        </a>
         <SaveBadge status={draft.status} error={draft.error} onRetry={() => void draft.commit()} />
       </div>
 

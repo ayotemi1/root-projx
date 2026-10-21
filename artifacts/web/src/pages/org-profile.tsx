@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRoute, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -354,6 +354,26 @@ export default function OrgProfilePage() {
     enabled: !!id,
   });
 
+  // Owner opened "Preview as a donor": record the real open after the page rendered.
+  const { user: authUser } = useAuth();
+  const previewRecorded = useRef(false);
+  const [previewRecordFailed, setPreviewRecordFailed] = useState(false);
+  const isOwnerPreview = new URLSearchParams(window.location.search).get("preview") === "1" && !!authUser && authUser.id === id;
+  const recordProfilePreview = () => {
+    if (!token) return;
+    previewRecorded.current = true;
+    setPreviewRecordFailed(false);
+    api.postWalkthroughEvent(id, { event: "profile_preview" }, token)
+      .then(() => queryClient.invalidateQueries({ queryKey: ["walkthrough", id] }))
+      .catch(() => setPreviewRecordFailed(true));
+  };
+  const recordRef = useRef(recordProfilePreview);
+  recordRef.current = recordProfilePreview;
+  useEffect(() => {
+    if (!isOwnerPreview || !orgQ.data || !token || previewRecorded.current) return;
+    recordRef.current();
+  }, [isOwnerPreview, orgQ.data, token]);
+
   const updatesQ = useQuery({
     queryKey: ["org-feed", id],
     queryFn: () => api.getOrgFeed(id),
@@ -490,6 +510,12 @@ export default function OrgProfilePage() {
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-6">
+      {isOwnerPreview && previewRecordFailed && (
+        <div role="alert" className="mb-4 rounded-xl bg-destructive/10 text-sm px-4 py-2 flex items-center gap-3" data-testid="alert-profile-preview-record-failed">
+          <span className="flex-1">We couldn't record this preview, so the walkthrough can't tick it off yet.</span>
+          <Button size="sm" variant="outline" onClick={recordProfilePreview} data-testid="button-retry-profile-preview-record">Retry</Button>
+        </div>
+      )}
       <GuestDonateSheet
         open={donateModalOpen}
         onClose={() => setDonateModalOpen(false)}

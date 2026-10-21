@@ -98,10 +98,10 @@ export function ProfileEditor({ org, userId, token }: { org: Org; userId: string
           <h2 className="text-xl font-extrabold text-foreground">Build your profile</h2>
           <p className="text-sm text-muted-foreground">Each section saves on its own when you move on. Edits are kept on this device until saved.</p>
         </div>
-        <a href={`/organisations/${orgId}`} target="_blank" rel="noopener noreferrer"
+        <a href={`/organisations/${orgId}?preview=1`} target="_blank" rel="noopener noreferrer"
           className="inline-flex items-center gap-1.5 text-sm font-bold text-primary hover:underline underline-offset-2"
           data-testid="link-public-profile" data-tour-id="profile-view-public">
-          Public profile <ExternalLink className="w-3.5 h-3.5" />
+          Preview as a donor <ExternalLink className="w-3.5 h-3.5" />
         </a>
       </div>
 

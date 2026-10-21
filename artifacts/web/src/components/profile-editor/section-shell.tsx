@@ -94,14 +94,14 @@ export function SectionShell({
           <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{hint}</p>
         </div>
         <a
-          href={`/organisations/${orgId}#${PROFILE_ANCHORS[section]}`}
+          href={`/organisations/${orgId}?preview=1#${PROFILE_ANCHORS[section]}`}
           target="_blank"
           rel="noopener noreferrer"
           className="flex-shrink-0 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline underline-offset-2 py-1"
           data-testid={`link-public-${section}`}
           data-tour-id={`profile-view-public-${section}`}
         >
-          View <ExternalLink className="w-3 h-3" />
+          Preview as donor <ExternalLink className="w-3 h-3" />
         </a>
       </header>
       {wasRecovered && onDiscard && (

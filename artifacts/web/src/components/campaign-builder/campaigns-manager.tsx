@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useSearch } from "wouter";
-import { PlusCircle, Target, ExternalLink, Trash2, CheckCircle, Pencil, AlertCircle, Users } from "lucide-react";
+import { PlusCircle, Target, ExternalLink, Trash2, CheckCircle, Pencil, AlertCircle, Users, Eye } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -55,6 +55,9 @@ function CampaignRow({ c, onEdit, orgId, token }: { c: Campaign; onEdit: () => v
           <Button size="sm" className="h-8 font-bold" onClick={onEdit} data-testid={`button-edit-campaign-${c._id}`} data-tour-id="campaign-edit">
             <Pencil className="w-3.5 h-3.5 mr-1" /> {c.enabled ? "Edit" : `Continue${c.editorStep ? ` (step ${c.editorStep})` : ""}`}
           </Button>
+          <Link href={`/campaign/preview/${orgId}/${c._id}`} className="inline-flex items-center h-8 px-3 rounded-md border border-input bg-background text-xs font-semibold hover:bg-secondary" data-testid={`link-preview-${c._id}`} data-tour-id="campaign-preview-link">
+            <Eye className="w-3.5 h-3.5 mr-1" /> Preview as donor
+          </Link>
           {c.enabled && livePath && (
             <Link href={livePath} target="_blank" className="inline-flex items-center h-8 px-3 rounded-md border border-input bg-background text-xs font-semibold hover:bg-accent" data-testid={`link-view-live-${c._id}`}>
               <ExternalLink className="w-3.5 h-3.5 mr-1" /> View live

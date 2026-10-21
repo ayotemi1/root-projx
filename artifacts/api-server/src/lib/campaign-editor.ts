@@ -1,5 +1,6 @@
 import { resolvePayoutMethod } from "./payout-setup.js";
 import { PROFILE_SECTORS } from "./organisation-profile.js";
+import { migrateCampaignPartnerFunding, partnerFundingFor } from "./campaign-matching.js";
 
 export class CampaignInputError extends Error {}
 export type PublishGate = { id: string; message: string; step: number };
@@ -52,11 +53,23 @@ export function campaignPatch(input: unknown, previous: Record<string, unknown> 
     }
   }
   if ("imageUrl" in body) patch.imageUrl = body.imageUrl === null ? null : url(body.imageUrl, "hero image");
-  if ("matchFunding" in body) {
-    if (body.matchFunding === null) patch.matchFunding = null;
+  if ("partnerFunding" in body || "matchFunding" in body) {
+    const incoming = "partnerFunding" in body ? body.partnerFunding : body.matchFunding;
+    if (incoming === null) patch.partnerFunding = null;
     else {
-      const match = record(body.matchFunding, "committed funding");
-      patch.matchFunding = { amount: number(match.amount, "committed amount"), funderName: text(match.funderName, "funder name", 200) };
+      const funding = record(incoming, "partner funding");
+      const type = "partnerFunding" in body ? funding.type ?? "committed" : "committed";
+      if (!["committed", "matching"].includes(String(type))) invalid("Choose already committed funding or matching funding.");
+      const value: Record<string, unknown> = {
+        amount: number(funding.amount, "partner funding amount"),
+        funderName: text(funding.funderName, "funder name", 200), type,
+      };
+      if (type === "matching") {
+        value.matchRatio = number(funding.matchRatio ?? 1, "matching ratio");
+        value.matchCap = number(funding.matchCap ?? funding.amount, "matching cap");
+        if (value.matchRatio === 0) invalid("The matching ratio must be greater than zero.");
+      }
+      patch.partnerFunding = value;
     }
   }
   for (const key of ["breakdown", "locations"] as const) {
@@ -104,6 +117,15 @@ export function campaignPatch(input: unknown, previous: Record<string, unknown> 
     patch.editorStep = body.editorStep;
   }
   if ("assistUsed" in body && body.assistUsed === true) patch.assistUsed = true;
+  if ("partnerFundingAnswer" in body || "matchFundingAnswer" in body) {
+    const answer = "partnerFundingAnswer" in body ? body.partnerFundingAnswer : body.matchFundingAnswer;
+    if (![null, "yes", "no"].includes(answer as null | string)) invalid("Choose whether this campaign has partner funding.");
+    patch.partnerFundingAnswer = answer;
+  }
+  if ("unitChosen" in body) {
+    if (typeof body.unitChosen !== "boolean") invalid("Choose a campaign unit and try saving again.");
+    patch.unitChosen = body.unitChosen;
+  }
   return patch;
 }
 
@@ -122,16 +144,20 @@ export function campaignPublishGates(org: Record<string, unknown>, campaign: Rec
     gates.push({ id: "profile", message: "Complete your organisation's identity, story and sectors in Build profile.", step: 0 });
   }
   if (resolvePayoutMethod(org) === "none") gates.push({ id: "payout", message: "Finish payout setup. Bank transfer must be approved before publishing.", step: 0 });
-  const match = campaign.matchFunding as Record<string, unknown> | null;
-  if (match && (!(typeof match.amount === "number" && match.amount > 0) || !content(match.funderName))) {
-    gates.push({ id: "match", message: "Add the committed amount and funder, or turn committed funding off.", step: 2 });
+  const funding = partnerFundingFor(campaign);
+  if (funding && (!(typeof funding.amount === "number" && funding.amount > 0) || !content(funding.funderName) ||
+    (funding.type === "matching" && (!(Number(funding.matchRatio ?? 1) > 0) || !(Number(funding.matchCap ?? funding.amount) > 0))))) {
+    gates.push({ id: "partner-funding", message: "Add the partner amount and funder, and a positive ratio and cap for matching, or turn partner funding off.", step: 2 });
+  }
+  if (funding?.type === "matching" && Number(funding.matchCap ?? funding.amount) < Number(campaign.partnerFundingMatchedGbp ?? 0)) {
+    gates.push({ id: "partner-cap", message: "The matching cap cannot be lower than the amount already matched.", step: 2 });
   }
   return gates;
 }
 
 /** Private owner view: overlay unpublished edits without changing the public version. */
 export function campaignForEditor(campaign: Record<string, unknown>): Record<string, unknown> {
-  const { editorDraft, ...base } = campaign;
+  const { editorDraft, ...base } = migrateCampaignPartnerFunding(campaign);
   return { ...base, ...(editorDraft && typeof editorDraft === "object" ? editorDraft : {}),
     enabled: campaign.enabled, hasUnpublishedChanges: !!editorDraft };
 }

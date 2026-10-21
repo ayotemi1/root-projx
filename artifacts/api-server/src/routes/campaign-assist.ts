@@ -28,7 +28,10 @@ router.post("/campaigns/assist", requireAuth, requireApprovedOrganisation,
       if (!enabled()) { res.status(503).json({ unavailable: true, error: "Writing help is not configured. You can continue writing and saving your campaign yourself." }); return; }
       const orgContext = Object.fromEntries(["name", "shortDescription", "description", "mission", "country", "city", "categories"]
         .map(k => [k, org[k]]));
-      const result = await suggest({ field, orgContext, campaignDraft: campaignForEditor(campaign), instruction });
+      const editor = campaignForEditor(campaign);
+      const campaignDraft = Object.fromEntries(["name", "tagline", "type", "goal", "deadline", "description",
+        "partnerFunding", "breakdown", "locations", "imageUrl", "video", "theme"].map(key => [key, editor[key]]));
+      const result = await suggest({ field, orgContext, campaignDraft, instruction });
       if ("unavailable" in result) { res.status(503).json({ ...result, error: "Writing help is not configured. Continue writing your campaign yourself." }); return; }
       res.json(result);
     } catch (err) {

@@ -6,14 +6,22 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { CampaignEditorRequest } from "./campaignEditorRequest";
+import type { RecentCampaignSupporter } from "./recentCampaignSupporter";
 
 export type EditorCampaign = CampaignEditorRequest & {
   _id: string;
   publicId?: string;
   amountRaised: number;
+  /** @minimum 0 */
+  readonly partnerFundingMatchedGbp?: number;
   status?: string;
   hasUnpublishedChanges?: boolean;
   sharePath?: string;
   createdAt?: string;
   updatedAt?: string;
+  /** @minimum 0 */
+  supporterCount?: number;
+  /** @minimum 0 */
+  unidentifiedGifts?: number;
+  recentSupporters?: RecentCampaignSupporter[];
 };

@@ -1,9 +1,14 @@
 import { useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useSearch, Link } from "wouter";
+import { useSearch, useLocation } from "wouter";
 import {
-  CheckCircle, Image as ImageIcon, X, AlertCircle, Video,
+  CheckCircle, Image as ImageIcon, X, AlertCircle, Video, Compass, Circle,
 } from "lucide-react";
+import { DashboardOverview } from "@/components/dashboard/overview";
+import { useWalkthrough } from "@/components/tour/use-walkthrough";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,7 +22,7 @@ import { PayoutSetup } from "@/components/payout-setup";
 import { PendingPayout } from "@/components/pending-payout";
 import { CampaignsManager } from "@/components/campaign-builder/campaigns-manager";
 import { ProfileEditor } from "@/components/profile-editor/profile-editor";
-import type { FeedUpdate, Campaign } from "@/lib/api";
+import type { FeedUpdate } from "@/lib/api";
 
 const UPDATE_TYPES = ["update", "milestone", "campaign"] as const;
 
@@ -58,9 +63,9 @@ export default function DashboardPage() {
 
 
   const orgId = user?.id ?? "";
-  const initialTab = ["build", "campaigns", "profile"].includes(new URLSearchParams(search).get("tab") ?? "")
-    ? (new URLSearchParams(search).get("tab") as string)
-    : "profile";
+  const [, setLocation] = useLocation();
+  const urlTab = new URLSearchParams(search).get("tab") ?? "";
+  const explicitTab = ["overview", "build", "campaigns", "profile"].includes(urlTab);
   const connectComplete = new URLSearchParams(search).get("connect") === "complete";
 
   const orgQ = useQuery({
@@ -137,6 +142,12 @@ export default function DashboardPage() {
   }
 
   const org = orgQ.data;
+  const tour = useWalkthrough({ orgId, token, org: orgQ.data, campaigns: campaignsQ.data, explicitTab });
+  // No flash: without an explicit ?tab, wait for walkthrough state, then Build for brand-new orgs.
+  const deciding = !explicitTab && (tour.wtQ.isLoading || orgQ.isLoading || campaignsQ.isLoading);
+  const tab = explicitTab ? urlTab : (tour.active ? "build" : "overview");
+  const setTab = (v: string) => setLocation(`/dashboard?tab=${v}`);
+  const doneCount = tour.items.filter((i) => i.done).length;
   const updates = updatesQ.data ?? [];
   const campaigns = (campaignsQ.data ?? []).filter((c) => c.status !== "deleted");
 
@@ -185,18 +196,75 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <Tabs defaultValue={initialTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 h-11 p-1 bg-secondary rounded-lg">
-          <TabsTrigger value="profile" className="rounded-md font-bold text-xs sm:text-sm">Updates & Payouts</TabsTrigger>
-          <TabsTrigger value="build" className="rounded-md font-bold text-xs sm:text-sm" data-testid="tab-build-profile" data-tour-id="dashboard-tab-build-profile">Build profile</TabsTrigger>
-          <TabsTrigger value="campaigns" className="rounded-md font-bold text-sm">Campaigns</TabsTrigger>
+      {tour.syncError && (
+        <p role="alert" className="text-xs text-destructive bg-destructive/10 rounded-lg px-3 py-2" data-testid="text-tour-sync-error">{tour.syncError}</p>
+      )}
+
+      {!tour.allDone && org && (
+        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm" data-testid="block-setup-checklist">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <h2 className="font-extrabold text-sm"><span className="text-primary">{doneCount} of 5 done</span> · Getting donor-ready</h2>
+            {!tour.active && (
+              <Button size="sm" className="h-8 font-bold" onClick={tour.resume} data-testid="button-resume-walkthrough">
+                <Compass className="w-3.5 h-3.5 mr-1" /> {tour.started ? "Resume walkthrough" : "Start walkthrough"}
+              </Button>
+            )}
+          </div>
+          <div className="h-1.5 rounded-full bg-secondary overflow-hidden mb-3"><div className="h-full bg-primary rounded-full" style={{ width: `${doneCount * 20}%` }} /></div>
+          <ul className="grid sm:grid-cols-2 gap-x-4 gap-y-1.5">
+            {tour.items.map((i) => (
+              <li key={i.id}>
+                <button type="button" onClick={() => setLocation(i.href)} className={`flex items-center gap-2 text-sm text-left ${i.done ? "text-muted-foreground line-through" : "font-semibold hover:text-primary"}`} data-testid={`checklist-${i.id}`}>
+                  {i.done ? <CheckCircle className="w-4 h-4 text-green-600 shrink-0" /> : <Circle className="w-4 h-4 text-muted-foreground shrink-0" />}
+                  {i.label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      <div className="flex justify-end gap-2 -mb-3">
+        {tour.allDone && !tour.active && tour.unfinished && (
+          <Button variant="outline" size="sm" className="h-8 text-xs font-bold" onClick={tour.resume} data-testid="button-resume-walkthrough-compact">
+            <Compass className="w-3.5 h-3.5 mr-1" /> Resume walkthrough
+          </Button>
+        )}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-8 text-xs font-bold text-muted-foreground" data-testid="button-replay-menu">
+              <Compass className="w-3.5 h-3.5 mr-1" /> Show me around
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onSelect={() => tour.replay("profile")} data-testid="menu-replay-profile">Profile walkthrough</DropdownMenuItem>
+            <DropdownMenuItem onSelect={() => tour.replay("campaign")} data-testid="menu-replay-campaign">Campaign walkthrough</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      {deciding ? (
+        <div className="space-y-4"><Skeleton className="h-11 rounded-lg" /><Skeleton className="h-64 rounded-2xl" /></div>
+      ) : (
+      <Tabs value={tab} onValueChange={setTab} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-4 h-11 p-1 bg-secondary rounded-lg">
+          <TabsTrigger value="overview" className="rounded-md font-bold text-xs sm:text-sm" data-testid="tab-overview">Overview</TabsTrigger>
+          <TabsTrigger value="profile" className="rounded-md font-bold text-xs sm:text-sm"><span className="sm:hidden">Payouts</span><span className="hidden sm:inline">Updates & Payouts</span></TabsTrigger>
+          <TabsTrigger value="build" className="rounded-md font-bold text-xs sm:text-sm" data-testid="tab-build-profile" data-tour-id="dashboard-tab-build-profile"><span className="sm:hidden">Profile</span><span className="hidden sm:inline">Build profile</span></TabsTrigger>
+          <TabsTrigger value="campaigns" className="rounded-md font-bold text-xs sm:text-sm">Campaigns</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="overview" className="mt-6">
+          {orgId && token ? <DashboardOverview orgId={orgId} token={token} org={org} campaigns={campaigns} /> : null}
+        </TabsContent>
 
         <TabsContent value="profile" className="space-y-6 mt-6 animate-in fade-in slide-in-from-bottom-2">
 
           <PendingPayout key={`pending-${orgId}`} orgId={orgId} token={token!} />
 
+          <div data-tour-id="payout-setup">
           <PayoutSetup key={orgId} orgId={orgId} token={token!} totalRaised={org?.totalRaised ?? 0} connectComplete={connectComplete} />
+          </div>
 
           {/* ── Updates ────────────────────────────────────────────────────── */}
           <div className="grid lg:grid-cols-[1fr_300px] gap-6 items-start pt-6">
@@ -323,6 +391,7 @@ export default function DashboardPage() {
           ) : null}
         </TabsContent>
       </Tabs>
+      )}
     </div>
   );
 

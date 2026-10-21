@@ -7,7 +7,8 @@
  */
 import type { CampaignEditorRequestBreakdownItem } from "./campaignEditorRequestBreakdownItem";
 import type { CampaignEditorRequestLocationsItem } from "./campaignEditorRequestLocationsItem";
-import type { CampaignEditorRequestMatchFunding } from "./campaignEditorRequestMatchFunding";
+import type { CampaignEditorRequestPartnerFunding } from "./campaignEditorRequestPartnerFunding";
+import type { CampaignEditorRequestPartnerFundingAnswer } from "./campaignEditorRequestPartnerFundingAnswer";
 import type { CampaignEditorRequestTheme } from "./campaignEditorRequestTheme";
 import type { CampaignEditorRequestType } from "./campaignEditorRequestType";
 import type { CampaignEditorRequestVideo } from "./campaignEditorRequestVideo";
@@ -26,7 +27,7 @@ export interface CampaignEditorRequest {
   volunteersNeeded?: number;
   deadline?: string | null;
   imageUrl?: string | null;
-  matchFunding?: CampaignEditorRequestMatchFunding;
+  partnerFunding?: CampaignEditorRequestPartnerFunding;
   /** @maxItems 50 */
   breakdown?: CampaignEditorRequestBreakdownItem[];
   /** @maxItems 3 */
@@ -41,4 +42,6 @@ export interface CampaignEditorRequest {
    */
   editorStep?: number;
   assistUsed?: boolean;
+  partnerFundingAnswer?: CampaignEditorRequestPartnerFundingAnswer;
+  unitChosen?: boolean;
 }

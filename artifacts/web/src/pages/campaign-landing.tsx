@@ -6,6 +6,7 @@ import { getPublicCampaignLanding, getPublicCampaignLandingBySlug } from "@/lib/
 import { CampaignPageView } from "@/components/campaign/campaign-page-view";
 import { GuestDonateSheet } from "@/components/GuestDonateSheet";
 import { Skeleton } from "@/components/ui/skeleton";
+import { consumeConfirmedReceipt } from "@/lib/donor-identity";
 
 export default function CampaignLandingPage() {
   const params = useParams<{ publicId?: string; organisationSlug?: string; campaignSlug?: string }>();
@@ -28,6 +29,14 @@ export default function CampaignLandingPage() {
     enabled: !!params?.publicId || (!!params?.organisationSlug && !!params?.campaignSlug),
     staleTime: 0,
     refetchOnMount: "always",
+    // Live matching pool: keep the available amount fresh while matching is still open.
+    refetchInterval: (q) => {
+      const c = q.state.data?.campaign;
+      const pf = c?.partnerFunding;
+      if (pf?.type !== "matching") return false;
+      const cap = pf.matchCap && pf.matchCap > 0 ? pf.matchCap : pf.amount;
+      return (c?.partnerFundingMatchedGbp ?? 0) < cap ? 5000 : false;
+    },
     refetchOnWindowFocus: "always",
   });
 
@@ -68,6 +77,12 @@ export default function CampaignLandingPage() {
       });
     };
   }, [landing]);
+
+  const [highlight, setHighlight] = useState(false);
+  const campaignIdForReceipt = landing?.campaign._id;
+  useEffect(() => {
+    if (campaignIdForReceipt && consumeConfirmedReceipt(campaignIdForReceipt)) setHighlight(true);
+  }, [campaignIdForReceipt]);
 
   useEffect(() => {
     const readablePath = landing?.campaign.sharePath;
@@ -113,19 +128,6 @@ export default function CampaignLandingPage() {
 
   const { campaign, organisation: org } = landing;
 
-  const handleShare = async () => {
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: campaign.name, text: campaign.tagline || campaign.description, url: window.location.href });
-      } catch (err) {
-        console.error("Share failed", err);
-      }
-    } else {
-      navigator.clipboard.writeText(window.location.href);
-      alert("Link copied to clipboard");
-    }
-  };
-
   return (
     <>
       <GuestDonateSheet
@@ -134,14 +136,16 @@ export default function CampaignLandingPage() {
         orgId={org._id}
         orgName={org.name}
         campaignId={campaign._id}
+        partnerFunding={campaign.partnerFunding ?? null}
+        partnerFundingMatchedGbp={campaign.partnerFundingMatchedGbp ?? 0}
       />
       <CampaignPageView
         campaign={campaign}
         organisation={org}
         scrolled={scrolled}
+        highlightNewest={highlight}
         onDonate={() => setDonateOpen(true)}
         onVolunteer={() => setLocation(`/organisations/${org._id}/volunteer`)}
-        onShare={handleShare}
       />
     </>
   );

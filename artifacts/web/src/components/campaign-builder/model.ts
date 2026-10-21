@@ -34,9 +34,13 @@ export interface CampaignDraft {
   type: "fundraising" | "volunteer";
   goal: string;
   volunteersNeeded: string;
-  matchOn: boolean;
-  matchAmount: string;
-  matchFunder: string;
+  partnerOn: boolean;
+  partnerAnswer: "yes" | "no" | null;
+  partnerType: "committed" | "matching";
+  partnerAmount: string;
+  partnerFunder: string;
+  partnerRatio: string;
+  partnerCap: string;
   deadline: string;
   description: string;
   breakdown: CampaignBreakdownItem[];
@@ -48,6 +52,7 @@ export interface CampaignDraft {
   videoCaptions: string | null;
   colours: typeof DEFAULT_COLOURS;
   unit: CampaignUnit | null;
+  unitChosen: boolean;
   assistUsed: boolean;
 }
 
@@ -59,9 +64,14 @@ export function draftFromCampaign(c: Campaign): CampaignDraft {
     type: c.type ?? "fundraising",
     goal: c.goal ? String(c.goal) : "",
     volunteersNeeded: c.volunteersNeeded ? String(c.volunteersNeeded) : "",
-    matchOn: !!c.matchFunding,
-    matchAmount: c.matchFunding ? String(c.matchFunding.amount) : "",
-    matchFunder: c.matchFunding?.funderName ?? "",
+    partnerOn: !!c.partnerFunding,
+    partnerAnswer: c.partnerFundingAnswer ?? null,
+    // Anything not explicitly "matching" (incl. legacy) is committed.
+    partnerType: c.partnerFunding?.type === "matching" ? "matching" : "committed",
+    partnerAmount: c.partnerFunding ? String(c.partnerFunding.amount) : "",
+    partnerFunder: c.partnerFunding?.funderName ?? "",
+    partnerRatio: c.partnerFunding?.type === "matching" && c.partnerFunding.matchRatio ? String(c.partnerFunding.matchRatio) : "1",
+    partnerCap: c.partnerFunding?.type === "matching" && c.partnerFunding.matchCap != null ? String(c.partnerFunding.matchCap) : "",
     deadline: c.deadline ? c.deadline.slice(0, 10) : "",
     description: c.description ?? "",
     breakdown: (c.breakdown ?? []).map((b) => ({ label: b.label ?? "", detail: b.detail ?? "" })),
@@ -77,6 +87,7 @@ export function draftFromCampaign(c: Campaign): CampaignDraft {
       ? { primaryColor: t.primaryColor, accentColor: t.accentColor, backgroundColor: t.backgroundColor, textColor: t.textColor }
       : { ...DEFAULT_COLOURS },
     unit: t?.unit ?? null,
+    unitChosen: c.unitChosen === true,
     assistUsed: !!c.assistUsed,
   };
 }
@@ -94,9 +105,15 @@ export function validateDraft(d: CampaignDraft): string | null {
   if (g !== null && (Number.isNaN(g) || g < 0)) return "Goal must be a number of pounds, 0 or more.";
   const v = num(d.volunteersNeeded);
   if (v !== null && (Number.isNaN(v) || v < 0)) return "Volunteers needed must be a whole number.";
-  if (d.matchOn) {
-    const m = num(d.matchAmount);
-    if (m !== null && (Number.isNaN(m) || m < 0)) return "Committed funding must be a number of pounds.";
+  if (d.partnerOn) {
+    const m = num(d.partnerAmount);
+    if (m !== null && (Number.isNaN(m) || m < 0)) return "Partner funding must be a number of pounds.";
+    if (d.partnerType === "matching") {
+      const r = num(d.partnerRatio);
+      if (r !== null && (Number.isNaN(r) || r <= 0)) return "Match ratio must be a number above 0, like 1 for £1 per £1.";
+      const cap = num(d.partnerCap);
+      if (cap !== null && (Number.isNaN(cap) || cap < 0)) return "Match cap must be a number of pounds.";
+    }
   }
   if (d.locations.length > MAX_LOCATIONS) return `Add up to ${MAX_LOCATIONS} locations.`;
   return null;
@@ -105,15 +122,24 @@ export function validateDraft(d: CampaignDraft): string | null {
 export function draftToPatch(d: CampaignDraft, prevTheme?: CampaignTheme): CampaignEditorPatch {
   const g = num(d.goal);
   const v = num(d.volunteersNeeded);
-  const m = num(d.matchAmount);
+  const m = num(d.partnerAmount);
+  const r = num(d.partnerRatio);
+  const cap = num(d.partnerCap);
+  const amount = m !== null && !Number.isNaN(m) ? m : 0;
   return {
     name: d.name.trim(),
     tagline: d.tagline.trim(),
     type: d.type,
     goal: g && !Number.isNaN(g) ? g : 0,
     volunteersNeeded: v && !Number.isNaN(v) ? Math.round(v) : 0,
-    matchFunding: d.matchOn
-      ? { amount: m !== null && !Number.isNaN(m) ? m : 0, funderName: d.matchFunder.trim() }
+    partnerFunding: d.partnerOn
+      ? d.partnerType === "matching"
+        ? {
+            amount, funderName: d.partnerFunder.trim(), type: "matching",
+            matchRatio: r !== null && !Number.isNaN(r) && r > 0 ? r : 1,
+            matchCap: cap !== null && !Number.isNaN(cap) && cap >= 0 ? cap : amount,
+          }
+        : { amount, funderName: d.partnerFunder.trim(), type: "committed" }
       : null,
     deadline: d.deadline || null,
     description: d.description,
@@ -127,6 +153,8 @@ export function draftToPatch(d: CampaignDraft, prevTheme?: CampaignTheme): Campa
       : null,
     theme: { ...(prevTheme ?? {}), ...d.colours, unit: d.unit },
     assistUsed: d.assistUsed,
+    partnerFundingAnswer: d.partnerAnswer,
+    unitChosen: d.unitChosen,
   };
 }
 
@@ -140,7 +168,7 @@ export function draftToPreviewCampaign(d: CampaignDraft, c: Campaign): Campaign 
     type: d.type,
     goal: p.goal ?? 0,
     volunteersNeeded: p.volunteersNeeded ?? 0,
-    matchFunding: p.matchFunding ?? null,
+    partnerFunding: p.partnerFunding ?? null,
     deadline: p.deadline ?? null,
     description: p.description || "Your story will appear here.",
     breakdown: p.breakdown,

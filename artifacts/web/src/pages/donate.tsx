@@ -1,3 +1,4 @@
+import { getAnonymousDonorId } from "@/lib/donor-identity";
 import { useState } from "react";
 import { useRoute, Link, useLocation, useSearch } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -89,6 +90,7 @@ export default function DonatePage() {
           originalAmountPence,
           feeAmountPence: feeCovered ? estimatedFeePence : 0,
           wallOptIn: isAuthenticated ? wallOptIn : false,
+          anonymousDonorId: isAuthenticated ? undefined : getAnonymousDonorId(),
         },
         token ?? undefined,
       );
@@ -118,6 +120,7 @@ export default function DonatePage() {
           feeCovered,
           originalAmountPence,
           feeAmountPence: feeCovered ? estimatedFeePence : 0,
+          anonymousDonorId: getAnonymousDonorId(),
         }),
       });
       const data = await res.json() as { url?: string; error?: string };

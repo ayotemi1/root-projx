@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import { profilePatch, ProfileValidationError } from "../lib/organisation-profile.js";
 import { campaignPatch, campaignForEditor, campaignPublishGates, CampaignInputError } from "../lib/campaign-editor.js";
+import { campaignSupporters } from "../lib/campaign-supporters.js";
 import { Router } from "express";
 import multer from "multer";
 import { fsGet, fsPatch, fsList, fsQuery, fsCreate, fsMutateCampaigns, getServerToken } from "../lib/firebase-rest.js";
@@ -8,6 +9,7 @@ import { requireApprovedOrganisation, requireAuth } from "../lib/auth.js";
 import { isCampaignPublished } from "../lib/campaign-publication.js";
 import { objectStorageClient } from "../lib/objectStorage.js";
 import { withoutPrivatePayoutSetup } from "../lib/payout-setup.js";
+import { migrateCampaignPartnerFunding, partnerFundingFor } from "../lib/campaign-matching.js";
 
 const router = Router();
 const PUBLIC_CAMPAIGN_ID_PATTERN = /^cp_[a-f0-9]{24}$/;
@@ -363,7 +365,7 @@ function organisationDisplayName(
   return "Community organisation";
 }
 
-function publicCampaignFields(campaign: Record<string, unknown>): Record<string, unknown> {
+export function publicCampaignFields(campaign: Record<string, unknown>): Record<string, unknown> {
   return {
     _id: campaign["_id"],
     publicId: campaign["publicId"],
@@ -382,7 +384,8 @@ function publicCampaignFields(campaign: Record<string, unknown>): Record<string,
     updatedAt: campaign["updatedAt"] ?? null,
     theme: parseCampaignTheme(campaign["theme"]),
     tagline: campaign.tagline ?? "",
-    matchFunding: campaign.matchFunding ?? null,
+    partnerFunding: partnerFundingFor(campaign),
+    partnerFundingMatchedGbp: typeof campaign.partnerFundingMatchedGbp === "number" ? campaign.partnerFundingMatchedGbp : 0,
     breakdown: Array.isArray(campaign.breakdown) ? campaign.breakdown : [],
     locations: Array.isArray(campaign.locations) ? campaign.locations : [],
     video: campaign.video ?? null,
@@ -470,7 +473,8 @@ export async function findPublicCampaign(
     if (!campaign) continue;
     const share = campaignSharePath(orgWithIdentity, campaign);
     return {
-      campaign: publicCampaignFields({ ...campaign, ...share }),
+      campaign: { ...publicCampaignFields({ ...campaign, ...share }),
+        ...await campaignSupporters(String(org._id), String(campaign._id), token, org.supporterWall) },
       organisation: {
         _id: org["_id"],
         name: organisationName,
@@ -481,6 +485,9 @@ export async function findPublicCampaign(
         logo: org["logo"] ?? null,
         coverImage: org["coverImage"] ?? null,
         verified: org["verified"] === true,
+        team: Array.isArray(org.team) ? org.team : [],
+        shortDescription: org.shortDescription ?? "",
+        mission: org.mission ?? "",
       },
     };
   }
@@ -566,7 +573,8 @@ router.post("/organisations/:id/campaigns", requireAuth, requireApprovedOrganisa
       volunteersNeeded: 0,
       status: "active",
       deadline: null, imageUrl: null,
-      matchFunding: null, breakdown: [], locations: [], video: null, editorStep: 1,
+      partnerFunding: null, partnerFundingAnswer: null, partnerFundingMatchedGbp: 0, unitChosen: false,
+      breakdown: [], locations: [], video: null, editorStep: 1,
       phases: parsePhases(body.phases),
       theme: { ...DEFAULT_CAMPAIGN_THEME },
       createdAt: now,
@@ -616,7 +624,7 @@ router.patch("/organisations/:id/campaigns/:campId", requireAuth, requireApprove
       const campaigns = Array.isArray(latest.campaigns) ? latest.campaigns as Record<string, unknown>[] : [];
       const idx = campaigns.findIndex(c => c._id === campId && c.status !== "deleted");
       if (idx < 0) throw Object.assign(new Error("Campaign not found"), { status: 404 });
-      const current = campaigns[idx]!;
+      const current = migrateCampaignPartnerFunding(campaigns[idx]!);
       const editor = campaignForEditor(current);
       const updates = campaignPatch(body, editor);
       if ("phases" in body) updates.phases = parsePhases(body.phases);

@@ -278,6 +278,9 @@ for (const feeCovered of [true, false]) {
       info() {}, warn() {},
       error(obj: unknown, message: string) { state.errors.push({ obj, message }); },
     };
+    const campaign = state.documents.get("organisations/test-org").campaigns[0];
+    campaign.partnerFunding = { type: "matching", amount: 100, funderName: "Matching foundation", matchRatio: 2, matchCap: 5 };
+    campaign.partnerFundingMatchedGbp = 4;
     const originalAmountPence = 300;
     const feeAmountPence = feeCovered ? 25 : 0; // web estimate: 1.5% + £0.20
     const grossPence = originalAmountPence + feeAmountPence;
@@ -321,6 +324,10 @@ for (const feeCovered of [true, false]) {
       query: { session_id: "cs_synthetic" }, log,
     });
     assert.equal(confirmation.recorded, true);
+    assert.equal(confirmation.intendedGbp, 3);
+    assert.equal(confirmation.platformFeeGbp, 0.15);
+    assert.equal(confirmation.toOrgGbp, feeCovered ? 2.85 : 2.60);
+    assert.equal(confirmation.chargedGbp, feeCovered ? 3.25 : 3);
     const writes = state.writes.filter((write: any) => write.collection === "donations");
     assert.equal(writes.length, 1, "Retry/confirm must not write another donation");
     const donation = writes[0].data;
@@ -339,6 +346,7 @@ for (const feeCovered of [true, false]) {
     assert.equal(donation.amountGbp, 3, "Legacy amount now means intended donation");
     const org = state.documents.get("organisations/test-org");
     assert.equal(org.campaigns[0].amountRaised, 13, "Campaign increases exactly once by £3");
+    assert.equal(org.campaigns[0].partnerFundingMatchedGbp, 5, "Only the remaining £1 is matched, once, even on webhook replay");
     assert.equal(org.totalRaised, 13, "Public raised amount uses the intended donation");
     assert.equal(org.totalOwedGbp, toOrgGbp, "Missing owed aggregate starts at zero");
     assert.equal(state.emails.length, 1, "Replay must not send another confirmation");

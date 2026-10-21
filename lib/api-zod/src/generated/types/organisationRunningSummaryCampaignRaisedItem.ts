@@ -6,9 +6,8 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export type CampaignEditorRequestMatchFunding = {
-  /** @minimum 0 */
-  amount: number;
-  /** @maxLength 200 */
-  funderName: string;
-} | null;
+export type OrganisationRunningSummaryCampaignRaisedItem = {
+  campaignId: string;
+  name: string;
+  raisedGbp: number;
+};

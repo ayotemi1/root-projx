@@ -44,6 +44,8 @@ export function withoutPrivatePayoutSetup(org: Record<string, unknown>) {
     payoutManualApproved: _approved,
     payoutManualLabel: _label,
     payoutSettlementBatchId: _settlementBatch,
+    walkthrough: _walkthrough, profilePreviewedAt: _profilePreview,
+    campaignPreviewedAt: _campaignPreview, campaignPreviewedId: _campaignPreviewId,
     ...publicFields
   } = org;
   return { ...publicFields, payoutMethod: resolvePayoutMethod(org) };

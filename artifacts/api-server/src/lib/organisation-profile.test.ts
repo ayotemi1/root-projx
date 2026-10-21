@@ -54,7 +54,7 @@ test("team and funds usage retain their bounded, backwards-compatible shapes", (
 
 async function fixture() {
   const mocks: Record<string, string> = {
-    state: `export const state={docs:new Map(),writes:[]};`,
+    state: `export const state={docs:new Map(),writes:[],assistInputs:[],queryFailure:false};`,
     "firebase-rest.js": `
       import {state} from "profile-test:state";
       export const getServerToken=async()=>"synthetic-server";
@@ -66,7 +66,11 @@ async function fixture() {
         state.docs.set(key,{...state.docs.get(key),...structuredClone(patch)});
       };
       export const fsList=async(c)=>[...state.docs].filter(([key])=>key.startsWith(c+"/")).map(([key,d])=>({...structuredClone(d),_id:key.split("/")[1]}));
-      export const fsQuery=async()=>[];
+      export const fsQuery=async(c,filters)=>{
+        if(state.queryFailure) throw Error("Synthetic unavailable summary");
+        return [...state.docs.entries()].filter(([key,doc])=>key.startsWith(c+"/")&&filters.every(f=>doc[f.field]===f.value))
+          .map(([key,doc])=>({...structuredClone(doc),_id:key.slice(c.length+1)}));
+      };
       export const fsCreate=async()=>{throw Error("Unexpected write");};
       export const fsMutateCampaigns=async(id,token,mutate)=>{
         const key="organisations/"+id;
@@ -78,16 +82,23 @@ async function fixture() {
       };
     `,
     "objectStorage.js": `export const objectStorageClient={bucket(){throw Error("No storage calls permitted");}};`,
+    "campaign-assist.js": `import {state} from "profile-test:state";
+      export const suggest=async(input)=>{state.assistInputs.push(input);return {unavailable:true};};`,
   };
   const bundle = await build({
+    define: { "process.env.CAMPAIGN_ASSIST_ENABLED": JSON.stringify("true") },
     stdin: { contents: `export {default as router} from "./routes/organisations.ts";
       export {campaignPatch,campaignPublishGates,campaignForEditor} from "./lib/campaign-editor.ts";
       export {suggest} from "./lib/campaign-assist.ts";
+      export {default as selfServiceRouter} from "./routes/organisation-self-service.ts";
+      export {default as assistRouter} from "./routes/campaign-assist.ts";
+      export {summariseSupporters,donorIdentity} from "./lib/campaign-supporters.ts";
+      export {walkthroughPatch} from "./lib/walkthrough.ts";
       export {state} from "profile-test:state";`,
       resolveDir: new URL("../", import.meta.url).pathname, loader: "ts" },
     bundle: true, write: false, platform: "node", format: "cjs", packages: "external",
     plugins: [{ name: "synthetic-profile-services", setup(b) {
-      b.onResolve({ filter: /^profile-test:state$|\/(firebase-rest|objectStorage)\.js$/ },
+      b.onResolve({ filter: /^profile-test:state$|\/(firebase-rest|objectStorage|campaign-assist)\.js$/ },
         args => ({ path: args.path === "profile-test:state" ? "state" : args.path.split("/").at(-1)!, namespace: "profile-test" }));
       b.onLoad({ filter: /.*/, namespace: "profile-test" }, args => ({ contents: mocks[args.path]!, loader: "js" }));
     } }],
@@ -114,13 +125,15 @@ async function invoke(router: any, method: string, token?: string, body: unknown
   let result: any;
   const req = { body, params: { id: orgId, campId: "camp" }, headers: token ? { authorization: "Bearer " + token } : {},
     query: {}, log: { error() {}, info() {} } };
-  const res = { status(code: number) { status = code; return this; }, json(data: unknown) { result = data; } };
+  const headers: Record<string, string> = {};
+  const res = { status(code: number) { status = code; return this; }, json(data: unknown) { result = data; },
+    setHeader(key: string, value: string) { headers[key] = value; } };
   for (const layer of route.stack) {
     let next = false;
     await layer.handle(req, res, () => { next = true; });
     if (!next) break;
   }
-  return { status, body: result };
+  return { status, body: result, headers };
 }
 
 test("real profile route enforces owner/approval/auth and returns actionable validation", async () => {
@@ -183,7 +196,7 @@ test("campaign creation accepts empty private drafts and initialises structured 
   assert.equal(result.body.amountRaised, 0);
   assert.deepEqual(result.body.breakdown, []);
   assert.deepEqual(result.body.locations, []);
-  assert.equal(result.body.matchFunding, null);
+  assert.equal(result.body.partnerFunding, null);
   assert.equal(result.body.video, null);
   assert.equal(result.body.editorStep, 1);
   assert.equal(result.body.sharePath, undefined); // Acquire the readable name on first publish, not from an empty draft.
@@ -192,21 +205,24 @@ test("campaign creation accepts empty private drafts and initialises structured 
 test("campaign structured drafts round trip without changing totals or requiring publish completeness", async () => {
   const f = await fixture();
   const org = readyCampaignFixture(f);
+  org.campaigns[0].partnerFundingMatchedGbp = 25;
   const patch = {
     saveAsDraft: true, editorStep: 4, tagline: "A revised ask", description: "An unfinished draft",
-    matchFunding: { amount: 500, funderName: "Community Foundation" },
+    partnerFunding: { amount: 500, funderName: "Community Foundation", type: "committed" },
     breakdown: [{ label: "30 places", detail: "Training and childcare" }],
     locations: [{ name: "Kingston", description: "At our community centre", photoUrl: "/api/place.jpg" }],
     video: { url: "https://youtu.be/test123", posterUrl: "/api/poster.jpg", captionsUrl: "/api/captions.vtt" },
     theme: { unit: { singular: "seedling", plural: "seedlings", imageUrl: "/campaign-units/seedling.svg" } },
     amountRaised: 0,
+    partnerFundingMatchedGbp: 0,
   };
   const result = await invoke(f.router, "patch", "org", patch, "org", campaignRoute);
   assert.equal(result.status, 200);
   assert.equal(result.body.amountRaised, 123);
+  assert.equal(result.body.partnerFundingMatchedGbp, 25, "Editors cannot reset matching already allocated by webhooks");
   assert.equal(result.body.editorStep, 4);
   assert.equal(result.body.theme.primaryColor, "#B50000");
-  for (const key of ["matchFunding", "breakdown", "locations", "video"]) assert.deepEqual(result.body[key], patch[key as keyof typeof patch]);
+  for (const key of ["partnerFunding", "breakdown", "locations", "video"]) assert.deepEqual(result.body[key], patch[key as keyof typeof patch]);
   const stored = f.state.docs.get("organisations/org");
   assert.equal(stored.totalRaised, org.totalRaised);
   assert.equal(stored.payoutSettlementBatchId, "locked");
@@ -282,4 +298,131 @@ test("campaign mutations require approved ownership", async () => {
     assert.equal((await invoke(f.router, "patch", token, { name: "Not mine" }, "org", campaignRoute)).status, 403);
   }
   assert.equal(f.state.writes.length, 0);
+});
+
+test("partner funding defaults safely, validates matching terms and preserves old commitments", async () => {
+  const f = await fixture();
+  const details = { amount: 100, funderName: "Government" };
+  assert.deepEqual(f.campaignPatch({ partnerFunding: details }).partnerFunding, { ...details, type: "committed" });
+  assert.deepEqual(f.campaignPatch({ matchFunding: details }).partnerFunding, { ...details, type: "committed" });
+  assert.deepEqual(f.campaignPatch({ partnerFunding: { ...details, type: "matching" } }).partnerFunding,
+    { ...details, type: "matching", matchRatio: 1, matchCap: 100 });
+  assert.deepEqual(f.campaignPatch({ partnerFunding: { ...details, type: "committed", matchRatio: 2, matchCap: 500 } }).partnerFunding,
+    { ...details, type: "committed" });
+  assert.throws(() => f.campaignPatch({ partnerFunding: { ...details, type: "matching", matchRatio: 0 } }));
+  assert.throws(() => f.campaignPatch({ partnerFunding: { ...details, type: "matching", matchCap: -1 } }));
+  const org = readyCampaignFixture(f);
+  const campaign = { ...org.campaigns[0], partnerFunding: { ...details, type: "matching", matchCap: 20 }, partnerFundingMatchedGbp: 25 };
+  assert.ok(f.campaignPublishGates(org, campaign).some((gate: any) => gate.id === "partner-cap"));
+});
+
+test("supporter counts deduplicate people and payments; names respect opt-outs and never disclose email", async () => {
+  const f = await fixture();
+  const emailKey = f.donorIdentity({ email: " Donor@Example.test ", stripeRef: "pi1" });
+  assert.equal(emailKey, f.donorIdentity({ email: "donor@example.test", stripeRef: "pi2" }));
+  const deviceKey = f.donorIdentity({ userId: "anonymous", anonymousDonorId: "a-device-id", stripeRef: "pi7" });
+  assert.match(deviceKey, /^device:/);
+  assert.equal(deviceKey, f.donorIdentity({ userId: "anonymous", anonymousDonorId: "a-device-id", stripeRef: "pi8" }));
+  assert.match(f.donorIdentity({ userId: "anonymous", stripeRef: "historical" }), /^unidentified:/);
+  const result = f.summariseSupporters([
+    { stripeRef: "pi1", userId: "a", donorIdentityKey: emailKey, publicDonorName: "Ada Lovelace", createdAt: "2026-10-20" },
+    { stripeRef: "pi2", userId: "a", donorIdentityKey: emailKey, createdAt: "2026-10-21" },
+    { stripeRef: "pi2", userId: "a", donorIdentityKey: emailKey },
+    { stripeRef: "pi3", guestEmail: "donor@example.test" },
+    { stripeRef: "pi4", userId: "b", publicDonorName: "Grace Hopper", createdAt: "2026-10-22" },
+    { stripeRef: "pi5", status: "refunded", userId: "c" },
+    { stripeRef: "pi6" },
+  ], [{ userId: "a", optedIn: true, displayName: "Ada L." }, { userId: "b", optedIn: false, displayName: "Grace H." }]);
+  assert.equal(result.supporterCount, 2);
+  assert.equal(result.unidentifiedGifts, 1);
+  assert.equal(result.recentSupporters[0].displayName, "Anonymous");
+  assert.equal(result.recentSupporters[1].displayName, "Ada L.");
+  assert.doesNotMatch(JSON.stringify(result), /@|userId|donorIdentityKey/);
+});
+
+test("direct draft preview is approved-owner-only, no-store and contains no payee data", async () => {
+  const f = await fixture();
+  readyCampaignFixture(f);
+  const path = "/organisations/:id/campaigns/:campId/preview";
+  assert.equal((await invoke(f.selfServiceRouter, "get", undefined, {}, "org", path)).status, 401);
+  for (const token of ["other", "supporter", "pending"]) assert.equal((await invoke(f.selfServiceRouter, "get", token, {}, "org", path)).status, 403);
+  const response = await invoke(f.selfServiceRouter, "get", "org", {}, "org", path);
+  assert.equal(response.status, 200);
+  assert.equal(response.body.campaign.enabled, false);
+  assert.equal(response.body.preview, true);
+  assert.equal(response.body.organisation.payoutManualLabel, undefined);
+  assert.equal(response.body.campaign.supporterCount, 0);
+  assert.equal(response.headers["Cache-Control"], "no-store");
+});
+
+test("running dashboard uses actual unpaid ledger and real payout references, not accrued lifetime totals", async () => {
+  const f = await fixture();
+  const org = readyCampaignFixture(f);
+  org.totalOwedGbp = 9999;
+  f.state.docs.set("payouts/queued", { orgId: "org", amountGbp: 250, status: "queued" });
+  f.state.docs.set("payouts/failed", { orgId: "org", amountGbp: 50, status: "failed" });
+  f.state.docs.set("payouts/sent", { orgId: "org", amountGbp: 33, status: "sent", sentAt: "2026-10-01", reference: "bank-confirmed-33" });
+  const response = await invoke(f.selfServiceRouter, "get", "org", {}, "org", "/organisations/:id/dashboard-summary");
+  assert.equal(response.status, 200);
+  assert.equal(response.body.owedGbp, 300);
+  assert.equal(response.body.nextPayoutAt, null);
+  assert.equal(response.body.lastPayout.reference, "bank-confirmed-33");
+  assert.equal(response.body.lastPayout.amountGbp, 33);
+  assert.equal(response.body.impactMetricsStale, true);
+  assert.equal(response.body.campaignRaised[0].raisedGbp, 123);
+  f.state.queryFailure = true;
+  assert.equal((await invoke(f.selfServiceRouter, "get", "org", {}, "org", "/organisations/:id/dashboard-summary")).status, 503);
+});
+
+test("walkthrough resumes across requests, persists real preview opens and cannot fake completion", async () => {
+  const f = await fixture();
+  readyCampaignFixture(f);
+  const path = "/organisations/:id/walkthrough";
+  let response = await invoke(f.selfServiceRouter, "patch", "org", { profileStep: 6, exitedAt: "2026-10-22", selectedCampaignId: "camp" }, "org", path);
+  assert.equal(response.status, 200);
+  assert.equal((await invoke(f.selfServiceRouter, "get", "org", {}, "org", path)).body.walkthrough.profileStep, 6);
+  assert.equal((await invoke(f.selfServiceRouter, "patch", "org", { profileDone: true }, "org", path)).status, 400);
+  const eventPath = "/organisations/:id/walkthrough/events";
+  await invoke(f.selfServiceRouter, "post", "org", { event: "profile_preview" }, "org", eventPath);
+  assert.equal((await invoke(f.selfServiceRouter, "patch", "org", { profileDone: true }, "org", path)).status, 200);
+  assert.equal((await invoke(f.selfServiceRouter, "patch", "org", { campaignDone: true }, "org", path)).status, 400);
+  await invoke(f.router, "patch", "org", { enabled: true }, "org", campaignRoute);
+  await invoke(f.selfServiceRouter, "post", "org", { event: "campaign_preview", campaignId: "camp" }, "org", eventPath);
+  assert.equal((await invoke(f.selfServiceRouter, "patch", "org", { campaignDone: true, campaignStep: null }, "org", path)).status, 200);
+  const publicOrg = (await invoke(f.router, "get", undefined)).body;
+  assert.equal(publicOrg.walkthrough, undefined);
+  assert.equal(publicOrg.profilePreviewedAt, undefined);
+  assert.equal(f.state.docs.get("organisations/org").payoutSettlementBatchId, "locked");
+});
+
+test("assistant socket is authenticated, owner scoped, unavailable and rate limited; public routes remain public", async () => {
+  const f = await fixture();
+  readyCampaignFixture(f);
+  const express = createRequire(import.meta.url)("express");
+  const app = express();
+  app.use(express.json());
+  app.use((req: any, _res: any, next: any) => { req.log = { error() {}, info() {} }; next(); });
+  app.use(f.selfServiceRouter, f.assistRouter);
+  app.get("/organisations/public", (_req: any, res: any) => res.json({ public: true }));
+  const server = app.listen(0, "127.0.0.1");
+  try {
+    await new Promise<void>(r => server.listening ? r() : server.once("listening", r));
+    const base = "http://127.0.0.1:" + server.address().port;
+    assert.equal((await fetch(base + "/organisations/public")).status, 200);
+    assert.equal((await fetch(base + "/campaigns/assist", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" })).status, 401);
+    const call = (id = "camp") => fetch(base + "/campaigns/assist", { method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: "Bearer org" },
+      body: JSON.stringify({ campaignId: id, field: "description", instruction: "Make this clearer" }) });
+    assert.equal((await call("someone-elses-campaign")).status, 404);
+    for (let i = 0; i < 9; i++) assert.equal((await call()).status, 503);
+    assert.equal((await call()).status, 429);
+    assert.equal(f.state.assistInputs.length, 9);
+    const context = f.state.assistInputs[0];
+    assert.equal(context.orgContext.name, "Original Org");
+    assert.equal(context.campaignDraft.name, "Community learning");
+    assert.doesNotMatch(JSON.stringify(context), /totalOwed|amountRaised|donor|payout|Private reminder/);
+    assert.equal(f.state.writes.length, 0);
+  } finally {
+    await new Promise<void>(r => server.close(r));
+  }
 });

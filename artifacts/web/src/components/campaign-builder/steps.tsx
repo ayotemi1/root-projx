@@ -1,3 +1,4 @@
+import { AccumulationField } from "@/components/campaign/accumulation-field";
 import { Plus, Trash2, Info, Captions } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -57,7 +58,7 @@ export function StepBasics({ d, update, token, campaignId, assistEnabled }: Step
 
 export function StepMoney({ d, update }: StepProps) {
   const goal = Number(d.goal) || 0;
-  const match = Number(d.matchAmount) || 0;
+  const partner = Number(d.partnerAmount) || 0;
   return (
     <div className="space-y-6">
       <FieldBlock label="Goal amount" htmlFor="cb-goal" hint="The full amount the work costs, in pounds.">
@@ -72,25 +73,67 @@ export function StepMoney({ d, update }: StepProps) {
         </FieldBlock>
       )}
       <div className="rounded-xl border border-border p-4 space-y-4" data-tour-id="campaign-match-funding">
-        <div className="flex items-center justify-between gap-4">
-          <label htmlFor="cb-match" className="text-sm font-semibold">Is part of this already funded?</label>
-          <Switch id="cb-match" checked={d.matchOn} onCheckedChange={(v) => update({ matchOn: v })} data-testid="switch-match-funding" />
+        <div className="space-y-2">
+          <p id="cb-partner-q" className="text-sm font-semibold">Is a funding partner involved?</p>
+          <p className="text-xs text-muted-foreground">For example a foundation, embassy or business. Most groups don't have one yet, and that's fine.</p>
+          <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-labelledby="cb-partner-q">
+            {(["yes", "no"] as const).map((v) => (
+              <button key={v} type="button" role="radio" aria-checked={d.partnerAnswer === v}
+                onClick={() => update({ partnerAnswer: v, partnerOn: v === "yes" })}
+                className={`h-11 rounded-lg border-2 text-sm font-bold ${d.partnerAnswer === v ? "border-primary bg-primary/10 text-primary" : "border-border text-foreground/80 hover:border-primary/40"}`}
+                data-testid={`button-partner-${v}`} data-tour-id={`campaign-match-${v}`}>
+                {v === "yes" ? "Yes" : "No partner"}
+              </button>
+            ))}
+          </div>
         </div>
-        {d.matchOn && (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <FieldBlock label="Amount committed" htmlFor="cb-match-amount">
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">£</span>
-                <Input id="cb-match-amount" inputMode="decimal" className="pl-7" value={d.matchAmount} onChange={(e) => update({ matchAmount: e.target.value.replace(/[^\d.]/g, "") })} data-testid="input-match-amount" />
-              </div>
-            </FieldBlock>
-            <FieldBlock label="Committed by" htmlFor="cb-match-funder">
-              <Input id="cb-match-funder" value={d.matchFunder} onChange={(e) => update({ matchFunder: e.target.value })} placeholder="the High Commission of Canada" data-testid="input-match-funder" />
-            </FieldBlock>
-            <p className="sm:col-span-2 text-xs text-muted-foreground flex gap-1.5">
+        {d.partnerOn && (
+          <div className="space-y-4">
+            <div className="grid gap-2" role="radiogroup" aria-label="Kind of partner funding">
+              {([
+                ["committed", "Someone has already committed funding to this"],
+                ["matching", "Someone will match what donors give"],
+              ] as const).map(([v, label]) => (
+                <button key={v} type="button" role="radio" aria-checked={d.partnerType === v}
+                  onClick={() => update({ partnerType: v })}
+                  className={`min-h-11 px-3 py-2 rounded-lg border-2 text-sm font-semibold text-left ${d.partnerType === v ? "border-primary bg-primary/10 text-primary" : "border-border text-foreground/80 hover:border-primary/40"}`}
+                  data-testid={`button-partner-type-${v}`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <FieldBlock label={d.partnerType === "matching" ? "Total pledged for matching" : "Amount committed"} htmlFor="cb-partner-amount">
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">£</span>
+                  <Input id="cb-partner-amount" inputMode="decimal" className="pl-7" value={d.partnerAmount} onChange={(e) => update({ partnerAmount: e.target.value.replace(/[^\d.]/g, "") })} data-testid="input-partner-amount" />
+                </div>
+              </FieldBlock>
+              <FieldBlock label="Funding partner" htmlFor="cb-partner-funder">
+                <Input id="cb-partner-funder" value={d.partnerFunder} onChange={(e) => update({ partnerFunder: e.target.value })} placeholder="the High Commission of Canada" data-testid="input-partner-funder" />
+              </FieldBlock>
+              {d.partnerType === "matching" && (
+                <>
+                  <FieldBlock label="They add, for every £1 donors give" htmlFor="cb-partner-ratio">
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">£</span>
+                      <Input id="cb-partner-ratio" inputMode="decimal" className="pl-7" value={d.partnerRatio} onChange={(e) => update({ partnerRatio: e.target.value.replace(/[^\d.]/g, "") })} placeholder="1" data-testid="input-partner-ratio" />
+                    </div>
+                  </FieldBlock>
+                  <FieldBlock label="Most they will match (optional)" htmlFor="cb-partner-cap">
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">£</span>
+                      <Input id="cb-partner-cap" inputMode="decimal" className="pl-7" value={d.partnerCap} onChange={(e) => update({ partnerCap: e.target.value.replace(/[^\d.]/g, "") })} placeholder={d.partnerAmount || "same as pledged"} data-testid="input-partner-cap" />
+                    </div>
+                  </FieldBlock>
+                </>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground flex gap-1.5">
               <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-              Shown as money already committed, alongside what is raised here and what is still needed. It is not presented as matching donors' gifts.
-              {goal > 0 && match > 0 && ` Still needed before any donations: £${Math.max(0, goal - match).toLocaleString("en-GB")}.`}
+              {d.partnerType === "matching"
+                ? "Donors see what their gift adds, only while matching funds are left. Once the cap is used, the page says matching has been fully claimed. Cards are only ever charged what the donor gives."
+                : `Donors see this as money already committed, alongside what is raised here and what is still needed.${goal > 0 && partner > 0 ? ` Still needed before any donations: £${Math.max(0, goal - partner).toLocaleString("en-GB")}.` : ""}`}
             </p>
           </div>
         )}
@@ -169,12 +212,9 @@ function UnitSample({ unit, colour }: { unit: CampaignUnit; colour: string }) {
   return (
     <div className="rounded-2xl border border-dashed border-primary/40 bg-[#FFF9F2] p-4" data-testid="preview-unit-sample" data-tour-id="campaign-unit-sample">
       <span className="inline-block text-[10px] font-extrabold uppercase tracking-widest bg-foreground text-background px-2 py-0.5 rounded">Sample</span>
-      <div className="flex items-center gap-1.5 mt-3" aria-hidden="true">
-        {Array.from({ length: 7 }).map((_, i) => (
-          unit.imageUrl
-            ? <img key={i} src={unit.imageUrl} alt="" className="w-8 h-8 rounded-full object-cover" style={{ opacity: 0.35 + i * 0.09 }} />
-            : <span key={i} className="w-8 h-8 rounded-full" style={{ backgroundColor: colour, opacity: 0.35 + i * 0.09 }} />
-        ))}
+      <div className="mt-3 rounded-xl overflow-hidden">
+        <AccumulationField key={unit.imageUrl ?? "dot"} count={24} unitSingular={unit.singular || "unit"} unitPlural={unit.plural || "units"}
+          imageUrl={unit.imageUrl} colour={colour} accent="#F5C200" background={`${colour}0D`} height={150} testId="canvas-unit-sample" />
       </div>
       <p className="text-sm font-semibold mt-3">Every donor adds one {unit.singular || "unit"}.</p>
       <p className="text-xs text-muted-foreground">Illustration only. Your page will show real {unit.plural || "units"} as gifts arrive.</p>
@@ -229,7 +269,7 @@ export function StepLook({ d, update, token }: StepProps) {
           {BUILTIN_UNITS.map((u) => {
             const active = builtin?.id === u.id;
             return (
-              <button key={u.id} type="button" role="radio" aria-checked={active} onClick={() => update({ unit: { singular: u.singular, plural: u.plural, imageUrl: u.imageUrl } })}
+              <button key={u.id} type="button" role="radio" aria-checked={active} onClick={() => update({ unit: { singular: u.singular, plural: u.plural, imageUrl: u.imageUrl }, unitChosen: true })}
                 className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-colors ${active ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`}
                 data-testid={`button-unit-${u.id}`} data-tour-id={`campaign-unit-${u.id}`}>
                 <img src={u.imageUrl} alt="" className="w-12 h-12" />
@@ -237,7 +277,7 @@ export function StepLook({ d, update, token }: StepProps) {
               </button>
             );
           })}
-          <button type="button" role="radio" aria-checked={custom} onClick={() => update({ unit: { singular: d.unit?.singular ?? "", plural: d.unit?.plural ?? "", imageUrl: custom ? d.unit!.imageUrl : null } })}
+          <button type="button" role="radio" aria-checked={custom} onClick={() => update({ unit: { singular: d.unit?.singular ?? "", plural: d.unit?.plural ?? "", imageUrl: custom ? d.unit!.imageUrl : null }, unitChosen: true })}
             className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border-2 border-dashed transition-colors ${custom ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`}
             data-testid="button-unit-custom" data-tour-id="campaign-unit-custom">
             <Plus className="w-6 h-6 text-muted-foreground" />

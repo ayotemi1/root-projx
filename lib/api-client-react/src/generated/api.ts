@@ -20,6 +20,7 @@ import type {
   AuthResponse,
   CampaignAssistRequest,
   CampaignEditorRequest,
+  CampaignLandingView,
   ContactEventRequest,
   CreateDonationRequest,
   CreateOrganisationRequest,
@@ -40,20 +41,26 @@ import type {
   MessageResponse,
   OrgPayoutSummary,
   Organisation,
+  OrganisationRunningSummary,
   PayoutOverview,
   PayoutRunResult,
   PayoutSettlementInput,
   PayoutSettlementResult,
   ProfileResponse,
   PublicUser,
+  RecordOrganisationPreviewOpen200,
   RegisterRequest,
   RequestCampaignWritingSuggestion200,
   SaveCampaignDraft400,
+  SaveOrganisationWalkthrough200,
   SubmitHelpReviewRequest,
   Update,
   UpdateOrganisationRequest,
   UpdateProfileRequest,
   UpdateWithOrg,
+  WalkthroughPreviewEvent,
+  WalkthroughProgress,
+  WalkthroughView,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -64,6 +71,441 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+export const getGetOwnerCampaignPreviewUrl = (id: string, campId: string) => {
+  return `/api/organisations/${id}/campaigns/${campId}/preview`;
+};
+
+export const getOwnerCampaignPreview = async (
+  id: string,
+  campId: string,
+  options?: RequestInit,
+): Promise<CampaignLandingView> => {
+  return customFetch<CampaignLandingView>(
+    getGetOwnerCampaignPreviewUrl(id, campId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetOwnerCampaignPreviewQueryKey = (
+  id: string,
+  campId: string,
+) => {
+  return [`/api/organisations/${id}/campaigns/${campId}/preview`] as const;
+};
+
+export const getGetOwnerCampaignPreviewQueryOptions = <
+  TData = Awaited<ReturnType<typeof getOwnerCampaignPreview>>,
+  TError = ErrorType<void>,
+>(
+  id: string,
+  campId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getOwnerCampaignPreview>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetOwnerCampaignPreviewQueryKey(id, campId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getOwnerCampaignPreview>>
+  > = ({ signal }) =>
+    getOwnerCampaignPreview(id, campId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!(id && campId),
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getOwnerCampaignPreview>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetOwnerCampaignPreviewQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getOwnerCampaignPreview>>
+>;
+export type GetOwnerCampaignPreviewQueryError = ErrorType<void>;
+
+export function useGetOwnerCampaignPreview<
+  TData = Awaited<ReturnType<typeof getOwnerCampaignPreview>>,
+  TError = ErrorType<void>,
+>(
+  id: string,
+  campId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getOwnerCampaignPreview>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetOwnerCampaignPreviewQueryOptions(
+    id,
+    campId,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getGetOrganisationRunningSummaryUrl = (id: string) => {
+  return `/api/organisations/${id}/dashboard-summary`;
+};
+
+export const getOrganisationRunningSummary = async (
+  id: string,
+  options?: RequestInit,
+): Promise<OrganisationRunningSummary> => {
+  return customFetch<OrganisationRunningSummary>(
+    getGetOrganisationRunningSummaryUrl(id),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetOrganisationRunningSummaryQueryKey = (id: string) => {
+  return [`/api/organisations/${id}/dashboard-summary`] as const;
+};
+
+export const getGetOrganisationRunningSummaryQueryOptions = <
+  TData = Awaited<ReturnType<typeof getOrganisationRunningSummary>>,
+  TError = ErrorType<void>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getOrganisationRunningSummary>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetOrganisationRunningSummaryQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getOrganisationRunningSummary>>
+  > = ({ signal }) =>
+    getOrganisationRunningSummary(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getOrganisationRunningSummary>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetOrganisationRunningSummaryQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getOrganisationRunningSummary>>
+>;
+export type GetOrganisationRunningSummaryQueryError = ErrorType<void>;
+
+export function useGetOrganisationRunningSummary<
+  TData = Awaited<ReturnType<typeof getOrganisationRunningSummary>>,
+  TError = ErrorType<void>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getOrganisationRunningSummary>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetOrganisationRunningSummaryQueryOptions(
+    id,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getGetOrganisationWalkthroughUrl = (id: string) => {
+  return `/api/organisations/${id}/walkthrough`;
+};
+
+export const getOrganisationWalkthrough = async (
+  id: string,
+  options?: RequestInit,
+): Promise<WalkthroughView> => {
+  return customFetch<WalkthroughView>(getGetOrganisationWalkthroughUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetOrganisationWalkthroughQueryKey = (id: string) => {
+  return [`/api/organisations/${id}/walkthrough`] as const;
+};
+
+export const getGetOrganisationWalkthroughQueryOptions = <
+  TData = Awaited<ReturnType<typeof getOrganisationWalkthrough>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getOrganisationWalkthrough>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetOrganisationWalkthroughQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getOrganisationWalkthrough>>
+  > = ({ signal }) =>
+    getOrganisationWalkthrough(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getOrganisationWalkthrough>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetOrganisationWalkthroughQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getOrganisationWalkthrough>>
+>;
+export type GetOrganisationWalkthroughQueryError = ErrorType<unknown>;
+
+export function useGetOrganisationWalkthrough<
+  TData = Awaited<ReturnType<typeof getOrganisationWalkthrough>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getOrganisationWalkthrough>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetOrganisationWalkthroughQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getSaveOrganisationWalkthroughUrl = (id: string) => {
+  return `/api/organisations/${id}/walkthrough`;
+};
+
+export const saveOrganisationWalkthrough = async (
+  id: string,
+  walkthroughProgress: WalkthroughProgress,
+  options?: RequestInit,
+): Promise<SaveOrganisationWalkthrough200> => {
+  return customFetch<SaveOrganisationWalkthrough200>(
+    getSaveOrganisationWalkthroughUrl(id),
+    {
+      ...options,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(walkthroughProgress),
+    },
+  );
+};
+
+export const getSaveOrganisationWalkthroughMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveOrganisationWalkthrough>>,
+    TError,
+    { id: string; data: BodyType<WalkthroughProgress> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof saveOrganisationWalkthrough>>,
+  TError,
+  { id: string; data: BodyType<WalkthroughProgress> },
+  TContext
+> => {
+  const mutationKey = ["saveOrganisationWalkthrough"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof saveOrganisationWalkthrough>>,
+    { id: string; data: BodyType<WalkthroughProgress> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return saveOrganisationWalkthrough(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SaveOrganisationWalkthroughMutationResult = NonNullable<
+  Awaited<ReturnType<typeof saveOrganisationWalkthrough>>
+>;
+export type SaveOrganisationWalkthroughMutationBody =
+  BodyType<WalkthroughProgress>;
+export type SaveOrganisationWalkthroughMutationError = ErrorType<void>;
+
+export const useSaveOrganisationWalkthrough = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveOrganisationWalkthrough>>,
+    TError,
+    { id: string; data: BodyType<WalkthroughProgress> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof saveOrganisationWalkthrough>>,
+  TError,
+  { id: string; data: BodyType<WalkthroughProgress> },
+  TContext
+> => {
+  return useMutation(getSaveOrganisationWalkthroughMutationOptions(options));
+};
+
+export const getRecordOrganisationPreviewOpenUrl = (id: string) => {
+  return `/api/organisations/${id}/walkthrough/events`;
+};
+
+export const recordOrganisationPreviewOpen = async (
+  id: string,
+  walkthroughPreviewEvent: WalkthroughPreviewEvent,
+  options?: RequestInit,
+): Promise<RecordOrganisationPreviewOpen200> => {
+  return customFetch<RecordOrganisationPreviewOpen200>(
+    getRecordOrganisationPreviewOpenUrl(id),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(walkthroughPreviewEvent),
+    },
+  );
+};
+
+export const getRecordOrganisationPreviewOpenMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof recordOrganisationPreviewOpen>>,
+    TError,
+    { id: string; data: BodyType<WalkthroughPreviewEvent> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof recordOrganisationPreviewOpen>>,
+  TError,
+  { id: string; data: BodyType<WalkthroughPreviewEvent> },
+  TContext
+> => {
+  const mutationKey = ["recordOrganisationPreviewOpen"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof recordOrganisationPreviewOpen>>,
+    { id: string; data: BodyType<WalkthroughPreviewEvent> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return recordOrganisationPreviewOpen(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RecordOrganisationPreviewOpenMutationResult = NonNullable<
+  Awaited<ReturnType<typeof recordOrganisationPreviewOpen>>
+>;
+export type RecordOrganisationPreviewOpenMutationBody =
+  BodyType<WalkthroughPreviewEvent>;
+export type RecordOrganisationPreviewOpenMutationError = ErrorType<unknown>;
+
+export const useRecordOrganisationPreviewOpen = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof recordOrganisationPreviewOpen>>,
+    TError,
+    { id: string; data: BodyType<WalkthroughPreviewEvent> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof recordOrganisationPreviewOpen>>,
+  TError,
+  { id: string; data: BodyType<WalkthroughPreviewEvent> },
+  TContext
+> => {
+  return useMutation(getRecordOrganisationPreviewOpenMutationOptions(options));
+};
 
 export const getGetWiseDisbursementsUrl = (
   params: GetWiseDisbursementsParams,

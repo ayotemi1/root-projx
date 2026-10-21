@@ -6,6 +6,8 @@ import type Stripe from "stripe";
 import { recurringStatus } from "../lib/recurring-status.js";
 import { donationAccounting, PLATFORM_FEE_PERCENT } from "../lib/fees.js";
 import { queueDonationPayout } from "../lib/payouts.js";
+import { donorIdentity, firstNameLastInitial } from "../lib/campaign-supporters.js";
+import { campaignMatch, migrateCampaignPartnerFunding, partnerFundingFor } from "../lib/campaign-matching.js";
 
 const router = Router();
 
@@ -253,6 +255,18 @@ async function handlePaymentSuccess(
     cardCountry,
   });
   const { intendedGbp, toOrgGbp } = accounting;
+  let identityEmail = guestEmail;
+  let publicDonorName: string | null = null;
+  if (userId && !["guest", "anonymous"].includes(userId)) {
+    try {
+      const donor = await fsGet("users", userId, serverToken);
+      if (typeof donor?.email === "string") identityEmail = donor.email;
+      const optedOut = Array.isArray(donor?.supportedOrgs) && donor.supportedOrgs.some((entry: Record<string, unknown>) => entry.orgId === orgId && entry.optedIn === false);
+      if (wallOptIn === "true" && !optedOut) publicDonorName = firstNameLastInitial(donor?.name);
+    } catch (err) {
+      log.error({ err, orgId }, "Donor identity unavailable; retaining donation without a public name");
+    }
+  }
 
   const donationId = await fsCreate(
     "donations",
@@ -263,6 +277,8 @@ async function handlePaymentSuccess(
       orgName: orgName ?? "",
       ...(campaignId ? { campaignId } : {}),
       ...accounting,
+      donorIdentityKey: donorIdentity({ userId, email: identityEmail, anonymousDonorId: metadata.anonymousDonorId, stripeRef }),
+      publicDonorName,
       ...(metadata.payoutMethod ? { payoutMethod: metadata.payoutMethod } : {}),
       feeAmountGbp: accounting.feeCoverGbp, // legacy top-up field
       currency,
@@ -354,15 +370,24 @@ async function handlePaymentSuccess(
       if (!Array.isArray(campaigns)) throw new Error("Organisation has no campaigns array");
       const index = campaigns.findIndex((campaign: Record<string, unknown>) => campaign?._id === campaignId);
       if (index < 0) throw new Error("Campaign not found on organisation");
-      const current = campaigns[index] as Record<string, unknown>;
+      const current = migrateCampaignPartnerFunding(campaigns[index] as Record<string, unknown>);
       const previousAmount = typeof current.amountRaised === "number" ? current.amountRaised : 0;
       if (!Number.isFinite(previousAmount) || !Number.isFinite(intendedGbp)) {
         throw new Error("Invalid campaign donation amount");
       }
       const updatedCampaigns = [...campaigns];
+      const funding = partnerFundingFor(current);
+      const matchedUsed = typeof current.partnerFundingMatchedGbp === "number" && Number.isFinite(current.partnerFundingMatchedGbp)
+        ? Math.max(0, current.partnerFundingMatchedGbp) : 0;
+      // Same update-time precondition as amountRaised: concurrent successful
+      // payments re-read the remaining cap, so allocated partner money cannot exceed it.
+      const match = campaignMatch(intendedGbp, funding, matchedUsed);
       updatedCampaigns[index] = {
         ...current,
         amountRaised: Math.round((previousAmount + intendedGbp) * 100) / 100,
+        ...(funding?.type === "matching" ? {
+          partnerFundingMatchedGbp: Math.round((matchedUsed + match.matchedGbp) * 100) / 100,
+        } : {}),
       };
       return { campaigns: updatedCampaigns, result: undefined };
       });
@@ -396,7 +421,7 @@ async function handlePaymentSuccess(
             { userId, displayName, optedIn: true },
           ];
           if (orgWall.length > 500) orgWall = orgWall.slice(-500);
-          await fsPatch("organisations", orgId, { ...orgDoc, supporterWall: orgWall }, serverToken);
+          await fsPatch("organisations", orgId, { supporterWall: orgWall }, serverToken);
           // Mirror on user doc — one entry per org, naturally bounded
           const userWall = ((userDoc?.["supportedOrgs"] ?? []) as Array<Record<string, unknown>>)
             .filter((e) => e["orgId"] !== orgId);

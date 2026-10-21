@@ -37,6 +37,7 @@ import AdminPage from "@/pages/admin";
 import NotFound from "@/pages/not-found";
 import SupporterProfilePage from "@/pages/supporter-profile";
 import CampaignLandingPage from "@/pages/campaign-landing";
+import CampaignPreviewPage from "@/pages/campaign-preview";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -91,6 +92,9 @@ function AppRoutes() {
       <Route path="/" component={LandingPage} />
 
       {/* Campaign Landing page — standalone */}
+      <Route path="/campaign/preview/:orgId/:campId">
+        {() => <ApprovedOrganisationRoute component={CampaignPreviewPage} />}
+      </Route>
       <Route path="/campaign/:organisationSlug/:campaignSlug" component={CampaignLandingPage} />
       <Route path="/campaigns/:organisationSlug/:campaignSlug" component={CampaignLandingPage} />
       <Route path="/campaigns/:publicId" component={CampaignLandingPage} />

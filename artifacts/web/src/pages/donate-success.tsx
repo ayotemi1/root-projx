@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { useSearch, Link } from "wouter";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CheckCircle, Heart } from "lucide-react";
+import { CheckCircle } from "lucide-react";
+import { storeConfirmedReceipt } from "@/lib/donor-identity";
+import { donationDisclosure } from "@/lib/money-disclosure";
 import { Button } from "@/components/ui/button";
 import * as api from "@/lib/api";
 
@@ -44,6 +46,20 @@ export default function DonateSuccessPage() {
   const waitingForRecord = donation?.recorded === false && !pollExpired;
 
   useEffect(() => {
+    if (donation?.recorded === true && donation.campaignId) storeConfirmedReceipt(donation.campaignId);
+  }, [donation?.recorded, donation?.campaignId]);
+
+  const receipt = donation?.recorded && typeof donation.toOrgGbp === "number" && typeof donation.chargedGbp === "number"
+    ? donationDisclosure({
+        chargedGbp: donation.chargedGbp, intendedGbp: donation.intendedGbp ?? donation.amountGbp,
+        platformFeeGbp: donation.platformFeeGbp ?? 0, feeCovered: !!donation.feeCovered,
+        feeCoverGbp: donation.feeCoverGbp ?? 0, toOrgGbp: donation.toOrgGbp,
+        estimatedStripeFeeGbp: donation.estimatedStripeFeeGbp ?? 0, amountGbp: donation.amountGbp,
+        netAmountGbp: donation.netAmountGbp ?? donation.toOrgGbp, grossAmountGbp: donation.grossAmountGbp ?? donation.chargedGbp,
+      }, donation.orgName)
+    : null;
+
+  useEffect(() => {
     void queryClient.invalidateQueries({ queryKey: ["campaign-landing"] });
   }, [queryClient, sessionId, donation?.recorded]);
 
@@ -77,40 +93,58 @@ export default function DonateSuccessPage() {
                 <strong className="text-foreground">{donation.orgName}</strong>{" "}
                 was successful.
               </p>
-              <p
-                className="text-sm font-semibold mt-4 tracking-wide uppercase"
-                style={{ color: "#CC0000" }}
-              >
-                Your support goes straight to the source.
-              </p>
             </>
           ) : waitingForRecord ? (
             <p className="text-muted-foreground">Payment successful. Finalising your receipt…</p>
           ) : confirmQ.isError ? (
             <p className="text-muted-foreground">
-              Your payment was received. If you have questions, contact us.
+              We couldn't confirm this donation right now. Check your email for a receipt before trying to pay again.
             </p>
           ) : (
             <p className="text-muted-foreground">Confirming your donation…</p>
           )}
         </div>
 
-        {/* Platform fee note */}
-        {donation && !waitingForRecord && (
-          <div
-            className="rounded-xl px-5 py-4 text-sm text-center"
-            style={{ backgroundColor: "rgba(245,192,0,0.1)" }}
-          >
-            <Heart className="w-4 h-4 inline mr-1.5" style={{ color: "#CC0000" }} />
-            <span className="text-muted-foreground">
-              £{(donation.amountGbp * 0.95).toFixed(2)} goes directly to the organisation · 5% platform fee keeps Root ProjX running
-            </span>
+        {donation?.recorded && donation.unit?.singular && (
+          <div className="rounded-2xl border-2 border-accent bg-accent/10 px-5 py-4" data-testid="block-campaign-thanks">
+            {donation.unit.imageUrl && <img src={donation.unit.imageUrl} alt="" className="w-12 h-12 mx-auto mb-2" />}
+            <p className="font-extrabold text-lg text-foreground" data-testid="text-unit-added">
+              You added one {donation.unit.singular}{donation.campaignName ? ` to ${donation.campaignName}` : ""}.
+            </p>
+            {donation.campaignPath && (
+              <Link href={donation.campaignPath} className="mt-2 inline-block text-sm font-bold text-primary underline-offset-2 hover:underline" data-testid="link-see-your-unit">
+                See your {donation.unit.singular} on the campaign
+              </Link>
+            )}
+          </div>
+        )}
+
+        {receipt && (
+          <div className="rounded-xl bg-secondary/60 px-5 py-3 text-xs text-muted-foreground space-y-1" data-testid="block-receipt-disclosure">
+            <p>{receipt.donationLine}</p>
+            <p>{receipt.orgLine}</p>
+          </div>
+        )}
+
+        {/* Ongoing ask: secondary, below */}
+        {donation?.recorded && donation.orgId && (
+          <div className="rounded-xl border border-border px-5 py-4 text-sm text-left" data-testid="block-monthly-ask">
+            <p className="text-muted-foreground">
+              {donation.campaignId ? "This campaign ends. The work doesn't. " : ""}Support {donation.orgName} every month from £3.
+            </p>
+            <Link href={`/donate/${donation.orgId}?monthly=1`} className="mt-1 inline-block font-semibold text-primary underline-offset-2 hover:underline" data-testid="link-monthly-ask">
+              Give monthly
+            </Link>
           </div>
         )}
 
         {/* Actions */}
         <div className="flex gap-3 justify-center pt-2">
-          {donation?.orgId ? (
+          {donation?.campaignPath ? (
+            <Link href={donation.campaignPath}>
+              <Button variant="outline" data-testid="button-back-campaign">Back to campaign</Button>
+            </Link>
+          ) : donation?.orgId ? (
             <Link href={`/organisations/${donation.orgId}`}>
               <Button variant="outline">Back to Organisation</Button>
             </Link>

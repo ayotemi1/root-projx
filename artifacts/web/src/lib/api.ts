@@ -421,9 +421,15 @@ export interface CampaignTheme {
   unit?: CampaignUnit | null;
 }
 
-export interface CampaignMatchFunding {
+export interface PartnerFunding {
   amount: number;
   funderName: string;
+  /** committed = money already pledged to the programme; matching = funder matches donors' gifts. */
+  type: "committed" | "matching";
+  /** Matching only: funder £ per donor £1. Default 1. */
+  matchRatio?: number;
+  /** Matching only: most the funder will match. Default amount. */
+  matchCap?: number;
 }
 
 export interface CampaignBreakdownItem {
@@ -474,7 +480,7 @@ export interface Campaign {
   theme?: CampaignTheme;
   // Part 3 structured content (additive, optional for legacy campaigns)
   tagline?: string | null;
-  matchFunding?: CampaignMatchFunding | null;
+  partnerFunding?: PartnerFunding | null;
   breakdown?: CampaignBreakdownItem[] | null;
   locations?: CampaignLocation[] | null;
   video?: CampaignVideo | null;
@@ -482,6 +488,22 @@ export interface Campaign {
   hasUnpublishedChanges?: boolean;
   assistUsed?: boolean;
   publishedAt?: string | null;
+  /** Part 4: unique donors (server-derived). */
+  supporterCount?: number;
+  recentSupporters?: PublicSupporter[];
+  /** Legacy gifts with no identity: shown separately, never counted as people. */
+  unidentifiedGifts?: number;
+  /** Server-owned: matching funds actually allocated so far. */
+  partnerFundingMatchedGbp?: number;
+  /** Explicit yes/no answer to "is there a funding partner?" — null until the org answers. */
+  partnerFundingAnswer?: "yes" | "no" | null;
+  /** True only after the org actively picked a preset or custom unit. */
+  unitChosen?: boolean;
+}
+
+export interface PublicSupporter {
+  displayName: string;
+  createdAt: string;
 }
 
 /** Editable fields accepted by PATCH, plus editor flags. Never includes amountRaised. */
@@ -491,7 +513,7 @@ export interface CampaignEditorPatch {
   type?: "fundraising" | "volunteer";
   goal?: number;
   volunteersNeeded?: number;
-  matchFunding?: CampaignMatchFunding | null;
+  partnerFunding?: PartnerFunding | null;
   deadline?: string | null;
   description?: string;
   breakdown?: CampaignBreakdownItem[];
@@ -502,6 +524,8 @@ export interface CampaignEditorPatch {
   assistUsed?: boolean;
   saveAsDraft?: true;
   editorStep?: CampaignEditorStep;
+  partnerFundingAnswer?: "yes" | "no" | null;
+  unitChosen?: boolean;
 }
 
 export interface PublicCampaignLanding {
@@ -516,8 +540,75 @@ export interface PublicCampaignLanding {
     logo: string | null;
     coverImage: string | null;
     verified: boolean;
+    shortDescription?: string | null;
+    team?: TeamMember[] | null;
   };
 }
+
+/** Owner-only draft preview (no-store). */
+export const getCampaignPreview = (orgId: string, campId: string, token: string) =>
+  req<PublicCampaignLanding>(
+    `/organisations/${encodeURIComponent(orgId)}/campaigns/${encodeURIComponent(campId)}/preview`,
+    { cache: "no-store" },
+    token,
+  );
+
+// ── Walkthrough ───────────────────────────────────────────────────────────────
+
+export interface WalkthroughProgress {
+  profileStep: number | null;
+  campaignStep: number | null;
+  profileDone: boolean;
+  campaignDone: boolean;
+  exitedAt: string | null;
+  selectedCampaignId?: string | null;
+}
+
+export interface WalkthroughState {
+  walkthrough: WalkthroughProgress;
+  profilePreviewedAt: string | null;
+  campaignPreviewedAt: string | null;
+  campaignPreviewedId?: string | null;
+  payoutSetupSelected: boolean;
+}
+
+export const getWalkthrough = (orgId: string, token: string) =>
+  req<WalkthroughState>(`/organisations/${encodeURIComponent(orgId)}/walkthrough`, { cache: "no-store" }, token);
+
+export const patchWalkthrough = (orgId: string, data: Partial<WalkthroughProgress>, token: string) =>
+  req<{ walkthrough: WalkthroughProgress }>(
+    `/organisations/${encodeURIComponent(orgId)}/walkthrough`,
+    { method: "PATCH", body: JSON.stringify(data) },
+    token,
+  );
+
+export const postWalkthroughEvent = (
+  orgId: string,
+  data: { event: "profile_preview" | "campaign_preview"; campaignId?: string },
+  token: string,
+) =>
+  req<WalkthroughState | { ok: boolean }>(
+    `/organisations/${encodeURIComponent(orgId)}/walkthrough/events`,
+    { method: "POST", body: JSON.stringify(data) },
+    token,
+  );
+
+// ── Dashboard summary ─────────────────────────────────────────────────────────
+
+export interface DashboardSummary {
+  raisedGbp: number;
+  /** Actual ledger amount owed. null when the ledger could not be read. */
+  owedGbp: number | null;
+  nextPayoutAt: string | null;
+  lastPayout: { amountGbp: number; reference: string; sentAt: string } | null;
+  recentSupporters: PublicSupporter[];
+  campaignRaised: Array<{ campaignId: string; name: string; raisedGbp: number }>;
+  latestUpdateAt: string | null;
+  impactMetricsStale: boolean;
+}
+
+export const getDashboardSummary = (orgId: string, token: string) =>
+  req<DashboardSummary>(`/organisations/${encodeURIComponent(orgId)}/dashboard-summary`, { cache: "no-store" }, token);
 
 export const getPublicCampaignLanding = (publicId: string) =>
   req<PublicCampaignLanding>(`/campaigns/landing/${encodeURIComponent(publicId)}`);
@@ -682,6 +773,7 @@ export const createDonationCheckout = (
     originalAmountPence?: number;
     feeAmountPence?: number;
     wallOptIn?: boolean;
+    anonymousDonorId?: string;
   },
   token?: string,
 ) =>
@@ -699,6 +791,19 @@ export const confirmDonation = (sessionId: string) =>
     feePence: number;
     donorEmail: string | null;
     recorded: boolean;
+    chargedGbp?: number;
+    intendedGbp?: number;
+    platformFeeGbp?: number;
+    feeCovered?: boolean;
+    feeCoverGbp?: number;
+    toOrgGbp?: number;
+    estimatedStripeFeeGbp?: number;
+    grossAmountGbp?: number;
+    netAmountGbp?: number;
+    campaignId?: string | null;
+    campaignName?: string | null;
+    campaignPath?: string | null;
+    unit?: CampaignUnit | null;
   }>(`/donations/confirm?session_id=${encodeURIComponent(sessionId)}`);
 
 // ── Supporter Wall ─────────────────────────────────────────────────────────────

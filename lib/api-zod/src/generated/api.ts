@@ -7,6 +7,337 @@
  */
 import * as zod from "zod";
 
+export const GetOwnerCampaignPreviewParams = zod.object({
+  id: zod.coerce.string(),
+  campId: zod.coerce.string(),
+});
+
+export const getOwnerCampaignPreviewResponseCampaignOneNameMax = 200;
+
+export const getOwnerCampaignPreviewResponseCampaignOneTaglineMax = 140;
+
+export const getOwnerCampaignPreviewResponseCampaignOneDescriptionMax = 20000;
+
+export const getOwnerCampaignPreviewResponseCampaignOneGoalMin = 0;
+
+export const getOwnerCampaignPreviewResponseCampaignOneVolunteersNeededMin = 0;
+
+export const getOwnerCampaignPreviewResponseCampaignOnePartnerFundingAmountMin = 0;
+
+export const getOwnerCampaignPreviewResponseCampaignOnePartnerFundingFunderNameMax = 200;
+
+export const getOwnerCampaignPreviewResponseCampaignOnePartnerFundingTypeDefault = `committed`;
+export const getOwnerCampaignPreviewResponseCampaignOnePartnerFundingMatchRatioDefault = 1;
+export const getOwnerCampaignPreviewResponseCampaignOnePartnerFundingMatchRatioExclusiveMin = 0;
+
+export const getOwnerCampaignPreviewResponseCampaignOnePartnerFundingMatchCapMin = 0;
+
+export const getOwnerCampaignPreviewResponseCampaignOneBreakdownMax = 50;
+
+export const getOwnerCampaignPreviewResponseCampaignOneLocationsMax = 3;
+
+export const getOwnerCampaignPreviewResponseCampaignOneThemeUnitSingularMax = 60;
+
+export const getOwnerCampaignPreviewResponseCampaignOneThemeUnitPluralMax = 60;
+
+export const getOwnerCampaignPreviewResponseCampaignOneEditorStepMax = 5;
+
+export const getOwnerCampaignPreviewResponseCampaignTwoPartnerFundingMatchedGbpMin = 0;
+
+export const getOwnerCampaignPreviewResponseCampaignTwoSupporterCountMin = 0;
+
+export const getOwnerCampaignPreviewResponseCampaignTwoUnidentifiedGiftsMin = 0;
+
+export const GetOwnerCampaignPreviewResponse = zod.object({
+  campaign: zod
+    .object({
+      name: zod
+        .string()
+        .max(getOwnerCampaignPreviewResponseCampaignOneNameMax)
+        .optional(),
+      tagline: zod
+        .string()
+        .max(getOwnerCampaignPreviewResponseCampaignOneTaglineMax)
+        .optional(),
+      description: zod
+        .string()
+        .max(getOwnerCampaignPreviewResponseCampaignOneDescriptionMax)
+        .optional(),
+      type: zod.enum(["fundraising", "volunteer"]).optional(),
+      goal: zod
+        .number()
+        .min(getOwnerCampaignPreviewResponseCampaignOneGoalMin)
+        .optional(),
+      volunteersNeeded: zod
+        .number()
+        .min(getOwnerCampaignPreviewResponseCampaignOneVolunteersNeededMin)
+        .optional(),
+      deadline: zod.string().nullish(),
+      imageUrl: zod.string().nullish(),
+      partnerFunding: zod
+        .object({
+          amount: zod
+            .number()
+            .min(
+              getOwnerCampaignPreviewResponseCampaignOnePartnerFundingAmountMin,
+            ),
+          funderName: zod
+            .string()
+            .max(
+              getOwnerCampaignPreviewResponseCampaignOnePartnerFundingFunderNameMax,
+            ),
+          type: zod
+            .enum(["committed", "matching"])
+            .default(
+              getOwnerCampaignPreviewResponseCampaignOnePartnerFundingTypeDefault,
+            ),
+          matchRatio: zod
+            .number()
+            .gt(
+              getOwnerCampaignPreviewResponseCampaignOnePartnerFundingMatchRatioExclusiveMin,
+            )
+            .default(
+              getOwnerCampaignPreviewResponseCampaignOnePartnerFundingMatchRatioDefault,
+            ),
+          matchCap: zod
+            .number()
+            .min(
+              getOwnerCampaignPreviewResponseCampaignOnePartnerFundingMatchCapMin,
+            )
+            .optional()
+            .describe("Matching only; defaults to amount."),
+        })
+        .nullish(),
+      breakdown: zod
+        .array(
+          zod.object({
+            label: zod.string(),
+            detail: zod.string(),
+          }),
+        )
+        .max(getOwnerCampaignPreviewResponseCampaignOneBreakdownMax)
+        .optional(),
+      locations: zod
+        .array(
+          zod.object({
+            name: zod.string(),
+            description: zod.string(),
+            photoUrl: zod.string(),
+          }),
+        )
+        .max(getOwnerCampaignPreviewResponseCampaignOneLocationsMax)
+        .optional(),
+      video: zod
+        .object({
+          url: zod.string(),
+          posterUrl: zod.string(),
+          captionsUrl: zod.string(),
+        })
+        .nullish(),
+      theme: zod
+        .object({
+          primaryColor: zod.string().optional(),
+          accentColor: zod.string().optional(),
+          backgroundColor: zod.string().optional(),
+          textColor: zod.string().optional(),
+          unit: zod
+            .object({
+              singular: zod
+                .string()
+                .max(
+                  getOwnerCampaignPreviewResponseCampaignOneThemeUnitSingularMax,
+                ),
+              plural: zod
+                .string()
+                .max(
+                  getOwnerCampaignPreviewResponseCampaignOneThemeUnitPluralMax,
+                ),
+              imageUrl: zod.string(),
+            })
+            .optional(),
+        })
+        .optional(),
+      enabled: zod.boolean().optional(),
+      saveAsDraft: zod.boolean().optional(),
+      editorStep: zod
+        .number()
+        .min(1)
+        .max(getOwnerCampaignPreviewResponseCampaignOneEditorStepMax)
+        .optional(),
+      assistUsed: zod.boolean().optional(),
+      partnerFundingAnswer: zod
+        .union([zod.literal("yes"), zod.literal("no"), zod.literal(null)])
+        .nullish(),
+      unitChosen: zod.boolean().optional(),
+    })
+    .and(
+      zod.object({
+        _id: zod.string(),
+        publicId: zod.string().optional(),
+        amountRaised: zod.number(),
+        partnerFundingMatchedGbp: zod
+          .number()
+          .min(
+            getOwnerCampaignPreviewResponseCampaignTwoPartnerFundingMatchedGbpMin,
+          )
+          .optional(),
+        status: zod.string().optional(),
+        hasUnpublishedChanges: zod.boolean().optional(),
+        sharePath: zod.string().optional(),
+        createdAt: zod.string().optional(),
+        updatedAt: zod.string().optional(),
+        supporterCount: zod
+          .number()
+          .min(getOwnerCampaignPreviewResponseCampaignTwoSupporterCountMin)
+          .optional(),
+        unidentifiedGifts: zod
+          .number()
+          .min(getOwnerCampaignPreviewResponseCampaignTwoUnidentifiedGiftsMin)
+          .optional(),
+        recentSupporters: zod
+          .array(
+            zod.object({
+              displayName: zod.string(),
+              createdAt: zod.string(),
+            }),
+          )
+          .optional(),
+      }),
+    ),
+  organisation: zod.object({
+    _id: zod.string(),
+    name: zod.string(),
+  }),
+  preview: zod.boolean().optional(),
+});
+
+export const GetOrganisationRunningSummaryParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetOrganisationRunningSummaryResponse = zod.object({
+  raisedGbp: zod.number(),
+  owedGbp: zod.number(),
+  nextPayoutAt: zod.string().nullable(),
+  lastPayout: zod
+    .object({
+      amountGbp: zod.number(),
+      reference: zod.string(),
+      sentAt: zod.string(),
+    })
+    .nullable(),
+  recentSupporters: zod.array(
+    zod.object({
+      displayName: zod.string(),
+      createdAt: zod.string(),
+    }),
+  ),
+  campaignRaised: zod.array(
+    zod.object({
+      campaignId: zod.string(),
+      name: zod.string(),
+      raisedGbp: zod.number(),
+    }),
+  ),
+  latestUpdateAt: zod.string().nullable(),
+  impactMetricsStale: zod.boolean(),
+});
+
+export const GetOrganisationWalkthroughParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const getOrganisationWalkthroughResponseWalkthroughProfileStepMax = 10;
+
+export const getOrganisationWalkthroughResponseWalkthroughCampaignStepMax = 12;
+
+export const GetOrganisationWalkthroughResponse = zod.object({
+  walkthrough: zod.object({
+    profileStep: zod
+      .number()
+      .min(1)
+      .max(getOrganisationWalkthroughResponseWalkthroughProfileStepMax)
+      .nullish(),
+    campaignStep: zod
+      .number()
+      .min(1)
+      .max(getOrganisationWalkthroughResponseWalkthroughCampaignStepMax)
+      .nullish(),
+    profileDone: zod.boolean().optional(),
+    campaignDone: zod.boolean().optional(),
+    exitedAt: zod.string().nullish(),
+    selectedCampaignId: zod.string().nullish(),
+  }),
+  profilePreviewedAt: zod.string().nullish(),
+  campaignPreviewedAt: zod.string().nullish(),
+  campaignPreviewedId: zod.string().nullish(),
+  payoutSetupSelected: zod.boolean(),
+});
+
+export const SaveOrganisationWalkthroughParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const saveOrganisationWalkthroughBodyProfileStepMax = 10;
+
+export const saveOrganisationWalkthroughBodyCampaignStepMax = 12;
+
+export const SaveOrganisationWalkthroughBody = zod.object({
+  profileStep: zod
+    .number()
+    .min(1)
+    .max(saveOrganisationWalkthroughBodyProfileStepMax)
+    .nullish(),
+  campaignStep: zod
+    .number()
+    .min(1)
+    .max(saveOrganisationWalkthroughBodyCampaignStepMax)
+    .nullish(),
+  profileDone: zod.boolean().optional(),
+  campaignDone: zod.boolean().optional(),
+  exitedAt: zod.string().nullish(),
+  selectedCampaignId: zod.string().nullish(),
+});
+
+export const saveOrganisationWalkthroughResponseWalkthroughProfileStepMax = 10;
+
+export const saveOrganisationWalkthroughResponseWalkthroughCampaignStepMax = 12;
+
+export const SaveOrganisationWalkthroughResponse = zod.object({
+  walkthrough: zod
+    .object({
+      profileStep: zod
+        .number()
+        .min(1)
+        .max(saveOrganisationWalkthroughResponseWalkthroughProfileStepMax)
+        .nullish(),
+      campaignStep: zod
+        .number()
+        .min(1)
+        .max(saveOrganisationWalkthroughResponseWalkthroughCampaignStepMax)
+        .nullish(),
+      profileDone: zod.boolean().optional(),
+      campaignDone: zod.boolean().optional(),
+      exitedAt: zod.string().nullish(),
+      selectedCampaignId: zod.string().nullish(),
+    })
+    .optional(),
+});
+
+export const RecordOrganisationPreviewOpenParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const RecordOrganisationPreviewOpenBody = zod.object({
+  event: zod.enum(["profile_preview", "campaign_preview"]),
+  campaignId: zod.string().optional(),
+});
+
+export const RecordOrganisationPreviewOpenResponse = zod.object({
+  recorded: zod.boolean().optional(),
+  at: zod.string().optional(),
+});
+
 export const getWiseDisbursementsQueryOrgIdRegExp = new RegExp("^[^\/\\s]+$");
 
 export const GetWiseDisbursementsQueryParams = zod.object({
@@ -40,9 +371,15 @@ export const getPublicCampaignsResponseOneGoalMin = 0;
 
 export const getPublicCampaignsResponseOneVolunteersNeededMin = 0;
 
-export const getPublicCampaignsResponseOneMatchFundingAmountMin = 0;
+export const getPublicCampaignsResponseOnePartnerFundingAmountMin = 0;
 
-export const getPublicCampaignsResponseOneMatchFundingFunderNameMax = 200;
+export const getPublicCampaignsResponseOnePartnerFundingFunderNameMax = 200;
+
+export const getPublicCampaignsResponseOnePartnerFundingTypeDefault = `committed`;
+export const getPublicCampaignsResponseOnePartnerFundingMatchRatioDefault = 1;
+export const getPublicCampaignsResponseOnePartnerFundingMatchRatioExclusiveMin = 0;
+
+export const getPublicCampaignsResponseOnePartnerFundingMatchCapMin = 0;
 
 export const getPublicCampaignsResponseOneBreakdownMax = 50;
 
@@ -53,6 +390,12 @@ export const getPublicCampaignsResponseOneThemeUnitSingularMax = 60;
 export const getPublicCampaignsResponseOneThemeUnitPluralMax = 60;
 
 export const getPublicCampaignsResponseOneEditorStepMax = 5;
+
+export const getPublicCampaignsResponseTwoPartnerFundingMatchedGbpMin = 0;
+
+export const getPublicCampaignsResponseTwoSupporterCountMin = 0;
+
+export const getPublicCampaignsResponseTwoUnidentifiedGiftsMin = 0;
 
 export const GetPublicCampaignsResponseItem = zod
   .object({
@@ -73,14 +416,28 @@ export const GetPublicCampaignsResponseItem = zod
       .optional(),
     deadline: zod.string().nullish(),
     imageUrl: zod.string().nullish(),
-    matchFunding: zod
+    partnerFunding: zod
       .object({
         amount: zod
           .number()
-          .min(getPublicCampaignsResponseOneMatchFundingAmountMin),
+          .min(getPublicCampaignsResponseOnePartnerFundingAmountMin),
         funderName: zod
           .string()
-          .max(getPublicCampaignsResponseOneMatchFundingFunderNameMax),
+          .max(getPublicCampaignsResponseOnePartnerFundingFunderNameMax),
+        type: zod
+          .enum(["committed", "matching"])
+          .default(getPublicCampaignsResponseOnePartnerFundingTypeDefault),
+        matchRatio: zod
+          .number()
+          .gt(getPublicCampaignsResponseOnePartnerFundingMatchRatioExclusiveMin)
+          .default(
+            getPublicCampaignsResponseOnePartnerFundingMatchRatioDefault,
+          ),
+        matchCap: zod
+          .number()
+          .min(getPublicCampaignsResponseOnePartnerFundingMatchCapMin)
+          .optional()
+          .describe("Matching only; defaults to amount."),
       })
       .nullish(),
     breakdown: zod
@@ -136,17 +493,41 @@ export const GetPublicCampaignsResponseItem = zod
       .max(getPublicCampaignsResponseOneEditorStepMax)
       .optional(),
     assistUsed: zod.boolean().optional(),
+    partnerFundingAnswer: zod
+      .union([zod.literal("yes"), zod.literal("no"), zod.literal(null)])
+      .nullish(),
+    unitChosen: zod.boolean().optional(),
   })
   .and(
     zod.object({
       _id: zod.string(),
       publicId: zod.string().optional(),
       amountRaised: zod.number(),
+      partnerFundingMatchedGbp: zod
+        .number()
+        .min(getPublicCampaignsResponseTwoPartnerFundingMatchedGbpMin)
+        .optional(),
       status: zod.string().optional(),
       hasUnpublishedChanges: zod.boolean().optional(),
       sharePath: zod.string().optional(),
       createdAt: zod.string().optional(),
       updatedAt: zod.string().optional(),
+      supporterCount: zod
+        .number()
+        .min(getPublicCampaignsResponseTwoSupporterCountMin)
+        .optional(),
+      unidentifiedGifts: zod
+        .number()
+        .min(getPublicCampaignsResponseTwoUnidentifiedGiftsMin)
+        .optional(),
+      recentSupporters: zod
+        .array(
+          zod.object({
+            displayName: zod.string(),
+            createdAt: zod.string(),
+          }),
+        )
+        .optional(),
     }),
   );
 export const GetPublicCampaignsResponse = zod.array(
@@ -167,9 +548,15 @@ export const createCampaignDraftBodyGoalMin = 0;
 
 export const createCampaignDraftBodyVolunteersNeededMin = 0;
 
-export const createCampaignDraftBodyMatchFundingAmountMin = 0;
+export const createCampaignDraftBodyPartnerFundingAmountMin = 0;
 
-export const createCampaignDraftBodyMatchFundingFunderNameMax = 200;
+export const createCampaignDraftBodyPartnerFundingFunderNameMax = 200;
+
+export const createCampaignDraftBodyPartnerFundingTypeDefault = `committed`;
+export const createCampaignDraftBodyPartnerFundingMatchRatioDefault = 1;
+export const createCampaignDraftBodyPartnerFundingMatchRatioExclusiveMin = 0;
+
+export const createCampaignDraftBodyPartnerFundingMatchCapMin = 0;
 
 export const createCampaignDraftBodyBreakdownMax = 50;
 
@@ -196,12 +583,24 @@ export const CreateCampaignDraftBody = zod.object({
     .optional(),
   deadline: zod.string().nullish(),
   imageUrl: zod.string().nullish(),
-  matchFunding: zod
+  partnerFunding: zod
     .object({
-      amount: zod.number().min(createCampaignDraftBodyMatchFundingAmountMin),
+      amount: zod.number().min(createCampaignDraftBodyPartnerFundingAmountMin),
       funderName: zod
         .string()
-        .max(createCampaignDraftBodyMatchFundingFunderNameMax),
+        .max(createCampaignDraftBodyPartnerFundingFunderNameMax),
+      type: zod
+        .enum(["committed", "matching"])
+        .default(createCampaignDraftBodyPartnerFundingTypeDefault),
+      matchRatio: zod
+        .number()
+        .gt(createCampaignDraftBodyPartnerFundingMatchRatioExclusiveMin)
+        .default(createCampaignDraftBodyPartnerFundingMatchRatioDefault),
+      matchCap: zod
+        .number()
+        .min(createCampaignDraftBodyPartnerFundingMatchCapMin)
+        .optional()
+        .describe("Matching only; defaults to amount."),
     })
     .nullish(),
   breakdown: zod
@@ -255,6 +654,10 @@ export const CreateCampaignDraftBody = zod.object({
     .max(createCampaignDraftBodyEditorStepMax)
     .optional(),
   assistUsed: zod.boolean().optional(),
+  partnerFundingAnswer: zod
+    .union([zod.literal("yes"), zod.literal("no"), zod.literal(null)])
+    .nullish(),
+  unitChosen: zod.boolean().optional(),
 });
 
 export const GetManagedCampaignDraftsParams = zod.object({
@@ -271,9 +674,15 @@ export const getManagedCampaignDraftsResponseOneGoalMin = 0;
 
 export const getManagedCampaignDraftsResponseOneVolunteersNeededMin = 0;
 
-export const getManagedCampaignDraftsResponseOneMatchFundingAmountMin = 0;
+export const getManagedCampaignDraftsResponseOnePartnerFundingAmountMin = 0;
 
-export const getManagedCampaignDraftsResponseOneMatchFundingFunderNameMax = 200;
+export const getManagedCampaignDraftsResponseOnePartnerFundingFunderNameMax = 200;
+
+export const getManagedCampaignDraftsResponseOnePartnerFundingTypeDefault = `committed`;
+export const getManagedCampaignDraftsResponseOnePartnerFundingMatchRatioDefault = 1;
+export const getManagedCampaignDraftsResponseOnePartnerFundingMatchRatioExclusiveMin = 0;
+
+export const getManagedCampaignDraftsResponseOnePartnerFundingMatchCapMin = 0;
 
 export const getManagedCampaignDraftsResponseOneBreakdownMax = 50;
 
@@ -284,6 +693,12 @@ export const getManagedCampaignDraftsResponseOneThemeUnitSingularMax = 60;
 export const getManagedCampaignDraftsResponseOneThemeUnitPluralMax = 60;
 
 export const getManagedCampaignDraftsResponseOneEditorStepMax = 5;
+
+export const getManagedCampaignDraftsResponseTwoPartnerFundingMatchedGbpMin = 0;
+
+export const getManagedCampaignDraftsResponseTwoSupporterCountMin = 0;
+
+export const getManagedCampaignDraftsResponseTwoUnidentifiedGiftsMin = 0;
 
 export const GetManagedCampaignDraftsResponseItem = zod
   .object({
@@ -310,14 +725,32 @@ export const GetManagedCampaignDraftsResponseItem = zod
       .optional(),
     deadline: zod.string().nullish(),
     imageUrl: zod.string().nullish(),
-    matchFunding: zod
+    partnerFunding: zod
       .object({
         amount: zod
           .number()
-          .min(getManagedCampaignDraftsResponseOneMatchFundingAmountMin),
+          .min(getManagedCampaignDraftsResponseOnePartnerFundingAmountMin),
         funderName: zod
           .string()
-          .max(getManagedCampaignDraftsResponseOneMatchFundingFunderNameMax),
+          .max(getManagedCampaignDraftsResponseOnePartnerFundingFunderNameMax),
+        type: zod
+          .enum(["committed", "matching"])
+          .default(
+            getManagedCampaignDraftsResponseOnePartnerFundingTypeDefault,
+          ),
+        matchRatio: zod
+          .number()
+          .gt(
+            getManagedCampaignDraftsResponseOnePartnerFundingMatchRatioExclusiveMin,
+          )
+          .default(
+            getManagedCampaignDraftsResponseOnePartnerFundingMatchRatioDefault,
+          ),
+        matchCap: zod
+          .number()
+          .min(getManagedCampaignDraftsResponseOnePartnerFundingMatchCapMin)
+          .optional()
+          .describe("Matching only; defaults to amount."),
       })
       .nullish(),
     breakdown: zod
@@ -373,17 +806,41 @@ export const GetManagedCampaignDraftsResponseItem = zod
       .max(getManagedCampaignDraftsResponseOneEditorStepMax)
       .optional(),
     assistUsed: zod.boolean().optional(),
+    partnerFundingAnswer: zod
+      .union([zod.literal("yes"), zod.literal("no"), zod.literal(null)])
+      .nullish(),
+    unitChosen: zod.boolean().optional(),
   })
   .and(
     zod.object({
       _id: zod.string(),
       publicId: zod.string().optional(),
       amountRaised: zod.number(),
+      partnerFundingMatchedGbp: zod
+        .number()
+        .min(getManagedCampaignDraftsResponseTwoPartnerFundingMatchedGbpMin)
+        .optional(),
       status: zod.string().optional(),
       hasUnpublishedChanges: zod.boolean().optional(),
       sharePath: zod.string().optional(),
       createdAt: zod.string().optional(),
       updatedAt: zod.string().optional(),
+      supporterCount: zod
+        .number()
+        .min(getManagedCampaignDraftsResponseTwoSupporterCountMin)
+        .optional(),
+      unidentifiedGifts: zod
+        .number()
+        .min(getManagedCampaignDraftsResponseTwoUnidentifiedGiftsMin)
+        .optional(),
+      recentSupporters: zod
+        .array(
+          zod.object({
+            displayName: zod.string(),
+            createdAt: zod.string(),
+          }),
+        )
+        .optional(),
     }),
   );
 export const GetManagedCampaignDraftsResponse = zod.array(
@@ -405,9 +862,15 @@ export const saveCampaignDraftBodyGoalMin = 0;
 
 export const saveCampaignDraftBodyVolunteersNeededMin = 0;
 
-export const saveCampaignDraftBodyMatchFundingAmountMin = 0;
+export const saveCampaignDraftBodyPartnerFundingAmountMin = 0;
 
-export const saveCampaignDraftBodyMatchFundingFunderNameMax = 200;
+export const saveCampaignDraftBodyPartnerFundingFunderNameMax = 200;
+
+export const saveCampaignDraftBodyPartnerFundingTypeDefault = `committed`;
+export const saveCampaignDraftBodyPartnerFundingMatchRatioDefault = 1;
+export const saveCampaignDraftBodyPartnerFundingMatchRatioExclusiveMin = 0;
+
+export const saveCampaignDraftBodyPartnerFundingMatchCapMin = 0;
 
 export const saveCampaignDraftBodyBreakdownMax = 50;
 
@@ -431,12 +894,24 @@ export const SaveCampaignDraftBody = zod.object({
     .optional(),
   deadline: zod.string().nullish(),
   imageUrl: zod.string().nullish(),
-  matchFunding: zod
+  partnerFunding: zod
     .object({
-      amount: zod.number().min(saveCampaignDraftBodyMatchFundingAmountMin),
+      amount: zod.number().min(saveCampaignDraftBodyPartnerFundingAmountMin),
       funderName: zod
         .string()
-        .max(saveCampaignDraftBodyMatchFundingFunderNameMax),
+        .max(saveCampaignDraftBodyPartnerFundingFunderNameMax),
+      type: zod
+        .enum(["committed", "matching"])
+        .default(saveCampaignDraftBodyPartnerFundingTypeDefault),
+      matchRatio: zod
+        .number()
+        .gt(saveCampaignDraftBodyPartnerFundingMatchRatioExclusiveMin)
+        .default(saveCampaignDraftBodyPartnerFundingMatchRatioDefault),
+      matchCap: zod
+        .number()
+        .min(saveCampaignDraftBodyPartnerFundingMatchCapMin)
+        .optional()
+        .describe("Matching only; defaults to amount."),
     })
     .nullish(),
   breakdown: zod
@@ -488,6 +963,10 @@ export const SaveCampaignDraftBody = zod.object({
     .max(saveCampaignDraftBodyEditorStepMax)
     .optional(),
   assistUsed: zod.boolean().optional(),
+  partnerFundingAnswer: zod
+    .union([zod.literal("yes"), zod.literal("no"), zod.literal(null)])
+    .nullish(),
+  unitChosen: zod.boolean().optional(),
 });
 
 export const saveCampaignDraftResponseOneNameMax = 200;
@@ -500,9 +979,15 @@ export const saveCampaignDraftResponseOneGoalMin = 0;
 
 export const saveCampaignDraftResponseOneVolunteersNeededMin = 0;
 
-export const saveCampaignDraftResponseOneMatchFundingAmountMin = 0;
+export const saveCampaignDraftResponseOnePartnerFundingAmountMin = 0;
 
-export const saveCampaignDraftResponseOneMatchFundingFunderNameMax = 200;
+export const saveCampaignDraftResponseOnePartnerFundingFunderNameMax = 200;
+
+export const saveCampaignDraftResponseOnePartnerFundingTypeDefault = `committed`;
+export const saveCampaignDraftResponseOnePartnerFundingMatchRatioDefault = 1;
+export const saveCampaignDraftResponseOnePartnerFundingMatchRatioExclusiveMin = 0;
+
+export const saveCampaignDraftResponseOnePartnerFundingMatchCapMin = 0;
 
 export const saveCampaignDraftResponseOneBreakdownMax = 50;
 
@@ -513,6 +998,12 @@ export const saveCampaignDraftResponseOneThemeUnitSingularMax = 60;
 export const saveCampaignDraftResponseOneThemeUnitPluralMax = 60;
 
 export const saveCampaignDraftResponseOneEditorStepMax = 5;
+
+export const saveCampaignDraftResponseTwoPartnerFundingMatchedGbpMin = 0;
+
+export const saveCampaignDraftResponseTwoSupporterCountMin = 0;
+
+export const saveCampaignDraftResponseTwoUnidentifiedGiftsMin = 0;
 
 export const SaveCampaignDraftResponse = zod
   .object({
@@ -533,14 +1024,26 @@ export const SaveCampaignDraftResponse = zod
       .optional(),
     deadline: zod.string().nullish(),
     imageUrl: zod.string().nullish(),
-    matchFunding: zod
+    partnerFunding: zod
       .object({
         amount: zod
           .number()
-          .min(saveCampaignDraftResponseOneMatchFundingAmountMin),
+          .min(saveCampaignDraftResponseOnePartnerFundingAmountMin),
         funderName: zod
           .string()
-          .max(saveCampaignDraftResponseOneMatchFundingFunderNameMax),
+          .max(saveCampaignDraftResponseOnePartnerFundingFunderNameMax),
+        type: zod
+          .enum(["committed", "matching"])
+          .default(saveCampaignDraftResponseOnePartnerFundingTypeDefault),
+        matchRatio: zod
+          .number()
+          .gt(saveCampaignDraftResponseOnePartnerFundingMatchRatioExclusiveMin)
+          .default(saveCampaignDraftResponseOnePartnerFundingMatchRatioDefault),
+        matchCap: zod
+          .number()
+          .min(saveCampaignDraftResponseOnePartnerFundingMatchCapMin)
+          .optional()
+          .describe("Matching only; defaults to amount."),
       })
       .nullish(),
     breakdown: zod
@@ -596,17 +1099,41 @@ export const SaveCampaignDraftResponse = zod
       .max(saveCampaignDraftResponseOneEditorStepMax)
       .optional(),
     assistUsed: zod.boolean().optional(),
+    partnerFundingAnswer: zod
+      .union([zod.literal("yes"), zod.literal("no"), zod.literal(null)])
+      .nullish(),
+    unitChosen: zod.boolean().optional(),
   })
   .and(
     zod.object({
       _id: zod.string(),
       publicId: zod.string().optional(),
       amountRaised: zod.number(),
+      partnerFundingMatchedGbp: zod
+        .number()
+        .min(saveCampaignDraftResponseTwoPartnerFundingMatchedGbpMin)
+        .optional(),
       status: zod.string().optional(),
       hasUnpublishedChanges: zod.boolean().optional(),
       sharePath: zod.string().optional(),
       createdAt: zod.string().optional(),
       updatedAt: zod.string().optional(),
+      supporterCount: zod
+        .number()
+        .min(saveCampaignDraftResponseTwoSupporterCountMin)
+        .optional(),
+      unidentifiedGifts: zod
+        .number()
+        .min(saveCampaignDraftResponseTwoUnidentifiedGiftsMin)
+        .optional(),
+      recentSupporters: zod
+        .array(
+          zod.object({
+            displayName: zod.string(),
+            createdAt: zod.string(),
+          }),
+        )
+        .optional(),
     }),
   );
 

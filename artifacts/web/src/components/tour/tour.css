@@ -1,0 +1,27 @@
+/* Scoped to the walkthrough popover only. Uses the existing Root ProjX palette. */
+.driver-popover.rpx-tour {
+  background: hsl(var(--card));
+  color: hsl(var(--foreground));
+  border: 1px solid hsl(var(--card-border));
+  border-radius: 16px;
+  box-shadow: var(--shadow-xl);
+  max-width: min(360px, calc(100vw - 24px));
+  padding: 16px;
+  font-family: var(--app-font-sans);
+}
+.driver-popover.rpx-tour .driver-popover-title { font-size: 17px; font-weight: 800; line-height: 1.25; }
+.driver-popover.rpx-tour .driver-popover-description { font-size: 14px; line-height: 1.5; color: hsl(var(--foreground) / 0.8); margin-top: 6px; }
+.driver-popover.rpx-tour .driver-popover-arrow-side-bottom.driver-popover-arrow { border-bottom-color: hsl(var(--card)); }
+.driver-popover.rpx-tour .driver-popover-arrow-side-top.driver-popover-arrow { border-top-color: hsl(var(--card)); }
+.driver-popover.rpx-tour .driver-popover-arrow-side-left.driver-popover-arrow { border-left-color: hsl(var(--card)); }
+.driver-popover.rpx-tour .driver-popover-arrow-side-right.driver-popover-arrow { border-right-color: hsl(var(--card)); }
+.rpx-tour-progress { font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: hsl(var(--primary)); margin-bottom: 4px; }
+.rpx-tour-status { font-size: 12px; font-weight: 600; color: hsl(var(--muted-foreground)); margin-top: 10px; min-height: 1em; }
+.rpx-tour-status:empty { display: none; }
+.driver-popover.rpx-tour .driver-popover-footer { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; justify-content: flex-end; }
+.rpx-tour-btn {
+  min-height: 40px; padding: 0 14px; border-radius: 10px; font-size: 14px; font-weight: 700;
+  border: 1px solid hsl(var(--border)); background: hsl(var(--background)); color: hsl(var(--foreground)); cursor: pointer;
+}
+.rpx-tour-later { margin-right: auto; border-color: transparent; background: transparent; color: hsl(var(--muted-foreground)); padding: 0 6px; text-decoration: underline; text-underline-offset: 3px; }
+.rpx-tour-primary { background: hsl(var(--primary)); border-color: hsl(var(--primary)); color: hsl(var(--primary-foreground)); }
