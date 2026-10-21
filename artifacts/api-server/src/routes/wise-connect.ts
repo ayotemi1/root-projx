@@ -96,6 +96,9 @@ router.get("/wise/connect/status", requireAuth, requireApprovedOrganisation, asy
       wise_email: (org["wise_email"] as string | null) ?? null,
       wise_recipient_id: (org["wise_recipient_id"] as number | null) ?? null,
       wise_verified: (org["wise_verified"] as boolean) ?? false,
+      lastDisbursementAt: (org["lastDisbursementAt"] as string | null) ?? null,
+      lastDisbursementAmountGbp: (org["lastDisbursementAmountGbp"] as number | null) ?? null,
+      lastDisbursementTransferId: (org["lastDisbursementTransferId"] as number | null) ?? null,
     });
   } catch (err) {
     req.log.error({ err }, "GET /wise/connect/status error");

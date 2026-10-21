@@ -104,6 +104,9 @@ export interface WiseStatus {
   wise_email: string | null;
   wise_recipient_id: number | null;
   wise_verified: boolean;
+  lastDisbursementAt?: string | null;
+  lastDisbursementAmountGbp?: number | null;
+  lastDisbursementTransferId?: number | null;
 }
 
 export interface FeedUpdate {

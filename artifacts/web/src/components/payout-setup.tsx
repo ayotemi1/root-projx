@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import * as api from "@/lib/api";
 import { myPayoutsKey } from "@/lib/payouts-api";
+import { WiseLastPayout } from "@/components/wise-last-payout";
 import type { PayoutMethod, PayoutSetup as PayoutSetupData, WiseStatus } from "@/lib/api";
 
 export const BANK_APPROVED_TEXT = "Set up: bank transfer — we hold your account details securely outside the platform.";
@@ -67,6 +68,8 @@ export function PayoutSetup({
     queryKey: ["wise-status", orgId],
     queryFn: () => api.getWiseStatus(token),
     enabled: !!token,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
 
   const refetchConnect = connectQ.refetch;
@@ -223,6 +226,7 @@ export function PayoutSetup({
         {wise.wise_verified ? "Connected & verified" : "Saved (pending verification)"}
       </p>
       <p className="text-sm font-semibold truncate" data-testid="text-wise-email">{wise.wise_email}</p>
+      <WiseLastPayout status={wise} />
       <div className="flex gap-2">
         <Button variant="outline" size="sm" className="flex-1" onClick={() => { setWiseEmailInput(wise.wise_email ?? ""); setShowWiseInput(true); }} data-testid="button-wise-change">Change</Button>
         <Button variant="outline" size="sm" className="flex-1 text-destructive" disabled={wiseDisconnectMut.isPending} onClick={() => wiseDisconnectMut.mutate()} data-testid="button-wise-disconnect">
