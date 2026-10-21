@@ -19,12 +19,16 @@ confirms an off-platform arrangement; it does not initiate a transfer.
 
 Public payout routing uses `stripe_connect`, `wise`, `manual`, or `none`;
 dashboard selections retain `stripe`, `wise`, and `bank_transfer` for backwards
-compatibility. A resolved method identifies the selected route, not provider
-readiness or approval to send funds. Keep approval flags and payee reminders
+compatibility. Manual donation routing requires explicit admin approval: a
+pending bank-transfer request must resolve to `none`, even if old provider
+credentials remain. Stripe routing requires an account ID. Resolution still
+does not authorize executing a payout. Keep approval flags and payee reminders
 private.
 
-**Why:** Routing and settlement authorization are separate concerns. Existing
-provider credentials must not override an explicitly selected alternative.
+**Why:** The user requires a confirmed way to pay an organisation before a manual
+route can accept donations. Existing provider credentials must not override an
+explicitly selected alternative; donation eligibility and transfer execution
+authorization remain separate concerns.
 
 **How to apply:** Reuse the shared resolver for future Checkout metadata and
 payout records; validate readiness and authorization separately before transfers.

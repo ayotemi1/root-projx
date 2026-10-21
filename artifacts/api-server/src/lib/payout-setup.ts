@@ -15,13 +15,14 @@ export function activePayoutMethod(org: Record<string, unknown>): PayoutMethod |
   return null;
 }
 
-// Resolve the selected routing method, not provider readiness or permission to
-// send funds. Keep the existing dashboard/storage values backwards compatible.
+// Resolve donation routing while keeping dashboard/storage values compatible.
+// Pending bank requests stay visible in setup but cannot collect donations.
+// This is not authorization to execute a payout.
 export function resolvePayoutMethod(org: Record<string, unknown>): ResolvedPayoutMethod {
   switch (activePayoutMethod(org)) {
-    case "stripe": return "stripe_connect";
+    case "stripe": return org.stripe_account_id ? "stripe_connect" : "none";
     case "wise": return "wise";
-    case "bank_transfer": return "manual";
+    case "bank_transfer": return org.payoutManualApproved === true ? "manual" : "none";
     default: return "none";
   }
 }

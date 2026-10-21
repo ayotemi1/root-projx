@@ -3,6 +3,7 @@ import { fsGet, fsPatch, fsQuery, getServerToken } from "../lib/firebase-rest.js
 import { requireAuth, optionalAuth } from "../lib/auth.js";
 import { getUncachableStripeClient, getStripePublishableKey } from "../lib/stripeClient.js";
 import { MIN_DONATION_PENCE, PLATFORM_FEE_PERCENT, platformFeePence } from "../lib/fees.js";
+import { resolvePayoutMethod } from "../lib/payout-setup.js";
 
 const DOMAIN = process.env.REPLIT_DEV_DOMAIN
   ? `https://${process.env.REPLIT_DEV_DOMAIN}`
@@ -160,6 +161,12 @@ router.post("/donations/anonymous-checkout", async (req, res) => {
       return;
     }
 
+    const payoutMethod = resolvePayoutMethod(org);
+    if (payoutMethod === "none") {
+      res.status(400).json({ error: "This organisation isn't set up to receive donations yet." });
+      return;
+    }
+
     const stripe = await getUncachableStripeClient();
     // Platform fee calculated on original donation amount (not the grossed-up amount)
     const feePence = platformFeePence(basePence!);
@@ -180,8 +187,13 @@ router.post("/donations/anonymous-checkout", async (req, res) => {
         },
       ],
       payment_intent_data: {
+        ...(payoutMethod === "stripe_connect" ? {
+          application_fee_amount: feePence,
+          transfer_data: { destination: org["stripe_account_id"] as string },
+        } : {}),
         metadata: {
           userId: "anonymous",
+          payoutMethod,
           orgId,
           orgName: (org["name"] as string) ?? "",
           amountPence: String(amountPence),
@@ -356,7 +368,7 @@ router.post("/donations/subscription", requireAuth, async (req, res) => {
   }
 });
 
-// ── POST /donations/checkout — Stripe Connect Checkout Session ────────────────
+// ── POST /donations/checkout — Checkout routed by payout method ───────────────
 // Supports both authenticated users and guests (with guestEmail in body).
 router.post("/donations/checkout", optionalAuth, async (req, res) => {
   try {
@@ -405,11 +417,9 @@ router.post("/donations/checkout", optionalAuth, async (req, res) => {
       return;
     }
 
-    const stripeAccountId = org["stripe_account_id"] as string | undefined;
-    if (!stripeAccountId) {
-      res.status(400).json({
-        error: "This organisation has not connected their bank account yet",
-      });
+    const payoutMethod = resolvePayoutMethod(org);
+    if (payoutMethod === "none") {
+      res.status(400).json({ error: "This organisation isn't set up to receive donations yet." });
       return;
     }
 
@@ -442,10 +452,13 @@ router.post("/donations/checkout", optionalAuth, async (req, res) => {
         },
       ],
       payment_intent_data: {
-        application_fee_amount: feePence,
-        transfer_data: { destination: stripeAccountId },
+        ...(payoutMethod === "stripe_connect" ? {
+          application_fee_amount: feePence,
+          transfer_data: { destination: org["stripe_account_id"] as string },
+        } : {}),
         metadata: {
           userId: uid ?? "guest",
+          payoutMethod,
           orgId,
           orgName: (org["name"] as string) ?? "",
           amountPence: String(amountPence),

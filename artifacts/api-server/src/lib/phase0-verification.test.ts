@@ -125,7 +125,7 @@ async function isolatedRouters() {
   return module.exports;
 }
 
-async function invoke(router: any, path: string, req: Record<string, unknown>) {
+async function invoke(router: any, path: string, req: Record<string, unknown>, expectedStatus = 200) {
   const route = router.stack.find((layer: any) => layer.route?.path === path)?.route;
   assert.ok(route, `Missing real route ${path}`);
   let status = 200;
@@ -136,8 +136,80 @@ async function invoke(router: any, path: string, req: Record<string, unknown>) {
     setHeader() {},
   };
   await route.stack.at(-1).handle(req, res);
-  assert.equal(status, 200, JSON.stringify(body));
+  assert.equal(status, expectedStatus, JSON.stringify(body));
   return body;
+}
+
+for (const path of ["/donations/checkout", "/donations/anonymous-checkout"]) {
+  test(`${path} routes Checkout by resolved payout method without live services`, async (t) => {
+    const cases: Array<{name: string; setup: Record<string, unknown>; method: string}> = [
+      {name: "Stripe Connect", setup: {payoutMethod: "stripe", stripe_account_id: "acct_selected"}, method: "stripe_connect"},
+      // Stale Stripe credentials must not override a selected alternative.
+      {name: "Wise", setup: {payoutMethod: "wise", wise_email: "payee@example.test", stripe_account_id: "acct_old"}, method: "wise"},
+      {name: "approved bank transfer", setup: {payoutMethod: "bank_transfer", payoutManualRequested: true, payoutManualApproved: true, stripe_account_id: "acct_old"}, method: "manual"},
+      {name: "unset", setup: {}, method: "none"},
+      {name: "pending bank transfer", setup: {payoutMethod: "bank_transfer", payoutManualRequested: true, payoutManualApproved: false, stripe_account_id: "acct_old"}, method: "none"},
+      {name: "legacy pending bank transfer", setup: {payoutManualRequested: true}, method: "none"},
+      {name: "Stripe selection without account", setup: {payoutMethod: "stripe"}, method: "none"},
+    ];
+    for (const scenario of cases) {
+      for (const feeCovered of [true, false]) {
+        await t.test(`${scenario.name}, fee cover ${feeCovered ? "ON" : "OFF"}`, async () => {
+          const {donations, state} = await isolatedRouters();
+          state.documents.set("organisations/test-org", {
+            name: "Test Organisation",
+            campaigns: [{_id: "test-campaign", amountRaised: 10}],
+            ...scenario.setup,
+          });
+          const feeAmountPence = feeCovered ? 25 : 0;
+          const body = await invoke(donations, path, {
+            body: {
+              orgId: "test-org", campaignId: "test-campaign",
+              guestEmail: "guest@example.test", amountPence: 300 + feeAmountPence,
+              originalAmountPence: 300, feeAmountPence, feeCovered, wallOptIn: true,
+            },
+            user: {userId: "test-user"}, headers: {},
+            log: {error() { assert.fail("Unexpected Checkout error"); }},
+          }, scenario.method === "none" ? 400 : 200);
+          if (scenario.method === "none") {
+            assert.deepEqual(body, {error: "This organisation isn't set up to receive donations yet."});
+            assert.equal(state.checkout, null, "Rejected organisations must not create a session");
+            return;
+          }
+          assert.equal(body.sessionId, "cs_synthetic");
+          const session = state.checkout;
+          const intent = session.payment_intent_data;
+          if (scenario.method === "stripe_connect") {
+            assert.deepEqual(intent.transfer_data, {destination: "acct_selected"});
+            assert.equal(intent.application_fee_amount, 15);
+          } else {
+            assert.equal(Object.hasOwn(intent, "transfer_data"), false);
+            assert.equal(Object.hasOwn(intent, "application_fee_amount"), false);
+          }
+          assert.equal(intent.metadata.payoutMethod, scenario.method);
+          assert.equal(intent.metadata.orgId, "test-org");
+          assert.equal(intent.metadata.orgName, "Test Organisation");
+          assert.equal(intent.metadata.campaignId, "test-campaign");
+          assert.equal(intent.metadata.originalAmountPence, "300");
+          assert.equal(intent.metadata.feePence, "15");
+          assert.equal(intent.metadata.feeCovered, String(feeCovered));
+          assert.equal(intent.metadata.feeAmountPence, String(feeAmountPence));
+          assert.equal(intent.metadata.amountPence, String(300 + feeAmountPence));
+          assert.equal(session.line_items[0].price_data.unit_amount, 300 + feeAmountPence);
+          assert.equal(session.line_items[0].price_data.currency, "gbp");
+          if (path === "/donations/checkout") {
+            assert.equal(intent.metadata.wallOptIn, "true");
+            assert.equal(intent.metadata.userId, "test-user");
+            assert.equal(session.customer_email, "donor@example.test");
+            assert.ok(session.cancel_url.endsWith("/donate/test-org?campaign=test-campaign"));
+          } else {
+            assert.equal(intent.metadata.userId, "anonymous");
+            assert.equal(intent.metadata.type, "anonymous_one_time");
+          }
+        });
+      }
+    }
+  });
 }
 
 for (const feeCovered of [true, false]) {

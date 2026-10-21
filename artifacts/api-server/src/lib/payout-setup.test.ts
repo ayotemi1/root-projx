@@ -138,17 +138,21 @@ test("manual payee labels accept short reminders but reject banking details", ()
   }
 });
 
-test("shared payout resolver maps selected and legacy methods without changing readiness", () => {
+test("shared payout resolver maps methods and blocks pending manual or missing Stripe setup", () => {
   const cases: Array<[Record<string, unknown>, string]> = [
     [{}, "none"],
     [{ country: "Jamaica" }, "none"],
-    [{ payoutMethod: "stripe" }, "stripe_connect"],
+    [{ payoutMethod: "stripe" }, "none"],
+    [{ payoutMethod: "stripe", stripe_account_id: "acct_selected" }, "stripe_connect"],
     [{ payoutMethod: "wise", stripe_account_id: "acct_old", payouts_enabled: true }, "wise"],
-    [{ payoutMethod: "bank_transfer", stripe_account_id: "acct_old", wise_email: "old@example.test" }, "manual"],
+    [{ payoutMethod: "bank_transfer", stripe_account_id: "acct_old", wise_email: "old@example.test" }, "none"],
+    [{ payoutMethod: "bank_transfer", payoutManualRequested: true, payoutManualApproved: true }, "manual"],
+    [{ payoutMethod: "bank_transfer", payoutManualRequested: true, payoutManualApproved: false }, "none"],
+    [{ payoutMethod: "bank_transfer", payoutManualApproved: "true" }, "none"],
     [{ stripe_account_id: "acct_old", payouts_enabled: true, wise_email: "old@example.test" }, "stripe_connect"],
     [{ stripe_account_id: "acct_old" }, "stripe_connect"],
     [{ wise_email: "old@example.test" }, "wise"],
-    [{ payoutManualRequested: true }, "manual"],
+    [{ payoutManualRequested: true }, "none"],
     [{ payoutManualApproved: true }, "manual"],
     [{ payoutMethod: "invalid" }, "none"],
   ];
