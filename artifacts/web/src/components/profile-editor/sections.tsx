@@ -64,7 +64,8 @@ export function IdentitySection(ctx: SectionCtx) {
   const v = s.value;
   return (
     <SectionShell section="identity" title="Identity" hint="Who you are, where you work, and the one line donors see on Discover."
-      orgId={ctx.orgId} status={s.status} error={s.error} onRetry={s.commit} onFlush={s.flush} onBlur={s.onSectionBlur}
+      orgId={ctx.orgId} status={s.status} error={s.error} onRetry={s.commit}
+      onFlush={async () => (await Promise.all([s.flush(), logo.flush(), cover.flush()])).every(Boolean)} onBlur={s.onSectionBlur}
       wasRecovered={s.wasRecovered} onDiscard={s.discardDraft} storageWarning={s.storageWarning}>
       <div>
         <Label htmlFor="pe-name" className="font-semibold">Organisation name</Label>

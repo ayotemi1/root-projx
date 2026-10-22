@@ -22,6 +22,12 @@ export function gate({ checkPassed, alert, saveState }: GateInput): Gate {
   return { ok: true };
 }
 
+/** Optional means content may be absent, not that failed/unsaved edits may be ignored. */
+export function skipGate(input: GateInput & { skippable: boolean }): Gate {
+  if (!input.skippable) return { ok: false, reason: "not-done", message: "This step cannot be skipped." };
+  return gate({ ...input, checkPassed: null });
+}
+
 const STATES = new Set(["idle", "dirty", "saving", "saved", "error"]);
 /** Worst save state among elements: error > saving > dirty > saved/idle. */
 export function worstSaveState(states: (string | null | undefined)[]): EditorSaveState {

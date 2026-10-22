@@ -168,7 +168,7 @@ export function AssistButton({ enabled, campaignId, field, token, onAccept, fiel
   if (st.k === "idle") {
     return (
       <button type="button" onClick={() => setSt({ k: "asking" })} className="inline-flex items-center gap-1.5 text-xs font-bold text-primary hover:underline underline-offset-2" data-testid={`button-assist-${tid}`}>
-        <Sparkles className="w-3.5 h-3.5" /> Help me write
+        <Sparkles className="w-3.5 h-3.5" /> Help me write this
       </button>
     );
   }

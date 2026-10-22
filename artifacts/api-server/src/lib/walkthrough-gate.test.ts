@@ -5,8 +5,9 @@ type Check = (c: never) => boolean;
 type Step = { id: string; skippable: boolean; completionCheck: Check | null; helper?: (c: never) => unknown };
 const gateUrl = new URL("../../../web/src/lib/tour/gate.ts", import.meta.url).href;
 const stepsUrl = new URL("../../../web/src/lib/tour/steps.ts", import.meta.url).href;
-const { gate, worstSaveState } = (await import(gateUrl)) as {
+const { gate, skipGate, worstSaveState } = (await import(gateUrl)) as {
   gate: (i: { checkPassed: boolean | null; alert: string | null; saveState: string | null }) => { ok: boolean; reason?: string; message?: string };
+  skipGate: (i: { skippable: boolean; checkPassed: boolean | null; alert: string | null; saveState: string | null }) => { ok: boolean; reason?: string };
   worstSaveState: (s: (string | null)[]) => string | null;
 };
 const { TOUR_STEPS } = (await import(stepsUrl)) as { TOUR_STEPS: Step[] };
@@ -27,6 +28,23 @@ test("gate blocks on error, alert, saving and dirty even when the check passes",
 test("action steps (no check) pass only with a clean editor", () => {
   assert.equal(gate({ checkPassed: null, alert: null, saveState: null }).ok, true);
   assert.equal(gate({ checkPassed: null, alert: null, saveState: "dirty" }).ok, false);
+});
+
+test("optional Skip permits absent content but never failed, pending or dirty edits", () => {
+  const input = { skippable: true, checkPassed: false, alert: null, saveState: "idle" };
+  assert.equal(skipGate(input).ok, true);
+  for (const saveState of ["error", "saving", "dirty"]) {
+    assert.equal(skipGate({ ...input, saveState }).ok, false, saveState);
+  }
+  assert.equal(skipGate({ ...input, saveState: "saved", alert: "Upload failed" }).ok, false);
+  assert.equal(skipGate({ ...input, skippable: false, checkPassed: true }).ok, false);
+});
+
+test("tour declarations retain exactly 10 profile and 12 campaign steps and only approved skips", () => {
+  assert.equal(TOUR_STEPS.filter(s => s.id.startsWith("p-")).length, 10);
+  assert.equal(TOUR_STEPS.filter(s => s.id.startsWith("c-")).length, 12);
+  assert.deepEqual(TOUR_STEPS.filter(s => s.skippable).map(s => s.id),
+    ["p-metrics", "c-breakdown", "c-locations", "c-video"]);
 });
 
 test("worst save state wins", () => {

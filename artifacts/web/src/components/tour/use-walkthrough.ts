@@ -6,7 +6,7 @@ import "driver.js/dist/driver.css";
 import "./tour.css";
 import * as api from "@/lib/api";
 import type { Campaign, Org, WalkthroughProgress, WalkthroughState } from "@/lib/api";
-import { gate, worstSaveState, type Gate } from "@/lib/tour/gate";
+import { gate, skipGate, worstSaveState, type Gate } from "@/lib/tour/gate";
 import { checklist, stepsFor, type TourCtx, type TourId, type TourStep } from "@/lib/tour/steps";
 
 const QUEUE_KEY = (orgId: string) => `rpx_walkthrough_queue_${orgId}`;
@@ -221,7 +221,7 @@ export function useWalkthrough({ orgId, token, org, campaigns, explicitTab }: {
     let backBtn: HTMLButtonElement | null = null;
 
     /** Latest gate: saved-data check + editor save state + visible error, read now. */
-    const readGate = (): Gate => {
+    const readGate = (skipping = false): Gate => {
       const el = step.anchor ? document.querySelector(`[data-tour-id="${step.anchor}"]`) : null;
       const scope = el ? (el.closest("section") ?? el.parentElement ?? el) : null;
       const wizard = step.place.inWizard ? el?.closest('[data-tour-id="campaign-wizard"]') : null;
@@ -233,7 +233,8 @@ export function useWalkthrough({ orgId, token, org, campaigns, explicitTab }: {
         document.querySelectorAll('[data-tour-id="campaign-wizard"] [data-testid="status-campaign-save"][data-save-state]')
           .forEach((n) => states.push(n.getAttribute("data-save-state")));
       }
-      return gate({ checkPassed: check ? check(ctxRef.current) : null, alert, saveState: worstSaveState(states) });
+      const input = { checkPassed: check ? check(ctxRef.current) : null, alert, saveState: worstSaveState(states) };
+      return skipping ? skipGate({ ...input, skippable: step.skippable }) : gate(input);
     };
     const tryNext = () => {
       const g = readGate();
@@ -292,7 +293,11 @@ export function useWalkthrough({ orgId, token, org, campaigns, explicitTab }: {
               const skip = document.createElement("button");
               skip.type = "button"; skip.className = "rpx-tour-btn"; skip.textContent = "Skip";
               skip.setAttribute("data-testid", "button-tour-skip");
-              skip.onclick = () => handlers.current.skip();
+              skip.onclick = () => {
+                const g = readGate(true);
+                if (!g.ok) { if (statusEl) statusEl.textContent = g.message; return; }
+                handlers.current.skip();
+              };
               foot.appendChild(skip);
             }
             if (!check || wasDoneOnArrival) {
