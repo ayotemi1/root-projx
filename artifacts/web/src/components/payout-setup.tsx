@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import * as api from "@/lib/api";
 import { myPayoutsKey } from "@/lib/payouts-api";
+import { openStripeOnboardingTab } from "@/lib/stripe-onboarding-tab";
 import { WiseLastPayout } from "@/components/wise-last-payout";
 import type { PayoutMethod, PayoutSetup as PayoutSetupData, WiseStatus } from "@/lib/api";
 
@@ -130,10 +131,10 @@ export function PayoutSetup({
     setStripeError("");
     setStripeStarting(true);
     try {
-      const { url } = await api.startConnectOnboarding(token);
-      window.location.assign(url);
+      await openStripeOnboardingTab(() => api.startConnectOnboarding(token));
     } catch (e) {
       setStripeError(e instanceof Error ? e.message : "Could not start Stripe onboarding.");
+    } finally {
       setStripeStarting(false);
     }
   }
@@ -226,7 +227,9 @@ export function PayoutSetup({
       </p>
       <Button size="sm" className="w-full font-bold" onClick={startStripe} disabled={stripeStarting} data-testid="button-stripe-onboard">
         {stripeStarting ? "Opening Stripe…" : stripe?.stripe_account_id ? "Continue Stripe setup" : "Connect with Stripe"}
+        <ExternalLink className="w-3.5 h-3.5 ml-1.5" aria-hidden="true" />
       </Button>
+      <p className="text-xs text-muted-foreground">Opens in a new tab. Your dashboard stays open.</p>
     </>
   );
 
