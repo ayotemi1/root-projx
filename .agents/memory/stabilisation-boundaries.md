@@ -20,3 +20,14 @@ Do not edit firestore.rules unless explicitly asked. If a fix needs a rules upda
 **Why:** The user explicitly set these boundaries for the stabilisation pass on 2026-10-14 to keep changes focused and retain control of rules publication.
 
 **How to apply:** Follow these constraints throughout the stabilisation pass; implementation still requires Build mode and the specific fix from the user.
+
+Verify onboarding with incomplete organisations and actual editing transitions,
+not only completed fixtures and “already saved” tour steps. Image steps must
+exercise file selection, crop, failure/retry and attachment before advancing.
+
+**Why:** A completed-profile tour audit missed a first-time logo upload losing
+its spotlight target during cropping; the user subsequently encountered it.
+
+**How to apply:** Use empty-profile fixtures for changed onboarding flows.
+Checking that every step appears on prefilled data is supplementary coverage,
+not evidence that first-time setup works.

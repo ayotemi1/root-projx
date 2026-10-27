@@ -83,7 +83,8 @@ export function ImageUploadField({
   const uploading = progress !== null;
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2" data-tour-id={tourId}
+      data-save-state={uploading ? "saving" : error ? "error" : img ? "dirty" : undefined}>
       <div className="flex items-baseline justify-between gap-2">
         <span className="text-sm font-semibold text-foreground" id={`${id}-label`}>{label}</span>
       </div>
@@ -155,7 +156,6 @@ export function ImageUploadField({
                 onClick={() => inputRef.current?.click()}
                 disabled={uploading}
                 data-testid={`button-choose-${id}`}
-                data-tour-id={tourId}
               >
                 <Upload className="w-3.5 h-3.5 mr-1.5" /> {currentUrl ? "Replace" : "Choose image"}
               </Button>
