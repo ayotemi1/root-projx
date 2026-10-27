@@ -26,11 +26,4 @@ export function stripeCountry(country: unknown): string | null {
     : null;
 }
 
-export function onboardingOrigin(env: Record<string, string | undefined>): string {
-  // The canonical live origin is intentional: never send a live organisation
-  // back to a workspace host, even if deployment inherits development variables.
-  if (env.REPLIT_DEPLOYMENT === "1" || env.NODE_ENV === "production") {
-    return "https://rootprojx.com";
-  }
-  return env.REPLIT_DEV_DOMAIN ? `https://${env.REPLIT_DEV_DOMAIN}` : "http://localhost:3000";
-}
+export { publicSiteOrigin as onboardingOrigin } from "./site-origin.ts";

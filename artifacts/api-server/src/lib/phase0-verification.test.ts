@@ -5,7 +5,10 @@ import { build } from "esbuild";
 
 // These tests compile the real routers but replace EVERY external-service
 // boundary. They never read Stripe keys, call Stripe/Brevo, or access Firestore.
-async function isolatedRouters() {
+async function isolatedRouters(environment: Record<string, string> = {
+  REPLIT_DEPLOYMENT: "1",
+  REPLIT_DEV_DOMAIN: "stale-workspace.example.test",
+}) {
   const mocks: Record<string, string> = {
     state: `
       export const state = {
@@ -117,8 +120,9 @@ async function isolatedRouters() {
     bundle: true, write: false, format: "cjs", platform: "node", packages: "external",
     // Do not read configured secrets; exercise the default 5% fee in isolation.
     define: {
-      "process.env.STRIPE_WEBHOOK_SECRET": JSON.stringify("synthetic-secret"),
-      "process.env.STRIPE_PLATFORM_FEE_PERCENT": "undefined",
+      "process.env": JSON.stringify({
+        ...environment, STRIPE_WEBHOOK_SECRET: "synthetic-secret",
+      }),
     },
     plugins: [{
       name: "phase0-isolated-services",
@@ -154,6 +158,32 @@ async function invoke(router: any, path: string, req: Record<string, unknown>, e
   await route.stack.at(-1).handle(req, res);
   assert.equal(status, expectedStatus, JSON.stringify(body));
   return body;
+}
+
+for (const path of ["/donations/checkout", "/donations/anonymous-checkout"]) {
+  test(`${path} uses live return URLs in production, never an inherited preview domain`, async () => {
+    for (const environment of [
+      { REPLIT_DEPLOYMENT: "1", REPLIT_DEV_DOMAIN: "stale-workspace.example.test" },
+      { NODE_ENV: "production", REPLIT_DEV_DOMAIN: "stale-workspace.example.test" },
+      { REPLIT_DEPLOYMENT: "1" },
+    ] as Array<Record<string, string>>) {
+      const { donations, state } = await isolatedRouters(environment);
+      await invoke(donations, path, {
+        body: {
+          orgId: "test-org", campaignId: "test-campaign",
+          amountPence: 300, originalAmountPence: 300, feeCovered: false,
+          guestEmail: "donor@example.test",
+        },
+        user: { userId: "test-user" }, headers: {},
+        log: { error() { assert.fail("Unexpected Checkout error"); } },
+      });
+      assert.equal(state.checkout.success_url,
+        "https://rootprojx.com/donate/success?session_id={CHECKOUT_SESSION_ID}");
+      assert.equal(state.checkout.cancel_url, path === "/donations/checkout"
+        ? "https://rootprojx.com/donate/test-org?campaign=test-campaign"
+        : "https://rootprojx.com/");
+    }
+  });
 }
 
 for (const path of ["/donations/checkout", "/donations/anonymous-checkout"]) {

@@ -4,12 +4,9 @@ import { requireAuth, optionalAuth } from "../lib/auth.js";
 import { getUncachableStripeClient, getStripePublishableKey } from "../lib/stripeClient.js";
 import { MIN_DONATION_PENCE, PLATFORM_FEE_PERCENT, platformFeePence, donationAccounting } from "../lib/fees.js";
 import { resolvePayoutMethod } from "../lib/payout-setup.js";
+import { publicSiteOrigin } from "../lib/site-origin.js";
 
-const DOMAIN = process.env.REPLIT_DEV_DOMAIN
-  ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-  : process.env.REPLIT_DEPLOYMENT === "1"
-  ? `https://${process.env.REPLIT_DEPLOYMENT_DOMAIN ?? ""}`
-  : "http://localhost:3000";
+const DOMAIN = publicSiteOrigin(process.env);
 
 const router = Router();
 function anonymousIdentityMetadata(body: Record<string, unknown>): Record<string, string> {
