@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, Banknote, CheckCircle, Clock, ExternalLink, Landmark, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -43,9 +43,26 @@ export function PayoutSetup({
   const [selectError, setSelectError] = useState("");
   const [stripeError, setStripeError] = useState("");
   const [stripeStarting, setStripeStarting] = useState(false);
+  const refreshingStripe = useRef(false);
   const [wiseEmailInput, setWiseEmailInput] = useState("");
   const [wiseError, setWiseError] = useState("");
   const [showWiseInput, setShowWiseInput] = useState(false);
+
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (!token || url.searchParams.get("connect") !== "refresh" || refreshingStripe.current) return;
+    refreshingStripe.current = true;
+    // Consume the marker before requesting: a rejected preview must show the
+    // actual error and stop, not enter an automatic redirect/retry loop.
+    url.searchParams.delete("connect");
+    window.history.replaceState(window.history.state, "", url.toString());
+    setStripeError("");
+    setStripeStarting(true);
+    api.startConnectOnboarding(token).then(({ url }) => window.location.assign(url)).catch((error: Error) => {
+      setStripeError(error.message);
+      setStripeStarting(false);
+    });
+  }, [token]);
 
   const setupQ = useQuery({
     queryKey: ["payout-setup", orgId],

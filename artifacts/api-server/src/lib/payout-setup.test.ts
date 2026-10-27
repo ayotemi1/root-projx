@@ -9,7 +9,7 @@ import { activePayoutMethod, resolvePayoutMethod, manualPayoutLabel, withoutPriv
 // replaced. Never creates a real account, onboarding link, email or bank payee.
 async function fixture() {
   const mocks: Record<string, string> = {
-    state: `export const state = {docs:new Map(), writes:[], stripeCalls:[]};`,
+    state: `export const state = {docs:new Map(), writes:[], stripeCalls:[], stripeOptions:[], links:[], stripeError:null};`,
     "firebase-rest.js": `
       import {state} from "setup-test:state";
       export const getServerToken = async () => "synthetic-server";
@@ -48,10 +48,14 @@ async function fixture() {
       import {state} from "setup-test:state";
       export const getUncachableStripeClient = async () => ({
         accounts:{
-          create:async params=>{state.stripeCalls.push(params);return {id:"acct_synthetic"};},
+          create:async (params,options)=>{
+            state.stripeCalls.push(params);state.stripeOptions.push(options);
+            if(state.stripeError) throw state.stripeError;
+            return {id:"acct_synthetic"};
+          },
           retrieve:async()=>({payouts_enabled:true,charges_enabled:true})
         },
-        accountLinks:{create:async()=>({url:"https://example.test/onboarding"})}
+        accountLinks:{create:async params=>{state.links.push(params);return {url:"https://example.test/onboarding"};}}
       });
     `,
   };
@@ -89,7 +93,7 @@ async function fixture() {
   api.state.docs.set("users/org", { accountType: "organisation", approvalStatus: "approved" });
   api.state.docs.set("users/pending", { accountType: "organisation", approvalStatus: "pending" });
   api.state.docs.set("users/supporter", { accountType: "supporter" });
-  api.state.docs.set("organisations/org", { name: "Test Org" });
+  api.state.docs.set("organisations/org", { name: "Test Org", country: "United Kingdom" });
   return api;
 }
 
@@ -265,4 +269,35 @@ test("Stripe onboarding accepts an authenticated POST and returns a URL without 
   assert.equal(result.status, 200);
   assert.equal(result.body.url, "https://example.test/onboarding");
   assert.deepEqual(state.writes.at(-1).patch, { stripe_account_id: "acct_synthetic", payouts_enabled: false });
+  assert.deepEqual(state.stripeOptions, [{ apiVersion: "2026-09-30.preview" }]);
+  assert.equal(state.stripeCalls[0].country, "GB");
+  assert.match(state.links[0].refresh_url, /\/dashboard\?tab=profile&connect=refresh$/);
+  assert.match(state.links[0].return_url, /\/dashboard\?tab=profile&connect=complete$/);
+});
+
+test("Connect uses the organisation country, rejects missing country and reuses existing accounts", async () => {
+  const { stripe, state } = await fixture();
+  const options = { headers: { authorization: "Bearer org" } };
+  state.docs.set("organisations/org", { name: "Canada Org", country: "Canada" });
+  assert.equal((await invoke(stripe, "/stripe/connect/onboard", "POST", options)).status, 200);
+  assert.equal(state.stripeCalls[0].country, "CA");
+  assert.equal((await invoke(stripe, "/stripe/connect/onboard", "POST", options)).status, 200);
+  assert.equal(state.stripeCalls.length, 1, "An existing account is not recreated");
+  assert.equal(state.links.length, 2);
+  state.docs.set("organisations/org", { name: "Missing country" });
+  assert.equal((await invoke(stripe, "/stripe/connect/onboard", "POST", options)).status, 400);
+  assert.equal(state.stripeCalls.length, 1);
+});
+
+test("a preview rejection returns Stripe's exact message and stops without writes or retries", async () => {
+  const { stripe, state } = await fixture();
+  const message = "Please review the responsibilities of managing losses for connected accounts.";
+  state.stripeError = { type: "StripeInvalidRequestError", statusCode: 400, message };
+  const result = await invoke(stripe, "/stripe/connect/onboard", "POST", {
+    headers: { authorization: "Bearer org" },
+  });
+  assert.deepEqual(result, { status: 400, body: { error: message } });
+  assert.equal(state.stripeCalls.length, 1);
+  assert.equal(state.links.length, 0);
+  assert.equal(state.writes.length, 0);
 });

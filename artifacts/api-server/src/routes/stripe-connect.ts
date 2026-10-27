@@ -2,14 +2,11 @@ import { Router, type Request, type Response } from "express";
 import { fsGet, fsPatch, getServerToken } from "../lib/firebase-rest.js";
 import { requireApprovedOrganisation, requireAuth } from "../lib/auth.js";
 import { getUncachableStripeClient } from "../lib/stripeClient.js";
+import { CONNECT_ACCOUNT_API_VERSION, onboardingOrigin, stripeCountry } from "../lib/stripe-onboarding.js";
 
 const router = Router();
 
-const DOMAIN = process.env.REPLIT_DEV_DOMAIN
-  ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-  : process.env.REPLIT_DEPLOYMENT === "1"
-  ? `https://${process.env.REPLIT_DEPLOYMENT_DOMAIN ?? ""}`
-  : "http://localhost:3000";
+const DOMAIN = onboardingOrigin(process.env);
 
 // ── GET /stripe/connect/onboard — initiate Stripe Express onboarding ──────────
 async function startOnboarding(req: Request, res: Response): Promise<void> {
@@ -33,9 +30,14 @@ async function startOnboarding(req: Request, res: Response): Promise<void> {
 
     // Create the Express account if we don't have one yet
     if (!stripeAccountId) {
+      const country = stripeCountry(org["country"]);
+      if (!country) {
+        res.status(400).json({ error: "Set a valid country in your organisation profile before connecting Stripe." });
+        return;
+      }
       const account = await stripe.accounts.create({
         type: "express",
-        country: "GB",
+        country,
         capabilities: {
           card_payments: { requested: true },
           transfers: { requested: true },
@@ -45,7 +47,7 @@ async function startOnboarding(req: Request, res: Response): Promise<void> {
           url: (org["contact"] as Record<string, string> | null)?.["website"] ?? undefined,
         },
         metadata: { orgId: uid, platform: "rootprojx" },
-      });
+      }, { apiVersion: CONNECT_ACCOUNT_API_VERSION });
       stripeAccountId = account.id;
 
       // Persist to Firestore immediately
@@ -60,8 +62,10 @@ async function startOnboarding(req: Request, res: Response): Promise<void> {
     // Generate a fresh Account Link
     const accountLink = await stripe.accountLinks.create({
       account: stripeAccountId,
-      refresh_url: `${DOMAIN}/api/stripe/connect/onboard`,
-      return_url: `${DOMAIN}/dashboard?connect=complete`,
+      // Return to the signed-in app; it can attach the organisation's bearer
+      // token when requesting a replacement link. Stripe's redirect cannot.
+      refresh_url: `${DOMAIN}/dashboard?tab=profile&connect=refresh`,
+      return_url: `${DOMAIN}/dashboard?tab=profile&connect=complete`,
       type: "account_onboarding",
     });
 
@@ -69,7 +73,13 @@ async function startOnboarding(req: Request, res: Response): Promise<void> {
     else res.redirect(accountLink.url);
   } catch (err) {
     req.log.error({ err }, "GET /stripe/connect/onboard error");
-    res.status(500).json({ error: "Failed to start Stripe Connect onboarding" });
+    const stripeError = err as { type?: string; message?: string; statusCode?: number };
+    if (stripeError.type?.startsWith("Stripe") && stripeError.message) {
+      res.status(stripeError.statusCode && stripeError.statusCode >= 400 && stripeError.statusCode < 600
+        ? stripeError.statusCode : 502).json({ error: stripeError.message });
+    } else {
+      res.status(500).json({ error: "Unable to start Stripe onboarding. Please try again." });
+    }
   }
 }
 
