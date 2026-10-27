@@ -13,3 +13,4 @@
 - [Stripe Connect risk policy](stripe-connect-risk-policy.md) — preserve Stripe loss responsibility; preview adoption must not change payment API versions or platform liability.
 - [Stripe onboarding experience](stripe-onboarding-experience.md) — start and continue setup in a separate tab; keep the original dashboard open.
 - [Payment return origins](payment-return-origins.md) — live payment callbacks must ignore inherited preview domains; a failed return does not mean a failed charge.
+- [Donation event authority](donation-event-authority.md) — Checkout owns one-off recording; PI success is a donation no-op; preserve verified fee/payout logic.

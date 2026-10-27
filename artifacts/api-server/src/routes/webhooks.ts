@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { fsCreate, fsGet, fsIncrement, fsPatch, fsQuery, fsMutateCampaigns, getServerToken } from "../lib/firebase-rest.js";
+import { fsCreate, fsCreateIfAbsent, fsGet, fsIncrement, fsPatch, fsQuery, fsMutateCampaigns, getServerToken } from "../lib/firebase-rest.js";
 import { getUncachableStripeClient } from "../lib/stripeClient.js";
 import { brevoSendEmail, donationConfirmationHtml, shopOrderConfirmationHtml } from "../lib/brevo.js";
 import type Stripe from "stripe";
@@ -66,6 +66,7 @@ router.post(
     try {
       if (
         event.type === "payment_intent.succeeded" ||
+        event.type === "checkout.session.completed" ||
         event.type === "invoice.payment_succeeded"
       ) {
         await handlePaymentSuccess(event, req.log as { info: (obj: unknown, msg: string) => void; error: (obj: unknown, msg: string) => void });
@@ -144,6 +145,13 @@ async function handlePaymentSuccess(
   event: Stripe.Event,
   log: { info: (obj: unknown, msg: string) => void; error: (obj: unknown, msg: string) => void },
 ) {
+  // Checkout is the sole writer for one-off donations. Ignore even legacy PI
+  // replays with no Checkout marker; they must not recreate a donation.
+  if (event.type === "payment_intent.succeeded" &&
+      (event.data.object as Stripe.PaymentIntent).metadata?.type !== "shop_order") {
+    log.info({ stripeRef: event.data.object.id }, "PaymentIntent succeeded — no-op; donation recording belongs to Checkout");
+    return;
+  }
   const serverToken = await getServerToken();
   let metadata: Record<string, string> = {};
   let amountGbp = 0;
@@ -152,7 +160,35 @@ async function handlePaymentSuccess(
   let chargedPence = 0;
   let cardCountry: string | null | undefined;
 
-  if (event.type === "payment_intent.succeeded") {
+  if (event.type === "checkout.session.completed") {
+    const session = event.data.object as Stripe.Checkout.Session;
+    if (session.mode !== "payment" || session.payment_status !== "paid") {
+      log.info({ sessionId: session.id }, "Checkout not a paid one-off payment — skipping");
+      return;
+    }
+    // Merch keeps its existing PaymentIntent writer; subscription invoices
+    // remain authoritative for recurring donations.
+    if (session.metadata?.type === "shop_order" || !session.metadata?.orgId) return;
+    const pi = typeof session.payment_intent === "object" ? session.payment_intent : null;
+    stripeRef = typeof session.payment_intent === "string" ? session.payment_intent : pi?.id ?? "";
+    if (!stripeRef || !Number.isSafeInteger(session.amount_total) || session.amount_total! <= 0) {
+      throw new Error("Paid donation Checkout is missing its PaymentIntent or amount");
+    }
+    metadata = { ...session.metadata };
+    if (!metadata.originalAmountPence && metadata.intendedGbp !== undefined) {
+      const intendedPence = Math.round(Number(metadata.intendedGbp) * 100);
+      if (!Number.isSafeInteger(intendedPence) || intendedPence <= 0) {
+        throw new Error("Invalid intended amount in Checkout metadata");
+      }
+      metadata.originalAmountPence = String(intendedPence);
+    }
+    chargedPence = session.amount_total!;
+    currency = session.currency ?? "gbp";
+    // Same card-country estimate policy as before: expanded data if supplied,
+    // otherwise UK. Session metadata, not PI metadata, owns attribution.
+    const charge = typeof pi?.latest_charge === "object" ? pi.latest_charge : null;
+    cardCountry = charge?.payment_method_details?.card?.country;
+  } else if (event.type === "payment_intent.succeeded") {
     const pi = event.data.object as Stripe.PaymentIntent;
     metadata = pi.metadata ?? {};
     amountGbp = (pi.amount - (pi.application_fee_amount ?? 0)) / 100;
@@ -268,9 +304,7 @@ async function handlePaymentSuccess(
     }
   }
 
-  const donationId = await fsCreate(
-    "donations",
-    {
+  const donationData = {
       ...(userId ? { userId } : {}),
       ...(isGuest ? { guestEmail } : {}),
       orgId,
@@ -287,9 +321,22 @@ async function handlePaymentSuccess(
       stripeRef,
       status: "succeeded",
       createdAt: donationDate,
-    },
-    serverToken,
-  );
+    };
+  // Keep the PI ID as stripeRef for compatibility with old records and confirm.
+  // Create-only also closes the query-then-create race on simultaneous retries.
+  let donationId: string;
+  if (event.type === "checkout.session.completed") {
+    donationId = stripeRef;
+    if (!await fsCreateIfAbsent("donations", donationId, donationData, serverToken)) {
+      const existing = await fsGet("donations", donationId, serverToken);
+      if (!existing) throw new Error("Existing Checkout donation could not be loaded");
+      await queueDonationPayout(donationId, existing, serverToken);
+      log.info({ stripeRef }, "Checkout donation already created — skipping");
+      return;
+    }
+  } else {
+    donationId = await fsCreate("donations", donationData, serverToken);
+  }
   log.info({ donationId, userId: userId ?? "guest", orgId, intendedGbp, toOrgGbp }, "Donation recorded in Firestore");
 
   // 1b. Send donation confirmation email via Brevo (fire-and-forget)

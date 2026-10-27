@@ -16,7 +16,13 @@ Six stabilisation fixes:
 1. **Unified platform fee:** shared fee calculation defaults to 5%, with
    `STRIPE_PLATFORM_FEE_PERCENT` retaining its override; donation copy says 5%.
 2. **Single donation writer:** the Stripe webhook owns donation writes,
-   deduplicated by PaymentIntent `stripeRef`. Checkout confirmation is read-only
+   with `checkout.session.completed` authoritative for paid one-off donations,
+   using Session metadata. `payment_intent.succeeded` is a logged donation no-op;
+   invoice events still own recurring payments, and shop orders retain their
+   separate handler. Session metadata is also supplied to PaymentIntent creation
+   for reconciliation. Donations are deduplicated by PaymentIntent `stripeRef`,
+   including historical records, with create-only IDs for new Checkout records.
+   Checkout confirmation is read-only
    and the website polls while webhook recording is pending. The legacy
    duplicate-cleanup script is dry-run by default and must be run manually.
 3. **Campaign credit:** campaign IDs pass through checkout metadata and the

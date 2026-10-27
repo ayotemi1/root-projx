@@ -171,9 +171,22 @@ router.post("/donations/anonymous-checkout", async (req, res) => {
     const stripe = await getUncachableStripeClient();
     // Platform fee calculated on original donation amount (not the grossed-up amount)
     const feePence = platformFeePence(basePence!);
+    const metadata = {
+      userId: "anonymous", payoutMethod,
+      ...anonymousIdentityMetadata(req.body),
+      orgId, orgName: (org["name"] as string) ?? "",
+      amountPence: String(amountPence), feePence: String(feePence),
+      intendedGbp: String(basePence! / 100),
+      feeCovered: feeCovered ? "true" : "false",
+      originalAmountPence: String(basePence),
+      feeAmountPence: String(feeAmountPence ?? 0),
+      type: "anonymous_one_time", ...(campaignId ? { campaignId } : {}),
+      platform: "rootprojx",
+    };
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
+      metadata,
       line_items: [
         {
           price_data: {
@@ -192,21 +205,7 @@ router.post("/donations/anonymous-checkout", async (req, res) => {
           application_fee_amount: feePence,
           transfer_data: { destination: org["stripe_account_id"] as string },
         } : {}),
-        metadata: {
-          userId: "anonymous",
-          payoutMethod,
-          ...anonymousIdentityMetadata(req.body),
-          orgId,
-          orgName: (org["name"] as string) ?? "",
-          amountPence: String(amountPence),
-          feePence: String(feePence),
-          feeCovered: feeCovered ? "true" : "false",
-          originalAmountPence: String(originalAmountPence ?? amountPence),
-          feeAmountPence: String(feeAmountPence ?? 0),
-          type: "anonymous_one_time",
-          ...(campaignId ? { campaignId } : {}),
-          platform: "rootprojx",
-        },
+        metadata,
       },
       success_url: `${DOMAIN}/donate/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${DOMAIN}/`,
@@ -435,9 +434,24 @@ router.post("/donations/checkout", optionalAuth, async (req, res) => {
     // Platform fee is calculated on the original donation amount, not the grossed-up total
     const feePence = platformFeePence(basePence);
     const stripe = await getUncachableStripeClient();
+    const metadata = {
+      userId: uid ?? "guest", payoutMethod,
+      ...anonymousIdentityMetadata(req.body),
+      ...(donorEmail ? { guestEmail: donorEmail } : {}),
+      orgId, orgName: (org["name"] as string) ?? "",
+      amountPence: String(amountPence), feePence: String(feePence),
+      intendedGbp: String(basePence / 100),
+      feeCovered: feeCovered ? "true" : "false",
+      originalAmountPence: String(basePence),
+      feeAmountPence: String(feeAmountPence ?? 0),
+      platform: "rootprojx",
+      wallOptIn: (wallOptIn && uid) ? "true" : "false",
+      ...(campaignId ? { campaignId } : {}),
+    };
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
+      metadata,
       line_items: [
         {
           price_data: {
@@ -458,21 +472,7 @@ router.post("/donations/checkout", optionalAuth, async (req, res) => {
           application_fee_amount: feePence,
           transfer_data: { destination: org["stripe_account_id"] as string },
         } : {}),
-        metadata: {
-          userId: uid ?? "guest",
-          payoutMethod,
-          ...anonymousIdentityMetadata(req.body),
-          orgId,
-          orgName: (org["name"] as string) ?? "",
-          amountPence: String(amountPence),
-          feePence: String(feePence),
-          feeCovered: feeCovered ? "true" : "false",
-          originalAmountPence: String(originalAmountPence ?? amountPence),
-          feeAmountPence: String(feeAmountPence ?? 0),
-          platform: "rootprojx",
-          wallOptIn: (wallOptIn && uid) ? "true" : "false",
-          ...(campaignId ? { campaignId } : {}),
-        },
+        metadata,
       },
       customer_email: donorEmail,
       success_url: `${DOMAIN}/donate/success?session_id={CHECKOUT_SESSION_ID}`,

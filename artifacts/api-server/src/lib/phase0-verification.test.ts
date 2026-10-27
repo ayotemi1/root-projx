@@ -43,7 +43,7 @@ async function isolatedRouters(environment: Record<string, string> = {
         return id;
       };
       export const fsCreateIfAbsent = async (collection,id,data) => {
-        if (state.failLedgerOnce) { state.failLedgerOnce=false; throw Error("Synthetic ledger outage"); }
+        if (collection === "payouts" && state.failLedgerOnce) { state.failLedgerOnce=false; throw Error("Synthetic ledger outage"); }
         const key=collection+"/"+id;
         if(state.documents.has(key)) return false;
         state.documents.set(key,structuredClone(data));
@@ -160,6 +160,19 @@ async function invoke(router: any, path: string, req: Record<string, unknown>, e
   return body;
 }
 
+// Stripe does not copy Session metadata to its PI. Keep this boundary explicit.
+function checkoutEvent(pi: Record<string, any>, metadata = pi.metadata) {
+  return {
+    id: "evt_checkout_synthetic", type: "checkout.session.completed",
+    created: 1791979200,
+    data: { object: {
+      id: "cs_synthetic", mode: "payment", payment_status: "paid",
+      payment_intent: { ...pi, metadata: {} },
+      amount_total: pi.amount, currency: pi.currency, metadata,
+    } },
+  };
+}
+
 for (const path of ["/donations/checkout", "/donations/anonymous-checkout"]) {
   test(`${path} uses live return URLs in production, never an inherited preview domain`, async () => {
     for (const environment of [
@@ -225,6 +238,9 @@ for (const path of ["/donations/checkout", "/donations/anonymous-checkout"]) {
           assert.equal(body.sessionId, "cs_synthetic");
           const session = state.checkout;
           const intent = session.payment_intent_data;
+          assert.deepEqual(session.metadata, intent.metadata,
+            "Session and PaymentIntent must carry identical reconciliation metadata");
+          assert.equal(session.metadata.intendedGbp, "3");
           if (scenario.method === "stripe_connect") {
             assert.deepEqual(intent.transfer_data, {destination: "acct_selected"});
             assert.equal(intent.application_fee_amount, 15);
@@ -261,12 +277,12 @@ for (const path of ["/donations/checkout", "/donations/anonymous-checkout"]) {
 for (const method of ["wise", "manual", "stripe_connect"]) {
   test(`webhook payout ledger: ${method}, replay and canonical amount`, async () => {
     const {webhooks, state} = await isolatedRouters();
-    const event = {id:"evt_ledger", type:"payment_intent.succeeded", created:1791979200, data:{object:{
+    const event = checkoutEvent({
       id:"pi_ledger", amount:325, currency:"gbp", metadata:{
         orgId:"test-org", orgName:"Test Organisation", originalAmountPence:"300",
         feeCovered:"true", payoutMethod:method,
       },
-    }}};
+    });
     const req = {body:Buffer.from(JSON.stringify(event)),headers:{"stripe-signature":"synthetic-signature"},
       log:{info(){},error(){}}};
     await invoke(webhooks,"/stripe",req);
@@ -290,8 +306,8 @@ for (const method of ["wise", "manual", "stripe_connect"]) {
 test("webhook retry repairs a failed ledger write after donation recording", async () => {
   const {webhooks,state}=await isolatedRouters();
   state.failLedgerOnce=true;
-  const event={type:"payment_intent.succeeded",data:{object:{id:"pi_repair",amount:300,currency:"gbp",
-    metadata:{orgId:"test-org",originalAmountPence:"300",payoutMethod:"manual"}}}};
+  const event=checkoutEvent({id:"pi_repair",amount:300,currency:"gbp",
+    metadata:{orgId:"test-org",originalAmountPence:"300",payoutMethod:"manual"}});
   const req={body:Buffer.from(JSON.stringify(event)),headers:{"stripe-signature":"synthetic-signature"},log:{info(){},error(){}}};
   await invoke(webhooks,"/stripe",req,500);
   await invoke(webhooks,"/stripe",req);
@@ -337,11 +353,14 @@ for (const feeCovered of [true, false]) {
       application_fee_amount: intentData.application_fee_amount,
       metadata: intentData.metadata,
     };
-    const event = {
+    const piEvent = {
       id: "evt_synthetic", object: "event", type: "payment_intent.succeeded",
       created: 1791979200, livemode: false, data: { object: paymentIntent },
     };
-    state.event = event;
+    const event = checkoutEvent(paymentIntent, state.checkout.metadata);
+    // Exercise the common string-reference case, with no PI metadata available.
+    event.data.object.payment_intent = paymentIntent.id as any;
+    state.event = piEvent; // confirm's mocked Stripe retrieval expands the PI
     const webhookRequest = {
       body: Buffer.from(JSON.stringify(event)),
       headers: { "stripe-signature": "synthetic-signature" }, log,
@@ -350,6 +369,13 @@ for (const feeCovered of [true, false]) {
     // then replay delivery and visit confirm to check the single-writer boundary.
     await invoke(webhooks, "/stripe", webhookRequest);
     await invoke(webhooks, "/stripe", webhookRequest);
+    const writesBeforePi = structuredClone(state.writes);
+    const orgBeforePi = structuredClone(state.documents.get("organisations/test-org"));
+    await invoke(webhooks, "/stripe", {
+      ...webhookRequest, body: Buffer.from(JSON.stringify(piEvent)),
+    });
+    assert.deepEqual(state.writes, writesBeforePi, "Following PI event writes nothing");
+    assert.deepEqual(state.documents.get("organisations/test-org"), orgBeforePi);
     const confirmation = await invoke(donations, "/donations/confirm", {
       query: { session_id: "cs_synthetic" }, log,
     });
@@ -445,15 +471,12 @@ test("invoice donations use the same accounting and add to existing owed totals"
 
 test("expanded international card country selects international fees", async () => {
   const {webhooks, state} = await isolatedRouters();
-  const event = {
-    type:"payment_intent.succeeded",
-    data:{object:{
+  const event = checkoutEvent({
       id:"pi_international_synthetic", amount:300, currency:"gbp",
       application_fee_amount:15,
       latest_charge:{payment_method_details:{card:{country:"US"}}},
       metadata:{orgId:"test-org", originalAmountPence:"300"},
-    }},
-  };
+    });
   const log = {info(){}, warn(){}, error(obj: unknown){state.errors.push(obj);}};
   await invoke(webhooks, "/stripe", {
     body:Buffer.from(JSON.stringify(event)),
@@ -463,4 +486,83 @@ test("expanded international card country selects international fees", async () 
   assert.equal(donation.toOrgGbp, 2.55);
   assert.equal(donation.estimatedStripeFeeGbp, 0.30);
   assert.equal(state.errors.length, 0);
+});
+
+test("PI arriving first is a logged no-op; Session-only campaign metadata credits both totals", async () => {
+  const {webhooks, state} = await isolatedRouters();
+  const messages: string[] = [];
+  const log = {info(_obj: unknown, message: string) { messages.push(message); }, error() { assert.fail("Unexpected webhook error"); }};
+  const pi = {id: "pi_session_only", amount: 325, currency: "gbp", metadata: {}};
+  const send = (event: unknown) => invoke(webhooks, "/stripe", {
+    body: Buffer.from(JSON.stringify(event)), headers: {"stripe-signature": "synthetic-signature"}, log,
+  });
+  const piEvent = {type: "payment_intent.succeeded", data: {object: pi}};
+  await send(piEvent);
+  assert.equal(state.writes.length, 0);
+  assert.ok(messages.some(message => message.includes("no-op")));
+  const completed = checkoutEvent(pi, {
+    orgId: "test-org", campaignId: "test-campaign",
+    intendedGbp: "3.00", feeCovered: "true", payoutMethod: "manual",
+  });
+  completed.data.object.payment_intent = pi.id as any;
+  await send(completed);
+  assert.equal(state.documents.get("organisations/test-org").totalRaised, 13);
+  assert.equal(state.documents.get("organisations/test-org").campaigns[0].amountRaised, 13);
+  const recorded = state.writes.find((w: any) => w.collection === "donations").data;
+  assert.equal(recorded.stripeRef, pi.id);
+  assert.equal(recorded.intendedGbp, 3);
+  assert.equal(recorded.toOrgGbp, 2.85);
+  const before = structuredClone([...state.documents]);
+  await send(piEvent);
+  await send(completed);
+  assert.deepEqual([...state.documents], before);
+  assert.equal(state.writes.filter((w: any) => w.collection === "donations").length, 1);
+  assert.equal(state.writes.filter((w: any) => w.collection === "payouts").length, 1);
+});
+
+test("simultaneous Checkout deliveries create exactly one donation and campaign credit", async () => {
+  const {webhooks, state} = await isolatedRouters();
+  const event = checkoutEvent({
+    id: "pi_concurrent", amount: 300, currency: "gbp",
+    metadata: {orgId: "test-org", campaignId: "test-campaign", originalAmountPence: "300"},
+  });
+  const request = {body: Buffer.from(JSON.stringify(event)),
+    headers: {"stripe-signature": "synthetic-signature"}, log: {info() {}, error() { assert.fail("Unexpected error"); }}};
+  await Promise.all([invoke(webhooks, "/stripe", request), invoke(webhooks, "/stripe", request)]);
+  assert.equal(state.writes.filter((w: any) => w.collection === "donations").length, 1);
+  assert.equal(state.documents.get("organisations/test-org").totalRaised, 13);
+  assert.equal(state.documents.get("organisations/test-org").campaigns[0].amountRaised, 13);
+});
+
+test("Checkout replay respects historical donation keyed by the same PI stripeRef", async () => {
+  const {webhooks, state} = await isolatedRouters();
+  state.documents.set("donations/legacy-random-id", {
+    stripeRef: "pi_legacy", orgId: "test-org", intendedGbp: 3, toOrgGbp: 2.85,
+  });
+  const event = checkoutEvent({id: "pi_legacy", amount: 325, currency: "gbp",
+    metadata: {orgId: "test-org", campaignId: "test-campaign", intendedGbp: "3", feeCovered: "true"}});
+  await invoke(webhooks, "/stripe", {
+    body: Buffer.from(JSON.stringify(event)), headers: {"stripe-signature": "synthetic-signature"},
+    log: {info() {}, error() { assert.fail("Unexpected error"); }},
+  });
+  assert.equal(state.writes.length, 0);
+  assert.equal(state.documents.get("organisations/test-org").totalRaised, 10);
+});
+
+test("unpaid, subscription and unrelated Checkout completions never record donations", async () => {
+  const {webhooks, state} = await isolatedRouters();
+  for (const patch of [
+    {payment_status: "unpaid"}, {mode: "subscription"},
+    {metadata: {type: "shop_order"}}, {metadata: {}},
+  ]) {
+    const event = checkoutEvent({id: "pi_skip", amount: 300, currency: "gbp",
+      metadata: {orgId: "test-org"}});
+    Object.assign(event.data.object, patch);
+    await invoke(webhooks, "/stripe", {
+      body: Buffer.from(JSON.stringify(event)), headers: {"stripe-signature": "synthetic-signature"},
+      log: {info() {}, error() { assert.fail("Unexpected error"); }},
+    });
+  }
+  assert.equal(state.writes.length, 0);
+  assert.equal(state.documents.get("organisations/test-org").totalRaised, 10);
 });
