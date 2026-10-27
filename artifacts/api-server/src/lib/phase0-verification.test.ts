@@ -200,6 +200,19 @@ for (const path of ["/donations/checkout", "/donations/anonymous-checkout"]) {
 }
 
 for (const path of ["/donations/checkout", "/donations/anonymous-checkout"]) {
+  test(`${path} keeps organisation-only donations free of campaign attribution`, async () => {
+    const { donations, state } = await isolatedRouters();
+    await invoke(donations, path, {
+      body: { orgId: "test-org", amountPence: 300, guestEmail: "guest@example.test" },
+      user: { userId: "test-user" }, headers: {}, log: {error() { assert.fail("Unexpected checkout error"); }},
+    });
+    assert.equal(Object.hasOwn(state.checkout.metadata, "campaignId"), false);
+    assert.equal(Object.hasOwn(state.checkout.payment_intent_data.metadata, "campaignId"), false);
+    assert.deepEqual(state.checkout.payment_intent_data.metadata, state.checkout.metadata);
+  });
+}
+
+for (const path of ["/donations/checkout", "/donations/anonymous-checkout"]) {
   test(`${path} routes Checkout by resolved payout method without live services`, async (t) => {
     const cases: Array<{name: string; setup: Record<string, unknown>; method: string}> = [
       {name: "Stripe Connect", setup: {payoutMethod: "stripe", stripe_account_id: "acct_selected"}, method: "stripe_connect"},

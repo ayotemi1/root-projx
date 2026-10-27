@@ -6,6 +6,7 @@ import * as api from "@/lib/api";
 import type { Campaign, Org } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { GuestDonateSheet } from "@/components/GuestDonateSheet";
+import { CampaignDonateButton } from "@/components/campaign-donate-button";
 
 const RED = "#B50000";
 
@@ -16,7 +17,7 @@ function fmt(n: number) {
 function CampaignCard({
   c, orgId, completed, onGuestDonate,
 }: {
-  c: Campaign; orgId: string; completed: boolean; onGuestDonate: () => void;
+  c: Campaign; orgId: string; completed: boolean; onGuestDonate: (campaign: Campaign) => void;
 }) {
   const pct = c.goal > 0 ? Math.min(100, Math.round((c.amountRaised / c.goal) * 100)) : 0;
 
@@ -98,13 +99,13 @@ function CampaignCard({
         {!completed && (
           <div className="flex justify-end mt-auto pt-1">
             {c.type === "fundraising" ? (
-              <button
-                onClick={onGuestDonate}
+              <CampaignDonateButton
+                campaign={c} onDonate={onGuestDonate}
                 className="px-5 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
                 style={{ background: RED }}
               >
                 Donate
-              </button>
+              </CampaignDonateButton>
             ) : (
               <button
                 className="px-5 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
@@ -127,6 +128,7 @@ export default function OrgCampaignsPage() {
   const { isAuthenticated } = useAuth();
   const [tab, setTab] = useState<"active" | "completed">("active");
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [donationCampaign, setDonationCampaign] = useState<Campaign | null>(null);
 
   const { data: org } = useQuery<Org>({
     queryKey: ["org", orgId],
@@ -143,11 +145,16 @@ export default function OrgCampaignsPage() {
   const shown = tab === "active" ? active : completed;
 
   function handleDonate() {
+    setDonationCampaign(null);
     if (isAuthenticated) {
       navigate(`/donate/${orgId}`);
     } else {
       setSheetOpen(true);
     }
+  }
+  function handleCampaignDonate(campaign: Campaign) {
+    setDonationCampaign(campaign);
+    setSheetOpen(true);
   }
 
   return (
@@ -157,6 +164,10 @@ export default function OrgCampaignsPage() {
         onClose={() => setSheetOpen(false)}
         orgId={orgId}
         orgName={org?.name ?? "this organisation"}
+        campaignId={donationCampaign?._id}
+        campaignName={donationCampaign?.name}
+        partnerFunding={donationCampaign?.partnerFunding}
+        partnerFundingMatchedGbp={donationCampaign?.partnerFundingMatchedGbp}
       />
       {/* Back link */}
       <Link
@@ -220,7 +231,7 @@ export default function OrgCampaignsPage() {
       ) : (
         <div className="space-y-4">
           {shown.map((c) => (
-            <CampaignCard key={c._id} c={c} orgId={orgId} completed={tab === "completed"} onGuestDonate={handleDonate} />
+            <CampaignCard key={c._id} c={c} orgId={orgId} completed={tab === "completed"} onGuestDonate={handleCampaignDonate} />
           ))}
         </div>
       )}

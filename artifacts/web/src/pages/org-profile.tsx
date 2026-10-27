@@ -12,6 +12,7 @@ import { useAuth } from "@/context/AuthContext";
 import * as api from "@/lib/api";
 import type { FeedUpdate, Review, Org, VolunteerRole, Campaign } from "@/lib/api";
 import { GuestDonateSheet } from "@/components/GuestDonateSheet";
+import { CampaignDonateButton } from "@/components/campaign-donate-button";
 import ReactMarkdown from "react-markdown";
 import { PROFILE_ANCHORS, orgSectors } from "@/lib/sectors";
 
@@ -166,7 +167,7 @@ function UpdateCard({ item, org }: { item: FeedUpdate; org: Org }) {
 
 // ── Campaign card (visitor view) ──────────────────────────────────────────────
 
-function CampaignCard({ campaign, orgId }: { campaign: Campaign; orgId: string }) {
+function CampaignCard({ campaign, orgId, onDonate }: { campaign: Campaign; orgId: string; onDonate: (campaign: Campaign) => void }) {
   const [showPhases, setShowPhases] = useState(false);
   const pct = campaign.goal > 0
     ? Math.min(100, Math.round((campaign.amountRaised / campaign.goal) * 100))
@@ -302,14 +303,16 @@ function CampaignCard({ campaign, orgId }: { campaign: Campaign; orgId: string }
         )}
 
         {/* Donate CTA */}
-        <a href={`/donate/${orgId}`}>
+        {campaign.type === "volunteer" ? <a href={`/donate/${orgId}`}>
           <button
             className="w-full py-2 text-sm font-bold text-white rounded-lg transition-opacity hover:opacity-90"
             style={{ backgroundColor: RED }}
           >
-            {campaign.type === "volunteer" ? "Get Involved" : "Donate to this campaign"}
+            Get Involved
           </button>
-        </a>
+        </a> : <CampaignDonateButton campaign={campaign} onDonate={onDonate}
+          className="w-full py-2 text-sm font-bold text-white rounded-lg transition-opacity hover:opacity-90"
+          style={{ backgroundColor: RED }}>Donate to this campaign</CampaignDonateButton>}
       </div>
     </div>
   );
@@ -347,6 +350,7 @@ export default function OrgProfilePage() {
   const [tab, setTab] = useState<"updates" | "campaigns" | "volunteer" | "about">("updates");
   const [localFollow, setLocalFollow] = useState<boolean | null>(null);
   const [donateModalOpen, setDonateModalOpen] = useState(false);
+  const [donationCampaign, setDonationCampaign] = useState<Campaign | null>(null);
 
   const orgQ = useQuery({
     queryKey: ["org", id],
@@ -494,11 +498,20 @@ export default function OrgProfilePage() {
   const team = (org.team ?? []).filter((m) => m.name?.trim());
 
   function handleDonateClick() {
+    setDonationCampaign(null);
     if (isAuthenticated) {
       window.location.href = `/donate/${id}`;
     } else {
       setDonateModalOpen(true);
     }
+  }
+  function handleCampaignDonate(campaign: Campaign) {
+    setDonationCampaign(campaign);
+    setDonateModalOpen(true);
+  }
+  function openOrgDonateSheet() {
+    setDonationCampaign(null);
+    setDonateModalOpen(true);
   }
 
   const TABS = [
@@ -521,6 +534,10 @@ export default function OrgProfilePage() {
         onClose={() => setDonateModalOpen(false)}
         orgId={id}
         orgName={org.name}
+        campaignId={donationCampaign?._id}
+        campaignName={donationCampaign?.name}
+        partnerFunding={donationCampaign?.partnerFunding}
+        partnerFundingMatchedGbp={donationCampaign?.partnerFundingMatchedGbp}
       />
 
       {/* Back nav */}
@@ -673,7 +690,7 @@ export default function OrgProfilePage() {
                     variant="outline"
                     className="flex-1 gap-2 font-semibold border-2 h-10"
                     style={{ borderColor: RED, color: RED }}
-                    onClick={() => setDonateModalOpen(true)}
+                    onClick={openOrgDonateSheet}
                   >
                     <Heart className="w-4 h-4" /> Follow
                   </Button>
@@ -814,7 +831,7 @@ export default function OrgProfilePage() {
                           {realCampaigns
                             .filter((c) => c.status === "active")
                             .map((c) => (
-                              <CampaignCard key={c._id} campaign={c} orgId={id} />
+                              <CampaignCard key={c._id} campaign={c} orgId={id} onDonate={handleCampaignDonate} />
                             ))}
                         </div>
                       </div>
@@ -827,7 +844,7 @@ export default function OrgProfilePage() {
                           {realCampaigns
                             .filter((c) => c.status === "completed")
                             .map((c) => (
-                              <CampaignCard key={c._id} campaign={c} orgId={id} />
+                              <CampaignCard key={c._id} campaign={c} orgId={id} onDonate={handleCampaignDonate} />
                             ))}
                         </div>
                       </div>
@@ -1076,7 +1093,7 @@ export default function OrgProfilePage() {
                 </p>
               ) : (
                 realCampaigns.slice(0, 3).map((c) => (
-                  <CampaignCard key={c._id} campaign={c} orgId={id} />
+                  <CampaignCard key={c._id} campaign={c} orgId={id} onDonate={handleCampaignDonate} />
                 ))
               )}
             </div>
@@ -1208,7 +1225,7 @@ export default function OrgProfilePage() {
                   </p>
                   {!isAuthenticated && (
                     <button
-                      onClick={() => setDonateModalOpen(true)}
+                      onClick={openOrgDonateSheet}
                       className="mt-3 text-xs font-semibold underline underline-offset-2"
                       style={{ color: RED }}
                     >

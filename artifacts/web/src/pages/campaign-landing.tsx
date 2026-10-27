@@ -136,6 +136,7 @@ export default function CampaignLandingPage() {
         orgId={org._id}
         orgName={org.name}
         campaignId={campaign._id}
+        campaignName={campaign.name}
         partnerFunding={campaign.partnerFunding ?? null}
         partnerFundingMatchedGbp={campaign.partnerFundingMatchedGbp ?? 0}
       />

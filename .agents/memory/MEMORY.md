@@ -14,3 +14,4 @@
 - [Stripe onboarding experience](stripe-onboarding-experience.md) — start and continue setup in a separate tab; keep the original dashboard open.
 - [Payment return origins](payment-return-origins.md) — live payment callbacks must ignore inherited preview domains; a failed return does not mean a failed charge.
 - [Donation event authority](donation-event-authority.md) — Checkout owns one-off recording; PI success is a donation no-op; preserve verified fee/payout logic.
+- [Web UI SSR tests](web-ui-ssr-tests.md) — Wouter components need a static Router hook in raw Node React SSR tests.

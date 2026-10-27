@@ -42,8 +42,14 @@ export default function DonatePage() {
     queryFn: () => api.getOrganisation(orgId, token),
     enabled: !!orgId,
   });
+  const campaignQ = useQuery({
+    queryKey: ["campaigns", orgId],
+    queryFn: () => api.getCampaigns(orgId),
+    enabled: !!orgId && !!campaignId,
+  });
 
   const org = orgQ.data;
+  const campaign = campaignId ? campaignQ.data?.find(c => c._id === campaignId) : undefined;
   const originalAmountGbp = custom ? parseFloat(custom) || 0 : (preset ?? 0);
   const originalAmountPence = Math.round(originalAmountGbp * 100);
 
@@ -150,7 +156,8 @@ export default function DonatePage() {
           {initials}
         </div>
         <div>
-          <h2 className="text-white font-bold text-base">{org?.name ?? "Loading…"}</h2>
+          <h2 className="text-white font-bold text-base">{campaignId ? `Donating to ${campaign?.name ?? "this campaign"}` : org?.name ?? "Loading…"}</h2>
+          {campaignId && <p className="text-white/60 text-sm">{org?.name ?? "Loading…"}</p>}
           {org && (
             <p className="text-white/60 text-sm">
               {[org.city, org.country].filter(Boolean).join(", ")}

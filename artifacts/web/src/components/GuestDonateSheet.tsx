@@ -16,13 +16,18 @@ interface Props {
   orgId: string;
   orgName: string;
   campaignId?: string;
+  campaignName?: string;
   /** Partner funding. Display only — never added to the charge or accounting. */
   partnerFunding?: PartnerFunding | null;
   /** Server-owned matching funds already allocated. */
   partnerFundingMatchedGbp?: number;
 }
 
-export function GuestDonateSheet({ open, onClose, orgId, orgName, campaignId, partnerFunding, partnerFundingMatchedGbp }: Props) {
+export function guestCheckoutBody(orgId: string, amountPence: number, campaignId: string | undefined, anonymousDonorId?: string) {
+  return { orgId, amountPence, ...(campaignId ? { campaignId } : {}), anonymousDonorId };
+}
+
+export function GuestDonateSheet({ open, onClose, orgId, orgName, campaignId, campaignName, partnerFunding, partnerFundingMatchedGbp }: Props) {
   const [preset, setPreset] = useState<number>(25);
   const [custom, setCustom] = useState("");
   const [loading, setLoading] = useState(false);
@@ -40,6 +45,7 @@ export function GuestDonateSheet({ open, onClose, orgId, orgName, campaignId, pa
   const matchExhausted = isMatching && matchState.availableGbp <= 0;
   const boost = valid ? matchState.matchedGbp : 0;
   const disclosure = accounting ? donationDisclosure(accounting, orgName) : null;
+  const donationPath = `/donate/${orgId}${campaignId ? `?campaign=${encodeURIComponent(campaignId)}` : ""}`;
 
   function handleClose() {
     setPreset(25);
@@ -57,7 +63,7 @@ export function GuestDonateSheet({ open, onClose, orgId, orgName, campaignId, pa
       const res = await fetch("/api/donations/anonymous-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ orgId, amountPence, campaignId, anonymousDonorId: getAnonymousDonorId() }),
+        body: JSON.stringify(guestCheckoutBody(orgId, amountPence, campaignId, getAnonymousDonorId())),
       });
       const data = await res.json() as { url?: string; error?: string };
       if (!res.ok || !data.url) {
@@ -104,7 +110,8 @@ export function GuestDonateSheet({ open, onClose, orgId, orgName, campaignId, pa
             <X size={20} />
           </button>
           <p style={{ margin: "0 0 2px", fontSize: 13, color: "rgba(255,255,255,0.6)", fontWeight: 500 }}>Donating to</p>
-          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#fff", paddingRight: 32, lineHeight: 1.25 }}>{orgName}</h2>
+          <h2 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "#fff", paddingRight: 32, lineHeight: 1.25 }}>{campaignId ? campaignName || "This campaign" : orgName}</h2>
+          {campaignId && <p style={{ margin: "6px 0 0", fontSize: 14, color: "rgba(255,255,255,0.8)" }}>{orgName}</p>}
           <p style={{ margin: "6px 0 0", fontSize: 12, color: "rgba(255,255,255,0.55)" }}>No account needed · Secured by Stripe</p>
         </div>
 
@@ -226,7 +233,7 @@ export function GuestDonateSheet({ open, onClose, orgId, orgName, campaignId, pa
           {/* Auth links */}
           <div style={{ display: "flex", gap: 8 }}>
             <Link
-              href={`/register?next=${encodeURIComponent(`/donate/${orgId}`)}`}
+              href={`/register?next=${encodeURIComponent(donationPath)}`}
               onClick={handleClose}
               style={{ flex: 1 }}
             >
@@ -240,7 +247,7 @@ export function GuestDonateSheet({ open, onClose, orgId, orgName, campaignId, pa
               </button>
             </Link>
             <Link
-              href={`/login?next=${encodeURIComponent(`/donate/${orgId}`)}`}
+              href={`/login?next=${encodeURIComponent(donationPath)}`}
               onClick={handleClose}
               style={{ flex: 1 }}
             >
