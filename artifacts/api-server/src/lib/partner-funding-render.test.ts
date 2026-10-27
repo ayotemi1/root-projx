@@ -28,6 +28,9 @@ import { GuestDonateSheet } from "@/components/GuestDonateSheet";
 export function renderPage(campaign, organisation) {
   return renderToStaticMarkup(h(CampaignPageView, { campaign, organisation, layout: "phone", onDonate: () => {} }));
 }
+export function renderPreview(campaign, organisation) {
+  return renderToStaticMarkup(h(CampaignPageView, { campaign, organisation, layout: "phone", preview: true }));
+}
 export function renderSheet(props) {
   return renderToStaticMarkup(h(GuestDonateSheet, { open: true, onClose: () => {}, orgId: "o1", orgName: "Kisumu Readers", campaignId: "c1", ...props }));
 }
@@ -35,6 +38,7 @@ export function renderSheet(props) {
 
 type Mod = {
   renderPage: (c: unknown, o: unknown) => string;
+  renderPreview: (c: unknown, o: unknown) => string;
   renderSheet: (p: Record<string, unknown>) => string;
 };
 
@@ -147,4 +151,33 @@ test("matching cap used up: no arrow anywhere, says fully claimed", async () => 
   noClaim(page);
   assert.match(page, /Matching has been fully claimed\./);
   assert.ok(!/will match/i.test(page));
+});
+
+test("PDF-inspired campaign template uses real data and leaves sparse optional sections out", async () => {
+  const { renderPage } = await load();
+  const html = renderPage(campaign({
+    name: "A book in every home", tagline: "Small reading circles, lasting change",
+    description: "First paragraph.\n\nSecond paragraph.", goal: 4800, amountRaised: 600,
+    partnerFunding: null, phases: [], breakdown: [], locations: [], video: null,
+  }), org);
+  assert.match(html, /A book in every home/);
+  assert.match(html, /Small reading circles, lasting change/);
+  assert.match(html, /First paragraph\./);
+  assert.match(html, /Second paragraph\./);
+  assert.match(html, /data-tour-id="campaign-accumulation"/);
+  assert.match(html, /data-testid="block-campaign-hero"/);
+  assert.match(html, /data-testid="block-money-disclosure"/);
+  assert.match(html, /data-testid="block-share"/);
+  for (const absent of ["list-campaign-milestones", "list-campaign-breakdown", "list-campaign-locations", "block-campaign-video", "text-partner-funding"]) {
+    assert.ok(!html.includes(`data-testid="${absent}"`), `${absent} should not render without content`);
+  }
+});
+
+test("the same campaign template disables payments and sharing in draft preview", async () => {
+  const { renderPreview } = await load();
+  const html = renderPreview(campaign({}), org);
+  assert.match(html, /data-testid="view-campaign-preview"/);
+  for (const action of ["button-header-campaign-action", "button-donate-campaign", "button-donate-campaign-strip", "button-share-campaign", "button-copy-link"]) {
+    assert.match(html, new RegExp(`<button[^>]*disabled=""[^>]*data-testid="${action}"`), action);
+  }
 });

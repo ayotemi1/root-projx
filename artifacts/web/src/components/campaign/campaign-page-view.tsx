@@ -11,10 +11,43 @@ import { whereYourMoneyGoes } from "@/lib/money-disclosure";
 
 export type CampaignPageLayout = "responsive" | "phone" | "desktop";
 
-/** Applies md: variants only where the layout calls for it, so a phone preview renders at phone layout on any screen. */
+// Keep responsive utilities as complete, static strings so Tailwind emits them.
+// The phone/desktop modes are forced layouts for the editor preview.
+const responsiveUtilities: Record<string, string> = {
+  "px-10": "md:px-10",
+  "grid-cols-[minmax(0,5fr)_minmax(0,7fr)]": "md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]",
+  "grid-cols-[minmax(0,1fr)_340px]": "md:grid-cols-[minmax(0,1fr)_340px]",
+  "gap-14": "md:gap-14",
+  "gap-10": "md:gap-10",
+  "pt-6": "md:pt-6",
+  "inline-flex": "md:inline-flex",
+  "pb-16": "md:pb-16",
+  "text-[2.75rem]": "md:text-[2.75rem]",
+  "text-[3.5rem]": "md:text-[3.5rem]",
+  "text-[5.5rem]": "md:text-[5.5rem]",
+  "max-w-[14ch]": "md:max-w-[14ch]",
+  "max-w-[12ch]": "md:max-w-[12ch]",
+  "text-lg": "md:text-lg",
+  "aspect-[16/9]": "md:aspect-[16/9]",
+  "aspect-[21/9]": "md:aspect-[21/9]",
+  "py-20": "md:py-20",
+  "pb-20": "md:pb-20",
+  "max-w-3xl": "md:max-w-3xl",
+  "ml-auto": "md:ml-auto",
+  "grid-cols-2": "md:grid-cols-2",
+  "flex-row": "md:flex-row",
+  "items-center": "md:items-center",
+  "justify-between": "md:justify-between",
+  "text-[2.5rem]": "md:text-[2.5rem]",
+  "max-w-[18ch]": "md:max-w-[18ch]",
+  "text-[3.25rem]": "md:text-[3.25rem]",
+};
+
+/** Applies responsive variants only where the layout calls for them. */
 function useMd(layout: CampaignPageLayout) {
   return (cls: string) =>
-    layout === "phone" ? "" : layout === "desktop" ? cls : cls.split(" ").map((c) => `md:${c}`).join(" ");
+    layout === "phone" ? "" : layout === "desktop" ? cls :
+      cls.split(" ").map((c) => responsiveUtilities[c] ?? `md:${c}`).join(" ");
 }
 
 const gbp = (n: number) => `£${Math.round(n).toLocaleString("en-GB")}`;
@@ -106,6 +139,10 @@ async function shareOrCopy(title: string, text: string, url: string): Promise<Sh
   }
 }
 
+async function copyOnly(url: string): Promise<ShareState> {
+  try { await navigator.clipboard.writeText(url); return { k: "copied" }; } catch { return { k: "manual", url }; }
+}
+
 /** The single render component for public campaign pages and editor previews. */
 export function CampaignPageView({
   campaign, organisation: org, preview = false, layout = "responsive", scrolled = false,
@@ -114,8 +151,10 @@ export function CampaignPageView({
   const md = useMd(layout);
   const [share, setShare] = useState<ShareState>({ k: "idle" });
   const theme = campaign.theme ?? {
-    primaryColor: "#E31C23", accentColor: "#F5C200", backgroundColor: "#ffffff", textColor: "#111111",
+    primaryColor: "#B50000", accentColor: "#F5B800", backgroundColor: "#ffffff", textColor: "#111111",
   };
+  const red = theme.primaryColor;
+  const gold = theme.accentColor;
   const isFundraising = campaign.type === "fundraising";
   const pf = campaign.partnerFunding && campaign.partnerFunding.amount > 0 ? campaign.partnerFunding : null;
   const isMatching = pf?.type === "matching";
@@ -130,7 +169,7 @@ export function CampaignPageView({
   const committedPct = (committed / denom) * 100;
   const raisedPct = (raised / denom) * 100;
   const matchLeft = isMatching ? partnerMatch(0, pf, matchedSoFar).availableGbp : 0;
-  const partnerLabel = isMatching ? "Matched so far" : `Committed by ${pf?.funderName?.trim() || "a funding partner"}`;
+  const partnerLabel = isMatching ? "Matched so far" : `Committed by ${funder}`;
   const breakdown = (campaign.breakdown ?? []).filter((b) => b.label || b.detail);
   const locations = (campaign.locations ?? []).filter((l) => l.name || l.description);
   const team = (org.team ?? []).filter((t) => t.name);
@@ -142,370 +181,429 @@ export function CampaignPageView({
   const anon = campaign.unidentifiedGifts ?? 0;
   const phases = campaign.phases ?? [];
   const money = whereYourMoneyGoes(org.name);
+  const description = campaign.description?.trim() ?? "";
+  const paras = description.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+  const lead = paras[0] ?? "";
+  const rest = paras.slice(1);
+  const orgBlurb = org.shortDescription || org.description;
+  const pctOf = (n: number) => (goal > 0 ? ` · ${Math.round((n / goal) * 100)}%` : "");
 
   const donate = () => { if (!preview) onDonate?.(); };
   const volunteer = () => { if (!preview) onVolunteer?.(); };
+  const pageUrl = () => window.location.href.split("#")[0];
   const doShare = async () => {
     if (preview) return;
-    const url = window.location.href.split("#")[0];
-    setShare(await shareOrCopy(campaign.name, campaign.tagline || campaign.description.slice(0, 140), url));
+    setShare(await shareOrCopy(campaign.name, campaign.tagline || description.slice(0, 140), pageUrl()));
   };
+  const doCopy = async () => { if (!preview) setShare(await copyOnly(pageUrl())); };
   const previewTitle = preview ? "Disabled in preview" : undefined;
 
+  const initials = org.name.split(/\s+/).filter(Boolean).slice(0, 3).map((w) => w[0]).join("").toUpperCase() || "O";
   const orgBadge = org.logo ? (
-    <img src={org.logo} alt="" className="w-9 h-9 rounded-full object-cover border border-black/10 shadow-sm" />
+    <img src={org.logo} alt="" className="w-8 h-8 rounded-full object-cover ring-2 ring-white/70" />
   ) : (
-    <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-sm font-bold border border-black/10" style={{ color: theme.primaryColor }}>
-      {org.name.charAt(0) || "O"}
+    <span className="w-8 h-8 rounded-full ring-2 ring-white/80 flex items-center justify-center text-[10px] font-extrabold tracking-tight text-white">{initials}</span>
+  );
+  const display = { fontFamily: "'Instrument Serif', 'Playfair Display', Georgia, 'Times New Roman', serif" } as const;
+  const sectionPad = `px-5 ${md("px-10")}`;
+  const wrap = "max-w-6xl mx-auto";
+  const twoCol = `grid gap-6 ${md("grid-cols-[minmax(0,5fr)_minmax(0,7fr)] gap-14")}`;
+  const sectionTitle = `text-[2rem] leading-[0.98] font-black tracking-[-0.03em] text-[#1c1410] break-words ${md("text-[2.75rem]")}`;
+
+  const fundingBar = goal > 0 && (
+    <div className="space-y-3" data-testid="text-campaign-progress">
+      <div className="h-2.5 w-full rounded-full overflow-hidden flex gap-[3px] bg-[#E9E2D6]" role="img"
+        aria-label={pf
+          ? `${gbp(committed)} ${isMatching ? "matched so far by" : "already committed by"} ${funder}, ${gbp(raised)} raised here, ${gbp(stillNeeded)} still needed of ${gbp(goal)}`
+          : `${gbp(raised)} raised of ${gbp(goal)}, ${gbp(stillNeeded)} still needed`}>
+        {committed > 0 && <div className="h-full rounded-full" style={{ width: `${committedPct}%`, backgroundColor: "#7A0000" }} />}
+        {raised > 0 && <div className="h-full rounded-full" style={{ width: `${raisedPct}%`, backgroundColor: red }} />}
+      </div>
+      <dl className="space-y-2.5" data-testid="block-funding-split">
+        {pf && (
+          <div className="flex gap-2.5"><span className="w-2.5 h-2.5 mt-1 rounded-sm shrink-0 bg-[#7A0000]" /><div><dt className="text-[11px] text-[#6b5f55]">{partnerLabel}</dt><dd className="font-extrabold tabular-nums text-[#1c1410]">{gbp(committed)}{pctOf(committed)}</dd></div></div>
+        )}
+        <div className="flex gap-2.5"><span className="w-2.5 h-2.5 mt-1 rounded-sm shrink-0" style={{ backgroundColor: red }} /><div><dt className="text-[11px] text-[#6b5f55]">Raised here</dt><dd className="font-extrabold tabular-nums text-[#1c1410]">{gbp(raised)}{pctOf(raised)}</dd></div></div>
+        <div className="flex gap-2.5"><span className="w-2.5 h-2.5 mt-1 rounded-sm shrink-0 bg-[#E0D8CC]" /><div><dt className="text-[11px] text-[#6b5f55]">Still needed</dt><dd className="font-extrabold tabular-nums text-[#1c1410]">{gbp(stillNeeded)}{pctOf(stillNeeded)}</dd></div></div>
+      </dl>
     </div>
   );
-  const muted = `${theme.textColor}B3`;
-  const hairline = `${theme.textColor}1A`;
 
   return (
     <div
-      className={`${preview ? "min-h-full relative" : "min-h-[100dvh]"} flex flex-col font-sans overflow-x-hidden`}
-      style={{ backgroundColor: theme.backgroundColor, color: theme.textColor }}
+      className={`${preview ? "min-h-full relative" : "min-h-[100dvh]"} flex flex-col font-sans overflow-x-hidden bg-white text-[#1c1410]`}
       data-testid={preview ? "view-campaign-preview" : "view-campaign-page"}
     >
-      {/* 1. Organisation, linked to its profile */}
+      {/* Top bar */}
       <header
-        className={`${preview ? "sticky" : "fixed"} top-0 inset-x-0 z-40 transition-[background-color,box-shadow] duration-300 ${
-          scrolled || preview ? "bg-white/92 backdrop-blur-md shadow-sm py-2.5" : "bg-transparent py-4"
-        }`}
+        className={`${preview ? "relative" : "fixed top-0 inset-x-0"} z-40 transition-[background-color,box-shadow] duration-300 ${scrolled ? "shadow-md py-2" : "py-3.5"}`}
+        style={{ backgroundColor: scrolled || preview ? red : `${red}F2` }}
       >
-        <div className={`max-w-5xl mx-auto px-4 ${md("px-8")} flex items-center justify-between gap-3`}>
+        <div className={`${wrap} ${sectionPad} flex items-center justify-between gap-3 text-white`}>
           {preview ? (
-            <div className="flex items-center gap-2.5 min-w-0">{orgBadge}<div className="font-semibold text-sm text-gray-900 truncate">{org.name}</div></div>
+            <div className="flex items-center gap-2.5 min-w-0">{orgBadge}<span className="font-bold text-sm truncate">{org.name}</span></div>
           ) : (
-            <Link href={`/organisations/${org._id}`} data-testid="link-organisation-profile" className="flex items-center gap-2.5 min-w-0">
+            <Link href={`/organisations/${org._id}`} data-testid="link-organisation-profile" className="flex items-center gap-2.5 min-w-0 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">
               {orgBadge}
-              <div className="font-semibold text-sm text-gray-900 truncate underline-offset-2 hover:underline">{org.name}</div>
+              <span className="font-bold text-sm truncate underline-offset-2 hover:underline">{org.name}</span>
             </Link>
           )}
-          <Button
-            className="rounded-full px-5 font-bold shadow-sm shrink-0"
-            style={{ backgroundColor: theme.primaryColor, color: "#fff" }}
-            onClick={() => (isFundraising ? donate() : volunteer())}
-            disabled={preview}
-            title={previewTitle}
-            data-testid="button-header-campaign-action"
-          >
-            {isFundraising ? "Donate" : "Get involved"}
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button type="button" onClick={doShare} disabled={preview} title={previewTitle} aria-label="Share this campaign"
+              className={`hidden ${md("inline-flex")} items-center gap-1.5 h-9 px-3.5 rounded-lg border border-white/70 text-sm font-bold hover:bg-white/10 disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white`}
+              data-testid="button-header-share">
+              <Share2 className="w-4 h-4" /> Share
+            </button>
+            <Button
+              className="h-9 rounded-lg px-4 font-extrabold shadow-none hover:brightness-95"
+              style={{ backgroundColor: gold, color: "#1c1410" }}
+              onClick={() => (isFundraising ? donate() : volunteer())}
+              disabled={preview}
+              title={previewTitle}
+              data-testid="button-header-campaign-action"
+            >
+              {isFundraising ? "Donate" : "Get involved"}
+            </Button>
+          </div>
         </div>
       </header>
 
-      <main className={`flex-1 ${preview ? "pt-4" : "pt-20"}`}>
-        {/* 2. Name, tagline, accumulation hero, donate */}
-        <section className={`max-w-5xl mx-auto px-4 ${md("px-8 pt-8")}`}>
-          <div className="flex flex-wrap items-center gap-2 mb-3">
-            {campaign.status === "completed" && (
-              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase tracking-wider bg-black/5">Completed</span>
-            )}
-            {campaign.deadline && (
-              <span className="inline-flex items-center gap-1 text-xs font-semibold" style={{ color: muted }}>
-                <Clock className="w-3.5 h-3.5" /> Ends {new Date(campaign.deadline).toLocaleDateString("en-GB", { day: "numeric", month: "long" })}
-              </span>
-            )}
-            {org.city && org.country && (
-              <span className="inline-flex items-center gap-1 text-xs font-semibold" style={{ color: muted }}>
-                <MapPin className="w-3.5 h-3.5" /> {org.city}, {org.country}
-              </span>
-            )}
-          </div>
-          <h1 data-testid="text-campaign-name" className={`text-[2.15rem] leading-[1.05] font-extrabold tracking-tight break-words ${md("text-6xl max-w-3xl")}`}>
-            {campaign.name}
-          </h1>
-          {campaign.tagline && (
-            <p data-testid="text-campaign-tagline" className={`mt-3 text-lg font-medium leading-snug max-w-2xl ${md("text-xl")}`} style={{ color: muted }}>
-              {campaign.tagline}
-            </p>
-          )}
+      <main className="flex-1">
+        {/* 1. Red editorial opening */}
+        <section className={`text-white ${preview ? "pt-6" : "pt-20"} pb-12 ${md("pb-16")}`} style={{ backgroundColor: red }}>
+          <div className={`${wrap} ${sectionPad} grid gap-8 ${md("grid-cols-[minmax(0,1fr)_340px] gap-10 pt-6")}`}>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-4 text-[12px] font-semibold text-white/85">
+                {campaign.status === "completed" && <span className="px-2.5 py-0.5 rounded-full bg-white text-[11px] font-extrabold uppercase tracking-wider" style={{ color: red }}>Completed</span>}
+                {campaign.deadline && <span className="inline-flex items-center gap-1"><Clock className="w-3.5 h-3.5" aria-hidden="true" /> Ends {new Date(campaign.deadline).toLocaleDateString("en-GB", { day: "numeric", month: "long" })}</span>}
+                {org.city && org.country && <span className="inline-flex items-center gap-1"><MapPin className="w-3.5 h-3.5" aria-hidden="true" /> {org.city}, {org.country}</span>}
+              </div>
+              <h1 data-testid="text-campaign-name" style={display}
+                className={`italic text-[3.1rem] leading-[0.92] tracking-[-0.01em] break-words ${md("text-[5.5rem] max-w-[14ch]")}`}>
+                {campaign.name}
+              </h1>
+              {campaign.tagline && (
+                <p data-testid="text-campaign-tagline" className={`mt-5 text-[1.05rem] leading-snug font-medium text-white/95 max-w-xl ${md("text-lg")}`}>
+                  {campaign.tagline}
+                </p>
+              )}
 
-          {campaign.imageUrl && (
-            <div className="mt-6 rounded-3xl overflow-hidden shadow-lg">
-              <img src={campaign.imageUrl} alt="" data-testid="img-campaign-cover" className={`w-full object-cover aspect-[4/3] ${md("aspect-[21/9]")}`} />
+              {isFundraising ? (
+                <div className="mt-7 rounded-2xl overflow-hidden ring-1 ring-black/10 shadow-[0_24px_60px_-20px_rgba(60,0,0,0.6)]"
+                  data-testid="block-campaign-hero" data-tour-id="campaign-accumulation">
+                  <AccumulationField
+                    count={supporters}
+                    unitSingular={unitSingular}
+                    unitPlural={unitPlural}
+                    imageUrl={unit?.imageUrl ?? null}
+                    colour={red}
+                    accent={gold}
+                    background="#F9F6F0"
+                    highlightNewest={highlightNewest}
+                    still={preview}
+                    height={layout === "phone" ? 240 : 320}
+                  />
+                </div>
+              ) : campaign.imageUrl ? (
+                <div className="mt-7 rounded-2xl overflow-hidden">
+                  <img src={campaign.imageUrl} alt="" data-testid="img-campaign-cover" className={`w-full object-cover aspect-[4/3] ${md("aspect-[16/9]")}`} />
+                </div>
+              ) : null}
             </div>
-          )}
 
-          {isFundraising ? (
-            <div
-              className={`mt-6 rounded-3xl overflow-hidden bg-white shadow-xl border grid ${md("grid-cols-[1.35fr_1fr]")}`}
-              style={{ borderColor: hairline }}
-              data-testid="block-campaign-hero"
-              data-tour-id="campaign-accumulation"
-            >
-              <AccumulationField
-                count={supporters}
-                unitSingular={unitSingular}
-                unitPlural={unitPlural}
-                imageUrl={unit?.imageUrl ?? null}
-                colour={theme.primaryColor}
-                accent={theme.accentColor}
-                background={`${theme.primaryColor}0D`}
-                highlightNewest={highlightNewest}
-                still={preview}
-                height={layout === "phone" ? 220 : 260}
-              />
-              <div className="p-5 sm:p-6 flex flex-col gap-5 text-gray-900">
-                <div>
-                  <div className="flex items-baseline gap-2" data-testid="text-supporter-count">
-                    <span className="text-5xl font-extrabold tabular-nums tracking-tight" style={{ color: theme.primaryColor }}>
+            {/* Sidebar */}
+            <aside className="space-y-4 min-w-0" aria-label={isFundraising ? "Giving and funding" : "Volunteering"}>
+              {isFundraising ? (
+                <>
+                  <div data-testid="text-supporter-count">
+                    <div className="text-[4rem] leading-[0.85] font-black tabular-nums tracking-[-0.04em]" style={{ color: gold }}>
                       {supporters.toLocaleString("en-GB")}
-                    </span>
-                    <span className="text-lg font-bold">{supporters === 1 ? unitSingular : unitPlural}</span>
-                  </div>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {supporters === 0 ? `Every supporter adds one ${unitSingular}. Be the first.` : `One for every person who has given. Every supporter adds one ${unitSingular}.`}
-                  </p>
-                </div>
-
-                {goal > 0 && (
-                  <div className="space-y-2" data-testid="text-campaign-progress">
-                    <div className="h-2.5 w-full rounded-full overflow-hidden flex bg-gray-100" role="img"
-                      aria-label={pf
-                        ? `${gbp(committed)} ${isMatching ? "matched so far by" : "already committed by"} ${funder}, ${gbp(raised)} raised here, ${gbp(stillNeeded)} still needed of ${gbp(goal)}`
-                        : `${gbp(raised)} raised of ${gbp(goal)}, ${gbp(stillNeeded)} still needed`}>
-                      {committed > 0 && <div className="h-full" style={{ width: `${committedPct}%`, backgroundColor: theme.accentColor }} />}
-                      <div className="h-full" style={{ width: `${raisedPct}%`, backgroundColor: theme.primaryColor }} />
                     </div>
-                    <dl className={`grid gap-2 text-xs ${pf ? "grid-cols-3" : "grid-cols-2"}`} data-testid="block-funding-split">
-                      {pf && (
-                        <div><dt className="text-gray-500 flex items-center gap-1"><span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: theme.accentColor }} />{partnerLabel}</dt><dd className="font-extrabold text-sm tabular-nums">{gbp(committed)}</dd></div>
-                      )}
-                      <div><dt className="text-gray-500 flex items-center gap-1"><span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: theme.primaryColor }} />Raised here</dt><dd className="font-extrabold text-sm tabular-nums">{gbp(raised)}</dd></div>
-                      <div><dt className="text-gray-500 flex items-center gap-1"><span className="w-2 h-2 rounded-full shrink-0 bg-gray-200" />Still needed</dt><dd className="font-extrabold text-sm tabular-nums">{gbp(stillNeeded)}</dd></div>
-                    </dl>
-                    {pf && (
-                      <p className="text-xs text-gray-700 flex items-start gap-1.5 pt-1" data-testid="text-partner-funding">
-                        <Handshake className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                        {!isMatching
-                          ? `${gbp(pf.amount)} already committed by ${funder}.`
-                          : matchLeft > 0
-                            ? `${funder} will match gifts ${ratioLabel(pf)}, up to ${gbp(capOf(pf))}. ${gbp(matchedSoFar)} matched so far; ${gbp(matchLeft)} of matching is still available.`
-                            : "Matching has been fully claimed."}
-                      </p>
-                    )}
+                    <div className="mt-2 text-lg font-extrabold">{supporters === 1 ? unitSingular : unitPlural}</div>
+                    <p className="text-sm text-white/85 mt-1 leading-snug">
+                      {supporters === 0 ? `Every supporter adds one ${unitSingular}. Be the first.` : `One for every person who has given to ${campaign.name}, whatever the amount.`}
+                    </p>
                   </div>
-                )}
 
-                <div className="space-y-2 mt-auto">
-                  <Button
-                    className="w-full h-14 text-lg font-bold rounded-2xl shadow-md"
-                    style={{ backgroundColor: theme.primaryColor, color: "#fff" }}
-                    onClick={donate}
-                    disabled={preview}
-                    title={previewTitle}
-                    data-testid="button-donate-campaign"
-                  >
-                    Add your {unitSingular} <ArrowRight className="w-5 h-5 ml-2" />
+                  <div className="rounded-2xl bg-[#F9F6F0] text-[#1c1410] p-5 shadow-lg">
+                    <h2 className="text-lg font-extrabold leading-tight">Add your {unitSingular}</h2>
+                    <p className="text-[12px] text-[#6b5f55] mt-0.5">Choose your amount at the next step.</p>
+                    <Button
+                      className="mt-4 w-full h-12 text-base font-extrabold rounded-xl shadow-none hover:brightness-95"
+                      style={{ backgroundColor: gold, color: "#1c1410" }}
+                      onClick={donate}
+                      disabled={preview}
+                      title={previewTitle}
+                      data-testid="button-donate-campaign"
+                    >
+                      Donate <ArrowRight className="w-4 h-4 ml-2" aria-hidden="true" />
+                    </Button>
+                    <p className="mt-3 text-center text-[11px] font-medium text-[#6b5f55] flex items-center justify-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-green-800" aria-hidden="true" />
+                      {preview ? "Donations are switched off in preview" : "From £3 · Secure payment by Stripe"}
+                    </p>
+                  </div>
+
+                  {(goal > 0 || pf) && (
+                    <div className="rounded-2xl bg-white text-[#1c1410] p-5 shadow-lg">
+                      <h2 className="text-base font-extrabold">How this is funded</h2>
+                      {pf && (
+                        <p className="mt-3 rounded-lg bg-[#F2EDE4] p-3 text-[13px] leading-relaxed flex gap-2" data-testid="text-partner-funding">
+                          <Handshake className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" />
+                          <span>
+                            {!isMatching
+                              ? `${gbp(pf.amount)} already committed by ${funder}. Donations help close the remaining gap.`
+                              : matchLeft > 0
+                                ? `${funder} will match gifts ${ratioLabel(pf)}, up to ${gbp(capOf(pf))}. ${gbp(matchedSoFar)} matched so far; ${gbp(matchLeft)} of matching is still available.`
+                                : "Matching has been fully claimed."}
+                          </span>
+                        </p>
+                      )}
+                      {fundingBar && <div className="mt-4">{fundingBar}</div>}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="rounded-2xl bg-[#F9F6F0] text-[#1c1410] p-5 shadow-lg space-y-4">
+                  <div className="flex items-center gap-3">
+                    <Users className="w-6 h-6" style={{ color: red }} aria-hidden="true" />
+                    <div>
+                      <div className="text-3xl font-black tabular-nums">{campaign.volunteersNeeded}</div>
+                      <div className="text-sm text-[#6b5f55]">volunteers needed</div>
+                    </div>
+                  </div>
+                  <Button className="w-full h-12 text-base font-extrabold rounded-xl" style={{ backgroundColor: gold, color: "#1c1410" }}
+                    onClick={volunteer} disabled={preview} title={previewTitle} data-testid="button-volunteer-campaign">
+                    Apply to volunteer <ArrowRight className="w-4 h-4 ml-2" aria-hidden="true" />
                   </Button>
-                  <p className="text-center text-xs font-medium text-gray-500 flex items-center justify-center gap-1.5">
-                    <ShieldCheck className="w-3.5 h-3.5 text-green-700" />
-                    {preview ? "Donations are switched off in preview" : "From £3 · Secure payment by Stripe"}
-                  </p>
                 </div>
-              </div>
-            </div>
-          ) : (
-            <div className="mt-6 rounded-3xl bg-white shadow-xl border p-6 space-y-5 text-gray-900" style={{ borderColor: hairline }}>
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: `${theme.primaryColor}14` }}>
-                  <Users className="w-6 h-6" style={{ color: theme.primaryColor }} />
-                </div>
-                <div>
-                  <div className="text-2xl font-extrabold tabular-nums">{campaign.volunteersNeeded}</div>
-                  <div className="text-sm font-medium text-gray-600">volunteers needed</div>
-                </div>
-              </div>
-              <Button className="w-full h-14 text-lg font-bold rounded-2xl" style={{ backgroundColor: theme.primaryColor, color: "#fff" }}
-                onClick={volunteer} disabled={preview} title={previewTitle} data-testid="button-volunteer-campaign">
-                Apply to volunteer <ArrowRight className="w-5 h-5 ml-2" />
-              </Button>
-            </div>
-          )}
+              )}
+            </aside>
+          </div>
         </section>
 
-        <div className={`max-w-2xl mx-auto px-4 ${md("px-0")} py-10 space-y-12`}>
-          {/* 3. Video */}
-          {campaign.video?.url && <CampaignVideoBlock video={campaign.video} title={`${campaign.name} video`} />}
-
-          {/* 4. Story */}
-          {campaign.description?.trim() && (
-            <section>
-              <h2 className="text-xs font-extrabold uppercase tracking-[0.18em] mb-3" style={{ color: theme.primaryColor }}>The story</h2>
-              <p data-testid="text-campaign-description" className="text-[1.05rem] leading-relaxed whitespace-pre-wrap break-words" style={{ color: `${theme.textColor}DD` }}>
-                {campaign.description}
-              </p>
-            </section>
-          )}
-
-          {/* 5. Breakdown */}
-          {breakdown.length > 0 && (
-            <section data-testid="list-campaign-breakdown">
-              <h2 className="text-xl font-extrabold mb-4">What your money buys</h2>
-              <ul className="divide-y border-y" style={{ borderColor: hairline }}>
-                {breakdown.map((b, i) => (
-                  <li key={i} className="py-3.5 flex gap-4" style={{ borderColor: hairline }} data-testid={`row-breakdown-${i}`}>
-                    <span className="font-extrabold shrink-0 max-w-[40%] break-words tabular-nums" style={{ color: theme.primaryColor }}>{b.label}</span>
-                    <span className="text-sm leading-relaxed min-w-0 break-words" style={{ color: muted }}>{b.detail}</span>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          {/* 6. Locations */}
-          {locations.length > 0 && (
-            <section data-testid="list-campaign-locations">
-              <h2 className="text-xl font-extrabold mb-4">Where it happens</h2>
-              <div className={`grid gap-3 ${md("grid-cols-2")}`}>
-                {locations.map((l, i) => (
-                  <div key={i} className="rounded-2xl overflow-hidden bg-white border shadow-sm text-gray-900" style={{ borderColor: hairline }} data-testid={`card-location-${i}`}>
-                    {l.photoUrl && <img src={l.photoUrl} alt={l.name} loading="lazy" className="w-full aspect-[16/10] object-cover" />}
-                    <div className="p-4">
-                      <p className="font-bold flex items-center gap-1.5"><MapPin className="w-4 h-4 text-gray-400" />{l.name}</p>
-                      {l.description && <p className="text-sm text-gray-600 mt-1">{l.description}</p>}
-                    </div>
+        {/* 2. Story */}
+        {(description || (isFundraising && campaign.imageUrl) || campaign.video?.url) && (
+          <section className={`py-14 ${md("py-20")} bg-white`}>
+            <div className={`${wrap} ${sectionPad} space-y-12`}>
+              {lead && (
+                <div className={twoCol}>
+                  <h2 className={sectionTitle}>The story</h2>
+                  <div data-testid="text-campaign-description" className="space-y-4 text-[1.02rem] leading-relaxed text-[#3a2f28] break-words">
+                    <p className="text-lg font-semibold text-[#1c1410] whitespace-pre-wrap">{lead}</p>
+                    {rest.map((p, i) => <p key={i} className="whitespace-pre-wrap">{p}</p>)}
                   </div>
-                ))}
-              </div>
-            </section>
-          )}
+                </div>
+              )}
+              {isFundraising && campaign.imageUrl && (
+                <img src={campaign.imageUrl} alt="" data-testid="img-campaign-cover" loading="lazy" className={`w-full rounded-2xl object-cover aspect-[4/3] ${md("aspect-[21/9]")}`} />
+              )}
+              {campaign.video?.url && (
+                <div className={`${md("max-w-3xl ml-auto")}`}><CampaignVideoBlock video={campaign.video} title={`${campaign.name} video`} /></div>
+              )}
+            </div>
+          </section>
+        )}
 
-          {phases.length > 0 && (
-            <section>
-              <h2 className="text-xl font-extrabold mb-4">Milestones</h2>
-              <ol className="space-y-3" data-testid="list-campaign-milestones">
+        {/* 3. Breakdown + locations */}
+        {(breakdown.length > 0 || locations.length > 0) && (
+          <section className={`pb-14 ${md("pb-20")} bg-white`}>
+            <div className={`${wrap} ${sectionPad} border-t-2 border-[#1c1410] pt-10 space-y-14`}>
+              {breakdown.length > 0 && (
+                <div className={twoCol} data-testid="list-campaign-breakdown">
+                  <h2 className={sectionTitle}>What your money buys</h2>
+                  <ul className="border-t border-[#E0D8CC]">
+                    {breakdown.map((b, i) => (
+                      <li key={i} className="py-4 border-b border-[#E0D8CC]" data-testid={`row-breakdown-${i}`}>
+                        {b.label && <p className="text-lg font-extrabold tabular-nums break-words" style={{ color: red }}>{b.label}</p>}
+                        {b.detail && <p className="text-sm leading-relaxed text-[#3a2f28] mt-1 break-words">{b.detail}</p>}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {locations.length > 0 && (
+                <div className={twoCol} data-testid="list-campaign-locations">
+                  <h2 className={sectionTitle}>Where it happens</h2>
+                  <div className={`grid gap-4 ${md("grid-cols-2")}`}>
+                    {locations.map((l, i) => (
+                      <div key={i} className="rounded-2xl overflow-hidden bg-[#F9F6F0]" data-testid={`card-location-${i}`}>
+                        {l.photoUrl && <img src={l.photoUrl} alt={l.name} loading="lazy" className="w-full aspect-[16/10] object-cover" />}
+                        <div className="p-4">
+                          <p className="font-extrabold flex items-center gap-1.5"><MapPin className="w-4 h-4 shrink-0" style={{ color: red }} aria-hidden="true" />{l.name}</p>
+                          {l.description && <p className="text-sm text-[#3a2f28] mt-1">{l.description}</p>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* 4. Impact moment: milestones on cream */}
+        {phases.length > 0 && (
+          <section className={`py-14 ${md("py-20")} bg-[#F2EDE4]`}>
+            <div className={`${wrap} ${sectionPad}`}>
+              <h2 className={`${sectionTitle} ${md("text-[3.5rem] max-w-[12ch]")}`}>What your support makes possible</h2>
+              <ol className={`mt-10 grid gap-x-8 ${md("grid-cols-2")} ${layout === "desktop" ? "" : "lg:grid-cols-4"}`} data-testid="list-campaign-milestones">
                 {phases.map((phase) => (
-                  <li key={phase.id} className="flex gap-3" data-testid={`card-campaign-milestone-${phase.id}`}>
+                  <li key={phase.id} className="py-4 border-t border-[#d6ccbc] flex gap-3" data-testid={`card-campaign-milestone-${phase.id}`}>
                     {phase.completed
-                      ? <CheckCircle className="w-5 h-5 shrink-0 mt-0.5 text-green-700" />
-                      : <span className="w-5 h-5 shrink-0 mt-0.5 rounded-full border-2" style={{ borderColor: hairline }} />}
+                      ? <CheckCircle className="w-5 h-5 shrink-0 mt-0.5 text-green-800" aria-label="Completed" />
+                      : <span className="w-5 h-5 shrink-0 mt-0.5 rounded-full border-2" style={{ borderColor: red }} aria-label="Not yet completed" />}
                     <div className="min-w-0">
-                      <p className="font-bold text-sm">{phase.title}</p>
-                      {phase.description && <p className="text-sm" style={{ color: muted }}>{phase.description}</p>}
+                      <p className="font-extrabold">{phase.title}</p>
+                      {phase.description && <p className="text-sm text-[#3a2f28] mt-0.5">{phase.description}</p>}
                     </div>
                   </li>
                 ))}
               </ol>
-            </section>
-          )}
+            </div>
+          </section>
+        )}
 
-          {/* 7. Who's running it */}
-          <section className="rounded-2xl bg-white border p-5 text-gray-900" style={{ borderColor: hairline }} data-testid="block-organisation">
-            <h2 className="text-xs font-extrabold uppercase tracking-[0.18em] text-gray-500 mb-3 flex items-center gap-1.5">
-              {org.verified && <ShieldCheck className="w-4 h-4 text-green-700" />} Who's running it
-            </h2>
-            <div className="flex items-center gap-3">
-              {org.logo ? <img src={org.logo} alt="" className="w-12 h-12 rounded-full object-cover" /> : (
-                <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-lg font-bold">{org.name.charAt(0) || "O"}</div>
-              )}
-              <div className="min-w-0">
-                <p data-testid="text-organisation-name" className="font-bold">{org.name}{org.verified && <span className="ml-2 text-[11px] font-bold text-green-700">Verified</span>}</p>
-                {(org.shortDescription || org.description) && (
-                  <p className="text-sm text-gray-600 line-clamp-2">{org.shortDescription || org.description}</p>
+        {/* 5. Support moment: gold strip */}
+        {isFundraising && (
+          <section style={{ backgroundColor: gold }} className="text-[#1c1410]">
+            <div className={`${wrap} ${sectionPad} py-10 flex flex-col gap-5 ${md("flex-row items-center justify-between")}`}>
+              <p className={`text-[1.9rem] leading-[1] font-black tracking-[-0.03em] ${md("text-[2.5rem] max-w-[18ch]")}`}>
+                {supporters === 0 ? `The first ${unitSingular} could be yours.` : `${supporters.toLocaleString("en-GB")} ${supporters === 1 ? unitSingular : unitPlural} and counting.`}
+              </p>
+              <Button className="h-12 px-6 rounded-xl text-base font-extrabold shrink-0 text-white" style={{ backgroundColor: red }}
+                onClick={donate} disabled={preview} title={previewTitle} data-testid="button-donate-campaign-strip">
+                Add your {unitSingular} <ArrowRight className="w-4 h-4 ml-2" aria-hidden="true" />
+              </Button>
+            </div>
+          </section>
+        )}
+
+        {/* 6. Organisation + money */}
+        <section className={`py-14 ${md("py-20")} bg-white`}>
+          <div className={`${wrap} ${sectionPad} space-y-14`}>
+            <div className={twoCol} data-testid="block-organisation">
+              <h2 className={sectionTitle}>Who's running it</h2>
+              <div>
+                <div className="flex items-center gap-3">
+                  {org.logo ? <img src={org.logo} alt="" className="w-14 h-14 rounded-full object-cover" /> : (
+                    <span className="w-14 h-14 rounded-full flex items-center justify-center text-base font-black text-white" style={{ backgroundColor: red }}>{initials}</span>
+                  )}
+                  <div className="min-w-0">
+                    <p data-testid="text-organisation-name" className="text-xl font-extrabold break-words">{org.name}</p>
+                    {org.verified && <p className="text-xs font-bold text-green-800 inline-flex items-center gap-1"><ShieldCheck className="w-3.5 h-3.5" aria-hidden="true" /> Verified organisation</p>}
+                  </div>
+                </div>
+                {orgBlurb && <p className="mt-4 text-[1.02rem] leading-relaxed text-[#3a2f28]">{orgBlurb}</p>}
+                {team.length > 0 && (
+                  <ul className={`mt-6 grid grid-cols-1 gap-4 ${md("grid-cols-2")}`} data-testid="list-campaign-team">
+                    {team.map((t, i) => (
+                      <li key={i} className="flex items-center gap-3 min-w-0" data-testid={`card-team-${i}`}>
+                        {t.photoUrl ? <img src={t.photoUrl} alt="" loading="lazy" className="w-11 h-11 rounded-full object-cover shrink-0" /> : (
+                          <span className="w-11 h-11 rounded-full bg-[#F2EDE4] flex items-center justify-center text-sm font-extrabold shrink-0" style={{ color: red }}>{t.name.charAt(0)}</span>
+                        )}
+                        <span className="min-w-0">
+                          <span className="block text-sm font-bold truncate">{t.name}</span>
+                          {t.role && <span className="block text-xs text-[#6b5f55] truncate">{t.role}</span>}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {!preview && (
+                  <Link href={`/organisations/${org._id}`} className="mt-6 inline-flex items-center gap-1 text-sm font-extrabold underline-offset-4 hover:underline" style={{ color: red }} data-testid="link-organisation-profile-footer">
+                    See their profile <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
+                  </Link>
                 )}
               </div>
             </div>
-            {team.length > 0 && (
-              <ul className="mt-4 grid grid-cols-2 gap-3" data-testid="list-campaign-team">
-                {team.map((t, i) => (
-                  <li key={i} className="flex items-center gap-2.5 min-w-0" data-testid={`card-team-${i}`}>
-                    {t.photoUrl ? <img src={t.photoUrl} alt="" loading="lazy" className="w-10 h-10 rounded-full object-cover shrink-0" /> : (
-                      <span className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-sm font-bold shrink-0">{t.name.charAt(0)}</span>
-                    )}
-                    <span className="min-w-0">
-                      <span className="block text-sm font-semibold truncate">{t.name}</span>
-                      {t.role && <span className="block text-xs text-gray-500 truncate">{t.role}</span>}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-            {!preview && (
-              <Link href={`/organisations/${org._id}`} className="mt-4 inline-flex items-center gap-1 text-sm font-bold underline-offset-2 hover:underline" style={{ color: theme.primaryColor }} data-testid="link-organisation-profile-footer">
-                See their profile <ArrowRight className="w-3.5 h-3.5" />
-              </Link>
-            )}
-          </section>
 
-          {/* 8. Where your money goes */}
-          {isFundraising && (
-            <section data-testid="block-money-disclosure">
-              <h2 className="text-xl font-extrabold mb-2">Where your money goes</h2>
-              <p className="text-sm leading-relaxed" style={{ color: muted }} data-testid="text-money-disclosure">{money.sentence}</p>
-              {isMatching && matchLeft > 0 && (
-                <p className="text-sm leading-relaxed mt-2" style={{ color: muted }}>
-                  Matched funds come from {funder}'s pledge, not from your card. You are only ever charged what you choose to give.
-                </p>
-              )}
-            </section>
-          )}
-
-          {/* 9. Recent supporters (always rendered: "Be the first." is the empty state) */}
-          {isFundraising && (
-            <section data-testid="block-recent-supporters">
-              <h2 className="text-xl font-extrabold mb-3">Recent supporters</h2>
-              {recent.length === 0 && anon === 0 ? (
-                <p className="text-base font-semibold" style={{ color: theme.primaryColor }} data-testid="text-be-first">Be the first.</p>
-              ) : (
-                <ul className="divide-y" style={{ borderColor: hairline }}>
-                  {recent.map((s, i) => (
-                    <li key={`${s.createdAt}-${i}`} className="py-2.5 flex items-center justify-between gap-3" style={{ borderColor: hairline }} data-testid={`row-supporter-${i}`}>
-                      <span className="flex items-center gap-2.5 min-w-0">
-                        {unit?.imageUrl ? <img src={unit.imageUrl} alt="" className="w-6 h-6 shrink-0" /> : <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: theme.primaryColor }} />}
-                        <span className="font-semibold truncate">{s.displayName || "Anonymous"}</span>
-                      </span>
-                      <span className="text-xs shrink-0 tabular-nums" style={{ color: muted }}>{timeAgo(s.createdAt)}</span>
-                    </li>
-                  ))}
-                  {anon > 0 && (
-                    <li className="py-2.5 text-sm" style={{ color: muted, borderColor: hairline }} data-testid="text-unidentified-gifts">
-                      plus {anon.toLocaleString("en-GB")} earlier {anon === 1 ? "gift" : "gifts"} from before supporters were counted
-                    </li>
+            {isFundraising && (
+              <div className={`${twoCol} border-t-2 border-[#1c1410] pt-10`} data-testid="block-money-disclosure">
+                <h2 className={sectionTitle}>Where your money goes</h2>
+                <div className="rounded-2xl bg-[#F9F6F0] p-5 space-y-3">
+                  <p className="text-[1.02rem] leading-relaxed text-[#1c1410]" data-testid="text-money-disclosure">{money.sentence}</p>
+                  {isMatching && matchLeft > 0 && (
+                    <p className="text-sm leading-relaxed text-[#3a2f28]">
+                      Matched funds come from {funder}'s pledge, not from your card. You are only ever charged what you choose to give.
+                    </p>
                   )}
-                </ul>
-              )}
-            </section>
-          )}
+                </div>
+              </div>
+            )}
 
-          {/* 10. Share */}
-          <section className="rounded-2xl p-5 text-center" style={{ backgroundColor: `${theme.primaryColor}0D` }} data-testid="block-share">
-            <p className="font-extrabold text-lg">Know someone who'd add a {unitSingular}?</p>
-            <p className="text-sm mt-1" style={{ color: muted }}>A share from you is worth more than any ad.</p>
-            <Button
-              variant="outline"
-              className="mt-4 rounded-full font-bold bg-white"
-              onClick={doShare}
-              disabled={preview}
-              title={previewTitle}
-              data-testid="button-share-campaign"
-            >
-              <Share2 className="w-4 h-4 mr-2" /> Share this campaign
-            </Button>
-            <div aria-live="polite" className="mt-3 text-sm min-h-[1.25rem]">
-              {share.k === "copied" && <span className="inline-flex items-center gap-1.5 font-semibold text-green-800" data-testid="text-share-copied"><Link2 className="w-4 h-4" /> Link copied</span>}
-              {share.k === "manual" && (
-                <label className="block text-left">
-                  <span className="text-xs" style={{ color: muted }}>Copy this link:</span>
-                  <input readOnly value={share.url} onFocus={(e) => e.currentTarget.select()} className="mt-1 w-full rounded-lg border bg-white px-3 py-2 text-sm text-gray-900" data-testid="input-share-url" />
-                </label>
-              )}
+            {isFundraising && (
+              <div className={`${twoCol} border-t-2 border-[#1c1410] pt-10`} data-testid="block-recent-supporters">
+                <h2 className={sectionTitle}>Recent supporters</h2>
+                {recent.length === 0 && anon === 0 ? (
+                  <p className="text-2xl font-black" style={{ color: red }} data-testid="text-be-first">Be the first.</p>
+                ) : (
+                  <ul className="border-t border-[#E0D8CC]">
+                    {recent.map((s, i) => (
+                      <li key={`${s.createdAt}-${i}`} className="py-3 border-b border-[#E0D8CC] flex items-center justify-between gap-3" data-testid={`row-supporter-${i}`}>
+                        <span className="flex items-center gap-2.5 min-w-0">
+                          {unit?.imageUrl ? <img src={unit.imageUrl} alt="" className="w-6 h-6 shrink-0" /> : <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: red }} />}
+                          <span className="font-bold truncate">{s.displayName || "Anonymous"}</span>
+                        </span>
+                        <span className="text-xs shrink-0 tabular-nums text-[#6b5f55]">{timeAgo(s.createdAt)}</span>
+                      </li>
+                    ))}
+                    {anon > 0 && (
+                      <li className="py-3 border-b border-[#E0D8CC] text-sm text-[#6b5f55]" data-testid="text-unidentified-gifts">
+                        plus {anon.toLocaleString("en-GB")} earlier {anon === 1 ? "gift" : "gifts"} from before supporters were counted
+                      </li>
+                    )}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* 7. Full-bleed share close */}
+        <section className="text-white" style={{ backgroundColor: red }} data-testid="block-share">
+          <div className={`${wrap} ${sectionPad} py-12 flex flex-col gap-6 ${md("flex-row items-center justify-between")}`}>
+            <div className="min-w-0">
+              <p style={display} className={`italic text-[2.4rem] leading-[0.95] break-words ${md("text-[3.25rem]")}`}>Know someone who'd add a {unitSingular}?</p>
+              <p className="mt-2 text-white/90">Share the campaign. A share from you is worth more than any ad.</p>
             </div>
-          </section>
-        </div>
+            <div className="flex flex-col gap-3 shrink-0 min-w-0">
+              <div className="flex flex-wrap gap-3">
+                <button type="button" onClick={doShare} disabled={preview} title={previewTitle}
+                  className="inline-flex items-center gap-2 h-11 px-5 rounded-xl border-2 border-white font-extrabold text-sm hover:bg-white/10 disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                  data-testid="button-share-campaign">
+                  <Share2 className="w-4 h-4" aria-hidden="true" /> Share the campaign
+                </button>
+                <button type="button" onClick={doCopy} disabled={preview} title={previewTitle}
+                  className="inline-flex items-center gap-2 h-11 px-5 rounded-xl bg-[#7A0000] font-extrabold text-sm hover:bg-[#5e0000] disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                  data-testid="button-copy-link">
+                  <Link2 className="w-4 h-4" aria-hidden="true" /> Copy link
+                </button>
+              </div>
+              <div aria-live="polite" className="text-sm min-h-[1.25rem]">
+                {share.k === "copied" && <span className="inline-flex items-center gap-1.5 font-bold" data-testid="text-share-copied"><CheckCircle className="w-4 h-4" aria-hidden="true" /> Link copied</span>}
+                {share.k === "manual" && (
+                  <label className="block">
+                    <span className="text-xs text-white/85">Copy this link:</span>
+                    <input readOnly value={share.url} onFocus={(e) => e.currentTarget.select()} className="mt-1 w-full rounded-lg bg-white px-3 py-2 text-sm text-[#1c1410]" data-testid="input-share-url" />
+                  </label>
+                )}
+              </div>
+            </div>
+          </div>
+        </section>
       </main>
 
-      <footer className="py-8 text-center text-sm border-t" style={{ borderColor: hairline, color: muted }}>
-        <p>Powered by <span className="font-bold">Root ProjX</span></p>
-        {!preview && (
-          <div className="flex items-center justify-center gap-4 mt-2">
-            <Link href="/terms" className="hover:underline">Terms</Link>
-            <Link href="/privacy" className="hover:underline">Privacy</Link>
-          </div>
-        )}
+      <footer className="bg-[#7A0000] text-white/85 text-xs">
+        <div className={`${wrap} ${sectionPad} py-4 flex flex-wrap items-center justify-between gap-2`}>
+          <p>Powered by <span className="font-bold text-white">Root ProjX</span></p>
+          {!preview && (
+            <div className="flex items-center gap-4">
+              <Link href="/terms" className="hover:underline">Terms</Link>
+              <Link href="/privacy" className="hover:underline">Privacy</Link>
+            </div>
+          )}
+        </div>
       </footer>
     </div>
   );
