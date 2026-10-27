@@ -33,6 +33,15 @@ authorization remain separate concerns.
 **How to apply:** Reuse the shared resolver for future Checkout metadata and
 payout records; validate readiness and authorization separately before transfers.
 
+Bank-transfer setup approvals must be discoverable independently of donation
+and payout-ledger entries, including organisations with no money raised.
+
+**Why:** An unapproved manual organisation cannot receive donations. Requiring a
+ledger entry before showing its setup request creates a circular blocker.
+
+**How to apply:** Source setup requests from organisations, not outstanding
+payouts. Keep “approve setup” distinct from “mark payout as sent”.
+
 An interrupted settlement must be reconciled with provider records before any
 resend. Do not automatically expire settlement locks or retry failed payouts:
 a timeout can happen after the provider has already accepted money movement.

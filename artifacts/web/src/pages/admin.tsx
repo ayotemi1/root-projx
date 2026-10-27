@@ -2,6 +2,9 @@ import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { CheckCircle2, XCircle, Clock, Users, FileText, LogOut, RefreshCw, Building2, CreditCard, Pencil, X, Wallet } from "lucide-react";
 import { AdminPayouts } from "@/components/admin-payouts";
+import { BankTransferApprovals } from "@/components/bank-transfer-approvals";
+import { useQueryClient } from "@tanstack/react-query";
+import { adminPayoutsKey } from "@/lib/payouts-api";
 
 const RED_DEEP = "#7A0000";
 const RED = "#B50000";
@@ -145,6 +148,7 @@ const TH: React.CSSProperties = { padding: "12px 20px", textAlign: "left", fontS
 const TD: React.CSSProperties = { padding: "14px 20px", borderTop: "1px solid #f0ece4" };
 
 export default function AdminPage() {
+  const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
   const [tab, setTab] = useState<"applications" | "supporters" | "organisations" | "donations" | "payouts">("applications");
 
@@ -156,6 +160,7 @@ export default function AdminPage() {
   const [loadingApps, setLoadingApps] = useState(true);
   const [loadingSups, setLoadingSups] = useState(false);
   const [loadingOrgs, setLoadingOrgs] = useState(false);
+  const [orgsError, setOrgsError] = useState("");
   const [loadingDons, setLoadingDons] = useState(false);
 
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -168,15 +173,19 @@ export default function AdminPage() {
   const [payoutLabel, setPayoutLabel] = useState("");
   const [savingPayout, setSavingPayout] = useState(false);
   const [payoutError, setPayoutError] = useState("");
+  const [payoutConfirmed, setPayoutConfirmed] = useState(false);
+  const [payoutNotice, setPayoutNotice] = useState("");
 
   function openPayout(org: Organisation) {
     setPayoutOrg(org);
     setPayoutLabel(org.payoutManualLabel ?? "");
     setPayoutError("");
+    setPayoutConfirmed(org.payoutManualApproved === true);
+    setPayoutNotice("");
   }
 
   async function saveManualPayout() {
-    if (!payoutOrg) return;
+    if (!payoutOrg || savingPayout || !payoutConfirmed) return;
     setSavingPayout(true);
     setPayoutError("");
     try {
@@ -189,6 +198,8 @@ export default function AdminPage() {
       const data = await res.json() as Organisation & { error?: string };
       if (!res.ok) { setPayoutError(data.error ?? "Failed to save bank transfer approval."); return; }
       setOrganisations((current) => current.map((org) => org._id === data._id ? data : org));
+      setPayoutNotice(`Bank transfer setup approved for ${data.name}. No money has been sent.`);
+      queryClient.invalidateQueries({ queryKey: adminPayoutsKey });
       setPayoutOrg(null);
     } catch {
       setPayoutError("Network error — please try again.");
@@ -237,14 +248,16 @@ export default function AdminPage() {
 
   const fetchOrganisations = useCallback(async () => {
     setLoadingOrgs(true);
-    setError("");
+    setOrgsError("");
     try {
       const res = await fetch("/api/admin/organisations", { headers: { "x-admin-token": token } });
       if (res.status === 401) { logout(); return; }
+      if (!res.ok) throw new Error("Failed to load organisations.");
       const data = await res.json() as Organisation[];
+      if (!Array.isArray(data)) throw new Error("Invalid organisation response.");
       setOrganisations(data);
     } catch {
-      setError("Failed to load organisations.");
+      setOrgsError("Could not load bank-transfer requests and organisations. Please refresh to try again.");
     } finally {
       setLoadingOrgs(false);
     }
@@ -272,9 +285,16 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (tab === "supporters"    && supporters.length    === 0) fetchSupporters();
-    if (tab === "organisations" && organisations.length === 0) fetchOrganisations();
     if (tab === "donations"     && donations.length     === 0) fetchDonations();
   }, [tab]);
+
+  useEffect(() => {
+    if (!token || (tab !== "payouts" && tab !== "organisations")) return;
+    fetchOrganisations();
+    const refresh = () => { fetchOrganisations(); };
+    window.addEventListener("focus", refresh);
+    return () => window.removeEventListener("focus", refresh);
+  }, [tab, token, fetchOrganisations]);
 
   async function handleApprove(id: string) {
     if (!confirm("Approve this application? This will create their organisation account and send an acceptance email.")) return;
@@ -389,7 +409,17 @@ export default function AdminPage() {
 
         {error && <p style={{ color: RED, marginBottom: 16 }}>{error}</p>}
 
-        {tab === "payouts" && <AdminPayouts token={token} onUnauthorized={logout} />}
+        {payoutNotice && <p role="status" style={{ color: RED_DEEP, marginBottom: 16 }}>{payoutNotice}</p>}
+        {tab === "payouts" && (
+          <>
+            <BankTransferApprovals organisations={organisations} loading={loadingOrgs} error={orgsError}
+              onRefresh={fetchOrganisations} onReview={(id) => {
+                const org = organisations.find(item => item._id === id);
+                if (org) openPayout(org);
+              }} />
+            <AdminPayouts token={token} onUnauthorized={logout} />
+          </>
+        )}
 
         {/* ── Applications tab ──────────────────────────────────────── */}
         {tab === "applications" && (
@@ -494,6 +524,7 @@ export default function AdminPage() {
               </button>
             </div>
 
+            {orgsError && <p role="alert" style={{ color: RED }}>{orgsError}</p>}
             {loadingOrgs ? (
               <div style={{ textAlign: "center", padding: "60px 0", color: "#888" }}>Loading…</div>
             ) : organisations.length === 0 ? (
@@ -607,10 +638,10 @@ export default function AdminPage() {
 
         {payoutOrg && (
           <div role="dialog" aria-modal="true" aria-labelledby="payout-editor-title" style={{ position: "fixed", inset: 0, background: "rgba(20,10,5,0.55)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-            <div style={{ width: "min(480px, 100%)", background: "#fff", borderRadius: 14, boxShadow: "0 20px 60px rgba(0,0,0,.25)" }}>
+            <div style={{ width: "min(480px, 100%)", maxHeight: "90vh", overflowY: "auto", background: "#fff", borderRadius: 14, boxShadow: "0 20px 60px rgba(0,0,0,.25)" }}>
               <div style={{ padding: "20px 24px", borderBottom: "1px solid #eee7dd", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div><h2 id="payout-editor-title" style={{ margin: 0, fontSize: 20 }}>Bank transfer payout</h2><p style={{ margin: "4px 0 0", color: "#777", fontSize: 13 }}>{payoutOrg.name}</p></div>
-                <button aria-label="Close" onClick={() => setPayoutOrg(null)} style={{ border: 0, background: "transparent", cursor: "pointer", padding: 6 }}><X size={20} /></button>
+                <button aria-label="Close" disabled={savingPayout} onClick={() => setPayoutOrg(null)} style={{ border: 0, background: "transparent", cursor: "pointer", padding: 6 }}><X size={20} /></button>
               </div>
               <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 14 }}>
                 <p style={{ margin: 0, fontSize: 13, color: "#555" }}>
@@ -621,14 +652,21 @@ export default function AdminPage() {
                 </div>
                 <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13, fontWeight: 700, color: "#444" }}>
                   Provider / payee label (optional)
-                  <input data-testid="input-manual-payout-label" maxLength={100} value={payoutLabel} onChange={(e) => setPayoutLabel(e.target.value)} placeholder="e.g. NCB Jamaica — payee saved 20 Oct" style={{ padding: "10px 12px", border: "1.5px solid #ddd5ca", borderRadius: 8, fontSize: 14 }} />
+                  <input data-testid="input-manual-payout-label" disabled={savingPayout} maxLength={100} value={payoutLabel} onChange={(e) => setPayoutLabel(e.target.value)} placeholder="e.g. NCB Jamaica — payee saved 20 Oct" style={{ padding: "10px 12px", border: "1.5px solid #ddd5ca", borderRadius: 8, fontSize: 14 }} />
                   <span style={{ fontSize: 11, fontWeight: 400, color: "#999" }}>{payoutLabel.length}/100</span>
                 </label>
-                {payoutError && <p style={{ margin: 0, color: RED, fontSize: 13 }}>{payoutError}</p>}
+                {!payoutOrg.payoutManualApproved && (
+                  <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 13, color: "#444" }}>
+                    <input type="checkbox" data-testid="checkbox-confirm-bank-arrangement" disabled={savingPayout}
+                      checked={payoutConfirmed} onChange={(event) => setPayoutConfirmed(event.target.checked)} />
+                    I have confirmed a way to pay this organisation by bank transfer outside Root ProjX.
+                  </label>
+                )}
+                {payoutError && <p role="alert" style={{ margin: 0, color: RED, fontSize: 13 }}>{payoutError}</p>}
               </div>
               <div style={{ borderTop: "1px solid #eee7dd", padding: "16px 24px", display: "flex", justifyContent: "flex-end", gap: 10 }}>
                 <button onClick={() => setPayoutOrg(null)} disabled={savingPayout} style={{ padding: "10px 16px", border: "1px solid #d8d0c5", borderRadius: 8, background: "#fff", cursor: "pointer" }}>Cancel</button>
-                <button data-testid="button-save-manual-payout" onClick={saveManualPayout} disabled={savingPayout || payoutLabel.length > 100} style={{ padding: "10px 18px", border: 0, borderRadius: 8, background: "#16a34a", color: "#fff", fontWeight: 800, cursor: savingPayout ? "wait" : "pointer", opacity: savingPayout ? .65 : 1 }}>
+                <button data-testid="button-save-manual-payout" onClick={saveManualPayout} disabled={savingPayout || !payoutConfirmed || payoutLabel.length > 100} style={{ padding: "10px 18px", border: 0, borderRadius: 8, background: "#16a34a", color: "#fff", fontWeight: 800, cursor: savingPayout ? "wait" : "pointer", opacity: savingPayout ? .65 : 1 }}>
                   {savingPayout ? "Saving…" : payoutOrg.payoutManualApproved ? "Save label" : "Approve bank transfer"}
                 </button>
               </div>
