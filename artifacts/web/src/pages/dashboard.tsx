@@ -45,6 +45,7 @@ const TYPE_COLORS: Record<string, string> = {
 
 export default function DashboardPage() {
   const { user, token } = useAuth();
+  const adminAccess = token?.startsWith("org-admin.") ?? false;
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const search = useSearch();
@@ -146,7 +147,7 @@ export default function DashboardPage() {
   // No flash: without an explicit ?tab, wait for walkthrough state, then Build for brand-new orgs.
   const deciding = !explicitTab && (tour.wtQ.isLoading || orgQ.isLoading || campaignsQ.isLoading);
   const tab = explicitTab ? urlTab : (tour.active ? "build" : "overview");
-  const setTab = (v: string) => setLocation(`/dashboard?tab=${v}`);
+  const setTab = (v: string) => setLocation(`${adminAccess ? `/admin/organisations/${orgId}/manage` : "/dashboard"}?tab=${v}`);
   const doneCount = tour.items.filter((i) => i.done).length;
   const updates = updatesQ.data ?? [];
   const campaigns = (campaignsQ.data ?? []).filter((c) => c.status !== "deleted");
@@ -232,7 +233,8 @@ export default function DashboardPage() {
           <PendingPayout key={`pending-${orgId}`} orgId={orgId} token={token!} />
 
           <div data-tour-id="payout-setup">
-          <PayoutSetup key={orgId} orgId={orgId} token={token!} totalRaised={org?.totalRaised ?? 0} connectComplete={connectComplete} />
+          {adminAccess ? <p className="text-sm text-muted-foreground">Manage payout approvals and settlement from Admin → Organisations and Payouts.</p> :
+            <PayoutSetup key={orgId} orgId={orgId} token={token!} totalRaised={org?.totalRaised ?? 0} connectComplete={connectComplete} />}
           </div>
 
           {/* ── Updates ────────────────────────────────────────────────────── */}

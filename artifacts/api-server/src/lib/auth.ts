@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
+import { resolveOrganisationAccess, organisationAccessAllows } from "./admin-organisation-access.js";
 import { firebaseLookup, fsGet, getServerToken } from "./firebase-rest.js";
 import {
   organisationAccessDecision,
@@ -35,6 +36,19 @@ async function resolveUser(token: string): Promise<AuthPayload | null> {
   return { userId: firebaseUser.uid, email: firebaseUser.email, accountType, approvalStatus };
 }
 
+async function resolveAdminOrganisation(req: Request, token: string): Promise<AuthPayload | null> {
+  const orgId = resolveOrganisationAccess(token);
+  if (!orgId || !organisationAccessAllows(orgId, req.method, req.originalUrl)) return null;
+  const serverToken = await getServerToken();
+  const org = await fsGet("organisations", orgId, serverToken);
+  if (!org) return null;
+  // Existing handlers sometimes pass the incoming bearer directly to Firestore.
+  // Substitute the server credential only after delegation and scope validation.
+  req.headers.authorization = `Bearer ${serverToken}`;
+  req.log?.info({ organisationId: orgId, method: req.method, path: req.path }, "Admin organisation access");
+  return { userId: orgId, email: "", accountType: "organisation", approvalStatus: "approved" };
+}
+
 export async function requireAuth(
   req: Request,
   res: Response,
@@ -47,7 +61,8 @@ export async function requireAuth(
   }
   try {
     const token = authHeader.slice(7);
-    const user = await resolveUser(token);
+    const user = token.startsWith("org-admin.")
+      ? await resolveAdminOrganisation(req, token) : await resolveUser(token);
     if (!user) {
       res.status(401).json({ error: "Unauthorized — invalid or expired token" });
       return;
@@ -125,7 +140,8 @@ export async function optionalAuth(
   }
   try {
     const token = authHeader.slice(7);
-    const user = await resolveUser(token);
+    const user = token.startsWith("org-admin.")
+      ? await resolveAdminOrganisation(req, token) : await resolveUser(token);
     if (user) req.user = user;
   } catch {
     // ignore — optional

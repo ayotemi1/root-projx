@@ -22,6 +22,7 @@ import OrgDashboardPage from "@/pages/org-dashboard";
 import DonatePage from "@/pages/donate";
 import DonateSuccessPage from "@/pages/donate-success";
 import DashboardPage from "@/pages/dashboard";
+import { AdminOrganisationAccess } from "@/components/admin-organisation-access";
 import LoginPage from "@/pages/login";
 import RegisterPage from "@/pages/register";
 import ShopPage from "@/pages/shop";
@@ -103,6 +104,7 @@ function AppRoutes() {
       <Route path="/onboarding" component={OnboardingPage} />
 
       {/* Admin — standalone, no navbar/footer */}
+      <Route path="/admin/organisations/:id/manage" component={DashboardPage} />
       <Route path="/admin/login" component={AdminLoginPage} />
       <Route path="/admin" component={AdminPage} />
 
@@ -162,7 +164,7 @@ function App() {
         <CartProvider>
           <TooltipProvider>
             <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-              <AppRoutes />
+              <AdminOrganisationAccess><AppRoutes /></AdminOrganisationAccess>
             </WouterRouter>
             <Toaster />
           </TooltipProvider>

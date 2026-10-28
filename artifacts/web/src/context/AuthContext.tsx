@@ -32,6 +32,7 @@ interface AuthContextValue {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
+export const OrganisationAccessProvider = AuthContext.Provider;
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<ApiUser | null>(null);

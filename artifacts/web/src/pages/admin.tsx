@@ -130,8 +130,8 @@ function formatDate(iso: string | null | undefined): string {
   return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 
-function Avatar({ name, size = 44 }: { name: string; size?: number }) {
-  const initials = name.trim().split(" ").filter(Boolean).map((w) => w[0]!.toUpperCase()).slice(0, 2).join("") || "?";
+function Avatar({ name, size = 44 }: { name?: string; size?: number }) {
+  const initials = (name ?? "").trim().split(" ").filter(Boolean).map((w) => w[0]!.toUpperCase()).slice(0, 2).join("") || "?";
   return (
     <div style={{
       width: size, height: size, borderRadius: "50%",
@@ -556,7 +556,7 @@ export default function AdminPage() {
                           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                             <Avatar name={org.name} size={32} />
                             <div>
-                              <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: "#1a1a1a" }}>{org.name}</p>
+                              <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: "#1a1a1a" }}>{org.name || "Unnamed organisation"}</p>
                               {org.verified && (
                                 <span style={{ fontSize: 10, color: "#059669", fontWeight: 700 }}>✓ Verified</span>
                               )}
@@ -583,6 +583,7 @@ export default function AdminPage() {
                         </td>
                         <td style={{ ...TD, fontSize: 13, color: "#888" }}>{formatDate(org.createdAt)}</td>
                          <td style={TD}>
+                           <a href={`${import.meta.env.BASE_URL}admin/organisations/${org._id}/manage?tab=overview`} className="block mb-2 font-bold underline" style={{ color: RED_DEEP }}>Open dashboard</a>
                            <button onClick={() => openOrgEditor(org)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 10px", border: "1px solid #d8d0c5", borderRadius: 7, background: "#fff", color: RED_DEEP, fontWeight: 700, cursor: "pointer" }}>
                              <Pencil size={13} /> Edit profile
                            </button>

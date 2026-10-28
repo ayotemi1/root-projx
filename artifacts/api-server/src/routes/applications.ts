@@ -1,5 +1,6 @@
 import { Router } from "express";
 import crypto from "crypto";
+import { createOrganisationAccess } from "../lib/admin-organisation-access.js";
 import { getAdminTokenValue, requireAdmin } from "../lib/admin-auth.js";
 import { activePayoutMethod, manualPayoutLabel } from "../lib/payout-setup.js";
 import {
@@ -433,6 +434,22 @@ router.get("/admin/supporters", requireAdmin, async (req, res) => {
 // ── Admin: organisations ───────────────────────────────────────────────────────
 
 // GET /admin/organisations — all approved orgs, sorted by name
+router.post("/admin/organisations/:id/access", requireAdmin, async (req, res): Promise<void> => {
+  const id = String(req.params.id);
+  if (!/^[\w-]+$/.test(id)) {
+    res.status(400).json({ error: "Invalid organisation ID" });
+    return;
+  }
+  const org = await fsGet("organisations", id, await getServerToken());
+  if (!org) {
+    res.status(404).json({ error: "Organisation not found" });
+    return;
+  }
+  res.setHeader("Cache-Control", "no-store");
+  req.log.info({ organisationId: id }, "Admin opened organisation dashboard");
+  res.json({ token: createOrganisationAccess(id), name: typeof org.name === "string" && org.name ? org.name : "Unnamed organisation", orgId: id });
+});
+
 router.get("/admin/organisations", requireAdmin, async (req, res) => {
   try {
     const serverToken = await getServerToken();
