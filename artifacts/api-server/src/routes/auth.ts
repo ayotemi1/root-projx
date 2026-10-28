@@ -1,9 +1,11 @@
 import { Router } from "express";
+import { PASSWORD_RESET_MESSAGE, passwordResetEmail } from "../lib/password-reset.js";
 import type { Request, Response, NextFunction } from "express";
 import {
   firebaseSignUp,
   firebaseSignIn,
   firebaseUpdateProfile,
+  firebaseSendPasswordResetEmail,
   fsGet,
   fsPatch,
   getServerToken,
@@ -31,9 +33,9 @@ async function effectiveApprovalStatus(
 // Limits repeated attempts from a single IP to prevent brute-force attacks.
 // State is per-process; a restart clears it (acceptable for our scale).
 interface RateBucket { count: number; resetAt: number }
-const rateBuckets = new Map<string, RateBucket>();
 
 function makeRateLimiter(maxRequests: number, windowMs: number) {
+  const rateBuckets = new Map<string, RateBucket>();
   return function rateLimiter(req: Request, res: Response, next: NextFunction): void {
     const ip = (req.headers["x-forwarded-for"] as string | undefined)?.split(",")[0]?.trim()
       ?? req.socket.remoteAddress
@@ -55,6 +57,29 @@ function makeRateLimiter(maxRequests: number, windowMs: number) {
 
 // 10 attempts per 15 minutes on auth endpoints
 const authRateLimit = makeRateLimiter(10, 15 * 60 * 1000);
+const passwordResetRateLimit = makeRateLimiter(5, 15 * 60 * 1000);
+
+// Firebase owns token generation, expiry, single use and the new-password form.
+// Never look up accounts or disclose whether a particular address is registered.
+router.post("/auth/forgot-password", passwordResetRateLimit, async (req, res) => {
+  const email = passwordResetEmail(req.body);
+  if (!email) {
+    res.status(400).json({ error: "Enter a valid email address." });
+    return;
+  }
+  try {
+    await firebaseSendPasswordResetEmail(email);
+  } catch (err) {
+    const code = (err as { firebaseCode?: string }).firebaseCode;
+    if (code !== "EMAIL_NOT_FOUND") {
+      // Do not put email addresses, passwords, tokens or provider payloads in logs.
+      req.log?.error("Firebase password reset could not be requested");
+      res.status(503).json({ error: "We couldn't send a reset link right now. Please try again later." });
+      return;
+    }
+  }
+  res.json({ message: PASSWORD_RESET_MESSAGE });
+});
 
 function avatarInitials(name: string): string {
   return name

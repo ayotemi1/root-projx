@@ -146,6 +146,17 @@ Without consent the payment remains anonymous; never infer a public name from
 billing details or email. Public responses contain no donor contact details,
 payment references or identity hashes. Campaign pages refresh this list while open.
 
+### Password recovery
+
+Web sign-in links to `/forgot-password`, which requests
+`POST /api/auth/forgot-password`. Organisation and supporter accounts both use
+the existing Firebase reset-email flow and Firebase-hosted new-password page.
+Do not retrieve, display or set users' passwords through administrator tooling.
+Registered and unknown addresses receive identical confirmation; malformed
+input is rejected and requests are limited separately from sign-in attempts.
+Email-provider failures remain explicit retryable errors. Verify using mocked
+Firebase/email calls, not by resetting a real organisation account.
+
 **Accounting follow-up before publication:** destination-charge Checkout still
 sets Stripe `application_fee_amount` to the platform fee alone. That does not
 withhold the processing estimate used by the canonical `toOrgGbp` model. The

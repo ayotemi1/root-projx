@@ -44,6 +44,7 @@ import type {
   OrgPayoutSummary,
   Organisation,
   OrganisationRunningSummary,
+  PasswordResetRequest,
   PayoutOverview,
   PayoutRunResult,
   PayoutSettlementInput,
@@ -53,6 +54,7 @@ import type {
   RecordOrganisationPreviewOpen200,
   RegisterRequest,
   RequestCampaignWritingSuggestion200,
+  RequestPasswordReset200,
   SaveCampaignDraft400,
   SaveOrganisationWalkthrough200,
   SubmitHelpReviewRequest,
@@ -73,6 +75,93 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+/**
+ * Rate-limited. Returns the same confirmation for registered and unknown addresses. Firebase handles expiring reset links and the new-password form.
+ * @summary Request a Firebase password-reset email
+ */
+export const getRequestPasswordResetUrl = () => {
+  return `/api/auth/forgot-password`;
+};
+
+export const requestPasswordReset = async (
+  passwordResetRequest: PasswordResetRequest,
+  options?: RequestInit,
+): Promise<RequestPasswordReset200> => {
+  return customFetch<RequestPasswordReset200>(getRequestPasswordResetUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(passwordResetRequest),
+  });
+};
+
+export const getRequestPasswordResetMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestPasswordReset>>,
+    TError,
+    { data: BodyType<PasswordResetRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof requestPasswordReset>>,
+  TError,
+  { data: BodyType<PasswordResetRequest> },
+  TContext
+> => {
+  const mutationKey = ["requestPasswordReset"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof requestPasswordReset>>,
+    { data: BodyType<PasswordResetRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return requestPasswordReset(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RequestPasswordResetMutationResult = NonNullable<
+  Awaited<ReturnType<typeof requestPasswordReset>>
+>;
+export type RequestPasswordResetMutationBody = BodyType<PasswordResetRequest>;
+export type RequestPasswordResetMutationError = ErrorType<void>;
+
+/**
+ * @summary Request a Firebase password-reset email
+ */
+export const useRequestPasswordReset = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestPasswordReset>>,
+    TError,
+    { data: BodyType<PasswordResetRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof requestPasswordReset>>,
+  TError,
+  { data: BodyType<PasswordResetRequest> },
+  TContext
+> => {
+  return useMutation(getRequestPasswordResetMutationOptions(options));
+};
 
 /**
  * Supports a signed-in donor or a guest supplying guestEmail. Account names and privacy preferences are read server-side for signed-in donors.

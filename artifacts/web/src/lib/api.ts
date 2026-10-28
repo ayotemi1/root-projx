@@ -791,6 +791,9 @@ export const getMyRecurringDonations = (token: string) =>
 export const createPortalSession = (token: string) =>
   req<{ url: string }>("/donations/portal", { method: "POST" }, token);
 
+export const requestPasswordReset = (email: string) =>
+  req<{ message: string }>("/auth/forgot-password", { method: "POST", body: JSON.stringify({ email }) });
+
 export const createDonationCheckout = (
   data: {
     orgId: string;

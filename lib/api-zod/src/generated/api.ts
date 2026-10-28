@@ -8,6 +8,20 @@
 import * as zod from "zod";
 
 /**
+ * Rate-limited. Returns the same confirmation for registered and unknown addresses. Firebase handles expiring reset links and the new-password form.
+ * @summary Request a Firebase password-reset email
+ */
+export const requestPasswordResetBodyEmailMax = 254;
+
+export const RequestPasswordResetBody = zod.object({
+  email: zod.string().email().max(requestPasswordResetBodyEmailMax),
+});
+
+export const RequestPasswordResetResponse = zod.object({
+  message: zod.string(),
+});
+
+/**
  * Supports a signed-in donor or a guest supplying guestEmail. Account names and privacy preferences are read server-side for signed-in donors.
  * @summary Create a donation Checkout session with optional public-name consent
  */

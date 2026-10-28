@@ -5,6 +5,11 @@
  * Root ProjX API — community giving platform
  * OpenAPI spec version: 0.1.0
  */
+export interface PasswordResetRequest {
+  /** @maxLength 254 */
+  email: string;
+}
+
 export interface DonationCheckoutInput {
   orgId: string;
   campaignId?: string;
@@ -746,6 +751,10 @@ export interface UpdateProfileRequest {
   email?: string;
   phone?: string;
 }
+
+export type RequestPasswordReset200 = {
+  message: string;
+};
 
 export type SaveOrganisationWalkthrough200 = {
   walkthrough?: WalkthroughProgress;
