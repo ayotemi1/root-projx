@@ -68,13 +68,13 @@ export const TOUR_STEPS: TourStep[] = [
     title: "Impact numbers (optional)", body: "Donors see these as big numbers on your profile — people reached, ground covered. Save one, or skip for now." },
   { id: "p-payout", tour: "profile", anchor: "payout-setup", place: { tab: "profile" }, skippable: false,
     completionCheck: (c) => !!c.wt?.payoutSetupSelected,
-    title: "How you get paid", body: "Choose how donations reach you. This can't be skipped — without it, money has nowhere to go." },
+    title: "How you get paid", body: "Choose how donations reach you. You can return to this later, but an approved payout method is required before you can publish a campaign." },
   { id: "p-preview", tour: "profile", anchor: "profile-view-public", place: { tab: "build" }, skippable: false,
     completionCheck: (c) => !!c.wt?.profilePreviewedAt,
     title: "See it as a donor", body: "Open your profile exactly as a donor will see it. It opens in a new tab — come back here when you've looked." },
   { id: "p-handoff", tour: "profile", anchor: null, place: { tab: "build" }, skippable: false, completionCheck: null, actionLabel: "Build a campaign",
-    title: "Your profile is ready",
-    body: "Now let's build something to raise for." },
+    title: "Next: your first campaign",
+    body: "Let's build something to raise for. Anything you skipped stays on your setup checklist so you can come back to it." },
 
   // ── Tour 2: Your first campaign ─────────────────────────────────────────
   { id: "c-create", tour: "campaign", anchor: "campaign-new", place: { tab: "campaigns" }, skippable: false,

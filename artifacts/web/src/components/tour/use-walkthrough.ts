@@ -6,7 +6,7 @@ import "driver.js/dist/driver.css";
 import "./tour.css";
 import * as api from "@/lib/api";
 import type { Campaign, Org, WalkthroughProgress, WalkthroughState } from "@/lib/api";
-import { gate, skipGate, worstSaveState, type Gate } from "@/lib/tour/gate";
+import { gate, navigationSkipGate, worstSaveState, type Gate } from "@/lib/tour/gate";
 import { checklist, stepsFor, type TourCtx, type TourId, type TourStep } from "@/lib/tour/steps";
 
 const QUEUE_KEY = (orgId: string) => `rpx_walkthrough_queue_${orgId}`;
@@ -234,7 +234,7 @@ export function useWalkthrough({ orgId, token, org, campaigns, explicitTab }: {
           .forEach((n) => states.push(n.getAttribute("data-save-state")));
       }
       const input = { checkPassed: check ? check(ctxRef.current) : null, alert, saveState: worstSaveState(states) };
-      return skipping ? skipGate({ ...input, skippable: step.skippable }) : gate(input);
+      return skipping ? navigationSkipGate(input) : gate(input);
     };
     const tryNext = () => {
       const g = readGate();
@@ -289,9 +289,10 @@ export function useWalkthrough({ orgId, token, org, campaigns, explicitTab }: {
             later.setAttribute("data-testid", "button-tour-finish-later");
             later.onclick = () => handlers.current.finishLater();
             foot.appendChild(later);
-            if (step.skippable) {
+            {
               const skip = document.createElement("button");
-              skip.type = "button"; skip.className = "rpx-tour-btn"; skip.textContent = "Skip";
+              skip.type = "button"; skip.className = "rpx-tour-btn"; skip.textContent =
+                active.tour === "campaign" && active.step === total ? "Finish walkthrough" : "Skip to next step";
               skip.setAttribute("data-testid", "button-tour-skip");
               skip.onclick = () => {
                 const g = readGate(true);
@@ -358,7 +359,7 @@ export function useWalkthrough({ orgId, token, org, campaigns, explicitTab }: {
         }
         if (Date.now() - started > 6000 && shownFor !== null) {
           render(null);
-          if (statusEl) statusEl.textContent = "We can't find this on screen yet. It may still be loading — or tap Finish later and use the checklist.";
+          if (statusEl) statusEl.textContent = "We can't find this on screen yet. It may still be loading — skip to the next step, or tap Finish later and use the checklist.";
         }
         return;
       }

@@ -28,6 +28,13 @@ export function skipGate(input: GateInput & { skippable: boolean }): Gate {
   return gate({ ...input, checkPassed: null });
 }
 
+/** Browse past any tour step without completing its saved-data requirement.
+ * Publication/checklist checks stay unchanged; failed or pending edits still block.
+ */
+export function navigationSkipGate(input: GateInput): Gate {
+  return gate({ ...input, checkPassed: null });
+}
+
 const STATES = new Set(["idle", "dirty", "saving", "saved", "error"]);
 /** Worst save state among elements: error > saving > dirty > saved/idle. */
 export function worstSaveState(states: (string | null | undefined)[]): EditorSaveState {

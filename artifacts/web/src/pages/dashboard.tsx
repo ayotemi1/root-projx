@@ -194,7 +194,7 @@ export default function DashboardPage() {
         <p role="alert" className="text-xs text-destructive bg-destructive/10 rounded-lg px-3 py-2" data-testid="text-tour-sync-error">{tour.syncError}</p>
       )}
 
-      <div className="flex justify-end gap-2 -mb-3">
+      <div className="flex flex-wrap justify-end gap-2 pb-2">
         {tour.allDone && !tour.active && tour.unfinished && (
           <Button variant="outline" size="sm" className="h-8 text-xs font-bold" onClick={tour.resume} data-testid="button-resume-walkthrough-compact">
             <Compass className="w-3.5 h-3.5 mr-1" /> Resume walkthrough

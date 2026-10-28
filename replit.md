@@ -158,7 +158,9 @@ active goal as well as the three impact metrics. Monetary examples use the share
 accounting helper; never describe organisation proceeds as a blanket percentage.
 
 The guided setup uses Driver.js and declarative, stable-anchor steps. It checks
-saved content, not typing or clicking Next; payout selection cannot be skipped.
+saved content, not typing or clicking Next. Every walkthrough step can be browsed
+past with "Skip to next step"; this never completes missing content or bypasses
+publication/payout gates. Failed, pending or unsaved edits still block skipping.
 Preview steps require recorded opens. Exit/resume/replay progress lives on the
 organisation document, separate from editable content and financial fields.
 Pending progress remains in memory even if device storage fails, and only the

@@ -5,9 +5,10 @@ type Check = (c: never) => boolean;
 type Step = { id: string; skippable: boolean; completionCheck: Check | null; helper?: (c: never) => unknown };
 const gateUrl = new URL("../../../web/src/lib/tour/gate.ts", import.meta.url).href;
 const stepsUrl = new URL("../../../web/src/lib/tour/steps.ts", import.meta.url).href;
-const { gate, skipGate, worstSaveState } = (await import(gateUrl)) as {
+const { gate, skipGate, navigationSkipGate, worstSaveState } = (await import(gateUrl)) as {
   gate: (i: { checkPassed: boolean | null; alert: string | null; saveState: string | null }) => { ok: boolean; reason?: string; message?: string };
   skipGate: (i: { skippable: boolean; checkPassed: boolean | null; alert: string | null; saveState: string | null }) => { ok: boolean; reason?: string };
+  navigationSkipGate: (i: { checkPassed: boolean | null; alert: string | null; saveState: string | null }) => { ok: boolean; reason?: string };
   worstSaveState: (s: (string | null)[]) => string | null;
 };
 const { TOUR_STEPS } = (await import(stepsUrl)) as { TOUR_STEPS: Step[] };
@@ -15,6 +16,23 @@ const { TOUR_STEPS } = (await import(stepsUrl)) as { TOUR_STEPS: Step[] };
 const S = (id: string) => TOUR_STEPS.find((s) => s.id === id)!;
 const camp = { _id: "c1", enabled: false, status: "draft" } as never;
 const ctx = (over: Record<string, unknown> = {}) => ({ org: undefined, campaigns: [], campaign: undefined, wt: undefined, ...over }) as never;
+
+test("every walkthrough step can be browsed past without completing its saved-data check", () => {
+  for (const step of TOUR_STEPS) {
+    const before = step.completionCheck?.(ctx());
+    assert.equal(navigationSkipGate({ checkPassed: before ?? null, alert: null, saveState: null }).ok, true, step.id);
+    assert.equal(step.completionCheck?.(ctx()), before, `${step.id} completion stays unchanged`);
+  }
+  assert.equal(S("p-logo").completionCheck!(ctx()), false);
+  assert.equal(S("p-payout").completionCheck!(ctx()), false);
+});
+
+test("skip to next step never ignores errors or unsaved edits", () => {
+  for (const saveState of ["dirty", "saving", "error"]) {
+    assert.equal(navigationSkipGate({ checkPassed: false, alert: null, saveState }).ok, false);
+  }
+  assert.equal(navigationSkipGate({ checkPassed: false, alert: "Upload failed", saveState: "saved" }).ok, false);
+});
 
 test("gate blocks on error, alert, saving and dirty even when the check passes", () => {
   assert.equal(gate({ checkPassed: true, alert: null, saveState: "saved" }).ok, true);
