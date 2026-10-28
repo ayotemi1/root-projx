@@ -5,6 +5,7 @@ import { getUncachableStripeClient, getStripePublishableKey } from "../lib/strip
 import { MIN_DONATION_PENCE, PLATFORM_FEE_PERCENT, platformFeePence, donationAccounting } from "../lib/fees.js";
 import { resolvePayoutMethod } from "../lib/payout-setup.js";
 import { publicSiteOrigin } from "../lib/site-origin.js";
+import { checkoutWallMetadata, DonorWallInputError } from "../lib/donor-wall.js";
 
 const DOMAIN = publicSiteOrigin(process.env);
 
@@ -174,6 +175,7 @@ router.post("/donations/anonymous-checkout", async (req, res) => {
     const metadata = {
       userId: "anonymous", payoutMethod,
       ...anonymousIdentityMetadata(req.body),
+      ...checkoutWallMetadata(req.body),
       orgId, orgName: (org["name"] as string) ?? "",
       amountPence: String(amountPence), feePence: String(feePence),
       intendedGbp: String(basePence! / 100),
@@ -213,6 +215,9 @@ router.post("/donations/anonymous-checkout", async (req, res) => {
 
     res.json({ url: session.url, sessionId: session.id });
   } catch (err) {
+    if (err instanceof DonorWallInputError) {
+      res.status(400).json({ error: err.message }); return;
+    }
     req.log.error({ err }, "POST /donations/anonymous-checkout error");
     res.status(500).json({ error: "Failed to create checkout session" });
   }
@@ -373,7 +378,7 @@ router.post("/donations/subscription", requireAuth, async (req, res) => {
 // Supports both authenticated users and guests (with guestEmail in body).
 router.post("/donations/checkout", optionalAuth, async (req, res) => {
   try {
-    const { orgId, amountPence, guestEmail, feeCovered, originalAmountPence, feeAmountPence, wallOptIn, campaignId } = req.body as {
+    const { orgId, amountPence, guestEmail, feeCovered, originalAmountPence, feeAmountPence, campaignId } = req.body as {
       orgId: string;
       amountPence: number;
       guestEmail?: string;
@@ -445,7 +450,7 @@ router.post("/donations/checkout", optionalAuth, async (req, res) => {
       originalAmountPence: String(basePence),
       feeAmountPence: String(feeAmountPence ?? 0),
       platform: "rootprojx",
-      wallOptIn: (wallOptIn && uid) ? "true" : "false",
+      ...checkoutWallMetadata(req.body, !!uid),
       ...(campaignId ? { campaignId } : {}),
     };
 
@@ -481,6 +486,9 @@ router.post("/donations/checkout", optionalAuth, async (req, res) => {
 
     res.json({ url: session.url, sessionId: session.id });
   } catch (err) {
+    if (err instanceof DonorWallInputError) {
+      res.status(400).json({ error: err.message }); return;
+    }
     req.log.error({ err }, "POST /donations/checkout error");
     res.status(500).json({ error: "Failed to create checkout session" });
   }

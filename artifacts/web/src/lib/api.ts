@@ -460,7 +460,32 @@ export interface CampaignGate {
   step: number;
 }
 
+/** Optional editorial copy for a campaign page. Every key is optional; absent keys keep defaults. */
+export interface CampaignPageContent {
+  storyHeading?: string;
+  programmeHeading?: string;
+  programmeIntro?: string;
+  programmeSummary?: string;
+  programmeAfterword?: string;
+  outcomesIntro?: string;
+  outcomesNote?: string;
+  outcomesStatus?: string;
+  supportHeading?: string;
+  supportBody?: string;
+  cohortHeading?: string;
+  cohortBody?: string;
+  cohortNote?: string;
+  fundingNote?: string;
+  organisationNote?: string;
+  supportersHeading?: string;
+  shareHeading?: string;
+  shareBody?: string;
+  donateLabel?: string;
+  [key: string]: string | undefined;
+}
+
 export interface Campaign {
+  pageContent?: CampaignPageContent | null;
   _id: string;
   name: string;
   description: string;
@@ -528,6 +553,7 @@ export interface CampaignEditorPatch {
   editorStep?: CampaignEditorStep;
   partnerFundingAnswer?: "yes" | "no" | null;
   unitChosen?: boolean;
+  pageContent?: CampaignPageContent | null;
 }
 
 export interface PublicCampaignLanding {
@@ -775,6 +801,7 @@ export const createDonationCheckout = (
     originalAmountPence?: number;
     feeAmountPence?: number;
     wallOptIn?: boolean;
+    donorName?: string;
     anonymousDonorId?: string;
   },
   token?: string,

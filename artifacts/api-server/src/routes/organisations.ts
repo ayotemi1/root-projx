@@ -384,6 +384,7 @@ export function publicCampaignFields(campaign: Record<string, unknown>): Record<
     updatedAt: campaign["updatedAt"] ?? null,
     theme: parseCampaignTheme(campaign["theme"]),
     tagline: campaign.tagline ?? "",
+    pageContent: campaign.pageContent ?? null,
     partnerFunding: partnerFundingFor(campaign),
     partnerFundingMatchedGbp: typeof campaign.partnerFundingMatchedGbp === "number" ? campaign.partnerFundingMatchedGbp : 0,
     breakdown: Array.isArray(campaign.breakdown) ? campaign.breakdown : [],

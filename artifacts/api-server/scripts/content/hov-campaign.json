@@ -1,0 +1,37 @@
+{
+  "tagline": "People learning a trade after Hurricane Melissa, so they can earn a living again and help their communities rebuild.",
+  "description": "Hurricane Melissa damaged homes. It also damaged livelihoods: the work and the income that families depend on.\n\nEmergency relief meets the urgent needs. Getting an income back and rebuilding economic stability take longer, and need a different kind of support.\n\nThe skills, effort and ambition are already here. This programme gives people the training and the time to turn them into a living.",
+  "breakdown": [
+    { "label": "Construction", "detail": "Building and repair skills people can earn from, and use to help put homes and community buildings back together." },
+    { "label": "Wood processing", "detail": "Working with timber, including reclaiming usable wood after storm damage, as a trade in its own right and for rebuilding." },
+    { "label": "Garment making", "detail": "Cutting, sewing and finishing: a trade people can earn from, whether working for others or for themselves." }
+  ],
+  "phases": [
+    { "id": "participants-training", "title": "Participants in training", "description": "Training places, ready for the people who will fill them.", "completed": false },
+    { "id": "participants-completing", "title": "Participants completing their training", "description": "Training in construction, woodworking or garment-making.", "completed": false },
+    { "id": "projects-completed", "title": "Projects completed", "description": "Practical projects trainees will complete as they learn.", "completed": false },
+    { "id": "participants-earning", "title": "Participants earning from their trade", "description": "Paid work following the programme.", "completed": false },
+    { "id": "parents-childcare", "title": "Parents accessing childcare", "description": "On-site childcare for parents while they train.", "completed": false }
+  ],
+  "pageContent": {
+    "storyHeading": "The storm took more than roofs",
+    "programmeHeading": "Learning a trade, rebuilding a living",
+    "programmeIntro": "Humanity Ova Vanity's vocational programme offers hands-on training in construction, wood processing and garment making. Each gives people practical skills they can use to earn, and to contribute to their communities.",
+    "programmeSummary": "Open to men and women · childcare on site so parents can take part",
+    "programmeAfterword": "Construction and wood-processing skills also stay in the community after training ends. They can support repairs, rebuilding and the reclaiming of usable materials, and strengthen how communities respond when the next storm comes. Across all three trades, the purpose is the same: getting people earning again.",
+    "outcomesIntro": "Your support helps people develop practical skills, earn from their trade and build opportunities within their communities. It also helps parents access childcare so they can take part.\n\nAs the programme progresses, we'll share updates here so you can follow what we're achieving together.",
+    "outcomesNote": "These are intended outcomes for the planned cohort, not results already achieved. Cohort dates and training targets are still to be confirmed.",
+    "outcomesStatus": "Training is planned",
+    "supportHeading": "Help make this training possible",
+    "supportBody": "Your donation goes toward training for this cohort, including childcare on site so parents can take part. When you give, your handprint joins the wall alongside everyone else who has.",
+    "cohortHeading": "A new cohort every quarter",
+    "cohortBody": "Humanity Ova Vanity plans to run this programme every quarter, welcoming a new group of trainees each time. Out of Many Hands is the ongoing campaign behind it.",
+    "cohortNote": "You're supporting the planned training programme. Cohort dates are still to be confirmed. Funding progress shows donations to this campaign; the hand wall counts everyone who has given. Each donation is a one-off gift.",
+    "fundingNote": "The High Commission of Canada has already secured about half of the funding for this round of training. Donations help close the remaining gap. Exact funding amounts are still to be confirmed.",
+    "organisationNote": "Humanity Ova Vanity runs this programme and is responsible for how campaign funds are used and for sharing programme updates. Root ProjX provides the fundraising platform and helps create this campaign page.",
+    "supportersHeading": "The latest hands",
+    "shareHeading": "Out of many, one people.",
+    "shareBody": "Share the campaign. Help it reach further.",
+    "donateLabel": "Support the training"
+  }
+}

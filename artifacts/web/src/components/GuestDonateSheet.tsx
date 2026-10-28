@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { GuestDonorWallChoice } from "./guest-donor-wall-choice";
 import { Link } from "wouter";
 import { X, Heart } from "lucide-react";
 import { partnerMatch, ratioLabel } from "@/lib/partner-funding";
@@ -23,8 +24,9 @@ interface Props {
   partnerFundingMatchedGbp?: number;
 }
 
-export function guestCheckoutBody(orgId: string, amountPence: number, campaignId: string | undefined, anonymousDonorId?: string) {
-  return { orgId, amountPence, ...(campaignId ? { campaignId } : {}), anonymousDonorId };
+export function guestCheckoutBody(orgId: string, amountPence: number, campaignId: string | undefined, anonymousDonorId?: string, wallOptIn = false, donorName = "") {
+  return { orgId, amountPence, ...(campaignId ? { campaignId } : {}), anonymousDonorId,
+    ...(wallOptIn ? { wallOptIn: true, donorName: donorName.trim() } : {}) };
 }
 
 export function GuestDonateSheet({ open, onClose, orgId, orgName, campaignId, campaignName, partnerFunding, partnerFundingMatchedGbp }: Props) {
@@ -32,6 +34,8 @@ export function GuestDonateSheet({ open, onClose, orgId, orgName, campaignId, ca
   const [custom, setCustom] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [wallOptIn, setWallOptIn] = useState(false);
+  const [donorName, setDonorName] = useState("");
 
   if (!open) return null;
 
@@ -52,18 +56,20 @@ export function GuestDonateSheet({ open, onClose, orgId, orgName, campaignId, ca
     setCustom("");
     setError("");
     setLoading(false);
+    setWallOptIn(false); setDonorName("");
     onClose();
   }
 
   async function handleDonate() {
     if (!valid || loading) return;
+    if (wallOptIn && !donorName.trim()) { setError("Enter your name or leave name sharing unchecked."); return; }
     setError("");
     setLoading(true);
     try {
       const res = await fetch("/api/donations/anonymous-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(guestCheckoutBody(orgId, amountPence, campaignId, getAnonymousDonorId())),
+        body: JSON.stringify(guestCheckoutBody(orgId, amountPence, campaignId, getAnonymousDonorId(), wallOptIn, donorName)),
       });
       const data = await res.json() as { url?: string; error?: string };
       if (!res.ok || !data.url) {
@@ -188,6 +194,7 @@ export function GuestDonateSheet({ open, onClose, orgId, orgName, campaignId, ca
             <p data-testid="text-match-claimed" style={{ fontSize: 12, color: "#555", margin: "0 0 10px" }}>Matching has been fully claimed.</p>
           )}
 
+          <GuestDonorWallChoice optedIn={wallOptIn} name={donorName} onOptIn={setWallOptIn} onName={setDonorName} />
           {/* Summary */}
           {amountGbp > 0 && (
             <div style={{ background: "rgba(245,184,0,0.1)", borderRadius: 10, padding: "10px 14px", marginBottom: 14, textAlign: "center" }}>

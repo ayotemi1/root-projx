@@ -33,9 +33,9 @@ export default function CampaignLandingPage() {
     refetchInterval: (q) => {
       const c = q.state.data?.campaign;
       const pf = c?.partnerFunding;
-      if (pf?.type !== "matching") return false;
+      if (pf?.type !== "matching") return 20_000;
       const cap = pf.matchCap && pf.matchCap > 0 ? pf.matchCap : pf.amount;
-      return (c?.partnerFundingMatchedGbp ?? 0) < cap ? 5000 : false;
+      return (c?.partnerFundingMatchedGbp ?? 0) < cap ? 5000 : 20_000;
     },
     refetchOnWindowFocus: "always",
   });

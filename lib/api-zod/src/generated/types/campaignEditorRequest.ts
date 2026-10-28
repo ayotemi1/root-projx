@@ -7,6 +7,7 @@
  */
 import type { CampaignEditorRequestBreakdownItem } from "./campaignEditorRequestBreakdownItem";
 import type { CampaignEditorRequestLocationsItem } from "./campaignEditorRequestLocationsItem";
+import type { CampaignEditorRequestPageContent } from "./campaignEditorRequestPageContent";
 import type { CampaignEditorRequestPartnerFunding } from "./campaignEditorRequestPartnerFunding";
 import type { CampaignEditorRequestPartnerFundingAnswer } from "./campaignEditorRequestPartnerFundingAnswer";
 import type { CampaignEditorRequestTheme } from "./campaignEditorRequestTheme";
@@ -20,6 +21,8 @@ export interface CampaignEditorRequest {
   tagline?: string;
   /** @maxLength 20000 */
   description?: string;
+  /** Optional plain-text editorial sections for the shared campaign page. No financial totals or HTML. */
+  pageContent?: CampaignEditorRequestPageContent;
   type?: CampaignEditorRequestType;
   /** @minimum 0 */
   goal?: number;

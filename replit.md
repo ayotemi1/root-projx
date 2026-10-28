@@ -131,6 +131,21 @@ Public pages retain the canonical £3 fee example.
 Recorded donation receipts link back to the campaign with a one-time unit
 highlight; client code never fabricates an increased supporter count.
 
+Campaign `pageContent` optionally holds plain-text editorial section headings,
+programme details, intended-outcome context, cohort plans and sharing copy.
+Both owner preview and public pages use it; sparse campaigns keep their defaults.
+The HOV PDF copy is retained in `artifacts/api-server/scripts/content/hov-campaign.json`.
+Its sync script is dry-run by default, preserves financial fields and publication,
+and saves private revisions rather than silently replacing a published version.
+Illustrative PDF figures and placeholder people/photos are not imported as facts.
+
+Campaign recent-donor walls show the latest six distinct donors, newest first,
+using successful campaign-attributed payments only. Guest names require explicit
+`wallOptIn` and are reduced to first name/last initial before Stripe metadata.
+Without consent the payment remains anonymous; never infer a public name from
+billing details or email. Public responses contain no donor contact details,
+payment references or identity hashes. Campaign pages refresh this list while open.
+
 **Accounting follow-up before publication:** destination-charge Checkout still
 sets Stripe `application_fee_amount` to the platform fee alone. That does not
 withhold the processing estimate used by the canonical `toOrgGbp` model. The

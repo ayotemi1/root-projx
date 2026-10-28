@@ -1,4 +1,5 @@
 import { getAnonymousDonorId } from "@/lib/donor-identity";
+import { GuestDonorWallChoice } from "@/components/guest-donor-wall-choice";
 import { useState } from "react";
 import { useRoute, Link, useLocation, useSearch } from "wouter";
 import { useQuery } from "@tanstack/react-query";
@@ -33,6 +34,8 @@ export default function DonatePage() {
   const [custom, setCustom] = useState("");
   const [feeCovered, setFeeCovered] = useState(true);
   const [wallOptIn, setWallOptIn] = useState(true);
+  const [guestWallOptIn, setGuestWallOptIn] = useState(false);
+  const [donorName, setDonorName] = useState("");
   const [redirecting, setRedirecting] = useState(false);
   const [error, setError] = useState("");
   const [showAuthPrompt, setShowAuthPrompt] = useState(false);
@@ -82,6 +85,10 @@ export default function DonatePage() {
       setShowAuthPrompt(true);
       return;
     }
+    if (!isAuthenticated && guestWallOptIn && !donorName.trim()) {
+      setError("Enter your name or leave name sharing unchecked.");
+      return;
+    }
     setError("");
     setShowAuthPrompt(false);
     setRedirecting(true);
@@ -95,7 +102,8 @@ export default function DonatePage() {
           feeCovered,
           originalAmountPence,
           feeAmountPence: feeCovered ? estimatedFeePence : 0,
-          wallOptIn: isAuthenticated ? wallOptIn : false,
+          wallOptIn: isAuthenticated ? wallOptIn : guestWallOptIn,
+          ...(!isAuthenticated && guestWallOptIn ? { donorName: donorName.trim() } : {}),
           anonymousDonorId: isAuthenticated ? undefined : getAnonymousDonorId(),
         },
         token ?? undefined,
@@ -313,6 +321,8 @@ export default function DonatePage() {
             </label>
           )}
 
+          {!isAuthenticated && originalAmountGbp > 0 &&
+            <GuestDonorWallChoice optedIn={guestWallOptIn} name={donorName} onOptIn={setGuestWallOptIn} onName={setDonorName} />}
           {/* Summary */}
           {originalAmountGbp > 0 && (
             <div className="rounded-xl px-4 py-3 text-sm text-center" style={{ backgroundColor: "rgba(245,192,0,0.12)" }}>

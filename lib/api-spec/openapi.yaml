@@ -25,6 +25,41 @@ tags:
   - name: profile
     description: User profile
 paths:
+  /donations/checkout:
+    post:
+      operationId: createDonationCheckoutSession
+      tags: [donations]
+      summary: Create a donation Checkout session with optional public-name consent
+      description: Supports a signed-in donor or a guest supplying guestEmail. Account names and privacy preferences are read server-side for signed-in donors.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/DonationCheckoutInput'}
+      responses:
+        '200':
+          description: Checkout session created
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DonationCheckoutResult'}
+        '400': {description: Invalid donation or public-name consent}
+  /donations/anonymous-checkout:
+    post:
+      operationId: createAnonymousDonationCheckoutSession
+      tags: [donations]
+      summary: Create a no-account Checkout session with optional public-name consent
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/DonationCheckoutInput'}
+      responses:
+        '200':
+          description: Checkout session created
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/DonationCheckoutResult'}
+        '400': {description: Invalid donation or public-name consent}
   /organisations/{id}/campaigns/{campId}/preview:
     parameters:
       - {name: id, in: path, required: true, schema: {type: string}}
@@ -796,6 +831,32 @@ components:
       bearerFormat: JWT
 
   schemas:
+    DonationCheckoutInput:
+      type: object
+      required: [orgId, amountPence]
+      properties:
+        orgId: {type: string}
+        campaignId: {type: string}
+        amountPence: {type: integer, minimum: 300}
+        originalAmountPence: {type: integer, minimum: 300}
+        feeCovered: {type: boolean}
+        feeAmountPence: {type: integer, minimum: 0}
+        guestEmail: {type: string, format: email}
+        anonymousDonorId: {type: string}
+        wallOptIn:
+          type: boolean
+          default: false
+          description: Explicit permission to display first name and last initial. Otherwise anonymous.
+        donorName:
+          type: string
+          maxLength: 80
+          description: Required when a guest opts in. Reduced to first name and last initial before storing in Stripe metadata. Ignored for signed-in donors.
+    DonationCheckoutResult:
+      type: object
+      required: [url, sessionId]
+      properties:
+        url: {type: string}
+        sessionId: {type: string}
     WiseDisbursement:
       type: object
       required: [_id, orgId, amountGbp, transferId, disbursedAt, recipientEmail]
@@ -996,6 +1057,11 @@ components:
         name: {type: string, maxLength: 200}
         tagline: {type: string, maxLength: 140}
         description: {type: string, maxLength: 20000}
+        pageContent:
+          type: object
+          nullable: true
+          description: Optional plain-text editorial sections for the shared campaign page. No financial totals or HTML.
+          additionalProperties: {type: string, maxLength: 5000}
         type: {type: string, enum: [fundraising, volunteer]}
         goal: {type: number, minimum: 0}
         volunteersNeeded: {type: number, minimum: 0}

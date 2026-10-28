@@ -8,6 +8,7 @@ import type { Campaign, PublicCampaignLanding, CampaignVideo } from "@/lib/api";
 import { AccumulationField } from "./accumulation-field";
 import { capOf, partnerMatch, ratioLabel } from "@/lib/partner-funding";
 import { whereYourMoneyGoes } from "@/lib/money-disclosure";
+import { CampaignFeeBreakdown } from "./campaign-fee-breakdown";
 
 export type CampaignPageLayout = "responsive" | "phone" | "desktop";
 
@@ -186,6 +187,12 @@ export function CampaignPageView({
   const lead = paras[0] ?? "";
   const rest = paras.slice(1);
   const orgBlurb = org.shortDescription || org.description;
+  const pc = campaign.pageContent ?? {};
+  const t = (k: string) => (typeof pc[k] === "string" ? (pc[k] as string).trim() : "");
+  const splitParas = (v: string) => v.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
+  const donateLabel = t("donateLabel");
+  const hasCustomSupport = !!(t("supportHeading") || t("supportBody") || t("cohortHeading") || t("cohortBody") || t("cohortNote"));
+  const fundingNote = t("fundingNote");
   const pctOf = (n: number) => (goal > 0 ? ` · ${Math.round((n / goal) * 100)}%` : "");
 
   const donate = () => { if (!preview) onDonate?.(); };
@@ -326,7 +333,7 @@ export function CampaignPageView({
                   </div>
 
                   <div className="rounded-2xl bg-[#F9F6F0] text-[#1c1410] p-5 shadow-lg">
-                    <h2 className="text-lg font-extrabold leading-tight">Add your {unitSingular}</h2>
+                    <h2 className="text-lg font-extrabold leading-tight">{donateLabel || `Add your ${unitSingular}`}</h2>
                     <p className="text-[12px] text-[#6b5f55] mt-0.5">Choose your amount at the next step.</p>
                     <Button
                       className="mt-4 w-full h-12 text-base font-extrabold rounded-xl shadow-none hover:brightness-95"
@@ -344,9 +351,12 @@ export function CampaignPageView({
                     </p>
                   </div>
 
-                  {(goal > 0 || pf) && (
+                  {(goal > 0 || pf || fundingNote) && (
                     <div className="rounded-2xl bg-white text-[#1c1410] p-5 shadow-lg">
                       <h2 className="text-base font-extrabold">How this is funded</h2>
+                      {fundingNote && (
+                        <p className="mt-3 text-[13px] leading-relaxed text-[#3a2f28] whitespace-pre-wrap" data-testid="text-funding-note">{fundingNote}</p>
+                      )}
                       {pf && (
                         <p className="mt-3 rounded-lg bg-[#F2EDE4] p-3 text-[13px] leading-relaxed flex gap-2" data-testid="text-partner-funding">
                           <Handshake className="w-4 h-4 mt-0.5 shrink-0" aria-hidden="true" />
@@ -388,7 +398,7 @@ export function CampaignPageView({
             <div className={`${wrap} ${sectionPad} space-y-12`}>
               {lead && (
                 <div className={twoCol}>
-                  <h2 className={sectionTitle}>The story</h2>
+                  <h2 className={sectionTitle}>{t("storyHeading") || "The story"}</h2>
                   <div data-testid="text-campaign-description" className="space-y-4 text-[1.02rem] leading-relaxed text-[#3a2f28] break-words">
                     <p className="text-lg font-semibold text-[#1c1410] whitespace-pre-wrap">{lead}</p>
                     {rest.map((p, i) => <p key={i} className="whitespace-pre-wrap">{p}</p>)}
@@ -411,8 +421,19 @@ export function CampaignPageView({
             <div className={`${wrap} ${sectionPad} border-t-2 border-[#1c1410] pt-10 space-y-14`}>
               {breakdown.length > 0 && (
                 <div className={twoCol} data-testid="list-campaign-breakdown">
-                  <h2 className={sectionTitle}>What your money buys</h2>
-                  <ul className="border-t border-[#E0D8CC]">
+                  <div className="min-w-0">
+                    <h2 className={sectionTitle}>{t("programmeHeading") || "What your money buys"}</h2>
+                    {t("programmeSummary") && (
+                      <p className="mt-4 inline-block rounded-full px-3.5 py-1.5 text-[12px] font-bold text-white" style={{ backgroundColor: red }} data-testid="text-programme-summary">{t("programmeSummary")}</p>
+                    )}
+                  </div>
+                  <div className="min-w-0 space-y-5">
+                  {t("programmeIntro") && (
+                    <div className="space-y-3 text-[1.02rem] leading-relaxed text-[#3a2f28]" data-testid="text-programme-intro">
+                      {splitParas(t("programmeIntro")).map((p, i) => <p key={i}>{p}</p>)}
+                    </div>
+                  )}
+                  <ul className="border-t border-[#E0D8CC]" aria-live="polite" aria-relevant="additions text" aria-label="Most recent campaign donors">
                     {breakdown.map((b, i) => (
                       <li key={i} className="py-4 border-b border-[#E0D8CC]" data-testid={`row-breakdown-${i}`}>
                         {b.label && <p className="text-lg font-extrabold tabular-nums break-words" style={{ color: red }}>{b.label}</p>}
@@ -420,6 +441,12 @@ export function CampaignPageView({
                       </li>
                     ))}
                   </ul>
+                  {t("programmeAfterword") && (
+                    <div className="space-y-3 text-[1.02rem] leading-relaxed text-[#3a2f28]" data-testid="text-programme-afterword">
+                      {splitParas(t("programmeAfterword")).map((p, i) => <p key={i}>{p}</p>)}
+                    </div>
+                  )}
+                  </div>
                 </div>
               )}
               {locations.length > 0 && (
@@ -446,7 +473,17 @@ export function CampaignPageView({
         {phases.length > 0 && (
           <section className={`py-14 ${md("py-20")} bg-[#F2EDE4]`}>
             <div className={`${wrap} ${sectionPad}`}>
+              {t("outcomesStatus") && (
+                <p className="mb-4 inline-flex items-center gap-1.5 rounded-full border-2 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider" style={{ borderColor: red, color: red }} data-testid="status-outcomes">
+                  <Clock className="w-3.5 h-3.5" aria-hidden="true" /> {t("outcomesStatus")}
+                </p>
+              )}
               <h2 className={`${sectionTitle} ${md("text-[3.5rem] max-w-[12ch]")}`}>What your support makes possible</h2>
+              {t("outcomesIntro") && (
+                <div className="mt-5 max-w-2xl space-y-3 text-[1.02rem] leading-relaxed text-[#3a2f28]" data-testid="text-outcomes-intro">
+                  {splitParas(t("outcomesIntro")).map((p, i) => <p key={i}>{p}</p>)}
+                </div>
+              )}
               <ol className={`mt-10 grid gap-x-8 ${md("grid-cols-2")} ${layout === "desktop" ? "" : "lg:grid-cols-4"}`} data-testid="list-campaign-milestones">
                 {phases.map((phase) => (
                   <li key={phase.id} className="py-4 border-t border-[#d6ccbc] flex gap-3" data-testid={`card-campaign-milestone-${phase.id}`}>
@@ -460,12 +497,42 @@ export function CampaignPageView({
                   </li>
                 ))}
               </ol>
+              {t("outcomesNote") && (
+                <p className="mt-6 max-w-2xl text-sm italic leading-relaxed text-[#6b5f55]" data-testid="text-outcomes-note">{t("outcomesNote")}</p>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* 5a. Custom support appeal + cohort card */}
+        {isFundraising && hasCustomSupport && (
+          <section style={{ backgroundColor: gold }} className="text-[#1c1410]" data-testid="block-support-appeal">
+            <div className={`${wrap} ${sectionPad} py-12 ${md("py-20")} ${twoCol}`}>
+              <div className="min-w-0">
+                {t("supportHeading") && <h2 className={`${sectionTitle} ${md("text-[3.25rem]")}`}>{t("supportHeading")}</h2>}
+                {t("supportBody") && (
+                  <div className="mt-4 space-y-3 text-[1.05rem] leading-relaxed">
+                    {splitParas(t("supportBody")).map((p, i) => <p key={i}>{p}</p>)}
+                  </div>
+                )}
+                <Button className="mt-6 h-12 px-6 rounded-xl text-base font-extrabold text-white" style={{ backgroundColor: red }}
+                  onClick={donate} disabled={preview} title={previewTitle} data-testid="button-donate-campaign-strip">
+                  {donateLabel || `Add your ${unitSingular}`} <ArrowRight className="w-4 h-4 ml-2" aria-hidden="true" />
+                </Button>
+              </div>
+              {(t("cohortHeading") || t("cohortBody") || t("cohortNote")) && (
+                <div className="rounded-2xl bg-[#F9F6F0] p-6 shadow-lg min-w-0" data-testid="card-cohort">
+                  {t("cohortHeading") && <h3 style={display} className="italic text-[2rem] leading-[1]" >{t("cohortHeading")}</h3>}
+                  {t("cohortBody") && <p className="mt-3 leading-relaxed text-[#3a2f28]">{t("cohortBody")}</p>}
+                  {t("cohortNote") && <p className="mt-4 pt-4 border-t border-[#E0D8CC] text-[13px] leading-relaxed text-[#6b5f55]">{t("cohortNote")}</p>}
+                </div>
+              )}
             </div>
           </section>
         )}
 
         {/* 5. Support moment: gold strip */}
-        {isFundraising && (
+        {isFundraising && !hasCustomSupport && (
           <section style={{ backgroundColor: gold }} className="text-[#1c1410]">
             <div className={`${wrap} ${sectionPad} py-10 flex flex-col gap-5 ${md("flex-row items-center justify-between")}`}>
               <p className={`text-[1.9rem] leading-[1] font-black tracking-[-0.03em] ${md("text-[2.5rem] max-w-[18ch]")}`}>
@@ -473,7 +540,7 @@ export function CampaignPageView({
               </p>
               <Button className="h-12 px-6 rounded-xl text-base font-extrabold shrink-0 text-white" style={{ backgroundColor: red }}
                 onClick={donate} disabled={preview} title={previewTitle} data-testid="button-donate-campaign-strip">
-                Add your {unitSingular} <ArrowRight className="w-4 h-4 ml-2" aria-hidden="true" />
+                {donateLabel || `Add your ${unitSingular}`} <ArrowRight className="w-4 h-4 ml-2" aria-hidden="true" />
               </Button>
             </div>
           </section>
@@ -510,6 +577,9 @@ export function CampaignPageView({
                     ))}
                   </ul>
                 )}
+                {t("organisationNote") && (
+                  <p className="mt-6 rounded-xl border-l-4 bg-[#F9F6F0] p-4 text-sm leading-relaxed text-[#3a2f28]" style={{ borderColor: red }} data-testid="text-organisation-note">{t("organisationNote")}</p>
+                )}
                 {!preview && (
                   <Link href={`/organisations/${org._id}`} className="mt-6 inline-flex items-center gap-1 text-sm font-extrabold underline-offset-4 hover:underline" style={{ color: red }} data-testid="link-organisation-profile-footer">
                     See their profile <ArrowRight className="w-3.5 h-3.5" aria-hidden="true" />
@@ -523,6 +593,7 @@ export function CampaignPageView({
                 <h2 className={sectionTitle}>Where your money goes</h2>
                 <div className="rounded-2xl bg-[#F9F6F0] p-5 space-y-3">
                   <p className="text-[1.02rem] leading-relaxed text-[#1c1410]" data-testid="text-money-disclosure">{money.sentence}</p>
+                  {campaign.pageContent && <CampaignFeeBreakdown orgName={org.name} colour={red} />}
                   {isMatching && matchLeft > 0 && (
                     <p className="text-sm leading-relaxed text-[#3a2f28]">
                       Matched funds come from {funder}'s pledge, not from your card. You are only ever charged what you choose to give.
@@ -534,7 +605,7 @@ export function CampaignPageView({
 
             {isFundraising && (
               <div className={`${twoCol} border-t-2 border-[#1c1410] pt-10`} data-testid="block-recent-supporters">
-                <h2 className={sectionTitle}>Recent supporters</h2>
+                <h2 className={sectionTitle}>{t("supportersHeading") || "Recent supporters"}</h2>
                 {recent.length === 0 && anon === 0 ? (
                   <p className="text-2xl font-black" style={{ color: red }} data-testid="text-be-first">Be the first.</p>
                 ) : (
@@ -564,8 +635,8 @@ export function CampaignPageView({
         <section className="text-white" style={{ backgroundColor: red }} data-testid="block-share">
           <div className={`${wrap} ${sectionPad} py-12 flex flex-col gap-6 ${md("flex-row items-center justify-between")}`}>
             <div className="min-w-0">
-              <p style={display} className={`italic text-[2.4rem] leading-[0.95] break-words ${md("text-[3.25rem]")}`}>Know someone who'd add a {unitSingular}?</p>
-              <p className="mt-2 text-white/90">Share the campaign. A share from you is worth more than any ad.</p>
+              <p style={display} className={`italic text-[2.4rem] leading-[0.95] break-words ${md("text-[3.25rem]")}`}>{t("shareHeading") || `Know someone who'd add a ${unitSingular}?`}</p>
+              <p className="mt-2 text-white/90">{t("shareBody") || "Share the campaign. A share from you is worth more than any ad."}</p>
             </div>
             <div className="flex flex-col gap-3 shrink-0 min-w-0">
               <div className="flex flex-wrap gap-3">

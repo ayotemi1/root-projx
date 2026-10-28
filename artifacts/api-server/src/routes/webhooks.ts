@@ -292,7 +292,9 @@ async function handlePaymentSuccess(
   });
   const { intendedGbp, toOrgGbp } = accounting;
   let identityEmail = guestEmail;
-  let publicDonorName: string | null = null;
+  let publicDonorName: string | null =
+    (!userId || ["guest", "anonymous"].includes(userId)) && wallOptIn === "true"
+      ? firstNameLastInitial(metadata.publicDonorName) : null;
   if (userId && !["guest", "anonymous"].includes(userId)) {
     try {
       const donor = await fsGet("users", userId, serverToken);

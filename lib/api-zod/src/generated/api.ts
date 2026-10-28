@@ -7,6 +7,105 @@
  */
 import * as zod from "zod";
 
+/**
+ * Supports a signed-in donor or a guest supplying guestEmail. Account names and privacy preferences are read server-side for signed-in donors.
+ * @summary Create a donation Checkout session with optional public-name consent
+ */
+export const createDonationCheckoutSessionBodyAmountPenceMin = 300;
+
+export const createDonationCheckoutSessionBodyOriginalAmountPenceMin = 300;
+
+export const createDonationCheckoutSessionBodyFeeAmountPenceMin = 0;
+
+export const createDonationCheckoutSessionBodyWallOptInDefault = false;
+export const createDonationCheckoutSessionBodyDonorNameMax = 80;
+
+export const CreateDonationCheckoutSessionBody = zod.object({
+  orgId: zod.string(),
+  campaignId: zod.string().optional(),
+  amountPence: zod
+    .number()
+    .min(createDonationCheckoutSessionBodyAmountPenceMin),
+  originalAmountPence: zod
+    .number()
+    .min(createDonationCheckoutSessionBodyOriginalAmountPenceMin)
+    .optional(),
+  feeCovered: zod.boolean().optional(),
+  feeAmountPence: zod
+    .number()
+    .min(createDonationCheckoutSessionBodyFeeAmountPenceMin)
+    .optional(),
+  guestEmail: zod.string().email().optional(),
+  anonymousDonorId: zod.string().optional(),
+  wallOptIn: zod
+    .boolean()
+    .default(createDonationCheckoutSessionBodyWallOptInDefault)
+    .describe(
+      "Explicit permission to display first name and last initial. Otherwise anonymous.",
+    ),
+  donorName: zod
+    .string()
+    .max(createDonationCheckoutSessionBodyDonorNameMax)
+    .optional()
+    .describe(
+      "Required when a guest opts in. Reduced to first name and last initial before storing in Stripe metadata. Ignored for signed-in donors.",
+    ),
+});
+
+export const CreateDonationCheckoutSessionResponse = zod.object({
+  url: zod.string(),
+  sessionId: zod.string(),
+});
+
+/**
+ * @summary Create a no-account Checkout session with optional public-name consent
+ */
+export const createAnonymousDonationCheckoutSessionBodyAmountPenceMin = 300;
+
+export const createAnonymousDonationCheckoutSessionBodyOriginalAmountPenceMin = 300;
+
+export const createAnonymousDonationCheckoutSessionBodyFeeAmountPenceMin = 0;
+
+export const createAnonymousDonationCheckoutSessionBodyWallOptInDefault = false;
+export const createAnonymousDonationCheckoutSessionBodyDonorNameMax = 80;
+
+export const CreateAnonymousDonationCheckoutSessionBody = zod.object({
+  orgId: zod.string(),
+  campaignId: zod.string().optional(),
+  amountPence: zod
+    .number()
+    .min(createAnonymousDonationCheckoutSessionBodyAmountPenceMin),
+  originalAmountPence: zod
+    .number()
+    .min(createAnonymousDonationCheckoutSessionBodyOriginalAmountPenceMin)
+    .optional(),
+  feeCovered: zod.boolean().optional(),
+  feeAmountPence: zod
+    .number()
+    .min(createAnonymousDonationCheckoutSessionBodyFeeAmountPenceMin)
+    .optional(),
+  guestEmail: zod.string().email().optional(),
+  anonymousDonorId: zod.string().optional(),
+  wallOptIn: zod
+    .boolean()
+    .default(createAnonymousDonationCheckoutSessionBodyWallOptInDefault)
+    .describe(
+      "Explicit permission to display first name and last initial. Otherwise anonymous.",
+    ),
+  donorName: zod
+    .string()
+    .max(createAnonymousDonationCheckoutSessionBodyDonorNameMax)
+    .optional()
+    .describe(
+      "Required when a guest opts in. Reduced to first name and last initial before storing in Stripe metadata. Ignored for signed-in donors.",
+    ),
+});
+
+export const CreateAnonymousDonationCheckoutSessionResponse = zod.object({
+  url: zod.string(),
+  sessionId: zod.string(),
+});
+
 export const GetOwnerCampaignPreviewParams = zod.object({
   id: zod.coerce.string(),
   campId: zod.coerce.string(),
@@ -17,6 +116,8 @@ export const getOwnerCampaignPreviewResponseCampaignOneNameMax = 200;
 export const getOwnerCampaignPreviewResponseCampaignOneTaglineMax = 140;
 
 export const getOwnerCampaignPreviewResponseCampaignOneDescriptionMax = 20000;
+
+export const getOwnerCampaignPreviewResponseCampaignOnePageContentMaxOne = 5000;
 
 export const getOwnerCampaignPreviewResponseCampaignOneGoalMin = 0;
 
@@ -63,6 +164,17 @@ export const GetOwnerCampaignPreviewResponse = zod.object({
         .string()
         .max(getOwnerCampaignPreviewResponseCampaignOneDescriptionMax)
         .optional(),
+      pageContent: zod
+        .record(
+          zod.string(),
+          zod
+            .string()
+            .max(getOwnerCampaignPreviewResponseCampaignOnePageContentMaxOne),
+        )
+        .nullish()
+        .describe(
+          "Optional plain-text editorial sections for the shared campaign page. No financial totals or HTML.",
+        ),
       type: zod.enum(["fundraising", "volunteer"]).optional(),
       goal: zod
         .number()
@@ -367,6 +479,8 @@ export const getPublicCampaignsResponseOneTaglineMax = 140;
 
 export const getPublicCampaignsResponseOneDescriptionMax = 20000;
 
+export const getPublicCampaignsResponseOnePageContentMaxOne = 5000;
+
 export const getPublicCampaignsResponseOneGoalMin = 0;
 
 export const getPublicCampaignsResponseOneVolunteersNeededMin = 0;
@@ -408,6 +522,15 @@ export const GetPublicCampaignsResponseItem = zod
       .string()
       .max(getPublicCampaignsResponseOneDescriptionMax)
       .optional(),
+    pageContent: zod
+      .record(
+        zod.string(),
+        zod.string().max(getPublicCampaignsResponseOnePageContentMaxOne),
+      )
+      .nullish()
+      .describe(
+        "Optional plain-text editorial sections for the shared campaign page. No financial totals or HTML.",
+      ),
     type: zod.enum(["fundraising", "volunteer"]).optional(),
     goal: zod.number().min(getPublicCampaignsResponseOneGoalMin).optional(),
     volunteersNeeded: zod
@@ -544,6 +667,8 @@ export const createCampaignDraftBodyTaglineMax = 140;
 
 export const createCampaignDraftBodyDescriptionMax = 20000;
 
+export const createCampaignDraftBodyPageContentMaxOne = 5000;
+
 export const createCampaignDraftBodyGoalMin = 0;
 
 export const createCampaignDraftBodyVolunteersNeededMin = 0;
@@ -575,6 +700,15 @@ export const CreateCampaignDraftBody = zod.object({
     .string()
     .max(createCampaignDraftBodyDescriptionMax)
     .optional(),
+  pageContent: zod
+    .record(
+      zod.string(),
+      zod.string().max(createCampaignDraftBodyPageContentMaxOne),
+    )
+    .nullish()
+    .describe(
+      "Optional plain-text editorial sections for the shared campaign page. No financial totals or HTML.",
+    ),
   type: zod.enum(["fundraising", "volunteer"]).optional(),
   goal: zod.number().min(createCampaignDraftBodyGoalMin).optional(),
   volunteersNeeded: zod
@@ -670,6 +804,8 @@ export const getManagedCampaignDraftsResponseOneTaglineMax = 140;
 
 export const getManagedCampaignDraftsResponseOneDescriptionMax = 20000;
 
+export const getManagedCampaignDraftsResponseOnePageContentMaxOne = 5000;
+
 export const getManagedCampaignDraftsResponseOneGoalMin = 0;
 
 export const getManagedCampaignDraftsResponseOneVolunteersNeededMin = 0;
@@ -714,6 +850,15 @@ export const GetManagedCampaignDraftsResponseItem = zod
       .string()
       .max(getManagedCampaignDraftsResponseOneDescriptionMax)
       .optional(),
+    pageContent: zod
+      .record(
+        zod.string(),
+        zod.string().max(getManagedCampaignDraftsResponseOnePageContentMaxOne),
+      )
+      .nullish()
+      .describe(
+        "Optional plain-text editorial sections for the shared campaign page. No financial totals or HTML.",
+      ),
     type: zod.enum(["fundraising", "volunteer"]).optional(),
     goal: zod
       .number()
@@ -858,6 +1003,8 @@ export const saveCampaignDraftBodyTaglineMax = 140;
 
 export const saveCampaignDraftBodyDescriptionMax = 20000;
 
+export const saveCampaignDraftBodyPageContentMaxOne = 5000;
+
 export const saveCampaignDraftBodyGoalMin = 0;
 
 export const saveCampaignDraftBodyVolunteersNeededMin = 0;
@@ -886,6 +1033,15 @@ export const SaveCampaignDraftBody = zod.object({
   name: zod.string().max(saveCampaignDraftBodyNameMax).optional(),
   tagline: zod.string().max(saveCampaignDraftBodyTaglineMax).optional(),
   description: zod.string().max(saveCampaignDraftBodyDescriptionMax).optional(),
+  pageContent: zod
+    .record(
+      zod.string(),
+      zod.string().max(saveCampaignDraftBodyPageContentMaxOne),
+    )
+    .nullish()
+    .describe(
+      "Optional plain-text editorial sections for the shared campaign page. No financial totals or HTML.",
+    ),
   type: zod.enum(["fundraising", "volunteer"]).optional(),
   goal: zod.number().min(saveCampaignDraftBodyGoalMin).optional(),
   volunteersNeeded: zod
@@ -975,6 +1131,8 @@ export const saveCampaignDraftResponseOneTaglineMax = 140;
 
 export const saveCampaignDraftResponseOneDescriptionMax = 20000;
 
+export const saveCampaignDraftResponseOnePageContentMaxOne = 5000;
+
 export const saveCampaignDraftResponseOneGoalMin = 0;
 
 export const saveCampaignDraftResponseOneVolunteersNeededMin = 0;
@@ -1016,6 +1174,15 @@ export const SaveCampaignDraftResponse = zod
       .string()
       .max(saveCampaignDraftResponseOneDescriptionMax)
       .optional(),
+    pageContent: zod
+      .record(
+        zod.string(),
+        zod.string().max(saveCampaignDraftResponseOnePageContentMaxOne),
+      )
+      .nullish()
+      .describe(
+        "Optional plain-text editorial sections for the shared campaign page. No financial totals or HTML.",
+      ),
     type: zod.enum(["fundraising", "volunteer"]).optional(),
     goal: zod.number().min(saveCampaignDraftResponseOneGoalMin).optional(),
     volunteersNeeded: zod

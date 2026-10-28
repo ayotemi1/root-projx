@@ -25,6 +25,8 @@ import type {
   CreateDonationRequest,
   CreateOrganisationRequest,
   CreateUpdateRequest,
+  DonationCheckoutInput,
+  DonationCheckoutResult,
   DonationIntentResponse,
   DonationWithOrg,
   EditorCampaign,
@@ -71,6 +73,190 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+/**
+ * Supports a signed-in donor or a guest supplying guestEmail. Account names and privacy preferences are read server-side for signed-in donors.
+ * @summary Create a donation Checkout session with optional public-name consent
+ */
+export const getCreateDonationCheckoutSessionUrl = () => {
+  return `/api/donations/checkout`;
+};
+
+export const createDonationCheckoutSession = async (
+  donationCheckoutInput: DonationCheckoutInput,
+  options?: RequestInit,
+): Promise<DonationCheckoutResult> => {
+  return customFetch<DonationCheckoutResult>(
+    getCreateDonationCheckoutSessionUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(donationCheckoutInput),
+    },
+  );
+};
+
+export const getCreateDonationCheckoutSessionMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createDonationCheckoutSession>>,
+    TError,
+    { data: BodyType<DonationCheckoutInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createDonationCheckoutSession>>,
+  TError,
+  { data: BodyType<DonationCheckoutInput> },
+  TContext
+> => {
+  const mutationKey = ["createDonationCheckoutSession"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createDonationCheckoutSession>>,
+    { data: BodyType<DonationCheckoutInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createDonationCheckoutSession(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateDonationCheckoutSessionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createDonationCheckoutSession>>
+>;
+export type CreateDonationCheckoutSessionMutationBody =
+  BodyType<DonationCheckoutInput>;
+export type CreateDonationCheckoutSessionMutationError = ErrorType<void>;
+
+/**
+ * @summary Create a donation Checkout session with optional public-name consent
+ */
+export const useCreateDonationCheckoutSession = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createDonationCheckoutSession>>,
+    TError,
+    { data: BodyType<DonationCheckoutInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createDonationCheckoutSession>>,
+  TError,
+  { data: BodyType<DonationCheckoutInput> },
+  TContext
+> => {
+  return useMutation(getCreateDonationCheckoutSessionMutationOptions(options));
+};
+
+/**
+ * @summary Create a no-account Checkout session with optional public-name consent
+ */
+export const getCreateAnonymousDonationCheckoutSessionUrl = () => {
+  return `/api/donations/anonymous-checkout`;
+};
+
+export const createAnonymousDonationCheckoutSession = async (
+  donationCheckoutInput: DonationCheckoutInput,
+  options?: RequestInit,
+): Promise<DonationCheckoutResult> => {
+  return customFetch<DonationCheckoutResult>(
+    getCreateAnonymousDonationCheckoutSessionUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(donationCheckoutInput),
+    },
+  );
+};
+
+export const getCreateAnonymousDonationCheckoutSessionMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createAnonymousDonationCheckoutSession>>,
+    TError,
+    { data: BodyType<DonationCheckoutInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createAnonymousDonationCheckoutSession>>,
+  TError,
+  { data: BodyType<DonationCheckoutInput> },
+  TContext
+> => {
+  const mutationKey = ["createAnonymousDonationCheckoutSession"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createAnonymousDonationCheckoutSession>>,
+    { data: BodyType<DonationCheckoutInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createAnonymousDonationCheckoutSession(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateAnonymousDonationCheckoutSessionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createAnonymousDonationCheckoutSession>>
+>;
+export type CreateAnonymousDonationCheckoutSessionMutationBody =
+  BodyType<DonationCheckoutInput>;
+export type CreateAnonymousDonationCheckoutSessionMutationError =
+  ErrorType<void>;
+
+/**
+ * @summary Create a no-account Checkout session with optional public-name consent
+ */
+export const useCreateAnonymousDonationCheckoutSession = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createAnonymousDonationCheckoutSession>>,
+    TError,
+    { data: BodyType<DonationCheckoutInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createAnonymousDonationCheckoutSession>>,
+  TError,
+  { data: BodyType<DonationCheckoutInput> },
+  TContext
+> => {
+  return useMutation(
+    getCreateAnonymousDonationCheckoutSessionMutationOptions(options),
+  );
+};
 
 export const getGetOwnerCampaignPreviewUrl = (id: string, campId: string) => {
   return `/api/organisations/${id}/campaigns/${campId}/preview`;

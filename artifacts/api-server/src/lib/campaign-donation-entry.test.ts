@@ -47,6 +47,12 @@ test("campaign Donate button delivers its id and name to the sheet and checkout 
   assert.deepEqual(guestCheckoutBody("org-1", 300, chosen._id, "anon-1"), {
     orgId: "org-1", amountPence: 300, campaignId: "camp-123", anonymousDonorId: "anon-1",
   });
+  assert.deepEqual(guestCheckoutBody("org-1", 300, chosen._id, "anon-1", true, " Alex Taylor "), {
+    orgId: "org-1", amountPence: 300, campaignId: chosen._id, anonymousDonorId: "anon-1",
+    wallOptIn: true, donorName: "Alex Taylor",
+  });
+  const optedOut = guestCheckoutBody("org-1", 300, chosen._id, "anon-1", false, "Alex Taylor");
+  assert.equal(Object.hasOwn(optedOut, "donorName"), false, "unchecking removes the public name from the request");
 });
 
 test("organisation Donate stays unassigned to a campaign", async () => {

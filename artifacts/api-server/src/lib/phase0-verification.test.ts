@@ -174,6 +174,37 @@ function checkoutEvent(pi: Record<string, any>, metadata = pi.metadata) {
 }
 
 for (const path of ["/donations/checkout", "/donations/anonymous-checkout"]) {
+  for (const wallOptIn of [true, false]) {
+    test(`${path}: guest donor wall consent ${wallOptIn ? "ON" : "OFF"} survives real Checkout/webhook pipeline`, async () => {
+      const { donations, webhooks, state } = await isolatedRouters();
+      const log = { info() {}, warn() {}, error(obj: unknown, message: string) { state.errors.push({ obj, message }); } };
+      await invoke(donations, path, {
+        body: { orgId: "test-org", campaignId: "test-campaign", amountPence: 300,
+          guestEmail: "private@example.test", wallOptIn, donorName: "Alex Taylor",
+          anonymousDonorId: "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee" },
+        headers: {}, log,
+      });
+      const meta = state.checkout.metadata;
+      assert.deepEqual(meta, state.checkout.payment_intent_data.metadata);
+      assert.equal(meta.wallOptIn, String(wallOptIn));
+      assert.equal(meta.publicDonorName, wallOptIn ? "Alex T." : undefined);
+      const pi = { id: "pi_guest_wall", amount: 300, currency: "gbp", metadata: meta, status: "succeeded" };
+      state.event = checkoutEvent(pi, meta);
+      await invoke(webhooks, "/stripe", {
+        body: Buffer.from(JSON.stringify(state.event)), headers: { "stripe-signature": "synthetic-signature" }, log,
+      });
+      const writes = state.writes.filter((w: any) => w.collection === "donations");
+      assert.equal(writes.length, 1);
+      assert.equal(writes[0].data.publicDonorName, wallOptIn ? "Alex T." : null);
+      assert.equal(writes[0].data.campaignId, "test-campaign");
+      assert.equal(writes[0].data.intendedGbp, 3);
+      assert.equal(writes[0].data.toOrgGbp, 2.6);
+      assert.equal(state.errors.length, 0, JSON.stringify(state.errors));
+    });
+  }
+}
+
+for (const path of ["/donations/checkout", "/donations/anonymous-checkout"]) {
   test(`${path} uses live return URLs in production, never an inherited preview domain`, async () => {
     for (const environment of [
       { REPLIT_DEPLOYMENT: "1", REPLIT_DEV_DOMAIN: "stale-workspace.example.test" },
@@ -239,6 +270,7 @@ for (const path of ["/donations/checkout", "/donations/anonymous-checkout"]) {
               orgId: "test-org", campaignId: "test-campaign",
               guestEmail: "guest@example.test", amountPence: 300 + feeAmountPence,
               originalAmountPence: 300, feeAmountPence, feeCovered, wallOptIn: true,
+              donorName: "Test Donor",
             },
             user: {userId: "test-user"}, headers: {},
             log: {error() { assert.fail("Unexpected Checkout error"); }},

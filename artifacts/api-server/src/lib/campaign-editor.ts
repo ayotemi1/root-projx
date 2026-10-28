@@ -1,6 +1,7 @@
 import { resolvePayoutMethod } from "./payout-setup.js";
 import { PROFILE_SECTORS } from "./organisation-profile.js";
 import { migrateCampaignPartnerFunding, partnerFundingFor } from "./campaign-matching.js";
+import { campaignPageContent } from "./campaign-page-content.js";
 
 export class CampaignInputError extends Error {}
 export type PublishGate = { id: string; message: string; step: number };
@@ -33,6 +34,10 @@ function url(value: unknown, label: string) {
 export function campaignPatch(input: unknown, previous: Record<string, unknown> = {}) {
   const body = record(input, "campaign");
   const patch: Record<string, unknown> = {};
+  if ("pageContent" in body) {
+    try { patch.pageContent = campaignPageContent(body.pageContent); }
+    catch (err) { invalid((err as Error).message); }
+  }
   for (const [key, max] of Object.entries({ name: 200, tagline: 140, description: 20000 })) {
     if (!(key in body)) continue;
     const result = text(body[key], key === "description" ? "your campaign story" : key, max);

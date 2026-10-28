@@ -5,6 +5,32 @@
  * Root ProjX API — community giving platform
  * OpenAPI spec version: 0.1.0
  */
+export interface DonationCheckoutInput {
+  orgId: string;
+  campaignId?: string;
+  /** @minimum 300 */
+  amountPence: number;
+  /** @minimum 300 */
+  originalAmountPence?: number;
+  feeCovered?: boolean;
+  /** @minimum 0 */
+  feeAmountPence?: number;
+  guestEmail?: string;
+  anonymousDonorId?: string;
+  /** Explicit permission to display first name and last initial. Otherwise anonymous. */
+  wallOptIn?: boolean;
+  /**
+   * Required when a guest opts in. Reduced to first name and last initial before storing in Stripe metadata. Ignored for signed-in donors.
+   * @maxLength 80
+   */
+  donorName?: string;
+}
+
+export interface DonationCheckoutResult {
+  url: string;
+  sessionId: string;
+}
+
 export interface WiseDisbursement {
   _id: string;
   orgId: string;
@@ -208,6 +234,11 @@ export interface CampaignAssistRequest {
   instruction: string;
 }
 
+/**
+ * Optional plain-text editorial sections for the shared campaign page. No financial totals or HTML.
+ */
+export type CampaignEditorRequestPageContent = { [key: string]: string } | null;
+
 export type CampaignEditorRequestType =
   (typeof CampaignEditorRequestType)[keyof typeof CampaignEditorRequestType];
 
@@ -288,6 +319,8 @@ export interface CampaignEditorRequest {
   tagline?: string;
   /** @maxLength 20000 */
   description?: string;
+  /** Optional plain-text editorial sections for the shared campaign page. No financial totals or HTML. */
+  pageContent?: CampaignEditorRequestPageContent;
   type?: CampaignEditorRequestType;
   /** @minimum 0 */
   goal?: number;
