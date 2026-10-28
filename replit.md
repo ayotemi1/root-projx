@@ -240,6 +240,19 @@ All routes prefixed `/api`:
 - `/newsletter/subscribe` — Brevo contact upsert
 - `/webhooks/stripe` — Stripe payment webhook (raw body, mounted BEFORE express.json())
 
+## Organisation content library
+
+The public profile's Content tab reuses published organisation updates as a
+photo/video/link gallery. Organisations and delegated admins publish through
+the existing dashboard update composer. Uploaded videos play in a post dialog;
+YouTube/Vimeo players load only after an explicit Play action. Instagram links
+open externally without requiring a connected Instagram account; upload the
+original media as well when it should be viewable on the profile itself.
+Supported public HTTPS post links are validated on both client and server.
+Uploaded-but-unpublished attachment URLs are recoverable per organisation in
+the browser, and retries reuse them rather than uploading the same files again.
+No separate collection or Firestore rules change is required.
+
 ## Critical Implementation Notes
 
 ### Stripe

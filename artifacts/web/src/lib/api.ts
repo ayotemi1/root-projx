@@ -120,6 +120,8 @@ export interface FeedUpdate {
   imageUrl: string | null;
   likes: number;
   createdAt: string;
+  /** Optional HTTPS Instagram / YouTube / Vimeo link. */
+  externalUrl?: string | null;
 }
 
 export interface Review {
@@ -279,7 +281,7 @@ export const getPublicFeed = () => req<FeedUpdate[]>("/feed/public");
 export const getMyFeed = (token: string) => req<FeedUpdate[]>("/feed", {}, token);
 export const getOrgFeed = (orgId: string) => req<FeedUpdate[]>(`/feed/org/${orgId}`);
 export const postUpdate = (
-  data: { title: string; content: string; type: string; mediaUrls?: string[] },
+  data: { title: string; content: string; type: string; mediaUrls?: string[]; externalUrl?: string },
   token: string,
 ) =>
   req<FeedUpdate>("/feed", { method: "POST", body: JSON.stringify(data) }, token);

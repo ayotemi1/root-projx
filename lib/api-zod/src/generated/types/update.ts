@@ -14,6 +14,8 @@ export interface Update {
   body: string;
   tag: UpdateTag;
   mediaUrls?: string[] | null;
+  /** Optional public Instagram, YouTube or Vimeo post link. */
+  externalUrl?: string | null;
   sentToCount?: number | null;
   createdAt: string;
 }

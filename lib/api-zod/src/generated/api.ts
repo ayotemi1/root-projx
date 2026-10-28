@@ -2217,6 +2217,10 @@ export const GetFeedResponseItem = zod
     body: zod.string(),
     tag: zod.enum(["Before", "During", "After"]),
     mediaUrls: zod.array(zod.string()).nullish(),
+    externalUrl: zod
+      .string()
+      .nullish()
+      .describe("Optional public Instagram, YouTube or Vimeo post link."),
     sentToCount: zod.number().nullish(),
     createdAt: zod.string(),
   })
@@ -2237,6 +2241,12 @@ export const PostUpdateBody = zod.object({
   body: zod.string(),
   tag: zod.enum(["Before", "During", "After"]),
   mediaUrls: zod.array(zod.string()).optional(),
+  externalUrl: zod
+    .string()
+    .optional()
+    .describe(
+      "Optional HTTPS Instagram post\/reel, YouTube video or Vimeo video link.",
+    ),
 });
 
 /**
@@ -2250,6 +2260,10 @@ export const GetPublicFeedResponseItem = zod
     body: zod.string(),
     tag: zod.enum(["Before", "During", "After"]),
     mediaUrls: zod.array(zod.string()).nullish(),
+    externalUrl: zod
+      .string()
+      .nullish()
+      .describe("Optional public Instagram, YouTube or Vimeo post link."),
     sentToCount: zod.number().nullish(),
     createdAt: zod.string(),
   })
@@ -2276,6 +2290,10 @@ export const GetOrgFeedResponseItem = zod.object({
   body: zod.string(),
   tag: zod.enum(["Before", "During", "After"]),
   mediaUrls: zod.array(zod.string()).nullish(),
+  externalUrl: zod
+    .string()
+    .nullish()
+    .describe("Optional public Instagram, YouTube or Vimeo post link."),
   sentToCount: zod.number().nullish(),
   createdAt: zod.string(),
 });

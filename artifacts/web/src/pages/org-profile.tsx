@@ -4,14 +4,15 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle, ArrowLeft, ChevronRight, Heart, HeartOff,
   MapPin, Tag, Users, TrendingUp, Zap, DollarSign,
-  ThumbsUp, MessageCircle, Share2, Clock, Mail, Phone, Globe,
+  Clock, Mail, Phone, Globe,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useAuth } from "@/context/AuthContext";
 import * as api from "@/lib/api";
-import type { FeedUpdate, Review, Org, VolunteerRole, Campaign } from "@/lib/api";
+import type { Review, Org, VolunteerRole, Campaign } from "@/lib/api";
 import { GuestDonateSheet } from "@/components/GuestDonateSheet";
+import { ContentGallery } from "@/components/org-content/content-gallery";
 import { CampaignDonateButton } from "@/components/campaign-donate-button";
 import ReactMarkdown from "react-markdown";
 import { PROFILE_ANCHORS, orgSectors } from "@/lib/sectors";
@@ -80,90 +81,6 @@ function isStale(iso: string): boolean {
 
 const RED = "#B50000";
 const GOLD = "#F5B800";
-
-// ── Update card (2-col grid) ──────────────────────────────────────────────────
-
-const TYPE_PILL: Record<string, { label: string; bg: string; color: string }> = {
-  milestone: { label: "Milestone", bg: "#ECFDF5", color: "#059669" },
-  campaign:  { label: "Campaign",  bg: "#FFFBEB", color: "#D97706" },
-  update:    { label: "Update",    bg: "#EFF6FF", color: "#2563EB" },
-};
-
-function UpdateCard({ item, org }: { item: FeedUpdate; org: Org }) {
-  const pill = TYPE_PILL[item.type] ?? TYPE_PILL.update!;
-  const location = [org.city, org.country].filter(Boolean).join(", ");
-  const images = (item.mediaUrls ?? []).filter((u) => !u.includes("video") && !u.endsWith(".mp4"));
-
-  return (
-    <div className="bg-white border border-border rounded-xl overflow-hidden flex flex-col">
-      {/* Body */}
-      <div className="p-4 flex-1">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2 flex-wrap">
-          <span
-            className="px-2 py-0.5 rounded-full font-bold text-[10px]"
-            style={{ backgroundColor: pill.bg, color: pill.color }}
-          >
-            {pill.label}
-          </span>
-          <span>{timeAgo(item.createdAt)}</span>
-          {location && (
-            <>
-              <span>·</span>
-              <span className="flex items-center gap-0.5">
-                <MapPin className="w-3 h-3" />
-                {location}
-              </span>
-            </>
-          )}
-        </div>
-        <h4 className="font-bold text-foreground text-sm leading-snug mb-1.5 line-clamp-2">
-          {item.title}
-        </h4>
-        <p className="text-foreground/60 text-xs leading-relaxed line-clamp-2">
-          {item.content}
-        </p>
-      </div>
-
-      {/* Media grid */}
-      {images.length > 0 && (
-        <div className={`grid gap-0.5 mx-3 mb-3 ${images.length === 1 ? "grid-cols-1" : "grid-cols-2"}`}>
-          {images.slice(0, 4).map((url, i) => (
-            <img
-              key={i}
-              src={url}
-              alt=""
-              className="w-full h-24 object-cover rounded-lg"
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Footer */}
-      <div className="px-4 pb-4 flex items-center justify-between border-t border-border pt-3 mt-auto">
-        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-          <button className="flex items-center gap-1 hover:text-primary transition-colors">
-            <ThumbsUp className="w-3.5 h-3.5" />
-            <span>{item.likes ?? 0}</span>
-          </button>
-          <button className="flex items-center gap-1 hover:text-primary transition-colors">
-            <MessageCircle className="w-3.5 h-3.5" />
-            <span>0</span>
-          </button>
-          <button className="flex items-center gap-1 hover:text-primary transition-colors">
-            <Share2 className="w-3.5 h-3.5" />
-            <span>Share</span>
-          </button>
-        </div>
-        <button
-          className="text-xs font-bold text-white px-3 py-1.5 rounded-md transition-opacity hover:opacity-90"
-          style={{ backgroundColor: RED }}
-        >
-          View Details
-        </button>
-      </div>
-    </div>
-  );
-}
 
 // ── Campaign card (visitor view) ──────────────────────────────────────────────
 
@@ -382,6 +299,8 @@ export default function OrgProfilePage() {
     queryKey: ["org-feed", id],
     queryFn: () => api.getOrgFeed(id),
     enabled: !!id,
+    staleTime: 30_000,
+    refetchOnMount: "always",
   });
 
   const reviewsQ = useQuery({
@@ -476,7 +395,7 @@ export default function OrgProfilePage() {
 
   const initials = org.name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase();
   const allUpdates = updatesQ.data ?? [];
-  const updates = allUpdates.filter((u) => u.type !== "campaign");
+  const updates = allUpdates;
   const realCampaigns = (campaignsQ.data ?? []).filter((c) => c.status !== "deleted");
 
   // lastPostAt is written to the org doc on each new post.
@@ -515,7 +434,7 @@ export default function OrgProfilePage() {
   }
 
   const TABS = [
-    { key: "updates",   label: "Updates",   count: updates.length },
+    { key: "updates",   label: "Content",   count: updates.length },
     { key: "campaigns", label: "Campaigns", count: realCampaigns.length },
     { key: "volunteer", label: "Volunteer",  count: null },
     { key: "about",     label: "About",      count: null },
@@ -783,23 +702,7 @@ export default function OrgProfilePage() {
 
               {/* ── Updates ── */}
               {tab === "updates" && (
-                updatesQ.isLoading ? (
-                  <div className="grid grid-cols-2 gap-4">
-                    <Skeleton className="h-48" />
-                    <Skeleton className="h-48" />
-                  </div>
-                ) : updates.length === 0 ? (
-                  <p className="text-center py-10 text-muted-foreground text-sm">No updates yet.</p>
-                ) : (
-                  <>
-                    <h3 className="font-bold text-foreground text-base mb-4">Latest Updates</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      {updates.map((u) => (
-                        <UpdateCard key={u._id} item={u} org={org} />
-                      ))}
-                    </div>
-                  </>
-                )
+                <ContentGallery items={updates} isLoading={updatesQ.isLoading} isError={updatesQ.isError} onRetry={() => updatesQ.refetch()} />
               )}
 
               {/* ── Campaigns ── */}

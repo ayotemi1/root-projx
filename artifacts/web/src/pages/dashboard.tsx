@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearch, useLocation } from "wouter";
 import {
@@ -23,6 +23,8 @@ import { PendingPayout } from "@/components/pending-payout";
 import { CampaignsManager } from "@/components/campaign-builder/campaigns-manager";
 import { ProfileEditor, ProfilePreviewButton } from "@/components/profile-editor/profile-editor";
 import type { FeedUpdate } from "@/lib/api";
+import { externalLinkError, EXTERNAL_LINK_HELP, mediaKind } from "@/lib/content-media";
+import { loadPendingPost, savePendingPost, clearPendingPost, type PendingPost } from "@/lib/pending-post";
 
 const UPDATE_TYPES = ["update", "milestone", "campaign"] as const;
 
@@ -59,6 +61,10 @@ export default function DashboardPage() {
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [uploadProgress, setUploadProgress] = useState<"idle" | "uploading" | "done">("idle");
   const [formError, setFormError] = useState("");
+  const [externalUrl, setExternalUrl] = useState("");
+  /** URLs already uploaded for this draft. Never re-uploaded on retry. */
+  const [uploadedUrls, setUploadedUrls] = useState<string[]>([]);
+  const [recoverable, setRecoverable] = useState<PendingPost | null>(null);
 
   // Campaign form state
 
@@ -80,6 +86,8 @@ export default function DashboardPage() {
     queryKey: ["org-feed", orgId],
     queryFn: () => api.getOrgFeed(orgId),
     enabled: !!orgId,
+    staleTime: 30_000,
+    refetchOnMount: "always",
   });
 
   const campaignsQ = useQuery({
@@ -88,21 +96,40 @@ export default function DashboardPage() {
     enabled: !!orgId && !!token,
   });
 
+  // Offer recovery of attachments uploaded but never published.
+  useEffect(() => {
+    if (!orgId) return;
+    setRecoverable(loadPendingPost(orgId));
+  }, [orgId]);
+
+  useEffect(() => {
+    if (!orgId || uploadedUrls.length === 0) return;
+    savePendingPost(orgId, { urls: uploadedUrls, title: postTitle, content: postContent,
+      type: postType, externalUrl, savedAt: new Date().toISOString() });
+  }, [orgId, uploadedUrls, postTitle, postContent, postType, externalUrl]);
+
   const postMut = useMutation({
     mutationFn: async () => {
-      let mediaUrls: string[] = [];
+      let mediaUrls = uploadedUrls;
       if (selectedFiles.length > 0) {
         setUploadProgress("uploading");
-        mediaUrls = await api.uploadMedia(selectedFiles, token!);
-        setUploadProgress("done");
+        const fresh = await api.uploadMedia(selectedFiles, token!);
+        mediaUrls = [...uploadedUrls, ...fresh];
+        // Keep returned URLs so a failed publish never re-uploads.
+        setUploadedUrls(mediaUrls);
+        setSelectedFiles([]); setPreviewUrls([]);
+        savePendingPost(orgId, { urls: mediaUrls, title: postTitle, content: postContent, type: postType, externalUrl, savedAt: new Date().toISOString() });
       }
+      setUploadProgress("done");
+      const link = externalUrl.trim();
       return api.postUpdate(
-        { title: postTitle.trim(), content: postContent.trim(), type: postType, mediaUrls },
+        { title: postTitle.trim(), content: postContent.trim(), type: postType, mediaUrls, ...(link ? { externalUrl: link } : {}) },
         token!,
       );
     },
     onSuccess: () => {
-      setPostTitle(""); setPostContent(""); setPostType("update");
+      clearPendingPost(orgId); setRecoverable(null);
+      setPostTitle(""); setPostContent(""); setPostType("update"); setExternalUrl(""); setUploadedUrls([]);
       setSelectedFiles([]); setPreviewUrls([]); setUploadProgress("idle");
       setShowForm(false); setFormError("");
       queryClient.invalidateQueries({ queryKey: ["org-feed", orgId] });
@@ -110,13 +137,16 @@ export default function DashboardPage() {
     },
     onError: (e: Error) => {
       setUploadProgress("idle");
-      setFormError(e.message);
+      setFormError(uploadedUrls.length > 0 || loadPendingPost(orgId)
+        ? `${e.message} Your attached media is saved. Press publish again to retry without re-uploading.`
+        : e.message);
     },
   });
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
-    if (files.length + selectedFiles.length > 5) { setFormError("You can attach up to 5 files per update."); return; }
+    e.target.value = "";
+    if (files.length + selectedFiles.length + uploadedUrls.length > 5) { setFormError("You can attach up to 5 files per update."); return; }
     setFormError("");
     const newFiles = [...selectedFiles, ...files].slice(0, 5);
     setSelectedFiles(newFiles);
@@ -133,13 +163,38 @@ export default function DashboardPage() {
     e.preventDefault();
     if (!postTitle.trim()) { setFormError("Title is required."); return; }
     if (!postContent.trim()) { setFormError("Content is required."); return; }
+    const linkErr = externalLinkError(externalUrl);
+    if (linkErr) { setFormError(linkErr); return; }
     setFormError("");
     postMut.mutate();
   }
 
   function resetForm() {
+    setRecoverable(loadPendingPost(orgId));
+    setUploadedUrls([]);
     setShowForm(false); setPostTitle(""); setPostContent(""); setPostType("update");
     setSelectedFiles([]); setPreviewUrls([]); setUploadProgress("idle"); setFormError("");
+    setExternalUrl("");
+  }
+
+  function resumePending() {
+    if (!recoverable) return;
+    setUploadedUrls(recoverable.urls);
+    setPostTitle(recoverable.title); setPostContent(recoverable.content);
+    setPostType(recoverable.type); setExternalUrl(recoverable.externalUrl ?? "");
+    setRecoverable(null);
+  }
+
+  function discardPending() {
+    // Only forgets the local draft; uploaded files are not deleted.
+    clearPendingPost(orgId); setRecoverable(null);
+  }
+
+  function detachUploaded(url: string) {
+    const next = uploadedUrls.filter((u) => u !== url);
+    setUploadedUrls(next);
+    if (next.length === 0) clearPendingPost(orgId);
+    else savePendingPost(orgId, { urls: next, title: postTitle, content: postContent, type: postType, externalUrl, savedAt: new Date().toISOString() });
   }
 
   const org = orgQ.data;
@@ -245,8 +300,17 @@ export default function DashboardPage() {
               </CardHeader>
               <CardContent className="pt-4">
                 <form onSubmit={handlePost} className="space-y-5">
+                  {recoverable && (
+                    <div role="status" className="text-sm bg-accent/15 border border-accent/40 px-3 py-2.5 rounded-md space-y-2" data-testid="banner-pending-media">
+                      <p className="font-medium">You have {recoverable.urls.length} uploaded {recoverable.urls.length === 1 ? "file" : "files"} from an update that wasn't published.</p>
+                      <div className="flex gap-2">
+                        <Button type="button" size="sm" className="font-bold" onClick={resumePending} data-testid="button-resume-pending-media">Resume draft</Button>
+                        <Button type="button" size="sm" variant="outline" onClick={discardPending} data-testid="button-discard-pending-media">Discard</Button>
+                      </div>
+                    </div>
+                  )}
                   {formError && (
-                    <div className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md font-medium">{formError}</div>
+                    <div role="alert" className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md font-medium" data-testid="text-update-form-error">{formError}</div>
                   )}
                   <div>
                     <Label className="text-sm font-semibold mb-2 block">Type</Label>
@@ -277,6 +341,22 @@ export default function DashboardPage() {
                   </div>
                   <div>
                     <Label className="text-sm font-semibold mb-2 block">Photos &amp; Videos <span className="text-muted-foreground font-normal ml-1">(up to 5)</span></Label>
+                    <p className="text-xs text-muted-foreground mb-2">Add photos or videos from your work so donors can watch them right here.</p>
+                    {uploadedUrls.length > 0 && (
+                      <div className="flex flex-wrap gap-3 mb-3" data-testid="list-uploaded-media">
+                        {uploadedUrls.map((url) => (
+                          <div key={url} className="relative group">
+                            {mediaKind(url) === "video" ? (
+                              <div className="w-16 h-16 bg-secondary rounded-lg flex items-center justify-center border border-primary/40"><Video className="w-6 h-6 text-muted-foreground" /></div>
+                            ) : (
+                              <img src={url} alt="Uploaded attachment" className="w-16 h-16 object-cover rounded-lg border border-primary/40" />
+                            )}
+                            <span className="absolute bottom-0 inset-x-0 text-[9px] font-bold text-center bg-primary text-white rounded-b-lg">Uploaded</span>
+                            <button type="button" aria-label="Remove from this update" onClick={() => detachUploaded(url)} disabled={isSubmitting} className="absolute -top-2 -right-2 w-5 h-5 bg-destructive text-white rounded-full flex items-center justify-center shadow-sm"><X className="w-3 h-3" /></button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     {selectedFiles.length > 0 && (
                       <div className="flex flex-wrap gap-3 mb-3">
                         {selectedFiles.map((file, i) => (
@@ -293,12 +373,19 @@ export default function DashboardPage() {
                         ))}
                       </div>
                     )}
-                    {selectedFiles.length < 5 && (
+                    {selectedFiles.length + uploadedUrls.length < 5 && (
                       <>
                         <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/quicktime,video/webm" multiple className="hidden" onChange={handleFileChange} />
-                        <button type="button" onClick={() => fileInputRef.current?.click()} className="flex items-center justify-center gap-2 h-16 w-full border-2 border-dashed border-border rounded-lg text-sm font-semibold text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors hover:bg-primary/5"><ImageIcon className="w-4 h-4" /> {selectedFiles.length === 0 ? "Add media" : `Add more (${selectedFiles.length}/5)`}</button>
+                        <button type="button" onClick={() => fileInputRef.current?.click()} className="flex items-center justify-center gap-2 h-16 w-full border-2 border-dashed border-border rounded-lg text-sm font-semibold text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors hover:bg-primary/5"><ImageIcon className="w-4 h-4" /> {selectedFiles.length + uploadedUrls.length === 0 ? "Add media" : `Add more (${selectedFiles.length + uploadedUrls.length}/5)`}</button>
                       </>
                     )}
+                  </div>
+                  <div>
+                    <Label htmlFor="external-url" className="font-semibold">Video or post link <span className="text-muted-foreground font-normal ml-1">(optional)</span></Label>
+                    <Input id="external-url" type="url" inputMode="url" placeholder="https://www.youtube.com/watch?v=…" value={externalUrl} onChange={(e) => setExternalUrl(e.target.value)} aria-invalid={!!externalLinkError(externalUrl)} className="mt-1.5 bg-secondary/30" data-testid="input-external-url" />
+                    <p className={`text-xs mt-1.5 ${externalLinkError(externalUrl) ? "text-destructive" : "text-muted-foreground"}`}>
+                      {externalLinkError(externalUrl) ?? `${EXTERNAL_LINK_HELP} YouTube and Vimeo play on your profile; Instagram opens on Instagram, so upload the photo or video too if you want donors to see it here.`}
+                    </p>
                   </div>
                   <div className="pt-2">
                     <Button type="submit" className="w-full bg-primary text-white hover:bg-primary/90 font-bold h-11 text-base shadow-sm" disabled={isSubmitting}>{isSubmitting ? uploadLabel : "Publish Update"}</Button>

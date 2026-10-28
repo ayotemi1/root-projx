@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { fsQuery, fsCreate, fsGet, fsPatch, getServerToken } from "../lib/firebase-rest.js";
 import { requireApprovedOrganisation, requireAuth, optionalAuth } from "../lib/auth.js";
+import { normaliseContentLink } from "../lib/feed-content.js";
 
 const router = Router();
 
@@ -78,7 +79,7 @@ router.get("/feed/org/:id", optionalAuth, async (req, res) => {
     updates.sort((a, b) =>
       ((b["createdAt"] as string) ?? "").localeCompare((a["createdAt"] as string) ?? ""),
     );
-    res.json(updates.slice(0, 20));
+    res.json(updates);
   } catch (err) {
     req.log.error({ err }, "GET /feed/org/:id error");
     res.status(500).json({ error: "Failed to fetch org feed" });
@@ -95,7 +96,14 @@ router.post("/feed", requireAuth, requireApprovedOrganisation, async (req, res) 
     const uid = req.user!.userId;
     const serverToken = await getServerToken();
 
-    const { title, content, type, mediaUrls } = req.body as Record<string, unknown>;
+    const { title, content, type, mediaUrls, externalUrl } = req.body as Record<string, unknown>;
+    let contentLink: string | null;
+    try {
+      contentLink = normaliseContentLink(externalUrl);
+    } catch (err) {
+      res.status(400).json({ error: (err as Error).message });
+      return;
+    }
     if (!title || !content) {
       res.status(400).json({ error: "title and content are required" });
       return;
@@ -129,6 +137,7 @@ router.post("/feed", requireAuth, requireApprovedOrganisation, async (req, res) 
       title,
       content,
       mediaUrls: urls,
+      externalUrl: contentLink,
       likes: 0,
       createdAt: new Date().toISOString(),
     };

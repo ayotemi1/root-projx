@@ -12,4 +12,6 @@ export interface CreateUpdateRequest {
   body: string;
   tag: CreateUpdateRequestTag;
   mediaUrls?: string[];
+  /** Optional HTTPS Instagram post/reel, YouTube video or Vimeo video link. */
+  externalUrl?: string;
 }

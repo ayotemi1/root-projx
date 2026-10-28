@@ -621,6 +621,8 @@ export interface Update {
   body: string;
   tag: UpdateTag;
   mediaUrls?: string[] | null;
+  /** Optional public Instagram, YouTube or Vimeo post link. */
+  externalUrl?: string | null;
   sentToCount?: number | null;
   createdAt: string;
 }
@@ -645,6 +647,8 @@ export interface CreateUpdateRequest {
   body: string;
   tag: CreateUpdateRequestTag;
   mediaUrls?: string[];
+  /** Optional HTTPS Instagram post/reel, YouTube video or Vimeo video link. */
+  externalUrl?: string;
 }
 
 export interface FollowRequest {
