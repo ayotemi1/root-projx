@@ -5,6 +5,7 @@ import { AdminPayouts } from "@/components/admin-payouts";
 import { BankTransferApprovals } from "@/components/bank-transfer-approvals";
 import { useQueryClient } from "@tanstack/react-query";
 import { adminPayoutsKey } from "@/lib/payouts-api";
+import { AdminDeleteOrganisation } from "@/components/admin-delete-organisation";
 
 const RED_DEEP = "#7A0000";
 const RED = "#B50000";
@@ -587,6 +588,10 @@ export default function AdminPage() {
                            <button onClick={() => openOrgEditor(org)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 10px", border: "1px solid #d8d0c5", borderRadius: 7, background: "#fff", color: RED_DEEP, fontWeight: 700, cursor: "pointer" }}>
                              <Pencil size={13} /> Edit profile
                            </button>
+                           <AdminDeleteOrganisation org={org} token={token} onUnauthorized={logout} onDeleted={(id) => {
+                             setOrganisations((current) => current.filter((item) => item._id !== id));
+                             queryClient.invalidateQueries();
+                           }} />
                          </td>
                       </tr>
                     ))}

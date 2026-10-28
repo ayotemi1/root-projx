@@ -5,6 +5,15 @@
  * Root ProjX API — community giving platform
  * OpenAPI spec version: 0.1.0
  */
+export interface OrganisationDeletionInput {
+  confirmationName: string;
+}
+
+export interface OrganisationDeletionResult {
+  deleted: boolean;
+  orgId: string;
+}
+
 export interface PasswordResetRequest {
   /** @maxLength 254 */
   email: string;

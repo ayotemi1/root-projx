@@ -333,6 +333,20 @@ No separate collection or Firestore rules change is required.
 
 ## Admin Dashboard
 
+### Removing an organisation
+
+Admin → Organisations → **Delete organisation** requires typing the organisation's
+exact name. Removal is a retained-record deletion: `deletedAt`/`deletedBy` hide the
+organisation and its embedded campaigns from normal API reads, block organisation
+bearer access and checkout, and hide its posts from public/personalised feeds.
+The admin list removes it after confirmation. No restore button is provided.
+Deletion is blocked while any recurring donation is not canceled; it does not
+cancel subscriptions or close Stripe/Wise accounts automatically.
+Donations, payouts, balances and the underlying organisation record remain for
+accounting. Financial settlement and in-flight webhooks explicitly read retained
+organisations, so deleting a profile does not prevent settling existing liabilities.
+No Firestore rules changes or real organisation deletions are used for verification.
+
 - URL: `/admin` (login at `/admin/login`)
 - Password: `ADMIN_PASSWORD` env var (defaults to `rootprojx-admin` — set in Replit Secrets for production)
 - Tabs: **Applications** (pending/approved/declined org applications, approve/decline actions) | **Supporters** (all registered supporters)

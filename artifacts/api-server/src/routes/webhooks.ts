@@ -453,7 +453,7 @@ async function handlePaymentSuccess(
   // to preserve any later explicit opt-out the user made via their account page.
   if (wallOptIn === "true" && userId && userId !== "guest" && orgId) {
     try {
-      const orgDoc = await fsGet("organisations", orgId, serverToken);
+      const orgDoc = await fsGet("organisations", orgId, serverToken, { includeDeleted: true });
       if (orgDoc) {
         const existingWall = ((orgDoc["supporterWall"] ?? []) as Array<Record<string, unknown>>);
         const alreadyHasEntry = existingWall.some((e) => e["userId"] === userId);

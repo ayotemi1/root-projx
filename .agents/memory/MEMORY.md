@@ -19,3 +19,4 @@
 - [Admin organisation access](admin-organisation-access.md) — manage content on behalf of organisations without sharing their login or taking over banking setup.
 - [Organisation content](organisation-content.md) — profiles need browsable photos, watchable videos and optional social links without requiring Instagram connection.
 - [OpenAPI body naming](openapi-inline-body-names.md) — named request schemas prevent Orval validator/type export collisions.
+- [Organisation deletion](organisation-deletion.md) — remove public presence and owner access while retaining financial history and settlement capability.

@@ -21,7 +21,7 @@ export async function disburseToOrg(orgId: string, amountGbp: number, reference:
   const apiKey = process.env.WISE_API_KEY;
   if (!apiKey) throw new Error("WISE_API_KEY is not configured on this server.");
   const token = await getServerToken();
-  const org = await fsGet("organisations", orgId, token);
+  const org = await fsGet("organisations", orgId, token, { includeDeleted: true });
   if (!org) throw new Error("Organisation not found");
   const owner = await fsGet("users", orgId, token);
   if (owner?.approvalStatus === "pending" || owner?.approvalStatus === "declined") {

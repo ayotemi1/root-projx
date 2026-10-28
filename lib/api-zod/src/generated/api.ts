@@ -1346,6 +1346,19 @@ export const RequestCampaignWritingSuggestionResponse = zod.object({
   suggestion: zod.string().optional(),
 });
 
+export const DeleteAdminOrganisationParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const DeleteAdminOrganisationBody = zod.object({
+  confirmationName: zod.string(),
+});
+
+export const DeleteAdminOrganisationResponse = zod.object({
+  deleted: zod.boolean(),
+  orgId: zod.string(),
+});
+
 export const GetAdminPayoutsResponse = zod.object({
   payouts: zod.array(
     zod.object({

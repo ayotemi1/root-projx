@@ -151,6 +151,7 @@ export async function fsGet(
   collection: string,
   docId: string,
   idToken?: string,
+  opts?: { includeDeleted?: boolean },
 ): Promise<Record<string, unknown> | null> {
   const headers: Record<string, string> = {};
   if (idToken) headers["Authorization"] = `Bearer ${idToken}`;
@@ -161,7 +162,11 @@ export async function fsGet(
     throw new Error(`Firestore GET ${collection}/${docId} failed ${res.status}: ${text.slice(0, 200)}`);
   }
   const doc = await res.json() as { fields?: Record<string, FsValue> };
-  return fromFsDoc(doc.fields ?? {});
+  const data = fromFsDoc(doc.fields ?? {});
+  // Deleted organisations remain stored for settlement and financial history,
+  // but ordinary public, owner and checkout reads must treat them as absent.
+  if (collection === "organisations" && data.deletedAt && !opts?.includeDeleted) return null;
+  return data;
 }
 
 // Atomic create-only write: retries/concurrent deliveries cannot overwrite a
@@ -325,7 +330,8 @@ export async function fsQuery(
     .map((r) => ({
       _id: r.document!.name?.split("/").pop() ?? "",
       ...fromFsDoc(r.document!.fields!),
-    }));
+    }))
+    .filter((doc) => collection !== "organisations" || !(doc as Record<string, unknown>).deletedAt);
 }
 
 export async function fsList(
@@ -344,7 +350,7 @@ export async function fsList(
   return (body.documents ?? []).map((d) => ({
     _id: d.name?.split("/").pop() ?? "",
     ...fromFsDoc(d.fields ?? {}),
-  }));
+  })).filter((doc) => collection !== "organisations" || !(doc as Record<string, unknown>).deletedAt);
 }
 
 export async function fsDelete(

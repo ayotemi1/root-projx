@@ -17,10 +17,12 @@ import payoutSetupRouter from "./payout-setup.js";
 import payoutsRouter from "./payouts.js";
 import campaignAssistRouter from "./campaign-assist.js";
 import organisationSelfServiceRouter from "./organisation-self-service.js";
+import organisationDeletionRouter from "./organisation-deletion.js";
 
 const router: IRouter = Router();
 
 router.use(applicationsRouter);
+router.use(organisationDeletionRouter);
 router.use(payoutSetupRouter);
 router.use(payoutsRouter);
 router.use(campaignAssistRouter);

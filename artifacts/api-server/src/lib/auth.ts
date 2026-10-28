@@ -27,6 +27,10 @@ async function resolveUser(token: string): Promise<AuthPayload | null> {
 
   const userDoc = await fsGet("users", firebaseUser.uid, token);
   const accountType = (userDoc?.accountType as string) ?? "supporter";
+  if (accountType === "organisation") {
+    const organisation = await fsGet("organisations", firebaseUser.uid, await getServerToken(), { includeDeleted: true });
+    if (organisation?.deletedAt) return null;
+  }
   const rawApprovalStatus = userDoc?.approvalStatus;
   const approvalStatus =
     rawApprovalStatus === "pending" || rawApprovalStatus === "approved" || rawApprovalStatus === "declined"

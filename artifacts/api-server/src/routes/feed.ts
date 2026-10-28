@@ -5,6 +5,14 @@ import { normaliseContentLink } from "../lib/feed-content.js";
 
 const router = Router();
 
+async function visiblePosts(posts: Record<string, unknown>[], token: string) {
+  const ids = [...new Set(posts.map((post) => String(post.orgId ?? "")))];
+  const visible = new Set((await Promise.all(ids.map(async (id) =>
+    id && await fsGet("organisations", id, token) ? id : null,
+  ))).filter(Boolean));
+  return posts.filter((post) => visible.has(String(post.orgId ?? "")));
+}
+
 // GET /feed/public — all published organisation posts; no auth required
 router.get("/feed/public", async (req, res) => {
   try {
@@ -15,7 +23,7 @@ router.get("/feed/public", async (req, res) => {
       serverToken,
       { orderBy: { field: "createdAt", dir: "DESCENDING" } },
     );
-    res.json(updates);
+    res.json(await visiblePosts(updates, serverToken));
   } catch (err) {
     req.log.error({ err }, "GET /feed/public error");
     res.status(500).json({ error: "Failed to fetch feed" });
@@ -58,7 +66,7 @@ router.get("/feed", requireAuth, async (req, res) => {
         ((b["createdAt"] as string) ?? "").localeCompare((a["createdAt"] as string) ?? ""),
       );
 
-    res.json(all);
+    res.json(await visiblePosts(all, await getServerToken()));
   } catch (err) {
     req.log.error({ err }, "GET /feed error");
     res.status(500).json({ error: "Failed to fetch personalised feed" });
@@ -78,7 +86,7 @@ router.get("/feed/org/:id", optionalAuth, async (req, res) => {
     updates.sort((a, b) =>
       ((b["createdAt"] as string) ?? "").localeCompare((a["createdAt"] as string) ?? ""),
     );
-    res.json(updates);
+    res.json(await visiblePosts(updates, await getServerToken()));
   } catch (err) {
     req.log.error({ err }, "GET /feed/org/:id error");
     res.status(500).json({ error: "Failed to fetch org feed" });

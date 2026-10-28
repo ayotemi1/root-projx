@@ -43,6 +43,8 @@ import type {
   MessageResponse,
   OrgPayoutSummary,
   Organisation,
+  OrganisationDeletionInput,
+  OrganisationDeletionResult,
   OrganisationRunningSummary,
   PasswordResetRequest,
   PayoutOverview,
@@ -1438,6 +1440,91 @@ export const useRequestCampaignWritingSuggestion = <
   return useMutation(
     getRequestCampaignWritingSuggestionMutationOptions(options),
   );
+};
+
+export const getDeleteAdminOrganisationUrl = (id: string) => {
+  return `/api/admin/organisations/${id}`;
+};
+
+export const deleteAdminOrganisation = async (
+  id: string,
+  organisationDeletionInput: OrganisationDeletionInput,
+  options?: RequestInit,
+): Promise<OrganisationDeletionResult> => {
+  return customFetch<OrganisationDeletionResult>(
+    getDeleteAdminOrganisationUrl(id),
+    {
+      ...options,
+      method: "DELETE",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(organisationDeletionInput),
+    },
+  );
+};
+
+export const getDeleteAdminOrganisationMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAdminOrganisation>>,
+    TError,
+    { id: string; data: BodyType<OrganisationDeletionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteAdminOrganisation>>,
+  TError,
+  { id: string; data: BodyType<OrganisationDeletionInput> },
+  TContext
+> => {
+  const mutationKey = ["deleteAdminOrganisation"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteAdminOrganisation>>,
+    { id: string; data: BodyType<OrganisationDeletionInput> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return deleteAdminOrganisation(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteAdminOrganisationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteAdminOrganisation>>
+>;
+export type DeleteAdminOrganisationMutationBody =
+  BodyType<OrganisationDeletionInput>;
+export type DeleteAdminOrganisationMutationError = ErrorType<void>;
+
+export const useDeleteAdminOrganisation = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAdminOrganisation>>,
+    TError,
+    { id: string; data: BodyType<OrganisationDeletionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteAdminOrganisation>>,
+  TError,
+  { id: string; data: BodyType<OrganisationDeletionInput> },
+  TContext
+> => {
+  return useMutation(getDeleteAdminOrganisationMutationOptions(options));
 };
 
 export const getGetAdminPayoutsUrl = () => {

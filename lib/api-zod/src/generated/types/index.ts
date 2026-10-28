@@ -47,6 +47,8 @@ export * from "./listOrganisationsParams";
 export * from "./loginRequest";
 export * from "./messageResponse";
 export * from "./organisation";
+export * from "./organisationDeletionInput";
+export * from "./organisationDeletionResult";
 export * from "./organisationPayoutMethod";
 export * from "./organisationProfileFields";
 export * from "./organisationProfileFieldsContact";

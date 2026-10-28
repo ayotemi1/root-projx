@@ -15,7 +15,7 @@ export async function payoutOverview() {
   const payouts = await listPayouts(token);
   const organisations = await Promise.all([...new Set(payouts.map(p=>p.orgId))].map(async orgId => {
     const rows = payouts.filter(p=>p.orgId===orgId);
-    const org = await fsGet("organisations",orgId,token);
+    const org = await fsGet("organisations",orgId,token,{includeDeleted:true});
     const queued = rows.filter(p=>p.status==="queued");
     const {due,eligibleTotalGbp}=payoutDue(queued);
     return {
@@ -36,7 +36,7 @@ export interface SettlementResult {
 }
 
 async function settleOrg(orgId: string, token: string, manualReference?: string): Promise<SettlementResult> {
-  let org = await fsGet("organisations",orgId,token);
+  let org = await fsGet("organisations",orgId,token,{includeDeleted:true});
   const orgName = String(org?.name ?? orgId);
   let rows = (await listPayouts(token,orgId)).filter(p=>p.status==="queued");
   let eligibility = payoutDue(rows);
@@ -60,7 +60,7 @@ async function settleOrg(orgId: string, token: string, manualReference?: string)
       finalized=true;
       return result("not_due");
     }
-    org = await fsGet("organisations",orgId,token);
+    org = await fsGet("organisations",orgId,token,{includeDeleted:true});
     if (!manualReference && (!org || resolvePayoutMethod(org)!=="wise" || !process.env.WISE_API_KEY)) {
       finalized=true;
       return result("needs_manual_settlement");
@@ -129,6 +129,6 @@ export async function organisationPayoutSummary(orgId: string) {
   return {
     pendingGbp:total(rows.filter(p=>p.status==="queued")),
     lastSettled:last ? {amountGbp:total(batch),sentAt:last.sentAt??null} : null,
-    payoutMethod:resolvePayoutMethod(await fsGet("organisations",orgId,token)??{}),
+    payoutMethod:resolvePayoutMethod(await fsGet("organisations",orgId,token,{includeDeleted:true})??{}),
   };
 }
