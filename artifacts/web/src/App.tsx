@@ -9,7 +9,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import SplashScreen from "@/components/SplashScreen";
 import LandingPage from "@/pages/landing";
-import HomePage from "@/pages/home";
+import FeedPage from "@/pages/feed";
 import DiscoverPage from "@/pages/discover";
 import HelpPage from "@/pages/help";
 import AccountPage from "@/pages/account";
@@ -114,7 +114,7 @@ function AppRoutes() {
           <Navbar />
           <main className="flex-1">
             <Switch>
-              <Route path="/feed" component={HomePage} />
+              <Route path="/feed" component={FeedPage} />
               <Route path="/discover" component={DiscoverPage} />
               <Route path="/shop/success" component={ShopSuccessPage} />
               <Route path="/shop/cancel" component={ShopCancelPage} />

@@ -242,9 +242,13 @@ All routes prefixed `/api`:
 
 ## Organisation content library
 
-The public profile's Content tab reuses published organisation updates as a
-photo/video/link gallery. Organisations and delegated admins publish through
-the existing dashboard update composer. Uploaded videos play in a post dialog;
+The public profile's Posts tab is an Instagram-style three-column square grid.
+These are general posts, not restricted to progress updates or milestones.
+Organisations and delegated admins publish through Dashboard → Posts; a device
+photo/video upload, social link or caption is enough, with no required title or
+category. Existing `updates` records/API routes remain compatible internally.
+The Live Feed includes all post types and refreshes while open.
+Uploaded videos play in a post dialog on both profiles and the Live Feed;
 YouTube/Vimeo players load only after an explicit Play action. Instagram links
 open externally without requiring a connected Instagram account; upload the
 original media as well when it should be viewable on the profile itself.

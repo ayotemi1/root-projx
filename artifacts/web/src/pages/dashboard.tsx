@@ -26,8 +26,6 @@ import type { FeedUpdate } from "@/lib/api";
 import { externalLinkError, EXTERNAL_LINK_HELP, mediaKind } from "@/lib/content-media";
 import { loadPendingPost, savePendingPost, clearPendingPost, type PendingPost } from "@/lib/pending-post";
 
-const UPDATE_TYPES = ["update", "milestone", "campaign"] as const;
-
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const d = Math.floor(diff / 864e5);
@@ -36,12 +34,6 @@ function timeAgo(iso: string): string {
   if (d < 7) return `${d}d ago`;
   return `${Math.floor(d / 7)}w ago`;
 }
-
-const TYPE_COLORS: Record<string, string> = {
-  milestone: "bg-green-50 text-green-700 border-green-200",
-  campaign:  "bg-yellow-50 text-yellow-700 border-yellow-200",
-  update:    "bg-blue-50 text-blue-700 border-blue-200",
-};
 
 // ── Main dashboard page ───────────────────────────────────────────────────────
 
@@ -56,7 +48,7 @@ export default function DashboardPage() {
   const [showForm, setShowForm] = useState(false);
   const [postTitle, setPostTitle] = useState("");
   const [postContent, setPostContent] = useState("");
-  const [postType, setPostType] = useState<typeof UPDATE_TYPES[number]>("update");
+  const postType = "update" as const; // Legacy storage value; posts need no category.
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [uploadProgress, setUploadProgress] = useState<"idle" | "uploading" | "done">("idle");
@@ -72,7 +64,7 @@ export default function DashboardPage() {
   const orgId = user?.id ?? "";
   const [, setLocation] = useLocation();
   const urlTab = new URLSearchParams(search).get("tab") ?? "";
-  const explicitTab = ["overview", "build", "campaigns", "profile"].includes(urlTab);
+  const explicitTab = ["overview", "build", "campaigns", "profile", "posts"].includes(urlTab);
   const connectComplete = new URLSearchParams(search).get("connect") === "complete";
 
   const orgQ = useQuery({
@@ -129,11 +121,14 @@ export default function DashboardPage() {
     },
     onSuccess: () => {
       clearPendingPost(orgId); setRecoverable(null);
-      setPostTitle(""); setPostContent(""); setPostType("update"); setExternalUrl(""); setUploadedUrls([]);
+      setPostTitle(""); setPostContent(""); setExternalUrl(""); setUploadedUrls([]);
       setSelectedFiles([]); setPreviewUrls([]); setUploadProgress("idle");
       setShowForm(false); setFormError("");
       queryClient.invalidateQueries({ queryKey: ["org-feed", orgId] });
       queryClient.invalidateQueries({ queryKey: ["feed", "public"] });
+      queryClient.invalidateQueries({ queryKey: ["feed", "mine"] });
+      queryClient.invalidateQueries({ queryKey: ["org", orgId] });
+      queryClient.invalidateQueries({ queryKey: ["dashboard-summary", orgId] });
     },
     onError: (e: Error) => {
       setUploadProgress("idle");
@@ -146,7 +141,10 @@ export default function DashboardPage() {
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
     e.target.value = "";
-    if (files.length + selectedFiles.length + uploadedUrls.length > 5) { setFormError("You can attach up to 5 files per update."); return; }
+    if (files.length + selectedFiles.length + uploadedUrls.length > 5) { setFormError("You can attach up to 5 files per post."); return; }
+    if (files.some((file) => file.size > 20 * 1024 * 1024)) {
+      setFormError("Each photo or video must be 20 MB or smaller."); return;
+    }
     setFormError("");
     const newFiles = [...selectedFiles, ...files].slice(0, 5);
     setSelectedFiles(newFiles);
@@ -161,8 +159,9 @@ export default function DashboardPage() {
 
   function handlePost(e: React.FormEvent) {
     e.preventDefault();
-    if (!postTitle.trim()) { setFormError("Title is required."); return; }
-    if (!postContent.trim()) { setFormError("Content is required."); return; }
+    if (!postTitle.trim() && !postContent.trim() && !selectedFiles.length && !uploadedUrls.length && !externalUrl.trim()) {
+      setFormError("Add a photo, video, link or caption to your post."); return;
+    }
     const linkErr = externalLinkError(externalUrl);
     if (linkErr) { setFormError(linkErr); return; }
     setFormError("");
@@ -172,7 +171,7 @@ export default function DashboardPage() {
   function resetForm() {
     setRecoverable(loadPendingPost(orgId));
     setUploadedUrls([]);
-    setShowForm(false); setPostTitle(""); setPostContent(""); setPostType("update");
+    setShowForm(false); setPostTitle(""); setPostContent("");
     setSelectedFiles([]); setPreviewUrls([]); setUploadProgress("idle"); setFormError("");
     setExternalUrl("");
   }
@@ -181,7 +180,7 @@ export default function DashboardPage() {
     if (!recoverable) return;
     setUploadedUrls(recoverable.urls);
     setPostTitle(recoverable.title); setPostContent(recoverable.content);
-    setPostType(recoverable.type); setExternalUrl(recoverable.externalUrl ?? "");
+    setExternalUrl(recoverable.externalUrl ?? "");
     setRecoverable(null);
   }
 
@@ -210,7 +209,7 @@ export default function DashboardPage() {
   const isSubmitting = postMut.isPending;
   const uploadLabel =
     uploadProgress === "uploading" ? "Uploading media…" :
-    uploadProgress === "done" ? "Publishing…" : "Publish Update";
+    uploadProgress === "done" ? "Publishing…" : "Publish post";
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
@@ -272,9 +271,10 @@ export default function DashboardPage() {
         <div className="space-y-4"><Skeleton className="h-11 rounded-lg" /><Skeleton className="h-64 rounded-2xl" /></div>
       ) : (
       <Tabs value={tab} onValueChange={setTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4 h-11 p-1 bg-secondary rounded-lg">
+        <TabsList className="grid w-full grid-cols-5 h-11 p-1 bg-secondary rounded-lg">
           <TabsTrigger value="overview" className="rounded-md font-bold text-xs sm:text-sm" data-testid="tab-overview">Overview</TabsTrigger>
-          <TabsTrigger value="profile" className="rounded-md font-bold text-xs sm:text-sm"><span className="sm:hidden">Payouts</span><span className="hidden sm:inline">Updates & Payouts</span></TabsTrigger>
+          <TabsTrigger value="posts" className="rounded-md font-bold text-xs sm:text-sm" data-testid="tab-posts">Posts</TabsTrigger>
+          <TabsTrigger value="profile" className="rounded-md font-bold text-xs sm:text-sm">Payouts</TabsTrigger>
           <TabsTrigger value="build" className="rounded-md font-bold text-xs sm:text-sm" data-testid="tab-build-profile" data-tour-id="dashboard-tab-build-profile"><span className="sm:hidden">Profile</span><span className="hidden sm:inline">Build profile</span></TabsTrigger>
           <TabsTrigger value="campaigns" className="rounded-md font-bold text-xs sm:text-sm">Campaigns</TabsTrigger>
         </TabsList>
@@ -292,17 +292,20 @@ export default function DashboardPage() {
             <PayoutSetup key={orgId} orgId={orgId} token={token!} totalRaised={org?.totalRaised ?? 0} connectComplete={connectComplete} />}
           </div>
 
-          {/* ── Updates ────────────────────────────────────────────────────── */}
+        </TabsContent>
+        <TabsContent value="posts" className="space-y-6 mt-6">
+          {/* General organisation posts, not restricted to progress updates. */}
           <div className="grid lg:grid-cols-[1fr_300px] gap-6 items-start pt-6">
             <Card className="border-border shadow-sm">
               <CardHeader className="pb-3 border-b border-border/50">
-                <CardTitle className="text-base">Post an Update</CardTitle>
+                <CardTitle className="text-base">Create a post</CardTitle>
+                <p className="text-sm text-muted-foreground">Share your work, everyday moments, photos or videos. Posts appear on your profile and in the live feed.</p>
               </CardHeader>
               <CardContent className="pt-4">
                 <form onSubmit={handlePost} className="space-y-5">
                   {recoverable && (
                     <div role="status" className="text-sm bg-accent/15 border border-accent/40 px-3 py-2.5 rounded-md space-y-2" data-testid="banner-pending-media">
-                      <p className="font-medium">You have {recoverable.urls.length} uploaded {recoverable.urls.length === 1 ? "file" : "files"} from an update that wasn't published.</p>
+                      <p className="font-medium">You have {recoverable.urls.length} uploaded {recoverable.urls.length === 1 ? "file" : "files"} from a post that wasn't published.</p>
                       <div className="flex gap-2">
                         <Button type="button" size="sm" className="font-bold" onClick={resumePending} data-testid="button-resume-pending-media">Resume draft</Button>
                         <Button type="button" size="sm" variant="outline" onClick={discardPending} data-testid="button-discard-pending-media">Discard</Button>
@@ -313,31 +316,12 @@ export default function DashboardPage() {
                     <div role="alert" className="text-sm text-destructive bg-destructive/10 px-3 py-2 rounded-md font-medium" data-testid="text-update-form-error">{formError}</div>
                   )}
                   <div>
-                    <Label className="text-sm font-semibold mb-2 block">Type</Label>
-                    <div className="flex gap-2">
-                      {UPDATE_TYPES.map((t) => (
-                        <button
-                          key={t}
-                          type="button"
-                          onClick={() => setPostType(t)}
-                          className={`flex-1 py-2 text-sm font-bold rounded-lg border-2 transition-colors capitalize ${
-                            postType === t
-                              ? "border-primary bg-primary/10 text-primary shadow-sm"
-                              : "border-border text-muted-foreground hover:border-primary/40"
-                          }`}
-                        >
-                          {t}
-                        </button>
-                      ))}
-                    </div>
+                    <Label htmlFor="title" className="font-semibold">Title <span className="font-normal text-muted-foreground">(optional)</span></Label>
+                    <Input id="title" placeholder="Give your post a title…" maxLength={200} value={postTitle} onChange={(e) => setPostTitle(e.target.value)} className="mt-1.5 bg-secondary/30" />
                   </div>
                   <div>
-                    <Label htmlFor="title" className="font-semibold">Title</Label>
-                    <Input id="title" placeholder="Update title…" value={postTitle} onChange={(e) => setPostTitle(e.target.value)} className="mt-1.5 bg-secondary/30" />
-                  </div>
-                  <div>
-                    <Label htmlFor="content" className="font-semibold">Content</Label>
-                    <Textarea id="content" placeholder="Tell your supporters what's happening…" value={postContent} onChange={(e) => setPostContent(e.target.value)} rows={4} className="mt-1.5 bg-secondary/30" />
+                    <Label htmlFor="content" className="font-semibold">Caption <span className="font-normal text-muted-foreground">(optional with media)</span></Label>
+                    <Textarea id="content" placeholder="Share a moment, a story, or anything from your organisation…" maxLength={5000} value={postContent} onChange={(e) => setPostContent(e.target.value)} rows={4} className="mt-1.5 bg-secondary/30" />
                   </div>
                   <div>
                     <Label className="text-sm font-semibold mb-2 block">Photos &amp; Videos <span className="text-muted-foreground font-normal ml-1">(up to 5)</span></Label>
@@ -376,7 +360,8 @@ export default function DashboardPage() {
                     {selectedFiles.length + uploadedUrls.length < 5 && (
                       <>
                         <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/quicktime,video/webm" multiple className="hidden" onChange={handleFileChange} />
-                        <button type="button" onClick={() => fileInputRef.current?.click()} className="flex items-center justify-center gap-2 h-16 w-full border-2 border-dashed border-border rounded-lg text-sm font-semibold text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors hover:bg-primary/5"><ImageIcon className="w-4 h-4" /> {selectedFiles.length + uploadedUrls.length === 0 ? "Add media" : `Add more (${selectedFiles.length + uploadedUrls.length}/5)`}</button>
+                        <button type="button" onClick={() => fileInputRef.current?.click()} className="flex items-center justify-center gap-2 h-16 w-full border-2 border-dashed border-border rounded-lg text-sm font-semibold text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors hover:bg-primary/5"><ImageIcon className="w-4 h-4" /> {selectedFiles.length + uploadedUrls.length === 0 ? "Upload photos or videos" : `Add more (${selectedFiles.length + uploadedUrls.length}/5)`}</button>
+                        <p className="text-xs text-muted-foreground mt-2">Choose directly from your device. Up to 5 files, 20 MB each. Videos: MP4, MOV or WebM.</p>
                       </>
                     )}
                   </div>
@@ -388,7 +373,7 @@ export default function DashboardPage() {
                     </p>
                   </div>
                   <div className="pt-2">
-                    <Button type="submit" className="w-full bg-primary text-white hover:bg-primary/90 font-bold h-11 text-base shadow-sm" disabled={isSubmitting}>{isSubmitting ? uploadLabel : "Publish Update"}</Button>
+                    <Button type="submit" className="w-full bg-primary text-white hover:bg-primary/90 font-bold h-11 text-base shadow-sm" disabled={isSubmitting || !!recoverable}>{isSubmitting ? uploadLabel : "Publish post"}</Button>
                   </div>
                 </form>
               </CardContent>
@@ -397,24 +382,24 @@ export default function DashboardPage() {
             <Card className="border-border shadow-sm">
               <CardHeader className="pb-3 border-b border-border/50">
                 <CardTitle className="text-base flex items-center justify-between">
-                  Recent Updates <span className="text-xs font-bold text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">{updates.length}</span>
+                  Your posts <span className="text-xs font-bold text-muted-foreground bg-secondary px-2 py-0.5 rounded-full">{updates.length}</span>
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
                 {updatesQ.isLoading ? (
                   <div className="space-y-4"><Skeleton className="h-20" /><Skeleton className="h-20" /></div>
                 ) : updates.length === 0 ? (
-                  <p className="text-muted-foreground text-sm text-center py-10 px-4">No updates yet. Your published updates will appear here.</p>
+                  <p className="text-muted-foreground text-sm text-center py-10 px-4">No posts yet. Your published posts will appear here.</p>
                 ) : (
                   <div className="space-y-4">
                     {updates.map((u: FeedUpdate) => (
                       <div key={u._id} className="border border-border rounded-xl p-4 bg-card/50 shadow-sm relative overflow-hidden group">
                         <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary/20 group-hover:bg-primary transition-colors"></div>
                         <div className="flex items-center justify-between mb-2">
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${TYPE_COLORS[u.type] ?? TYPE_COLORS.update}`}>{u.type.toUpperCase()}</span>
+                          <span className="text-[10px] font-bold text-muted-foreground">POST</span>
                           <span className="text-xs text-muted-foreground font-medium">{timeAgo(u.createdAt)}</span>
                         </div>
-                        <h4 className="font-bold text-foreground text-sm leading-tight mb-1">{u.title}</h4>
+                        <h4 className="font-bold text-foreground text-sm leading-tight mb-1">{u.title || (u.mediaUrls?.length ? "Photo / video post" : "Post")}</h4>
                         <p className="text-muted-foreground text-xs leading-relaxed line-clamp-3">{u.content}</p>
                       </div>
                     ))}

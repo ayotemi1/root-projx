@@ -4,6 +4,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import type { FeedUpdate } from "@/lib/api";
+import { Link } from "wouter";
 import { summarise, matchesFilter, type FilterKey, type ExternalLink as Ext } from "@/lib/content-media";
 
 const RED = "#B50000";
@@ -18,8 +19,6 @@ const FILTERS: { key: FilterKey; label: string }[] = [
 function dateLabel(iso: string) {
   return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
-
-const TYPE_LABEL: Record<string, string> = { milestone: "Milestone", update: "Update", campaign: "Campaign" };
 
 function ClickToPlayEmbed({ link, title }: { link: Ext; title: string }) {
   const [loaded, setLoaded] = useState(false);
@@ -65,9 +64,9 @@ function ContentDialog({ item, onClose }: { item: FeedUpdate | null; onClose: ()
           <>
             <div className="pr-8">
               <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: RED }}>
-                {TYPE_LABEL[item.type] ?? "Update"} · {dateLabel(item.createdAt)}
+                <Link href={`/organisations/${item.orgId}`} className="hover:underline">{item.orgName || "Organisation"}</Link> · {dateLabel(item.createdAt)}
               </p>
-              <DialogTitle className="text-lg font-extrabold leading-snug mt-1">{item.title}</DialogTitle>
+              <DialogTitle className="text-lg font-extrabold leading-snug mt-1">{item.title || `${item.orgName || "Organisation"}'s post`}</DialogTitle>
               <DialogDescription className="sr-only">Full post with all attachments</DialogDescription>
             </div>
             <div className="space-y-3">
@@ -103,7 +102,7 @@ function ContentDialog({ item, onClose }: { item: FeedUpdate | null; onClose: ()
   );
 }
 
-function Card({ item, onOpen }: { item: FeedUpdate; onOpen: () => void }) {
+function Card({ item, onOpen, feed = false }: { item: FeedUpdate; onOpen: () => void; feed?: boolean }) {
   const s = summarise(item);
   const cover = s.images[0];
   const hasVideo = s.videos.length > 0 || !!s.link?.embedUrl;
@@ -112,12 +111,13 @@ function Card({ item, onOpen }: { item: FeedUpdate; onOpen: () => void }) {
     <button
       type="button"
       onClick={onOpen}
-      className="group text-left bg-white border border-border rounded-xl overflow-hidden flex flex-col hover:shadow-md hover:-translate-y-0.5 transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+      className={`group text-left bg-white border border-border overflow-hidden flex flex-col hover:shadow-md transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${feed ? "rounded-xl" : "rounded-sm"}`}
       style={{ ["--tw-ring-color" as string]: RED }}
-      aria-label={`Open ${item.title}`}
+      aria-label={`Open ${item.title || item.content.slice(0, 80) || `${item.orgName || "organisation"} post`}`}
       data-testid={`card-content-${item._id}`}
     >
-      <div className="relative aspect-[4/3] bg-secondary overflow-hidden">
+      {feed && <p className="px-3 py-2 text-sm font-bold truncate">{item.orgName}</p>}
+      <div className={`relative ${feed ? "aspect-[4/3]" : "aspect-square"} w-full bg-secondary overflow-hidden`}>
         {cover ? (
           <img src={cover} alt="" loading="lazy" className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500" />
         ) : s.videos[0] ? (
@@ -137,16 +137,16 @@ function Card({ item, onOpen }: { item: FeedUpdate; onOpen: () => void }) {
           {s.link && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-white/90 text-foreground">{s.link.label}</span>}
         </div>
       </div>
-      <div className="p-3">
+      <div className={feed ? "p-3" : "sr-only"}>
         <p className="text-[10px] text-muted-foreground font-semibold">{dateLabel(item.createdAt)}</p>
-        <h4 className="font-bold text-sm leading-snug line-clamp-2 mt-0.5">{item.title}</h4>
+        <h4 className="font-bold text-sm leading-snug line-clamp-2 mt-0.5">{item.title || item.content || "View post"}</h4>
       </div>
     </button>
   );
 }
 
-export function ContentGallery({ items, isLoading, isError, onRetry }: {
-  items: FeedUpdate[]; isLoading: boolean; isError: boolean; onRetry: () => void;
+export function ContentGallery({ items, isLoading, isError, onRetry, feed = false }: {
+  items: FeedUpdate[]; isLoading: boolean; isError: boolean; onRetry: () => void; feed?: boolean;
 }) {
   const [filter, setFilter] = useState<FilterKey>("all");
   const [open, setOpen] = useState<FeedUpdate | null>(null);
@@ -166,7 +166,7 @@ export function ContentGallery({ items, isLoading, isError, onRetry }: {
   if (isError) {
     return (
       <div className="text-center py-10" role="alert">
-        <p className="text-sm font-semibold">We couldn't load this organisation's content.</p>
+        <p className="text-sm font-semibold">We couldn't load these posts.</p>
         <Button variant="outline" size="sm" className="mt-3" onClick={onRetry} data-testid="button-retry-content">Try again</Button>
       </div>
     );
@@ -176,7 +176,7 @@ export function ContentGallery({ items, isLoading, isError, onRetry }: {
       <div className="text-center py-12 px-4 border border-dashed border-border rounded-xl">
         <Film className="w-6 h-6 mx-auto mb-2" style={{ color: RED }} />
         <p className="font-bold text-sm">No content yet</p>
-        <p className="text-xs text-muted-foreground mt-1">Photos, videos and updates from the field will appear here once posted.</p>
+        <p className="text-xs text-muted-foreground mt-1">Photos, videos, stories and everyday moments will appear here once posted.</p>
       </div>
     );
   }
@@ -185,7 +185,7 @@ export function ContentGallery({ items, isLoading, isError, onRetry }: {
   return (
     <div>
       <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
-        <h3 className="font-bold text-foreground text-base">Content from the field</h3>
+        <h3 className="font-bold text-foreground text-base">{feed ? "Posts from organisations" : "Posts"}</h3>
         <div role="group" aria-label="Filter content" className="flex flex-wrap gap-1 max-w-full">
           {FILTERS.map((f) => {
             const Icon = icons[f.key];
@@ -209,8 +209,8 @@ export function ContentGallery({ items, isLoading, isError, onRetry }: {
       {visible.length === 0 ? (
         <p className="text-center py-10 text-sm text-muted-foreground">Nothing in this filter yet.</p>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          {visible.map((u) => <Card key={u._id} item={u} onOpen={() => setOpen(u)} />)}
+        <div className={feed ? "grid grid-cols-1 sm:grid-cols-2 gap-4" : "grid grid-cols-3 gap-1"} data-testid="posts-grid">
+          {visible.map((u) => <Card key={u._id} item={u} feed={feed} onOpen={() => setOpen(u)} />)}
         </div>
       )}
       <ContentDialog item={open} onClose={() => setOpen(null)} />

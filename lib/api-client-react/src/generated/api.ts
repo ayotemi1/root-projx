@@ -2436,7 +2436,7 @@ export function useGetFeed<
 }
 
 /**
- * @summary Post a new update (org only)
+ * @summary Publish an organisation post with optional caption, media and social link
  */
 export const getPostUpdateUrl = () => {
   return `/api/feed`;
@@ -2499,7 +2499,7 @@ export type PostUpdateMutationBody = BodyType<CreateUpdateRequest>;
 export type PostUpdateMutationError = ErrorType<unknown>;
 
 /**
- * @summary Post a new update (org only)
+ * @summary Publish an organisation post with optional caption, media and social link
  */
 export const usePostUpdate = <
   TError = ErrorType<unknown>,

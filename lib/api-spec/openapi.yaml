@@ -551,7 +551,7 @@ paths:
     post:
       operationId: postUpdate
       tags: [feed]
-      summary: Post a new update (org only)
+      summary: Publish an organisation post with optional caption, media and social link
       security:
         - bearerAuth: []
       requestBody:
@@ -1450,11 +1450,19 @@ components:
 
     CreateUpdateRequest:
       type: object
+      description: Add at least one photo/video, externalUrl, title or content. No progress-update category is required.
       properties:
         title:
           type: string
         body:
           type: string
+          deprecated: true
+        content:
+          type: string
+          maxLength: 5000
+        type:
+          type: string
+          description: Legacy post classification; defaults to update when omitted.
         tag:
           type: string
           enum: [Before, During, After]
@@ -1465,10 +1473,6 @@ components:
         externalUrl:
           type: string
           description: Optional HTTPS Instagram post/reel, YouTube video or Vimeo video link.
-      required:
-        - title
-        - body
-        - tag
 
     FollowRequest:
       type: object

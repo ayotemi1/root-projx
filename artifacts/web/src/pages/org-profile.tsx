@@ -434,7 +434,7 @@ export default function OrgProfilePage() {
   }
 
   const TABS = [
-    { key: "updates",   label: "Content",   count: updates.length },
+    { key: "updates",   label: "Posts",   count: updates.length },
     { key: "campaigns", label: "Campaigns", count: realCampaigns.length },
     { key: "volunteer", label: "Volunteer",  count: null },
     { key: "about",     label: "About",      count: null },
@@ -553,7 +553,7 @@ export default function OrgProfilePage() {
                     ) : !updatesQ.isLoading && (
                       <span className="flex items-center gap-1">
                         <Clock className="w-3.5 h-3.5" />
-                        No updates yet
+                        No posts yet
                       </span>
                     )}
                   </div>
@@ -575,7 +575,7 @@ export default function OrgProfilePage() {
                     <div className="mt-3 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
                       <Clock className="w-3.5 h-3.5 text-amber-600 mt-0.5 flex-shrink-0" />
                       <p className="text-xs text-amber-700 leading-snug">
-                        This org hasn't posted an update in over 6 months
+                        This org hasn't shared a post in over 6 months
                       </p>
                     </div>
                   )}
@@ -628,7 +628,7 @@ export default function OrgProfilePage() {
             <div className="grid grid-cols-4 border-t border-border">
               {[
                 { Icon: Users,      label: "Followers", value: (org.followerCount ?? 0).toLocaleString() },
-                { Icon: Zap,        label: "Updates",   value: allUpdates.length.toString() },
+                { Icon: Zap,        label: "Posts",   value: allUpdates.length.toString() },
                 { Icon: TrendingUp, label: "Impact",    value: (org.impactScore ?? 0).toString() },
                 { Icon: DollarSign, label: "Raised",    value: `£${(org.totalRaised ?? 0).toLocaleString()}` },
               ].map(({ Icon, label, value }) => (

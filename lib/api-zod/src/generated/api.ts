@@ -2234,20 +2234,31 @@ export const GetFeedResponseItem = zod
 export const GetFeedResponse = zod.array(GetFeedResponseItem);
 
 /**
- * @summary Post a new update (org only)
+ * @summary Publish an organisation post with optional caption, media and social link
  */
-export const PostUpdateBody = zod.object({
-  title: zod.string(),
-  body: zod.string(),
-  tag: zod.enum(["Before", "During", "After"]),
-  mediaUrls: zod.array(zod.string()).optional(),
-  externalUrl: zod
-    .string()
-    .optional()
-    .describe(
-      "Optional HTTPS Instagram post\/reel, YouTube video or Vimeo video link.",
-    ),
-});
+export const postUpdateBodyContentMax = 5000;
+
+export const PostUpdateBody = zod
+  .object({
+    title: zod.string().optional(),
+    body: zod.string().optional(),
+    content: zod.string().max(postUpdateBodyContentMax).optional(),
+    type: zod
+      .string()
+      .optional()
+      .describe("Legacy post classification; defaults to update when omitted."),
+    tag: zod.enum(["Before", "During", "After"]).optional(),
+    mediaUrls: zod.array(zod.string()).optional(),
+    externalUrl: zod
+      .string()
+      .optional()
+      .describe(
+        "Optional HTTPS Instagram post\/reel, YouTube video or Vimeo video link.",
+      ),
+  })
+  .describe(
+    "Add at least one photo\/video, externalUrl, title or content. No progress-update category is required.",
+  );
 
 /**
  * @summary Get public feed (no auth required)

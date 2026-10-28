@@ -5,7 +5,7 @@ import { normaliseContentLink } from "../lib/feed-content.js";
 
 const router = Router();
 
-// GET /feed/public — latest 30 updates; no auth required
+// GET /feed/public — all published organisation posts; no auth required
 router.get("/feed/public", async (req, res) => {
   try {
     const serverToken = await getServerToken();
@@ -13,7 +13,7 @@ router.get("/feed/public", async (req, res) => {
       "updates",
       [],
       serverToken,
-      { orderBy: { field: "createdAt", dir: "DESCENDING" }, limit: 30 },
+      { orderBy: { field: "createdAt", dir: "DESCENDING" } },
     );
     res.json(updates);
   } catch (err) {
@@ -56,8 +56,7 @@ router.get("/feed", requireAuth, async (req, res) => {
       .flat()
       .sort((a, b) =>
         ((b["createdAt"] as string) ?? "").localeCompare((a["createdAt"] as string) ?? ""),
-      )
-      .slice(0, 50);
+      );
 
     res.json(all);
   } catch (err) {
@@ -104,16 +103,12 @@ router.post("/feed", requireAuth, requireApprovedOrganisation, async (req, res) 
       res.status(400).json({ error: (err as Error).message });
       return;
     }
-    if (!title || !content) {
-      res.status(400).json({ error: "title and content are required" });
+    if (title != null && (typeof title !== "string" || title.length > 200)) {
+      res.status(400).json({ error: "Post title must be at most 200 characters." });
       return;
     }
-    if (typeof title !== "string" || title.trim().length === 0 || title.length > 200) {
-      res.status(400).json({ error: "title must be between 1 and 200 characters" });
-      return;
-    }
-    if (typeof content !== "string" || content.trim().length === 0 || content.length > 5000) {
-      res.status(400).json({ error: "content must be between 1 and 5000 characters" });
+    if (content != null && (typeof content !== "string" || content.length > 5000)) {
+      res.status(400).json({ error: "Post caption must be at most 5000 characters." });
       return;
     }
     const ALLOWED_TYPES = ["update", "milestone", "campaign", "before", "during", "after"];
@@ -129,13 +124,19 @@ router.post("/feed", requireAuth, requireApprovedOrganisation, async (req, res) 
           .filter((u): u is string => typeof u === "string")
           .slice(0, 10)
       : [];
+    const caption = typeof content === "string" ? content.trim() : "";
+    const postTitle = typeof title === "string" ? title.trim() : "";
+    if (!caption && !postTitle && !urls.length && !contentLink) {
+      res.status(400).json({ error: "Add a photo, video, link or caption to your post." });
+      return;
+    }
 
     const data: Record<string, unknown> = {
       orgId: uid,
       orgName,
       type: resolvedType,
-      title,
-      content,
+      title: postTitle,
+      content: caption,
       mediaUrls: urls,
       externalUrl: contentLink,
       likes: 0,

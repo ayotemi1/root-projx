@@ -3,8 +3,15 @@ import test from "node:test";
 import { createRequire } from "node:module";
 import { build } from "esbuild";
 import { normaliseContentLink } from "./feed-content.ts";
+import { readFile } from "node:fs/promises";
 
 const helper = await import("../../../web/src/lib/content-media.ts");
+
+test("the live /feed route uses the shared general-post feed, not the old updates-only home", async () => {
+  const app = await readFile(new URL("../../../web/src/App.tsx", import.meta.url), "utf8");
+  assert.match(app, /import FeedPage from ["']@\/pages\/feed["']/);
+  assert.match(app, /<Route path="\/feed" component=\{FeedPage\}/);
+});
 
 test("gallery understands every saved link format and constructs trusted players only", () => {
   for (const url of [
@@ -62,8 +69,16 @@ test("public content gallery renders real cards, filters and distinct failure/em
   assert.match(html, /filter-content-videos/);
   assert.match(html, /filter-content-photos/);
   assert.match(html, /filter-content-links/);
+  assert.match(html, /grid-cols-3 gap-1/);
+  assert.match(html, /aspect-square/);
   assert.doesNotMatch(html, /<iframe/);
   assert.match(render({ isError: true }), /role="alert"/);
   assert.match(render({ isLoading: true }), /status-content-loading/);
   assert.doesNotMatch(render({ items: [] }), /Community workshop/);
+  const feed = render({ feed: true, items: [{ _id: "video-post", orgId: "org",
+    orgName: "Community Organisation", title: "", content: "", type: "update",
+    mediaUrls: ["/device-video.mp4"], createdAt: "2026-10-28T00:00:00Z" }] });
+  assert.match(feed, /Community Organisation/);
+  assert.match(feed, /device-video\.mp4/);
+  assert.doesNotMatch(feed, />Update</);
 });

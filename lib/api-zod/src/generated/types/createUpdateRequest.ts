@@ -7,10 +7,18 @@
  */
 import type { CreateUpdateRequestTag } from "./createUpdateRequestTag";
 
+/**
+ * Add at least one photo/video, externalUrl, title or content. No progress-update category is required.
+ */
 export interface CreateUpdateRequest {
-  title: string;
-  body: string;
-  tag: CreateUpdateRequestTag;
+  title?: string;
+  /** @deprecated */
+  body?: string;
+  /** @maxLength 5000 */
+  content?: string;
+  /** Legacy post classification; defaults to update when omitted. */
+  type?: string;
+  tag?: CreateUpdateRequestTag;
   mediaUrls?: string[];
   /** Optional HTTPS Instagram post/reel, YouTube video or Vimeo video link. */
   externalUrl?: string;

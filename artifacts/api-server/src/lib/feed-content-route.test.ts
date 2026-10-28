@@ -4,7 +4,7 @@ import test from "node:test";
 import { build } from "esbuild";
 
 test("organisation content persists links with media, derives ownership, and keeps the full library public", async () => {
-  const state = { writes: [] as Record<string, unknown>[], posts: Array.from({ length: 25 }, (_, i) => ({
+  const state = { writes: [] as Record<string, unknown>[], posts: Array.from({ length: 35 }, (_, i) => ({
     _id: `post-${i}`, orgId: "org-owner", title: `Post ${i}`,
     createdAt: new Date(2026, 0, i + 1).toISOString(),
     mediaUrls: ["https://media.example.test/clip.mp4"],
@@ -30,8 +30,9 @@ test("organisation content persists links with media, derives ownership, and kee
           export const getServerToken=async()=>"mock-server";
           export const fsGet=async()=>({name:"Real organisation"});
           export const fsPatch=async()=>{};
-          export const fsQuery=async(collection,filters)=>{
-            if(collection!=="updates" || filters[0].value!=="org-owner") throw Error("Wrong scope");
+          export const fsQuery=async(collection,filters,token,options)=>{
+            if(collection!=="updates" || (filters.length && filters[0].value!=="org-owner")) throw Error("Wrong scope");
+            if(options?.limit) throw Error("Posts silently truncated");
             return [...globalThis.contentRouteState.posts];
           };
           export const fsCreate=async(collection,data)=>{
@@ -75,12 +76,22 @@ test("organisation content persists links with media, derives ownership, and kee
     assert.equal(state.writes.length, 1);
     assert.equal((await post({ title: "Text only", content: "An update", type: "update" })).status, 201);
     assert.equal(state.writes[1]!.externalUrl, null);
+    assert.equal((await post({ mediaUrls: ["https://media.example.test/device-video.mp4"] })).status, 201);
+    assert.equal(state.writes[2]!.title, "");
+    assert.equal(state.writes[2]!.content, "");
+    assert.equal(state.writes[2]!.type, "update"); // Existing records remain compatible.
+    assert.equal((await post({ content: "An ordinary post, not a progress update." })).status, 201);
+    assert.equal((await post({ externalUrl: "https://instagram.com/reel/abc/" })).status, 201);
+    assert.equal((await post({ title: "", content: "  ", mediaUrls: [] })).status, 400);
     const publicResponse = await fetch(`${base}/feed/org/org-owner`);
     assert.equal(publicResponse.status, 200);
     const library = await publicResponse.json() as any[];
-    assert.equal(library.length, 25);
-    assert.equal(library[0]._id, "post-24");
+    assert.equal(library.length, 35);
+    assert.equal(library[0]._id, "post-34");
     assert.equal(library[0].externalUrl, state.posts[0]!.externalUrl);
+    const liveFeed = await fetch(`${base}/feed/public`);
+    assert.equal(liveFeed.status, 200);
+    assert.equal((await liveFeed.json() as any[]).length, 35);
   } finally {
     await new Promise<void>((resolve, reject) => server.close((err: Error | undefined) => err ? reject(err) : resolve()));
     delete (globalThis as any).contentRouteState;

@@ -145,17 +145,17 @@ export function DashboardOverview({ orgId, token, org, campaigns }: { orgId: str
         )}
       </Block>
 
-      <Block label="Updates" testId="block-overview-updates">
+      <Block label="Posts" testId="block-overview-updates">
         {updateAge == null || updateAge >= 30 ? (
           <div className="flex items-start gap-3">
             <Megaphone className="w-5 h-5 text-primary shrink-0 mt-0.5" />
             <div className="flex-1">
-              <p className="text-sm font-semibold">{updateAge == null ? "You haven't posted an update yet." : `Your last update was ${updateAge} days ago.`}</p>
+              <p className="text-sm font-semibold">{updateAge == null ? "You haven't shared a post yet." : `Your last post was ${updateAge} days ago.`}</p>
               <p className="text-xs text-muted-foreground">Supporters who hear from you give again. One photo and two lines is enough.</p>
             </div>
-            <Link href="/dashboard?tab=profile" className="text-xs font-bold text-primary whitespace-nowrap hover:underline" data-testid="link-post-update">Post one</Link>
+            <Link href="/dashboard?tab=posts" className="text-xs font-bold text-primary whitespace-nowrap hover:underline" data-testid="link-post-update">Create a post</Link>
           </div>
-        ) : <p className="text-sm text-muted-foreground">Last update {updateAge === 0 ? "today" : `${updateAge} days ago`}. Nice.</p>}
+        ) : <p className="text-sm text-muted-foreground">Last post {updateAge === 0 ? "today" : `${updateAge} days ago`}.</p>}
       </Block>
 
       <Block label="Impact" testId="block-overview-impact" action={<Link href="/dashboard?tab=build#edit-impact" className="text-xs font-bold text-primary hover:underline">Edit</Link>}>
