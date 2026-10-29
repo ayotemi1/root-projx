@@ -1197,6 +1197,11 @@ components:
             recentSupporters:
               type: array
               items: {$ref: "#/components/schemas/RecentCampaignSupporter"}
+            supporterUnits:
+              description: Newest counted supporters first; public consent-filtered names only, matching individually drawn units
+              type: array
+              maxItems: 300
+              items: {$ref: "#/components/schemas/RecentCampaignSupporter"}
           required: [_id, amountRaised, enabled]
 
     RecentCampaignSupporter:

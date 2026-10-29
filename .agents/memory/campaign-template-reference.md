@@ -17,3 +17,12 @@ around the other campaign icons.
 
 **How to apply:** Preserve the icon shapes and existing colours; do not reintroduce
 decorative circles in assets, canvas rendering or campaign editor previews.
+
+Donor names on campaign icons must follow the same consent and abbreviated-name
+policy as the public donor wall; entering a payment email is not public consent.
+
+**Why:** The user requested hover names on the hands/bricks, not exposure of
+private donor details. Anonymous historical gifts cannot safely identify a person.
+
+**How to apply:** Attribute only real, deduplicated counted supporters to icons,
+keep non-consenting donors anonymous, and keep aggregate artwork unattributed.

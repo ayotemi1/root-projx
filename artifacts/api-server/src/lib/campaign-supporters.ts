@@ -32,6 +32,7 @@ export function summariseSupporters(donations: Record<string, unknown>[], wall: 
   const seenPeople = new Set<string>();
   let unidentifiedGifts = 0;
   const recent: { displayName: string; createdAt: string }[] = [];
+  const supporterUnits: { displayName: string; createdAt: string }[] = [];
   let supporterCount = 0;
   const sorted = [...donations].sort((a, b) => String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? "")));
   for (const row of sorted) {
@@ -48,8 +49,13 @@ export function summariseSupporters(donations: Record<string, unknown>[], wall: 
     const displayName = hidden.has(String(row.userId)) ? "Anonymous" : typeof row.publicDonorName === "string" ? firstNameLastInitial(row.publicDonorName)
       : row.publicDonorName === null ? "Anonymous" : names.get(String(row.userId)) ?? "Anonymous";
     if (recent.length < 6) recent.push({ displayName, createdAt: String(row.createdAt ?? "") });
+    // Match the actual counted people, not historical unidentified gifts.
+    // Public artwork gets only the same consent-filtered names as the wall.
+    if (!key.startsWith("unidentified:") && supporterUnits.length < 300) {
+      supporterUnits.push({ displayName, createdAt: String(row.createdAt ?? "") });
+    }
   }
-  return { supporterCount, unidentifiedGifts, recentSupporters: recent };
+  return { supporterCount, unidentifiedGifts, recentSupporters: recent, supporterUnits };
 }
 
 export async function campaignSupporters(orgId: string, campaignId: string, token: string, wall: unknown = []) {

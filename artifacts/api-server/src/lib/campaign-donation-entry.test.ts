@@ -38,6 +38,30 @@ test("campaign cards expose a full-card accessible link without nesting the dona
   assert.doesNotMatch(markup, /<a[^>]*>[^<]*<button/);
 });
 
+test("donor-icon hit testing respects rotation, overlap and newest-first name ordering", async () => {
+  const { hitSupporterUnit, supporterUnitName } = await loadComponent("src/lib/supporter-unit-hit.ts");
+  const lower = { x: 30, y: 30, s: 20, r: 0, index: 0 };
+  const upper = { x: 30, y: 30, s: 12, r: Math.PI / 4, index: 1 };
+  assert.equal(hitSupporterUnit([lower, upper], 30, 30).index, 1);
+  assert.equal(hitSupporterUnit([upper], 38, 30).index, 1, "rotated edge is inside");
+  assert.equal(hitSupporterUnit([upper], 38, 38), null, "outside the rotated square");
+  assert.equal(hitSupporterUnit([lower, upper], 100, 100), null);
+  const names = [{ displayName: "Newest N." }, { displayName: "Anonymous" }, { displayName: "Oldest O." }];
+  assert.equal(supporterUnitName(names, 3, 2), "Newest N.");
+  assert.equal(supporterUnitName(names, 3, 1), "Anonymous");
+  assert.equal(supporterUnitName(names, 3, 0), "Oldest O.");
+  assert.equal(supporterUnitName([], 3, 0), "Anonymous");
+  assert.equal(supporterUnitName(names, 300, 299), "Newest N.");
+});
+
+test("accumulation animation clamps early RAF timestamps instead of indexing a negative unit", async () => {
+  const { accumulationProgress } = await loadComponent("src/lib/supporter-unit-hit.ts");
+  assert.equal(accumulationProgress(99, 100, 1400), 0);
+  assert.equal(accumulationProgress(100, 100, 1400), 0);
+  assert.equal(accumulationProgress(800, 100, 1400), 0.5);
+  assert.equal(accumulationProgress(2000, 100, 1400), 1);
+});
+
 test("campaign Donate button delivers its id and name to the sheet and checkout body", async () => {
   const { CampaignDonateButton } = await loadComponent("src/components/campaign-donate-button.tsx");
   const { GuestDonateSheet, guestCheckoutBody } = await loadComponent("src/components/GuestDonateSheet.tsx");

@@ -300,6 +300,7 @@ export function CampaignPageView({
                   data-testid="block-campaign-hero" data-tour-id="campaign-accumulation">
                   <AccumulationField
                     count={supporters}
+                    supporters={campaign.supporterUnits}
                     unitSingular={unitSingular}
                     unitPlural={unitPlural}
                     imageUrl={unit?.imageUrl ?? null}

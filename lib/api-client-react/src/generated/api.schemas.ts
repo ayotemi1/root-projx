@@ -382,6 +382,11 @@ export type EditorCampaign = CampaignEditorRequest & {
   /** @minimum 0 */
   unidentifiedGifts?: number;
   recentSupporters?: RecentCampaignSupporter[];
+  /**
+   * Newest counted supporters first; public consent-filtered names only, matching individually drawn units
+   * @maxItems 300
+   */
+  supporterUnits?: RecentCampaignSupporter[];
 };
 
 export type CampaignLandingViewOrganisation = {

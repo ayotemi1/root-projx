@@ -163,6 +163,8 @@ export const getOwnerCampaignPreviewResponseCampaignTwoSupporterCountMin = 0;
 
 export const getOwnerCampaignPreviewResponseCampaignTwoUnidentifiedGiftsMin = 0;
 
+export const getOwnerCampaignPreviewResponseCampaignTwoSupporterUnitsMax = 300;
+
 export const GetOwnerCampaignPreviewResponse = zod.object({
   campaign: zod
     .object({
@@ -328,6 +330,18 @@ export const GetOwnerCampaignPreviewResponse = zod.object({
             }),
           )
           .optional(),
+        supporterUnits: zod
+          .array(
+            zod.object({
+              displayName: zod.string(),
+              createdAt: zod.string(),
+            }),
+          )
+          .max(getOwnerCampaignPreviewResponseCampaignTwoSupporterUnitsMax)
+          .optional()
+          .describe(
+            "Newest counted supporters first; public consent-filtered names only, matching individually drawn units",
+          ),
       }),
     ),
   organisation: zod.object({
@@ -525,6 +539,8 @@ export const getPublicCampaignsResponseTwoSupporterCountMin = 0;
 
 export const getPublicCampaignsResponseTwoUnidentifiedGiftsMin = 0;
 
+export const getPublicCampaignsResponseTwoSupporterUnitsMax = 300;
+
 export const GetPublicCampaignsResponseItem = zod
   .object({
     name: zod.string().max(getPublicCampaignsResponseOneNameMax).optional(),
@@ -665,6 +681,18 @@ export const GetPublicCampaignsResponseItem = zod
           }),
         )
         .optional(),
+      supporterUnits: zod
+        .array(
+          zod.object({
+            displayName: zod.string(),
+            createdAt: zod.string(),
+          }),
+        )
+        .max(getPublicCampaignsResponseTwoSupporterUnitsMax)
+        .optional()
+        .describe(
+          "Newest counted supporters first; public consent-filtered names only, matching individually drawn units",
+        ),
     }),
   );
 export const GetPublicCampaignsResponse = zod.array(
@@ -850,6 +878,8 @@ export const getManagedCampaignDraftsResponseTwoSupporterCountMin = 0;
 
 export const getManagedCampaignDraftsResponseTwoUnidentifiedGiftsMin = 0;
 
+export const getManagedCampaignDraftsResponseTwoSupporterUnitsMax = 300;
+
 export const GetManagedCampaignDraftsResponseItem = zod
   .object({
     name: zod
@@ -1000,6 +1030,18 @@ export const GetManagedCampaignDraftsResponseItem = zod
           }),
         )
         .optional(),
+      supporterUnits: zod
+        .array(
+          zod.object({
+            displayName: zod.string(),
+            createdAt: zod.string(),
+          }),
+        )
+        .max(getManagedCampaignDraftsResponseTwoSupporterUnitsMax)
+        .optional()
+        .describe(
+          "Newest counted supporters first; public consent-filtered names only, matching individually drawn units",
+        ),
     }),
   );
 export const GetManagedCampaignDraftsResponse = zod.array(
@@ -1177,6 +1219,8 @@ export const saveCampaignDraftResponseTwoSupporterCountMin = 0;
 
 export const saveCampaignDraftResponseTwoUnidentifiedGiftsMin = 0;
 
+export const saveCampaignDraftResponseTwoSupporterUnitsMax = 300;
+
 export const SaveCampaignDraftResponse = zod
   .object({
     name: zod.string().max(saveCampaignDraftResponseOneNameMax).optional(),
@@ -1315,6 +1359,18 @@ export const SaveCampaignDraftResponse = zod
           }),
         )
         .optional(),
+      supporterUnits: zod
+        .array(
+          zod.object({
+            displayName: zod.string(),
+            createdAt: zod.string(),
+          }),
+        )
+        .max(saveCampaignDraftResponseTwoSupporterUnitsMax)
+        .optional()
+        .describe(
+          "Newest counted supporters first; public consent-filtered names only, matching individually drawn units",
+        ),
     }),
   );
 

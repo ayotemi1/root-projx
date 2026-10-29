@@ -39,8 +39,30 @@ test("recent wall is newest first, capped at six distinct donors, private and pa
   assert.equal(summary.recentSupporters.length, 6);
   assert.equal(summary.recentSupporters[0].displayName, "Anonymous");
   assert.equal(summary.recentSupporters[1].displayName, "Person8 S.");
+  assert.equal(summary.supporterUnits.length, 10, "the artwork is not limited to the six-person wall");
+  assert.equal(summary.supporterUnits[0].displayName, "Anonymous");
+  assert.equal(summary.supporterUnits[1].displayName, "Person8 S.");
   assert.doesNotMatch(JSON.stringify(summary), /@|Surname|Private note|stripeRef|donorIdentityKey|chargedGbp|Never Show/);
   for (let i = 1; i < summary.recentSupporters.length; i++) {
     assert.ok(summary.recentSupporters[i - 1].createdAt >= summary.recentSupporters[i].createdAt);
   }
+});
+
+test("artwork names cover only counted people, obey opt-out and cap individually drawn units at 300", () => {
+  const rows = Array.from({ length: 305 }, (_, i) => ({
+    stripeRef: `pi_unit_${i}`, donorIdentityKey: `person:${i}`, userId: `user-${i}`,
+    publicDonorName: `Supporter${i} Surname`,
+    createdAt: new Date(Date.UTC(2026, 0, 1, 0, i)).toISOString(),
+  }));
+  const summary = summariseSupporters([
+    ...rows,
+    { ...rows[304], stripeRef: "pi_repeat", createdAt: "2026-12-30" },
+    { stripeRef: "historical_no_identity", createdAt: "2026-12-31" },
+  ], [{ userId: "user-304", optedIn: false }]);
+  assert.equal(summary.supporterCount, 305);
+  assert.equal(summary.unidentifiedGifts, 1);
+  assert.equal(summary.supporterUnits.length, 300);
+  assert.equal(summary.supporterUnits[0].displayName, "Anonymous");
+  assert.equal(summary.supporterUnits[1].displayName, "Supporter303 S.");
+  assert.doesNotMatch(JSON.stringify(summary.supporterUnits), /Surname|stripeRef|userId|donorIdentityKey|Supporter304/);
 });

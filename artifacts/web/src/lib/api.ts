@@ -518,6 +518,8 @@ export interface Campaign {
   /** Part 4: unique donors (server-derived). */
   supporterCount?: number;
   recentSupporters?: PublicSupporter[];
+  /** Public consent-filtered names, newest first, for individually drawn icons. */
+  supporterUnits?: PublicSupporter[];
   /** Legacy gifts with no identity: shown separately, never counted as people. */
   unidentifiedGifts?: number;
   /** Server-owned: matching funds actually allocated so far. */

@@ -111,6 +111,12 @@ with mass for the remainder, one fill animation and a reduced-motion still state
 Supporters are deduplicated from successful payments; consent controls names.
 Historical anonymous gifts without a reusable identity are shown separately,
 never presented as a count of distinct people.
+Individually drawn campaign icons show the donor's consent-filtered public name
+on hover, tap or keyboard selection (arrow keys/Home/End; Escape dismisses).
+The artwork uses the newest 300 counted supporters, separately from the six-name
+recent wall, and shows Anonymous without consent. Raw names, emails, payment IDs
+and identity hashes are never sent for tooltips. Earlier aggregate units have no
+invented individual attribution.
 
 `partnerFunding` distinguishes **committed** funding already secured regardless
 of donations from **matching** pledges triggered by donations. Committed is the

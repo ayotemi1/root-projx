@@ -1,4 +1,7 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { accumulationProgress, hitSupporterUnit, supporterUnitName, type SupporterUnitPosition } from "@/lib/supporter-unit-hit";
+
+const NO_SUPPORTERS: { displayName: string }[] = [];
 
 /** Draw at most this many units individually; the rest become "mass". */
 export const MAX_DRAWN = 300;
@@ -18,6 +21,8 @@ export interface AccumulationFieldProps {
   className?: string;
   height?: number;
   testId?: string;
+  /** Already consent-filtered by the server; never pass raw donor identities. */
+  supporters?: { displayName: string }[];
 }
 
 // Deterministic per-index noise so a unit never jumps between renders.
@@ -64,6 +69,7 @@ function prefersReducedMotion() {
 export function AccumulationField({
   count, unitSingular, unitPlural, imageUrl, colour, background,
   highlightNewest = false, still = false, className = "", height = 240, testId = "canvas-accumulation",
+  supporters = NO_SUPPORTERS,
 }: AccumulationFieldProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -71,6 +77,9 @@ export function AccumulationField({
   const [img, setImg] = useState<HTMLImageElement | null>(null);
   const shownRef = useRef<number | null>(null);
   const rafRef = useRef<number>(0);
+  const paintedRef = useRef<SupporterUnitPosition[]>([]);
+  const [active, setActive] = useState<SupporterUnitPosition | null>(null);
+  const tooltipId = useId();
 
   const safeCount = Math.max(0, Math.floor(count || 0));
   const drawn = Math.min(safeCount, MAX_DRAWN);
@@ -96,6 +105,8 @@ export function AccumulationField({
 
   const placed = useMemo(() => (width > 0 ? layout(drawn, width, height, massH) : null), [drawn, width, height, massH]);
 
+  useEffect(() => { setActive(null); }, [safeCount, width, supporters]);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !placed || width === 0) return;
@@ -105,7 +116,8 @@ export function AccumulationField({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const drawUnit = (p: Placed, alpha: number, lift: number) => {
+    const drawUnit = (p: Placed, alpha: number, lift: number, index: number) => {
+      if (alpha > 0.1) paintedRef.current.push({ ...p, y: p.y - lift, index });
       ctx.save();
       ctx.globalAlpha = highlightNewest && p === placed.items[placed.items.length - 1] ? alpha : p.o * alpha;
       ctx.translate(p.x, p.y - lift);
@@ -122,6 +134,7 @@ export function AccumulationField({
     };
 
     const frame = (visible: number, dropProgress: number) => {
+      paintedRef.current = [];
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, width, height);
       if (massH > 0) {
@@ -137,16 +150,17 @@ export function AccumulationField({
         }
         ctx.globalAlpha = 1;
       }
+      visible = Math.max(0, Math.min(visible, placed.items.length));
       const whole = Math.floor(visible);
-      for (let i = 0; i < whole && i < placed.items.length; i++) drawUnit(placed.items[i], 1, 0);
+      for (let i = 0; i < whole && i < placed.items.length; i++) drawUnit(placed.items[i], 1, 0, i);
       if (whole < placed.items.length && visible > whole) {
         const t = visible - whole;
-        drawUnit(placed.items[whole], t, (1 - t) * 30);
+        drawUnit(placed.items[whole], t, (1 - t) * 30, whole);
       }
       if (dropProgress >= 0 && placed.items.length > 0) {
         const last = placed.items[placed.items.length - 1];
         const t = 1 - Math.pow(1 - dropProgress, 3);
-        drawUnit(last, t, (1 - t) * height * 0.5);
+        drawUnit(last, t, (1 - t) * height * 0.5, placed.items.length - 1);
       }
     };
 
@@ -162,7 +176,7 @@ export function AccumulationField({
       const dur = 1400;
       const start = performance.now();
       const tick = (now: number) => {
-        const t = Math.min(1, (now - start) / dur);
+        const t = accumulationProgress(now, start, dur);
         const eased = 1 - Math.pow(1 - t, 2);
         frame(eased * drawn, -1);
         if (t < 1) rafRef.current = requestAnimationFrame(tick);
@@ -173,7 +187,7 @@ export function AccumulationField({
       const dur = 700;
       const start = performance.now();
       const tick = (now: number) => {
-        const t = Math.min(1, (now - start) / dur);
+        const t = accumulationProgress(now, start, dur);
         if (t < 1) { frame(drawn - 1, t); rafRef.current = requestAnimationFrame(tick); }
         else frame(drawn, -1);
       };
@@ -181,7 +195,7 @@ export function AccumulationField({
     } else {
       frame(drawn, -1);
     }
-    return () => cancelAnimationFrame(rafRef.current);
+    return () => { cancelAnimationFrame(rafRef.current); paintedRef.current = []; };
   }, [placed, width, height, img, colour, massH, highlightNewest, still, drawn, safeCount]);
 
   const noun = safeCount === 1 ? unitSingular : unitPlural;
@@ -197,9 +211,41 @@ export function AccumulationField({
         ref={canvasRef}
         role="img"
         aria-label={description}
+        aria-describedby={active ? tooltipId : undefined}
         data-testid={testId}
+        tabIndex={drawn > 0 ? 0 : undefined}
+        onPointerMove={(event) => {
+          if (event.pointerType === "touch") return;
+          const rect = event.currentTarget.getBoundingClientRect();
+          setActive(hitSupporterUnit(paintedRef.current, event.clientX - rect.left, event.clientY - rect.top));
+        }}
+        onPointerDown={(event) => {
+          if (event.pointerType !== "touch") return;
+          const rect = event.currentTarget.getBoundingClientRect();
+          setActive(hitSupporterUnit(paintedRef.current, event.clientX - rect.left, event.clientY - rect.top));
+        }}
+        onPointerLeave={(event) => { if (event.pointerType !== "touch") setActive(null); }}
+        onBlur={() => setActive(null)}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") { setActive(null); return; }
+          if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+          event.preventDefault();
+          const items = paintedRef.current;
+          if (!items.length) return;
+          const current = items.findIndex((item) => item.index === active?.index);
+          const next = event.key === "Home" ? 0 : event.key === "End" ? items.length - 1
+            : current < 0 ? (event.key === "ArrowLeft" ? items.length - 1 : 0)
+            : (current + (event.key === "ArrowLeft" ? -1 : 1) + items.length) % items.length;
+          setActive(items[next]);
+        }}
         style={{ width: "100%", height }}
       />
+      {drawn > 0 && <span className="sr-only">Hover or tap an icon to see its public donor name. Use the left and right arrow keys when focused; Escape closes the name.</span>}
+      {active && <div id={tooltipId} role="tooltip" aria-live="polite"
+        className="absolute z-10 pointer-events-none rounded-md bg-foreground px-3 py-2 text-xs font-semibold text-background shadow-lg break-words text-center"
+        style={{ left: Math.max(8, Math.min(active.x - 80, width - 168)), top: Math.max(8, active.y - active.s / 2 - 42), width: 160, maxWidth: "calc(100% - 16px)" }}>
+        {supporterUnitName(supporters, drawn, active.index)}
+      </div>}
       {safeCount === 0 && (
         <div className="absolute inset-0 flex items-end justify-center pb-6 pointer-events-none" aria-hidden="true">
           <div className="flex flex-col items-center gap-2 opacity-60">
