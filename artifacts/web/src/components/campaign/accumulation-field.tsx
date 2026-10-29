@@ -11,7 +11,7 @@ export interface AccumulationFieldProps {
   colour: string;
   accent: string;
   background: string;
-  /** Ring the newest unit (after a recorded donation). */
+  /** Emphasise the newest unit with full opacity, without a surrounding ring. */
   highlightNewest?: boolean;
   /** Turn off all motion (editor previews re-render constantly). */
   still?: boolean;
@@ -62,7 +62,7 @@ function prefersReducedMotion() {
  * Load: one orchestrated fill. New unit while mounted: one drop. Nothing else moves.
  */
 export function AccumulationField({
-  count, unitSingular, unitPlural, imageUrl, colour, accent, background,
+  count, unitSingular, unitPlural, imageUrl, colour, background,
   highlightNewest = false, still = false, className = "", height = 240, testId = "canvas-accumulation",
 }: AccumulationFieldProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -107,7 +107,7 @@ export function AccumulationField({
 
     const drawUnit = (p: Placed, alpha: number, lift: number) => {
       ctx.save();
-      ctx.globalAlpha = p.o * alpha;
+      ctx.globalAlpha = highlightNewest && p === placed.items[placed.items.length - 1] ? alpha : p.o * alpha;
       ctx.translate(p.x, p.y - lift);
       ctx.rotate(p.r);
       if (img) {
@@ -148,16 +148,6 @@ export function AccumulationField({
         const t = 1 - Math.pow(1 - dropProgress, 3);
         drawUnit(last, t, (1 - t) * height * 0.5);
       }
-      if (highlightNewest && placed.items.length > 0 && dropProgress < 0) {
-        const last = placed.items[placed.items.length - 1];
-        ctx.save();
-        ctx.strokeStyle = accent;
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.arc(last.x, last.y, last.s * 0.62, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
-      }
     };
 
     cancelAnimationFrame(rafRef.current);
@@ -192,14 +182,14 @@ export function AccumulationField({
       frame(drawn, -1);
     }
     return () => cancelAnimationFrame(rafRef.current);
-  }, [placed, width, height, img, colour, accent, massH, highlightNewest, still, drawn, safeCount]);
+  }, [placed, width, height, img, colour, massH, highlightNewest, still, drawn, safeCount]);
 
   const noun = safeCount === 1 ? unitSingular : unitPlural;
   const description = safeCount === 0
     ? `An empty field waiting for the first ${unitSingular}. No supporters yet.`
     : `A field of ${safeCount.toLocaleString("en-GB")} ${noun}, one for each supporter of this campaign.` +
       (remainder > 0 ? ` The newest ${MAX_DRAWN} are drawn individually; ${remainder.toLocaleString("en-GB")} earlier ones form the band beneath.` : "") +
-      (highlightNewest ? " The newest one is ringed." : "");
+      (highlightNewest ? " The newest one is highlighted." : "");
 
   return (
     <div ref={wrapRef} className={`relative w-full overflow-hidden ${className}`} style={{ height, backgroundColor: background }}>
