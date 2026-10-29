@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireAdmin } from "../lib/admin-auth.js";
 import { fsGet, fsPatch, fsQuery, getServerToken } from "../lib/firebase-rest.js";
+import { organisationDeletionConfirmation } from "../lib/organisation-deletion-confirmation.js";
 
 const router = Router();
 
@@ -20,8 +21,9 @@ router.delete("/admin/organisations/:id", requireAdmin, async (req, res) => {
       res.status(404).json({ error: "Organisation not found" });
       return;
     }
-    if (typeof req.body?.confirmationName !== "string" || req.body.confirmationName !== org.name) {
-      res.status(400).json({ error: "Type the organisation name exactly to confirm deletion." });
+    const confirmation = organisationDeletionConfirmation(org.name);
+    if (typeof req.body?.confirmationName !== "string" || req.body.confirmationName !== confirmation) {
+      res.status(400).json({ error: `To confirm deletion, type "${confirmation}".` });
       return;
     }
     if (!org.deletedAt) {

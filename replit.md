@@ -336,7 +336,9 @@ No separate collection or Firestore rules change is required.
 ### Removing an organisation
 
 Admin → Organisations → **Delete organisation** requires typing the organisation's
-exact name. Removal is a retained-record deletion: `deletedAt`/`deletedBy` hide the
+name shown in the dialog. Nameless records explicitly require `DELETE` and show
+the organisation ID; empty text is never accepted. Removal is a retained-record
+deletion: `deletedAt`/`deletedBy` hide the
 organisation and its embedded campaigns from normal API reads, block organisation
 bearer access and checkout, and hide its posts from public/personalised feeds.
 The admin list removes it after confirmation. No restore button is provided.

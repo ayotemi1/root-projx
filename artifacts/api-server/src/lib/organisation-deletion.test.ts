@@ -3,6 +3,7 @@ import test from "node:test";
 import { createRequire } from "node:module";
 import { build } from "esbuild";
 import { fsGet, fsList, fsQuery } from "./firebase-rest.ts";
+import { organisationDeletionConfirmation } from "./organisation-deletion-confirmation.ts";
 
 // All writes are in-memory. Never delete a real organisation for verification.
 const compiled = await build({
@@ -74,6 +75,28 @@ test("deletion retains balances, campaigns and financial records; retry is idemp
   assert.equal(f.state.org.campaigns[0].amountRaised, 3);
   assert.equal((await f.request({ confirmationName: "Example Org" })).status, 200);
   assert.equal(f.state.writes.length, 1);
+});
+test("unnamed, missing and whitespace-only names require a visible DELETE confirmation", async () => {
+  for (const name of ["", "   ", null, undefined, 42]) {
+    const f = fixture();
+    f.state.org.name = name;
+    assert.equal(organisationDeletionConfirmation(name), "DELETE");
+    for (const confirmationName of ["", "exactly", "delete"]) {
+      const result = await f.request({ confirmationName });
+      assert.equal(result.status, 400);
+      assert.match(result.data.error, /type "DELETE"/);
+    }
+    assert.equal(f.state.writes.length, 0);
+    assert.equal((await f.request({ confirmationName: "DELETE" })).status, 200);
+    assert.equal(f.state.writes.length, 1);
+  }
+});
+test("padded organisation names have a consistent, visible confirmation value", async () => {
+  const f = fixture();
+  f.state.org.name = "  Example Org  ";
+  assert.equal(organisationDeletionConfirmation(f.state.org.name), "Example Org");
+  assert.equal((await f.request({ confirmationName: "exactly" })).status, 400);
+  assert.equal((await f.request({ confirmationName: "Example Org" })).status, 200);
 });
 test("missing organisations, live recurring payments and failed writes fail explicitly", async () => {
   const missing = fixture(); missing.state.org = null;

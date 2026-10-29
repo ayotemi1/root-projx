@@ -6,9 +6,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { OrganisationDeletionInput, OrganisationDeletionResult } from "@workspace/api-client-react";
+import { organisationDeletionConfirmation } from "../../../api-server/src/lib/organisation-deletion-confirmation";
 
 export function AdminDeleteOrganisation({ org, token, onDeleted, onUnauthorized }: {
-  org: { _id: string; name: string } | null;
+  org: { _id: string; name?: string | null } | null;
   token: string;
   onDeleted: (id: string) => void;
   onUnauthorized: () => void;
@@ -22,6 +23,9 @@ export function AdminDeleteOrganisation({ org, token, onDeleted, onUnauthorized 
   // confirmation or failure. A request in progress cannot be dismissed.
   if (!org) return null;
   const organisation = org;
+  const name = typeof organisation.name === "string" ? organisation.name.trim() : "";
+  const displayName = name || "Unnamed organisation";
+  const expectedConfirmation = organisationDeletionConfirmation(organisation.name);
   function changeOpen(value: boolean) {
     if (busy) return;
     setOpen(value);
@@ -29,7 +33,7 @@ export function AdminDeleteOrganisation({ org, token, onDeleted, onUnauthorized 
     setError("");
   }
   async function remove() {
-    if (busy || confirmation !== organisation.name) return;
+    if (busy || confirmation !== expectedConfirmation) return;
     setBusy(true);
     setError("");
     try {
@@ -53,26 +57,28 @@ export function AdminDeleteOrganisation({ org, token, onDeleted, onUnauthorized 
   }
   return <>
     <button type="button" onClick={() => changeOpen(true)} className="mt-3 text-sm font-bold text-primary underline"
-      aria-label={`Delete ${organisation.name}`}>Delete organisation</button>
+      aria-label={`Delete ${displayName}`}>Delete organisation</button>
     <AlertDialog open={open} onOpenChange={changeOpen}>
       <AlertDialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-lg max-h-[90dvh] overflow-y-auto">
         <AlertDialogHeader>
-          <AlertDialogTitle>Delete {organisation.name}?</AlertDialogTitle>
+          <AlertDialogTitle>Delete {displayName}?</AlertDialogTitle>
           <AlertDialogDescription>
             This removes the organisation, its campaigns and posts from public view and blocks organisation access and new donations.
             Donation and payout records are kept for accounting. Recurring donations must be canceled first; payment-provider accounts are not closed.
             There is no restore button in the admin panel.
           </AlertDialogDescription>
         </AlertDialogHeader>
+        {!name && <p className="text-sm break-all">Organisation ID: {organisation._id}</p>}
         <label htmlFor={`delete-name-${organisation._id}`} className="text-sm">
-          Type <strong>{organisation.name}</strong> exactly to confirm.
+          To confirm deletion, type: <strong>“{expectedConfirmation}”</strong>
         </label>
         <Input id={`delete-name-${organisation._id}`} value={confirmation} disabled={busy} autoComplete="off"
+          placeholder={expectedConfirmation}
           onChange={(event) => setConfirmation(event.target.value)} />
         {error && <p role="alert" className="text-sm text-primary">{error}</p>}
         <AlertDialogFooter>
           <AlertDialogCancel disabled={busy}>Cancel</AlertDialogCancel>
-          <Button type="button" disabled={busy || confirmation !== organisation.name} onClick={remove}>
+          <Button type="button" disabled={busy || confirmation !== expectedConfirmation} onClick={remove}>
             {busy ? "Deleting…" : "Delete organisation"}
           </Button>
         </AlertDialogFooter>
