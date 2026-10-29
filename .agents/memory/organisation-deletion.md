@@ -10,6 +10,7 @@ not erasing financial records or closing payment-provider accounts.
 payment event after removal. Erasing its payment setup would obstruct settlement.
 
 **How to apply:** Keep retained organisation data available to accounting while
-ordinary reads treat it as absent. Require explicit name confirmation. Block
+ordinary reads treat it as absent. Require typing `DELETE` for every organisation,
+not its name, as explicitly requested by the user for a consistent confirmation. Block
 removal while recurring gifts are uncanceled, rather than silently continuing
 charges to a removed organisation. Never use a real organisation deletion as a test.

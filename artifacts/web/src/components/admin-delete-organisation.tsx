@@ -25,7 +25,7 @@ export function AdminDeleteOrganisation({ org, token, onDeleted, onUnauthorized 
   const organisation = org;
   const name = typeof organisation.name === "string" ? organisation.name.trim() : "";
   const displayName = name || "Unnamed organisation";
-  const expectedConfirmation = organisationDeletionConfirmation(organisation.name);
+  const expectedConfirmation = organisationDeletionConfirmation();
   function changeOpen(value: boolean) {
     if (busy) return;
     setOpen(value);

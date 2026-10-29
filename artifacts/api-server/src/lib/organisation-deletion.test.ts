@@ -54,17 +54,17 @@ function fixture() {
   } };
 }
 
-test("organisation deletion requires admin auth and an exact name; invalid requests never write", async () => {
+test("organisation deletion requires admin auth and uppercase DELETE; invalid requests never write", async () => {
   const f = fixture();
-  assert.equal((await f.request({ confirmationName: "Example Org" }, false)).status, 401);
-  for (const body of [null, {}, { confirmationName: "example org" }, { confirmationName: true }])
+  assert.equal((await f.request({ confirmationName: "DELETE" }, false)).status, 401);
+  for (const body of [null, {}, { confirmationName: "Example Org" }, { confirmationName: "delete" }, { confirmationName: "" }, { confirmationName: " DELETE " }, { confirmationName: true }])
     assert.equal((await f.request(body)).status, 400);
-  assert.equal((await f.request({ confirmationName: "Example Org" }, true, "../bad")).status, 400);
+  assert.equal((await f.request({ confirmationName: "DELETE" }, true, "../bad")).status, 400);
   assert.equal(f.state.writes.length, 0);
 });
 test("deletion retains balances, campaigns and financial records; retry is idempotent", async () => {
   const f = fixture();
-  assert.deepEqual(await f.request({ confirmationName: "Example Org" }), {
+  assert.deepEqual(await f.request({ confirmationName: "DELETE" }), {
     status: 200, data: { deleted: true, orgId: "example-org" },
   });
   assert.equal(f.state.writes.length, 1);
@@ -73,14 +73,14 @@ test("deletion retains balances, campaigns and financial records; retry is idemp
   assert.equal(f.state.org.totalRaised, 3);
   assert.equal(f.state.org.totalOwedGbp, 2.85);
   assert.equal(f.state.org.campaigns[0].amountRaised, 3);
-  assert.equal((await f.request({ confirmationName: "Example Org" })).status, 200);
+  assert.equal((await f.request({ confirmationName: "DELETE" })).status, 200);
   assert.equal(f.state.writes.length, 1);
 });
 test("unnamed, missing and whitespace-only names require a visible DELETE confirmation", async () => {
   for (const name of ["", "   ", null, undefined, 42]) {
     const f = fixture();
     f.state.org.name = name;
-    assert.equal(organisationDeletionConfirmation(name), "DELETE");
+    assert.equal(organisationDeletionConfirmation(), "DELETE");
     for (const confirmationName of ["", "exactly", "delete"]) {
       const result = await f.request({ confirmationName });
       assert.equal(result.status, 400);
@@ -91,21 +91,22 @@ test("unnamed, missing and whitespace-only names require a visible DELETE confir
     assert.equal(f.state.writes.length, 1);
   }
 });
-test("padded organisation names have a consistent, visible confirmation value", async () => {
+test("named and padded organisation names use DELETE rather than the organisation name", async () => {
   const f = fixture();
   f.state.org.name = "  Example Org  ";
-  assert.equal(organisationDeletionConfirmation(f.state.org.name), "Example Org");
+  assert.equal(organisationDeletionConfirmation(), "DELETE");
   assert.equal((await f.request({ confirmationName: "exactly" })).status, 400);
-  assert.equal((await f.request({ confirmationName: "Example Org" })).status, 200);
+  assert.equal((await f.request({ confirmationName: "Example Org" })).status, 400);
+  assert.equal((await f.request({ confirmationName: "DELETE" })).status, 200);
 });
 test("missing organisations, live recurring payments and failed writes fail explicitly", async () => {
   const missing = fixture(); missing.state.org = null;
-  assert.equal((await missing.request({ confirmationName: "Example Org" })).status, 404);
+  assert.equal((await missing.request({ confirmationName: "DELETE" })).status, 404);
   const subscribed = fixture(); subscribed.state.recurring = [{ status: "active" }];
-  assert.equal((await subscribed.request({ confirmationName: "Example Org" })).status, 409);
+  assert.equal((await subscribed.request({ confirmationName: "DELETE" })).status, 409);
   assert.equal(subscribed.state.writes.length, 0);
   const broken = fixture(); broken.state.fail = true;
-  assert.equal((await broken.request({ confirmationName: "Example Org" })).status, 500);
+  assert.equal((await broken.request({ confirmationName: "DELETE" })).status, 500);
   assert.equal(broken.state.org.deletedAt, undefined);
 });
 test("Firestore hides deleted organisations from direct, list and query reads; settlement explicitly retains access", async () => {

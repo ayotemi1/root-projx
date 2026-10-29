@@ -335,8 +335,8 @@ No separate collection or Firestore rules change is required.
 
 ### Removing an organisation
 
-Admin → Organisations → **Delete organisation** requires typing the organisation's
-name shown in the dialog. Nameless records explicitly require `DELETE` and show
+Admin → Organisations → **Delete organisation** requires typing `DELETE` in
+capitals for every organisation, never its name. Nameless records also show
 the organisation ID; empty text is never accepted. Removal is a retained-record
 deletion: `deletedAt`/`deletedBy` hide the
 organisation and its embedded campaigns from normal API reads, block organisation

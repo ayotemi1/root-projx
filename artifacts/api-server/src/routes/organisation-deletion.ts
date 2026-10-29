@@ -21,7 +21,7 @@ router.delete("/admin/organisations/:id", requireAdmin, async (req, res) => {
       res.status(404).json({ error: "Organisation not found" });
       return;
     }
-    const confirmation = organisationDeletionConfirmation(org.name);
+    const confirmation = organisationDeletionConfirmation();
     if (typeof req.body?.confirmationName !== "string" || req.body.confirmationName !== confirmation) {
       res.status(400).json({ error: `To confirm deletion, type "${confirmation}".` });
       return;
