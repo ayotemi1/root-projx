@@ -26,6 +26,18 @@ async function loadComponent(path: string) {
   return mod.exports;
 }
 
+test("campaign cards expose a full-card accessible link without nesting the donation button", async () => {
+  const { CampaignCardLink } = await loadComponent("src/components/campaign-card-link.tsx");
+  const markup = renderToStaticMarkup(createElement(Router, { hook: () => ["/", () => {}] },
+    createElement(CampaignCardLink, { href: "/campaigns/community/youth-arts", name: "Youth Arts" },
+      createElement("button", { className: "relative z-10" }, "Donate to this campaign"))));
+  assert.match(markup, /href="\/campaigns\/community\/youth-arts"/);
+  assert.match(markup, /aria-label="Open campaign: Youth Arts"/);
+  assert.match(markup, /absolute inset-0 z-\[1\]/);
+  assert.match(markup, /<\/a><button class="relative z-10"/);
+  assert.doesNotMatch(markup, /<a[^>]*>[^<]*<button/);
+});
+
 test("campaign Donate button delivers its id and name to the sheet and checkout body", async () => {
   const { CampaignDonateButton } = await loadComponent("src/components/campaign-donate-button.tsx");
   const { GuestDonateSheet, guestCheckoutBody } = await loadComponent("src/components/GuestDonateSheet.tsx");

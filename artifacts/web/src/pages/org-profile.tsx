@@ -14,6 +14,7 @@ import type { Review, Org, VolunteerRole, Campaign } from "@/lib/api";
 import { GuestDonateSheet } from "@/components/GuestDonateSheet";
 import { ContentGallery } from "@/components/org-content/content-gallery";
 import { CampaignDonateButton } from "@/components/campaign-donate-button";
+import { CampaignCardLink } from "@/components/campaign-card-link";
 import ReactMarkdown from "react-markdown";
 import { PROFILE_ANCHORS, orgSectors } from "@/lib/sectors";
 
@@ -93,7 +94,7 @@ function CampaignCard({ campaign, orgId, onDonate }: { campaign: Campaign; orgId
   const totalPhases = (campaign.phases ?? []).length;
 
   return (
-    <div className="border border-border rounded-xl overflow-hidden bg-white">
+    <CampaignCardLink name={campaign.name} href={campaign.sharePath || (campaign.publicId ? `/campaigns/${encodeURIComponent(campaign.publicId)}` : null)}>
       {campaign.imageUrl && (
         <img src={campaign.imageUrl} alt={campaign.name} className="w-full h-36 object-cover" />
       )}
@@ -163,7 +164,7 @@ function CampaignCard({ campaign, orgId, onDonate }: { campaign: Campaign; orgId
           <div>
             <button
               onClick={() => setShowPhases((v) => !v)}
-              className="flex items-center gap-2 text-xs w-full"
+              className="relative z-10 flex items-center gap-2 text-xs w-full"
             >
               {/* Phase progress bar */}
               <div className="flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
@@ -220,7 +221,7 @@ function CampaignCard({ campaign, orgId, onDonate }: { campaign: Campaign; orgId
         )}
 
         {/* Donate CTA */}
-        {campaign.type === "volunteer" ? <a href={`/donate/${orgId}`}>
+        {campaign.type === "volunteer" ? <a className="relative z-10 block" href={`/donate/${orgId}`}>
           <button
             className="w-full py-2 text-sm font-bold text-white rounded-lg transition-opacity hover:opacity-90"
             style={{ backgroundColor: RED }}
@@ -228,10 +229,10 @@ function CampaignCard({ campaign, orgId, onDonate }: { campaign: Campaign; orgId
             Get Involved
           </button>
         </a> : <CampaignDonateButton campaign={campaign} onDonate={onDonate}
-          className="w-full py-2 text-sm font-bold text-white rounded-lg transition-opacity hover:opacity-90"
+          className="relative z-10 w-full py-2 text-sm font-bold text-white rounded-lg transition-opacity hover:opacity-90"
           style={{ backgroundColor: RED }}>Donate to this campaign</CampaignDonateButton>}
       </div>
-    </div>
+    </CampaignCardLink>
   );
 }
 
