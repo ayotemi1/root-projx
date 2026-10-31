@@ -68,7 +68,7 @@ async function fixture(assistSetting = "true") {
       };
       export const fsList=async(c)=>[...state.docs].filter(([key])=>key.startsWith(c+"/")).map(([key,d])=>({...structuredClone(d),_id:key.split("/")[1]}));
       export const fsQuery=async(c,filters)=>{
-        if(state.queryFailure) throw Error("Synthetic unavailable summary");
+        if(state.queryFailure === true || state.queryFailure === c) throw Error("Synthetic unavailable summary");
         return [...state.docs.entries()].filter(([key,doc])=>key.startsWith(c+"/")&&filters.every(f=>doc[f.field]===f.value))
           .map(([key,doc])=>({...structuredClone(doc),_id:key.slice(c.length+1)}));
       };
@@ -382,7 +382,41 @@ test("running dashboard uses actual unpaid ledger and real payout references, no
   assert.equal(response.body.impactMetricsStale, true);
   assert.equal(response.body.campaignRaised[0].raisedGbp, 123);
   f.state.queryFailure = true;
-  assert.equal((await invoke(f.selfServiceRouter, "get", "org", {}, "org", "/organisations/:id/dashboard-summary")).status, 503);
+  const partial = await invoke(f.selfServiceRouter, "get", "org", {}, "org", "/organisations/:id/dashboard-summary");
+  assert.equal(partial.status, 200);
+  assert.equal(partial.body.raisedGbp, 300);
+  assert.equal(partial.body.owedGbp, null);
+  assert.equal(partial.body.lastPayout, null);
+  assert.deepEqual(partial.body.unavailable, ["supporters", "payouts", "payoutHistory", "posts"]);
+});
+
+test("denied payout history does not discard confirmed balances, supporters or campaign totals", async () => {
+  const f = await fixture();
+  f.state.queryFailure = "disbursements";
+  f.state.docs.set("payouts/queued", { orgId: "org", amountGbp: 42.15, status: "queued" });
+  f.state.docs.set("donations/paid", { orgId: "org", stripeRef: "pi_mock", userId: "donor", publicDonorName: "Ada L.", createdAt: "2026-10-31" });
+  const path = "/organisations/:id/dashboard-summary";
+  const response = await invoke(f.selfServiceRouter, "get", "org", {}, "org", path);
+  assert.equal(response.status, 200);
+  assert.equal(response.body.raisedGbp, 300);
+  assert.equal(response.body.owedGbp, 42.15);
+  assert.equal(response.body.recentSupporters[0].displayName, "Ada L.");
+  assert.deepEqual(response.body.unavailable, ["payoutHistory"]);
+  assert.equal(response.body.lastPayout, null);
+  assert.equal(response.body.campaignRaised.length, 1);
+  f.state.queryFailure = false;
+  const recovered = await invoke(f.selfServiceRouter, "get", "org", {}, "org", path);
+  assert.deepEqual(recovered.body.unavailable, []);
+});
+
+test("an unreadable ledger remains unknown, never a zero balance, while other dashboard data survives", async () => {
+  const f = await fixture();
+  f.state.queryFailure = "payouts";
+  const response = await invoke(f.selfServiceRouter, "get", "org", {}, "org", "/organisations/:id/dashboard-summary");
+  assert.equal(response.status, 200);
+  assert.equal(response.body.owedGbp, null);
+  assert.equal(response.body.raisedGbp, 300);
+  assert.deepEqual(response.body.unavailable, ["payouts"]);
 });
 
 test("monthly impact reminder includes the active goal, not only the other three figures", async () => {

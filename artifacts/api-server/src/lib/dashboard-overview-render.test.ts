@@ -118,17 +118,37 @@ test("money block shows all-time raised, ledger owed, per-campaign raised, next 
 test("unknown owed and no schedule are never shown as zero or an invented date", async () => {
   const { renderOverview } = await load();
   const t = text(renderOverview({ ...summary, owedGbp: null, nextPayoutAt: null, lastPayout: null }, { campaigns }));
-  assert.match(t, /Owed to you now Couldn't load/);
+  assert.match(t, /Owed to you now —/);
   assert.match(t, /Not scheduled/);
   assert.match(t, /None yet/);
   assert.ok(!/Owed to you now £0/.test(t));
 });
 
-test("summary request failure shows 'Couldn't load' and a retry, never £0", async () => {
+test("summary failure shows one calm refresh notice and unknown values, never invented zeros", async () => {
   const { renderOverview } = await load();
   const t = text(renderOverview(null, { error: true, campaigns }));
-  assert.match(t, /couldn't load your money summary/i);
-  assert.match(t, /Raised, all time Couldn't load/);
-  assert.match(t, /Owed to you now Couldn't load/);
+  assert.match(t, /Some figures are temporarily unavailable/);
+  assert.match(t, /Refresh/);
+  assert.match(t, /Raised, all time —/);
+  assert.match(t, /Owed to you now —/);
+  assert.doesNotMatch(t, /couldn't load|Nothing below is a guess|No supporters yet|haven't shared a post/i);
   assert.ok(!/£0\b/.test(t.slice(0, t.indexOf("Supporters"))));
+});
+
+test("partial history failure keeps raised, owed, supporters and campaigns visible with no false empty history", async () => {
+  const { renderOverview } = await load();
+  const t = text(renderOverview({ ...summary, unavailable: ["payoutHistory"], lastPayout: null }, { campaigns }));
+  assert.match(t, /Raised, all time £1,234.50/);
+  assert.match(t, /Owed to you now £87.25/);
+  assert.match(t, /Amina O\./);
+  assert.match(t, /Last payout —/);
+  assert.doesNotMatch(t, /None yet|couldn't load/i);
+  assert.equal(t.split("Some figures are temporarily unavailable").length - 1, 1);
+});
+
+test("on summary failure the confirmed organisation total remains visible", async () => {
+  const { renderOverview } = await load();
+  const t = text(renderOverview(null, { error: true, org: { totalRaised: 123 }, campaigns }));
+  assert.match(t, /Raised, all time £123/);
+  assert.match(t, /Owed to you now —/);
 });

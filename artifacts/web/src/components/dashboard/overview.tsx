@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { AlertCircle, ArrowRight, Megaphone, RefreshCw, Target } from "lucide-react";
+import { ArrowRight, Megaphone, RefreshCw, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import * as api from "@/lib/api";
@@ -30,6 +30,10 @@ export function DashboardOverview({ orgId, token, org, campaigns }: { orgId: str
     staleTime: 30_000,
   });
   const s = q.data;
+  const unavailable = s?.unavailable ?? [];
+  const raised = s?.raisedGbp ?? (typeof org?.totalRaised === "number" ? org.totalRaised : null);
+  const payoutHistoryUnavailable = !s || unavailable.includes("payouts") || unavailable.includes("payoutHistory");
+  const supportersUnavailable = !s || unavailable.includes("supporters");
 
   if (q.isLoading) {
     return <div className="space-y-4">{[0, 1, 2].map((i) => <Skeleton key={i} className="h-32 rounded-2xl" />)}</div>;
@@ -48,11 +52,10 @@ export function DashboardOverview({ orgId, token, org, campaigns }: { orgId: str
 
   return (
     <div className="space-y-4">
-      {q.isError && (
-        <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm flex items-center gap-3">
-          <AlertCircle className="w-4 h-4 text-destructive shrink-0" />
-          <span className="flex-1">We couldn't load your money summary. Nothing below is a guess.</span>
-          <Button size="sm" variant="outline" onClick={() => q.refetch()} data-testid="button-retry-summary"><RefreshCw className="w-3.5 h-3.5 mr-1" />Retry</Button>
+      {(q.isError || unavailable.length > 0) && (
+        <div role="status" className="rounded-xl border border-border bg-card px-4 py-3 text-sm flex flex-wrap items-center gap-3">
+          <span className="flex-1 min-w-[180px] text-muted-foreground">Some figures are temporarily unavailable. You can still manage your profile, posts and campaigns.</span>
+          <Button size="sm" variant="outline" disabled={q.isFetching} onClick={() => q.refetch()} data-testid="button-retry-summary"><RefreshCw className={`w-3.5 h-3.5 mr-1 ${q.isFetching ? "animate-spin" : ""}`} />{q.isFetching ? "Refreshing…" : "Refresh"}</Button>
         </div>
       )}
 
@@ -60,17 +63,17 @@ export function DashboardOverview({ orgId, token, org, campaigns }: { orgId: str
         <div className="grid grid-cols-2 gap-4">
           <div>
             <p className="text-xs text-muted-foreground font-semibold">Raised, all time</p>
-            <p className="text-2xl font-extrabold tabular-nums" data-testid="text-raised">{s ? gbp(s.raisedGbp) : "Couldn't load"}</p>
+            <p className="text-2xl font-extrabold tabular-nums" data-testid="text-raised">{raised == null ? "—" : gbp(raised)}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground font-semibold">Owed to you now</p>
             <p className={`tabular-nums font-extrabold ${s?.owedGbp == null ? "text-base text-muted-foreground pt-1.5" : "text-2xl"}`} data-testid="text-owed">
-              {s?.owedGbp == null ? "Couldn't load" : gbp(s.owedGbp)}
+              {s?.owedGbp == null ? "—" : gbp(s.owedGbp)}
             </p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground font-semibold">Next payout</p>
-            <p className="text-sm font-bold" data-testid="text-next-payout">{s?.nextPayoutAt ? day(s.nextPayoutAt) : s ? "Not scheduled" : "Couldn't load"}</p>
+            <p className="text-sm font-bold" data-testid="text-next-payout">{s?.nextPayoutAt ? day(s.nextPayoutAt) : s ? "Not scheduled" : "—"}</p>
           </div>
           <div className="min-w-0">
             <p className="text-xs text-muted-foreground font-semibold">Last payout</p>
@@ -79,7 +82,7 @@ export function DashboardOverview({ orgId, token, org, campaigns }: { orgId: str
                 {gbp(s.lastPayout.amountGbp)} <span className="text-muted-foreground font-medium">on {day(s.lastPayout.sentAt)}</span>
                 <span className="block text-[11px] font-mono text-muted-foreground truncate">Ref {s.lastPayout.reference}</span>
               </p>
-            ) : <p className="text-sm font-bold text-muted-foreground" data-testid="text-last-payout">{s ? "None yet" : "Couldn't load"}</p>}
+            ) : <p className="text-sm font-bold text-muted-foreground" data-testid="text-last-payout">{payoutHistoryUnavailable ? "—" : "None yet"}</p>}
           </div>
         </div>
         {s && s.campaignRaised.length > 0 && (
@@ -99,7 +102,7 @@ export function DashboardOverview({ orgId, token, org, campaigns }: { orgId: str
       </Block>
 
       <Block label="Supporters" testId="block-overview-supporters">
-        {s && s.recentSupporters.length > 0 ? (
+        {!supportersUnavailable && s && s.recentSupporters.length > 0 ? (
           <ul className="divide-y divide-border">
             {s.recentSupporters.slice(0, 6).map((p, i) => (
               <li key={`${p.displayName}-${p.createdAt}-${i}`} className="flex items-center gap-3 py-2">
@@ -111,7 +114,7 @@ export function DashboardOverview({ orgId, token, org, campaigns }: { orgId: str
               </li>
             ))}
           </ul>
-        ) : <p className="text-sm text-muted-foreground">{s ? "No supporters yet. Your first campaign will change that." : "Couldn't load."}</p>}
+        ) : <p className="text-sm text-muted-foreground">{supportersUnavailable ? "Supporter details will appear when available." : "No supporters yet. Your first campaign will change that."}</p>}
       </Block>
 
       <Block label="Campaigns" testId="block-overview-campaigns" action={<Link href="/dashboard?tab=campaigns" className="text-xs font-bold text-primary hover:underline">All</Link>}>
@@ -146,7 +149,9 @@ export function DashboardOverview({ orgId, token, org, campaigns }: { orgId: str
       </Block>
 
       <Block label="Posts" testId="block-overview-updates">
-        {updateAge == null || updateAge >= 30 ? (
+        {!s || unavailable.includes("posts") ? (
+          <Link href="/dashboard?tab=posts" className="text-sm font-semibold text-primary hover:underline">View and manage your posts</Link>
+        ) : updateAge == null || updateAge >= 30 ? (
           <div className="flex items-start gap-3">
             <Megaphone className="w-5 h-5 text-primary shrink-0 mt-0.5" />
             <div className="flex-1">

@@ -439,6 +439,16 @@ export interface WalkthroughPreviewEvent {
   campaignId?: string;
 }
 
+export type OrganisationRunningSummaryUnavailableItem =
+  (typeof OrganisationRunningSummaryUnavailableItem)[keyof typeof OrganisationRunningSummaryUnavailableItem];
+
+export const OrganisationRunningSummaryUnavailableItem = {
+  payouts: "payouts",
+  payoutHistory: "payoutHistory",
+  supporters: "supporters",
+  posts: "posts",
+} as const;
+
 export type OrganisationRunningSummaryLastPayout = {
   amountGbp: number;
   reference: string;
@@ -453,7 +463,9 @@ export type OrganisationRunningSummaryCampaignRaisedItem = {
 
 export interface OrganisationRunningSummary {
   raisedGbp: number;
-  owedGbp: number;
+  owedGbp: number | null;
+  /** Sections whose sources could not be read; nulls or empty arrays for these sections are not zero or empty confirmations */
+  unavailable?: OrganisationRunningSummaryUnavailableItem[];
   nextPayoutAt: string | null;
   lastPayout: OrganisationRunningSummaryLastPayout;
   recentSupporters: RecentCampaignSupporter[];

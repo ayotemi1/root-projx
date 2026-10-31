@@ -1,3 +1,4 @@
+- [Firestore collection access](firestore-collection-access.md) — even empty history queries need explicit server rules; successful server sign-in does not imply collection access.
 - [Replit Object Storage uploads](replit-object-storage-uploads.md) — bucket has public access prevention; use proxy route, not public: true
 - [Firebase access from Replit sidecar](firebase-sidecar-access.md) — sidecar service account has zero IAM permissions on the Firebase project
 - [Campaigns embedded in org doc](campaigns-embedded-array.md) — campaigns stored as org.campaigns array, not a Firestore subcollection

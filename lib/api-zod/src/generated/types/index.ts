@@ -58,6 +58,7 @@ export * from "./organisationProfileFieldsSocialLinks";
 export * from "./organisationRunningSummary";
 export * from "./organisationRunningSummaryCampaignRaisedItem";
 export * from "./organisationRunningSummaryLastPayout";
+export * from "./organisationRunningSummaryUnavailableItem";
 export * from "./orgPayoutSummary";
 export * from "./orgPayoutSummaryLastSettled";
 export * from "./orgPayoutSummaryPayoutMethod";

@@ -189,6 +189,14 @@ main dashboard content, not above Money. Monthly impact reminders include the
 active goal as well as the three impact metrics. Monetary examples use the shared
 accounting helper; never describe organisation proceeds as a blanket percentage.
 
+Dashboard summary sources fail independently: unreadable legacy disbursements
+must not suppress confirmed raised totals, ledger balances, supporters or campaigns.
+`unavailable` identifies affected sections; unknown owed balances stay null and
+unknown payout history must never be presented as "None yet". The web displays
+one neutral refresh notice, not repeated failure labels. Firestore must allow the
+existing API server identity to read `disbursements`; publish that rules change
+manually in Firebase Console. Do not silently substitute zero for denied queries.
+
 The guided setup uses Driver.js and declarative, stable-anchor steps. It checks
 saved content, not typing or clicking Next. Every walkthrough step can be browsed
 past with "Skip to next step"; this never completes missing content or bypasses

@@ -89,10 +89,21 @@ router.get("/organisations/:id/dashboard-summary", ...owner, async (req, res) =>
     const org = await fsGet("organisations", id, token);
     if (!org) { res.status(404).json({ error: "Reopen your organisation dashboard." }); return; }
     const filter = [{ field: "orgId", op: "EQUAL" as const, value: id }];
-    const [donations, payouts, transfers, updates] = await Promise.all([
+    // A denied history query must not discard confirmed raised totals/supporters.
+    const results = await Promise.allSettled([
       fsQuery("donations", filter, token), fsQuery("payouts", filter, token),
       fsQuery("disbursements", filter, token), fsQuery("updates", filter, token),
     ]);
+    const sections = ["supporters", "payouts", "payoutHistory", "posts"] as const;
+    const unavailable: string[] = [];
+    const readSection = (i: 0 | 1 | 2 | 3) => {
+      const result = results[i];
+      if (result.status === "fulfilled") return result.value;
+      unavailable.push(sections[i]!);
+      req.log.error({ err: result.reason, section: sections[i], orgId: id }, "Organisation summary section unavailable");
+      return [];
+    };
+    const donations = readSection(0), payouts = readSection(1), transfers = readSection(2), updates = readSection(3);
     const roundedSum = (rows: Record<string, unknown>[]) => rows.reduce((p, row) =>
       p + (typeof row.amountGbp === "number" && Number.isFinite(row.amountGbp) ? Math.round(row.amountGbp * 100) : 0), 0) / 100;
     const unpaid = payouts.filter(p => !["sent", "refunded", "canceled", "cancelled", "void"].includes(String(p.status)));
@@ -112,8 +123,11 @@ router.get("/organisations/:id/dashboard-summary", ...owner, async (req, res) =>
     const refreshableMetrics = org.activeGoal && typeof org.activeGoal === "object" ? [...metrics, org.activeGoal] : metrics;
     const staleBefore = Date.now() - 30 * 86_400_000;
     const nextPayoutAt = typeof org.nextPayoutAt === "string" && Number.isFinite(Date.parse(org.nextPayoutAt)) && Date.parse(org.nextPayoutAt) >= Date.now() ? org.nextPayoutAt : null;
-    res.json({ raisedGbp: Number(org.totalRaised ?? 0), owedGbp: roundedSum(unpaid), nextPayoutAt, lastPayout,
-      ...summariseSupporters(donations, org.supporterWall),
+    res.json({ raisedGbp: Number(org.totalRaised ?? 0),
+      owedGbp: unavailable.includes("payouts") ? null : roundedSum(unpaid), nextPayoutAt,
+      lastPayout: unavailable.includes("payouts") || unavailable.includes("payoutHistory") ? null : lastPayout,
+      unavailable,
+      ...(unavailable.includes("supporters") ? { recentSupporters: [] } : summariseSupporters(donations, org.supporterWall)),
       campaignRaised: campaignsOf(org).filter(c => c.status !== "deleted").map(c => ({
         campaignId: String(c._id), name: String(c.name ?? ""), raisedGbp: Number(c.amountRaised ?? 0) })),
       latestUpdateAt: dates[0] ?? null,

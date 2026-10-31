@@ -627,6 +627,7 @@ export const postWalkthroughEvent = (
 
 export interface DashboardSummary {
   raisedGbp: number;
+  unavailable?: Array<"payouts" | "payoutHistory" | "supporters" | "posts">;
   /** Actual ledger amount owed. null when the ledger could not be read. */
   owedGbp: number | null;
   nextPayoutAt: string | null;

@@ -106,7 +106,7 @@ paths:
       security: [{bearerAuth: []}]
       responses:
         "200":
-          description: Real ledger balances, recent consent-safe supporters and activity
+          description: Available balances and activity; unavailable sections are explicitly identified
           content:
             application/json:
               schema: {$ref: "#/components/schemas/OrganisationRunningSummary"}
@@ -1247,7 +1247,11 @@ components:
       type: object
       properties:
         raisedGbp: {type: number}
-        owedGbp: {type: number}
+        owedGbp: {type: number, nullable: true}
+        unavailable:
+          description: Sections whose sources could not be read; nulls or empty arrays for these sections are not zero or empty confirmations
+          type: array
+          items: {type: string, enum: [payouts, payoutHistory, supporters, posts]}
         nextPayoutAt: {type: string, nullable: true}
         lastPayout:
           type: object

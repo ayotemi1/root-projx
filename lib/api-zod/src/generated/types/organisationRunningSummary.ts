@@ -7,11 +7,14 @@
  */
 import type { OrganisationRunningSummaryCampaignRaisedItem } from "./organisationRunningSummaryCampaignRaisedItem";
 import type { OrganisationRunningSummaryLastPayout } from "./organisationRunningSummaryLastPayout";
+import type { OrganisationRunningSummaryUnavailableItem } from "./organisationRunningSummaryUnavailableItem";
 import type { RecentCampaignSupporter } from "./recentCampaignSupporter";
 
 export interface OrganisationRunningSummary {
   raisedGbp: number;
-  owedGbp: number;
+  owedGbp: number | null;
+  /** Sections whose sources could not be read; nulls or empty arrays for these sections are not zero or empty confirmations */
+  unavailable?: OrganisationRunningSummaryUnavailableItem[];
   nextPayoutAt: string | null;
   lastPayout: OrganisationRunningSummaryLastPayout;
   recentSupporters: RecentCampaignSupporter[];

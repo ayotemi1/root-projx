@@ -357,7 +357,13 @@ export const GetOrganisationRunningSummaryParams = zod.object({
 
 export const GetOrganisationRunningSummaryResponse = zod.object({
   raisedGbp: zod.number(),
-  owedGbp: zod.number(),
+  owedGbp: zod.number().nullable(),
+  unavailable: zod
+    .array(zod.enum(["payouts", "payoutHistory", "supporters", "posts"]))
+    .optional()
+    .describe(
+      "Sections whose sources could not be read; nulls or empty arrays for these sections are not zero or empty confirmations",
+    ),
   nextPayoutAt: zod.string().nullable(),
   lastPayout: zod
     .object({
