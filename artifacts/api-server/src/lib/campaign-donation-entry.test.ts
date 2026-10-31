@@ -38,6 +38,36 @@ test("campaign cards expose a full-card accessible link without nesting the dona
   assert.doesNotMatch(markup, /<a[^>]*>[^<]*<button/);
 });
 
+test("draft card opens its existing editor while preview and delete remain separate controls", async () => {
+  const { CampaignEditorCard } = await loadComponent("src/components/campaign-builder/campaign-editor-card.tsx");
+  let edits = 0, deletions = 0;
+  const card = CampaignEditorCard({
+    id: "draft-1", name: "Out of Many Hands", onEdit: () => edits++,
+    children: [
+      createElement("a", { key: "preview", href: "/campaign/preview/org/draft-1", className: "relative z-10" }, "Preview as donor"),
+      createElement("button", { key: "delete", className: "relative z-10", onClick: () => deletions++ }, "Delete"),
+    ],
+  });
+  const overlay = card.props.children[0];
+  assert.equal(overlay.type, "button");
+  assert.equal(overlay.props.type, "button");
+  assert.equal(overlay.props["aria-label"], "Continue editing Out of Many Hands");
+  overlay.props.onClick();
+  assert.equal(edits, 1);
+  const markup = renderToStaticMarkup(card);
+  assert.match(markup, /absolute inset-0 z-\[1\]/);
+  assert.match(markup, /<\/button><a /, "preview is a sibling, not nested in the editor button");
+  assert.equal(card.props.onClick, undefined, "secondary controls cannot bubble into an editor action");
+  card.props.children[1][1].props.onClick();
+  assert.equal(deletions, 1);
+  assert.equal(edits, 1);
+  const busy = CampaignEditorCard({ id: "draft-1", name: "", onEdit() {}, disabled: true, children: null });
+  assert.equal(busy.props.children[0].props.disabled, true);
+  assert.equal(busy.props.children[0].props["aria-label"], "Continue editing Untitled draft");
+  const live = renderToStaticMarkup(createElement(CampaignEditorCard, { id: "live", name: "Live", children: "Live campaign" }));
+  assert.doesNotMatch(live, /button-open-draft/);
+});
+
 test("donor-icon hit testing respects rotation, overlap and newest-first name ordering", async () => {
   const { hitSupporterUnit, supporterUnitName } = await loadComponent("src/lib/supporter-unit-hit.ts");
   const lower = { x: 30, y: 30, s: 20, r: 0, index: 0 };

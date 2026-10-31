@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import * as api from "@/lib/api";
 import type { Campaign, Org } from "@/lib/api";
 import { CampaignWizard } from "./campaign-wizard";
+import { CampaignEditorCard } from "./campaign-editor-card";
 
 function StatusPills({ c }: { c: Campaign }) {
   const pill = "text-[10px] font-bold px-2 py-0.5 rounded-full";
@@ -35,7 +36,7 @@ function CampaignRow({ c, onEdit, orgId, token }: { c: Campaign; onEdit: () => v
   }
 
   return (
-    <div className="border border-border rounded-xl overflow-hidden bg-card flex flex-col sm:flex-row min-w-0" data-testid={`card-campaign-${c._id}`}>
+    <CampaignEditorCard id={c._id} name={c.name} onEdit={!c.enabled && c.status !== "completed" ? onEdit : undefined} disabled={busy}>
       {c.imageUrl ? (
         <img src={c.imageUrl} alt="" className="w-full sm:w-36 h-28 sm:h-auto object-cover shrink-0" />
       ) : (
@@ -51,7 +52,7 @@ function CampaignRow({ c, onEdit, orgId, token }: { c: Campaign; onEdit: () => v
         {c.type === "volunteer" && c.volunteersNeeded > 0 && (
           <p className="text-xs text-muted-foreground flex items-center gap-1"><Users className="w-3.5 h-3.5" /> {c.volunteersNeeded} volunteers needed</p>
         )}
-        <div className="flex flex-wrap gap-2 pt-1">
+        <div className="flex flex-wrap gap-2 pt-1 [&>button]:relative [&>button]:z-10 [&>a]:relative [&>a]:z-10">
           <Button size="sm" className="h-8 font-bold" onClick={onEdit} data-testid={`button-edit-campaign-${c._id}`} data-tour-id="campaign-edit">
             <Pencil className="w-3.5 h-3.5 mr-1" /> {c.enabled ? "Edit" : `Continue${c.editorStep ? ` (step ${c.editorStep})` : ""}`}
           </Button>
@@ -78,7 +79,7 @@ function CampaignRow({ c, onEdit, orgId, token }: { c: Campaign; onEdit: () => v
         </div>
         {msg && <p role="alert" className="text-xs text-destructive">{msg}</p>}
       </div>
-    </div>
+    </CampaignEditorCard>
   );
 }
 
