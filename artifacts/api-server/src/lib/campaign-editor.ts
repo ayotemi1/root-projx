@@ -112,8 +112,14 @@ export function campaignPatch(input: unknown, previous: Record<string, unknown> 
       result[key] = theme[key];
     }
     if ("unit" in theme) {
-      const unit = record(theme.unit, "campaign unit");
-      result.unit = { singular: text(unit.singular, "singular unit label", 60), plural: text(unit.plural, "plural unit label", 60), imageUrl: url(unit.imageUrl, "unit image") };
+      // Every wizard autosave includes the appearance fields, even before the
+      // donor unit is selected or its custom artwork has finished uploading.
+      if (theme.unit === null) result.unit = null;
+      else {
+        const unit = record(theme.unit, "campaign unit");
+        result.unit = { singular: text(unit.singular, "singular unit label", 60), plural: text(unit.plural, "plural unit label", 60),
+          imageUrl: unit.imageUrl === null ? null : url(unit.imageUrl, "unit image") };
+      }
     }
     patch.theme = result;
   }

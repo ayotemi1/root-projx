@@ -12,5 +12,6 @@ export type CampaignEditorRequestTheme = {
   accentColor?: string;
   backgroundColor?: string;
   textColor?: string;
+  /** Drafts may have no unit selected, or a custom unit whose image has not been uploaded yet. */
   unit?: CampaignEditorRequestThemeUnit;
 };

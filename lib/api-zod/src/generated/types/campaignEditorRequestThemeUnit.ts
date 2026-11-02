@@ -6,10 +6,13 @@
  * OpenAPI spec version: 0.1.0
  */
 
+/**
+ * Drafts may have no unit selected, or a custom unit whose image has not been uploaded yet.
+ */
 export type CampaignEditorRequestThemeUnit = {
   /** @maxLength 60 */
   singular: string;
   /** @maxLength 60 */
   plural: string;
-  imageUrl: string;
-};
+  imageUrl: string | null;
+} | null;

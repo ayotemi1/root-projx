@@ -280,9 +280,12 @@ export const GetOwnerCampaignPreviewResponse = zod.object({
                 .max(
                   getOwnerCampaignPreviewResponseCampaignOneThemeUnitPluralMax,
                 ),
-              imageUrl: zod.string(),
+              imageUrl: zod.string().nullable(),
             })
-            .optional(),
+            .nullish()
+            .describe(
+              "Drafts may have no unit selected, or a custom unit whose image has not been uploaded yet.",
+            ),
         })
         .optional(),
       enabled: zod.boolean().optional(),
@@ -639,9 +642,12 @@ export const GetPublicCampaignsResponseItem = zod
             plural: zod
               .string()
               .max(getPublicCampaignsResponseOneThemeUnitPluralMax),
-            imageUrl: zod.string(),
+            imageUrl: zod.string().nullable(),
           })
-          .optional(),
+          .nullish()
+          .describe(
+            "Drafts may have no unit selected, or a custom unit whose image has not been uploaded yet.",
+          ),
       })
       .optional(),
     enabled: zod.boolean().optional(),
@@ -823,9 +829,12 @@ export const CreateCampaignDraftBody = zod.object({
             .string()
             .max(createCampaignDraftBodyThemeUnitSingularMax),
           plural: zod.string().max(createCampaignDraftBodyThemeUnitPluralMax),
-          imageUrl: zod.string(),
+          imageUrl: zod.string().nullable(),
         })
-        .optional(),
+        .nullish()
+        .describe(
+          "Drafts may have no unit selected, or a custom unit whose image has not been uploaded yet.",
+        ),
     })
     .optional(),
   enabled: zod.boolean().optional(),
@@ -988,9 +997,12 @@ export const GetManagedCampaignDraftsResponseItem = zod
             plural: zod
               .string()
               .max(getManagedCampaignDraftsResponseOneThemeUnitPluralMax),
-            imageUrl: zod.string(),
+            imageUrl: zod.string().nullable(),
           })
-          .optional(),
+          .nullish()
+          .describe(
+            "Drafts may have no unit selected, or a custom unit whose image has not been uploaded yet.",
+          ),
       })
       .optional(),
     enabled: zod.boolean().optional(),
@@ -1168,9 +1180,12 @@ export const SaveCampaignDraftBody = zod.object({
         .object({
           singular: zod.string().max(saveCampaignDraftBodyThemeUnitSingularMax),
           plural: zod.string().max(saveCampaignDraftBodyThemeUnitPluralMax),
-          imageUrl: zod.string(),
+          imageUrl: zod.string().nullable(),
         })
-        .optional(),
+        .nullish()
+        .describe(
+          "Drafts may have no unit selected, or a custom unit whose image has not been uploaded yet.",
+        ),
     })
     .optional(),
   enabled: zod.boolean().optional(),
@@ -1317,9 +1332,12 @@ export const SaveCampaignDraftResponse = zod
             plural: zod
               .string()
               .max(saveCampaignDraftResponseOneThemeUnitPluralMax),
-            imageUrl: zod.string(),
+            imageUrl: zod.string().nullable(),
           })
-          .optional(),
+          .nullish()
+          .describe(
+            "Drafts may have no unit selected, or a custom unit whose image has not been uploaded yet.",
+          ),
       })
       .optional(),
     enabled: zod.boolean().optional(),

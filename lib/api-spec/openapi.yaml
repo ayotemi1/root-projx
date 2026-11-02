@@ -1170,7 +1170,9 @@ components:
             textColor: {type: string}
             unit:
               type: object
-              properties: {singular: {type: string, maxLength: 60}, plural: {type: string, maxLength: 60}, imageUrl: {type: string}}
+              nullable: true
+              description: "Drafts may have no unit selected, or a custom unit whose image has not been uploaded yet."
+              properties: {singular: {type: string, maxLength: 60}, plural: {type: string, maxLength: 60}, imageUrl: {type: string, nullable: true}}
               required: [singular, plural, imageUrl]
         enabled: {type: boolean}
         saveAsDraft: {type: boolean}

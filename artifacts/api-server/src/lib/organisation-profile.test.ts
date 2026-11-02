@@ -87,9 +87,11 @@ async function fixture(assistSetting = "true") {
       export const suggest=async(input)=>{state.assistInputs.push(input);return {unavailable:true};};`,
   };
   const bundle = await build({
-    define: { "process.env.CAMPAIGN_ASSIST_ENABLED": assistSetting === "unset" ? "undefined" : JSON.stringify(assistSetting) },
+    define: { "process.env.CAMPAIGN_ASSIST_ENABLED": assistSetting === "unset" ? "undefined" : JSON.stringify(assistSetting),
+      "import.meta.env.BASE_URL": '"/"' },
     stdin: { contents: `export {default as router} from "./routes/organisations.ts";
       export {campaignPatch,campaignPublishGates,campaignForEditor} from "./lib/campaign-editor.ts";
+      export {draftFromCampaign,draftToPatch} from "../../web/src/components/campaign-builder/model.ts";
       export {suggest} from "./lib/campaign-assist.ts";
       export {default as selfServiceRouter} from "./routes/organisation-self-service.ts";
       export {default as assistRouter} from "./routes/campaign-assist.ts";
@@ -227,6 +229,50 @@ test("campaign structured drafts round trip without changing totals or requiring
   const stored = f.state.docs.get("organisations/org");
   assert.equal(stored.totalRaised, org.totalRaised);
   assert.equal(stored.payoutSettlementBatchId, "locked");
+});
+
+test("story autosaves round trip the real wizard payload before selecting unit artwork", async () => {
+  const f = await fixture();
+  const org = readyCampaignFixture(f);
+  Object.assign(org.campaigns[0].theme, { backgroundColor: "#FFF9F2", textColor: "#1A1A1A" });
+  for (const unit of [null, { singular: "", plural: "", imageUrl: null },
+    { singular: "brick", plural: "bricks", imageUrl: null },
+    { singular: "brick", plural: "bricks", imageUrl: "/campaign-units/brick.svg" }]) {
+    const draft = f.draftFromCampaign(org.campaigns[0]);
+    draft.description = "Updated story, not yet ready to publish.";
+    draft.unit = unit;
+    draft.unitChosen = unit !== null;
+    const payload = { ...f.draftToPatch(draft, org.campaigns[0].theme), saveAsDraft: true, editorStep: 3 };
+    const result = await invoke(f.router, "patch", "org", payload, "org", campaignRoute);
+    assert.equal(result.status, 200, JSON.stringify(result.body));
+    assert.equal(result.body.description, draft.description);
+    assert.deepEqual(result.body.theme.unit, unit);
+    assert.equal(result.body.amountRaised, 123);
+    const persisted = f.state.docs.get("organisations/org").campaigns[0];
+    const reopened = f.draftFromCampaign(f.campaignForEditor(persisted));
+    assert.equal(reopened.description, draft.description);
+    assert.deepEqual(reopened.unit, unit);
+    assert.equal(persisted.editorStep, 3);
+  }
+});
+
+test("unfinished units do not bypass malformed artwork validation or private revision boundaries", async () => {
+  const f = await fixture();
+  const org = readyCampaignFixture(f, true);
+  const originalStory = org.campaigns[0].description;
+  const result = await invoke(f.router, "patch", "org", {
+    saveAsDraft: true, description: "Private revision", theme: { unit: null }, editorStep: 3,
+  }, "org", campaignRoute);
+  assert.equal(result.status, 200);
+  const persisted = f.state.docs.get("organisations/org").campaigns[0];
+  assert.equal(persisted.description, originalStory);
+  assert.equal(persisted.enabled, true);
+  assert.equal(f.campaignForEditor(persisted).description, "Private revision");
+  assert.equal(f.campaignForEditor(persisted).theme.unit, null);
+  for (const unit of ["invalid", [], 0, { singular: 42, plural: "", imageUrl: null },
+    { singular: "", plural: "", imageUrl: "javascript:bad" }]) {
+    assert.throws(() => f.campaignPatch({ theme: { unit } }));
+  }
 });
 
 test("publish gates are server enforced, including unapproved manual and unset payouts", async () => {
