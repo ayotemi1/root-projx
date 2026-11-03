@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as api from "@/lib/api";
 import type { Campaign, CampaignEditorStep } from "@/lib/api";
-import { draftFromCampaign, draftToPatch, validateDraft, type CampaignDraft } from "./model";
+import { migrateLegacyVideoDraft, draftFromCampaign, draftToPatch, validateDraft, type CampaignDraft } from "./model";
 
 export type DraftSaveStatus = "idle" | "dirty" | "saving" | "saved" | "error";
 
@@ -61,7 +61,7 @@ export function useCampaignDraft(opts: {
   const [init] = useState(() => {
     const env = readLocal(key);
     if (env && JSON.stringify({ value: env.value, step: env.step }) !== serverSerialized) {
-      return { value: { ...serverDraft, ...migrateLegacyDraft(env.value) }, step: env.step, recovered: true };
+      return { value: { ...serverDraft, ...migrateLegacyVideoDraft(migrateLegacyDraft(env.value)) }, step: env.step, recovered: true };
     }
     return { value: serverDraft, step: serverStep, recovered: false };
   });

@@ -19,9 +19,22 @@ export interface PasswordResetRequest {
   email: string;
 }
 
+/**
+ * Must match the campaign currency. Organisation-wide donations remain GBP.
+ */
+export type DonationCheckoutInputCurrency =
+  (typeof DonationCheckoutInputCurrency)[keyof typeof DonationCheckoutInputCurrency];
+
+export const DonationCheckoutInputCurrency = {
+  gbp: "gbp",
+  usd: "usd",
+} as const;
+
 export interface DonationCheckoutInput {
   orgId: string;
   campaignId?: string;
+  /** Must match the campaign currency. Organisation-wide donations remain GBP. */
+  currency?: DonationCheckoutInputCurrency;
   /** @minimum 300 */
   amountPence: number;
   /** @minimum 300 */
@@ -249,6 +262,17 @@ export interface CampaignAssistRequest {
 }
 
 /**
+ * Campaign goals and donations use this currency. Locked once checkout has started.
+ */
+export type CampaignEditorRequestCurrency =
+  (typeof CampaignEditorRequestCurrency)[keyof typeof CampaignEditorRequestCurrency];
+
+export const CampaignEditorRequestCurrency = {
+  gbp: "gbp",
+  usd: "usd",
+} as const;
+
+/**
  * Optional plain-text editorial sections for the shared campaign page. No financial totals or HTML.
  */
 export type CampaignEditorRequestPageContent = { [key: string]: string } | null;
@@ -297,9 +321,19 @@ export type CampaignEditorRequestLocationsItem = {
 
 export type CampaignEditorRequestVideo = {
   url: string;
-  posterUrl: string;
-  captionsUrl: string;
+  posterUrl: string | null;
+  captionsUrl: string | null;
+  /** @maxLength 2000 */
+  caption?: string;
 } | null;
+
+export type CampaignEditorRequestVideosItem = {
+  url: string;
+  posterUrl: string | null;
+  captionsUrl: string | null;
+  /** @maxLength 2000 */
+  caption?: string;
+};
 
 /**
  * Drafts may have no unit selected, or a custom unit whose image has not been uploaded yet.
@@ -331,6 +365,8 @@ export const CampaignEditorRequestPartnerFundingAnswer = {
 } as const;
 
 export interface CampaignEditorRequest {
+  /** Campaign goals and donations use this currency. Locked once checkout has started. */
+  currency?: CampaignEditorRequestCurrency;
   /** @maxLength 200 */
   name?: string;
   /** @maxLength 140 */
@@ -352,6 +388,11 @@ export interface CampaignEditorRequest {
   /** @maxItems 3 */
   locations?: CampaignEditorRequestLocationsItem[];
   video?: CampaignEditorRequestVideo;
+  /**
+   * Ordered campaign videos. When present, replaces the legacy single video, including an empty array to remove all videos.
+   * @maxItems 10
+   */
+  videos?: CampaignEditorRequestVideosItem[];
   theme?: CampaignEditorRequestTheme;
   enabled?: boolean;
   saveAsDraft?: boolean;
@@ -376,6 +417,7 @@ export type EditorCampaign = CampaignEditorRequest & {
   amountRaised: number;
   /** @minimum 0 */
   readonly partnerFundingMatchedGbp?: number;
+  readonly currencyLockedAt?: string | null;
   status?: string;
   hasUnpublishedChanges?: boolean;
   sharePath?: string;

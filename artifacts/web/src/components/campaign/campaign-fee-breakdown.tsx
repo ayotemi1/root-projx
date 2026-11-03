@@ -1,8 +1,9 @@
 import { whereYourMoneyGoes } from "@/lib/money-disclosure";
 
 /** Visual disclosure only; every monetary value comes from canonical accounting. */
-export function CampaignFeeBreakdown({ orgName, colour }: { orgName: string; colour: string }) {
-  const { covered, uncovered } = whereYourMoneyGoes(orgName);
+export function CampaignFeeBreakdown({ orgName, colour, currency = "gbp" }: { orgName: string; colour: string; currency?: "gbp" | "usd" }) {
+  const { covered, uncovered } = whereYourMoneyGoes(orgName, 300, currency);
+  const sym = currency === "usd" ? "$" : "£";
   return (
     <div className="space-y-4" data-testid="campaign-fee-breakdown">
       {[covered, uncovered].map((accounting, i) => {
@@ -17,14 +18,14 @@ export function CampaignFeeBreakdown({ orgName, colour }: { orgName: string; col
           <div key={i} className="space-y-1">
             <p className="text-xs font-semibold">{accounting.feeCovered ? "You cover the card fee" : "You don't cover the card fee"}</p>
             <div className="flex h-7 overflow-hidden rounded-md" role="img"
-              aria-label={parts.map(p => `${p.name}: £${p.value.toFixed(2)}`).join("; ")}>
+              aria-label={parts.map(p => `${p.name}: ${sym}${p.value.toFixed(2)}`).join("; ")}>
               {parts.map(p => (
                 <span key={p.name} style={{ flexGrow: p.value, flexBasis: 0, backgroundColor: p.colour }}
                   className={`min-w-0 ${p.light ? "text-foreground" : "text-white"}`} />
               ))}
             </div>
             <p className="text-xs leading-relaxed text-[#3a2f28]">
-              {parts.map(p => `${p.name}: £${p.value.toFixed(2)}`).join(" · ")}
+              {parts.map(p => `${p.name}: ${sym}${p.value.toFixed(2)}`).join(" · ")}
             </p>
           </div>
         );

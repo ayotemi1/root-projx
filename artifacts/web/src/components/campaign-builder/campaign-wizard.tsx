@@ -61,7 +61,8 @@ export function CampaignWizard({ campaign, org, orgId, userId, token, onClose }:
 
   const draft = useCampaignDraft({ campaign, orgId, userId, token, onSaved });
   const { value: d, setValue, step, setStep } = draft;
-  const update = useCallback((patch: Partial<CampaignDraft>) => setValue((p) => ({ ...p, ...patch })), [setValue]);
+  const update = useCallback((patch: Partial<CampaignDraft> | ((previous: CampaignDraft) => Partial<CampaignDraft>)) =>
+    setValue((p) => ({ ...p, ...(typeof patch === "function" ? patch(p) : patch) })), [setValue]);
   const gates = useMemo(() => computeGates(d, org), [d, org]);
   const saveBlocked = validateDraft(d);
 
@@ -146,7 +147,9 @@ export function CampaignWizard({ campaign, org, orgId, userId, token, onClose }:
     qc.setQueryData<Campaign[]>(["campaigns", orgId], (old) => old?.map((x) => (x._id === res._id ? res : x)));
   }
 
-  const stepProps = { d, update, token, campaignId: campaign._id, assistEnabled, beforeAssist: draft.flush };
+  // Server locks currency after the first donation; mirror that here.
+  const currencyLocked = !!current.currencyLockedAt || (current.amountRaised ?? 0) > 0 || (current.supporterCount ?? 0) > 0;
+  const stepProps = { d, update, token, campaignId: campaign._id, assistEnabled, beforeAssist: draft.flush, currencyLocked };
 
   // Preview as donor: save the latest draft first; never navigate on a save error.
   const [, navigate] = useLocation();

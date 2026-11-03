@@ -26,6 +26,46 @@ async function loadComponent(path: string) {
   return mod.exports;
 }
 
+test("USD campaign sheet displays dollars and sends USD without changing organisation-level GBP", async () => {
+  const { GuestDonateSheet, guestCheckoutBody } = await loadComponent("src/components/GuestDonateSheet.tsx");
+  const html = renderSheet(GuestDonateSheet, { campaignId: "usd-campaign", campaignName: "Skills",
+    currency: "usd" });
+  assert.match(html, /\$25/);
+  assert.doesNotMatch(html, /£25/);
+  assert.equal(guestCheckoutBody("org", 500, "usd-campaign", "anon", false, "", "usd").currency, "usd");
+  const orgHtml = renderSheet(GuestDonateSheet, { currency: "usd" });
+  assert.match(orgHtml, /£25/);
+});
+
+test("real campaign public/preview component renders multiple captioned videos, USD totals, and no empty video boxes", async () => {
+  const { CampaignPageView } = await loadComponent("src/components/campaign/campaign-page-view.tsx");
+  const organisation = { _id: "org", name: "Community Trust", country: "Jamaica" };
+  const campaign = { _id: "campaign", name: "Skills for life", currency: "usd", type: "fundraising",
+    goal: 1000, amountRaised: 25, description: "", phases: [], status: "active", enabled: true,
+    videos: [
+      { url: "/api/uploads/object/first.mp4", posterUrl: null, captionsUrl: null, caption: "First workshop" },
+      { url: "https://youtu.be/test123", posterUrl: null, captionsUrl: null, caption: "Building together" },
+      { url: "", posterUrl: null, captionsUrl: null, caption: "Not uploaded" },
+    ],
+  };
+  const render = (c: any, preview: boolean) => renderToStaticMarkup(createElement(Router, { hook: () => ["/", () => {}] },
+    createElement(CampaignPageView, { campaign: c, organisation, preview, layout: "phone" })));
+  for (const preview of [true, false]) {
+    const html = render(campaign, preview);
+    assert.equal((html.match(/data-testid="block-campaign-video"/g) ?? []).length, 2);
+    assert.match(html, /First workshop/);
+    assert.match(html, /Building together/);
+    assert.doesNotMatch(html, /Not uploaded/);
+    assert.match(html, /\$1,000/);
+    assert.doesNotMatch(html, /£1,000/);
+    assert.equal((render({ ...campaign, videos: [], video: campaign.videos[0] }, preview)
+      .match(/data-testid="block-campaign-video"/g) ?? []).length, 0);
+    const { videos, ...legacy } = campaign;
+    assert.equal((render({ ...legacy, video: campaign.videos[0] }, preview)
+      .match(/data-testid="block-campaign-video"/g) ?? []).length, 1);
+  }
+});
+
 test("campaign cards expose a full-card accessible link without nesting the donation button", async () => {
   const { CampaignCardLink } = await loadComponent("src/components/campaign-card-link.tsx");
   const markup = renderToStaticMarkup(createElement(Router, { hook: () => ["/", () => {}] },
@@ -111,10 +151,10 @@ test("campaign Donate button delivers its id and name to the sheet and checkout 
   assert.match(sheet, /<p[^>]*>Community Trust<\/p>/);
   assert.ok(sheet.includes(encodeURIComponent("?campaign=camp-123")));
   assert.deepEqual(guestCheckoutBody("org-1", 300, chosen._id, "anon-1"), {
-    orgId: "org-1", amountPence: 300, campaignId: "camp-123", anonymousDonorId: "anon-1",
+    orgId: "org-1", amountPence: 300, currency: "gbp", campaignId: "camp-123", anonymousDonorId: "anon-1",
   });
   assert.deepEqual(guestCheckoutBody("org-1", 300, chosen._id, "anon-1", true, " Alex Taylor "), {
-    orgId: "org-1", amountPence: 300, campaignId: chosen._id, anonymousDonorId: "anon-1",
+    orgId: "org-1", amountPence: 300, currency: "gbp", campaignId: chosen._id, anonymousDonorId: "anon-1",
     wallOptIn: true, donorName: "Alex Taylor",
   });
   const optedOut = guestCheckoutBody("org-1", 300, chosen._id, "anon-1", false, "Alex Taylor");
@@ -127,6 +167,6 @@ test("organisation Donate stays unassigned to a campaign", async () => {
   assert.match(sheet, /Donating to<\/p><h2[^>]*>Community Trust<\/h2>/);
   assert.doesNotMatch(sheet, /campaign%3D/);
   assert.deepEqual(guestCheckoutBody("org-1", 300, undefined, "anon-1"), {
-    orgId: "org-1", amountPence: 300, anonymousDonorId: "anon-1",
+    orgId: "org-1", amountPence: 300, currency: "gbp", anonymousDonorId: "anon-1",
   });
 });

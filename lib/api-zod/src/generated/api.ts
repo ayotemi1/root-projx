@@ -37,6 +37,12 @@ export const createDonationCheckoutSessionBodyDonorNameMax = 80;
 export const CreateDonationCheckoutSessionBody = zod.object({
   orgId: zod.string(),
   campaignId: zod.string().optional(),
+  currency: zod
+    .enum(["gbp", "usd"])
+    .optional()
+    .describe(
+      "Must match the campaign currency. Organisation-wide donations remain GBP.",
+    ),
   amountPence: zod
     .number()
     .min(createDonationCheckoutSessionBodyAmountPenceMin),
@@ -86,6 +92,12 @@ export const createAnonymousDonationCheckoutSessionBodyDonorNameMax = 80;
 export const CreateAnonymousDonationCheckoutSessionBody = zod.object({
   orgId: zod.string(),
   campaignId: zod.string().optional(),
+  currency: zod
+    .enum(["gbp", "usd"])
+    .optional()
+    .describe(
+      "Must match the campaign currency. Organisation-wide donations remain GBP.",
+    ),
   amountPence: zod
     .number()
     .min(createAnonymousDonationCheckoutSessionBodyAmountPenceMin),
@@ -125,6 +137,7 @@ export const GetOwnerCampaignPreviewParams = zod.object({
   campId: zod.coerce.string(),
 });
 
+export const getOwnerCampaignPreviewResponseCampaignOneCurrencyDefault = `gbp`;
 export const getOwnerCampaignPreviewResponseCampaignOneNameMax = 200;
 
 export const getOwnerCampaignPreviewResponseCampaignOneTaglineMax = 140;
@@ -151,6 +164,12 @@ export const getOwnerCampaignPreviewResponseCampaignOneBreakdownMax = 50;
 
 export const getOwnerCampaignPreviewResponseCampaignOneLocationsMax = 3;
 
+export const getOwnerCampaignPreviewResponseCampaignOneVideoCaptionMax = 2000;
+
+export const getOwnerCampaignPreviewResponseCampaignOneVideosItemCaptionMax = 2000;
+
+export const getOwnerCampaignPreviewResponseCampaignOneVideosMax = 10;
+
 export const getOwnerCampaignPreviewResponseCampaignOneThemeUnitSingularMax = 60;
 
 export const getOwnerCampaignPreviewResponseCampaignOneThemeUnitPluralMax = 60;
@@ -168,6 +187,12 @@ export const getOwnerCampaignPreviewResponseCampaignTwoSupporterUnitsMax = 300;
 export const GetOwnerCampaignPreviewResponse = zod.object({
   campaign: zod
     .object({
+      currency: zod
+        .enum(["gbp", "usd"])
+        .default(getOwnerCampaignPreviewResponseCampaignOneCurrencyDefault)
+        .describe(
+          "Campaign goals and donations use this currency. Locked once checkout has started.",
+        ),
       name: zod
         .string()
         .max(getOwnerCampaignPreviewResponseCampaignOneNameMax)
@@ -258,10 +283,33 @@ export const GetOwnerCampaignPreviewResponse = zod.object({
       video: zod
         .object({
           url: zod.string(),
-          posterUrl: zod.string(),
-          captionsUrl: zod.string(),
+          posterUrl: zod.string().nullable(),
+          captionsUrl: zod.string().nullable(),
+          caption: zod
+            .string()
+            .max(getOwnerCampaignPreviewResponseCampaignOneVideoCaptionMax)
+            .optional(),
         })
         .nullish(),
+      videos: zod
+        .array(
+          zod.object({
+            url: zod.string(),
+            posterUrl: zod.string().nullable(),
+            captionsUrl: zod.string().nullable(),
+            caption: zod
+              .string()
+              .max(
+                getOwnerCampaignPreviewResponseCampaignOneVideosItemCaptionMax,
+              )
+              .optional(),
+          }),
+        )
+        .max(getOwnerCampaignPreviewResponseCampaignOneVideosMax)
+        .optional()
+        .describe(
+          "Ordered campaign videos. When present, replaces the legacy single video, including an empty array to remove all videos.",
+        ),
       theme: zod
         .object({
           primaryColor: zod.string().optional(),
@@ -312,6 +360,7 @@ export const GetOwnerCampaignPreviewResponse = zod.object({
             getOwnerCampaignPreviewResponseCampaignTwoPartnerFundingMatchedGbpMin,
           )
           .optional(),
+        currencyLockedAt: zod.string().nullish(),
         status: zod.string().optional(),
         hasUnpublishedChanges: zod.boolean().optional(),
         sharePath: zod.string().optional(),
@@ -510,6 +559,7 @@ export const GetPublicCampaignsParams = zod.object({
   id: zod.coerce.string(),
 });
 
+export const getPublicCampaignsResponseOneCurrencyDefault = `gbp`;
 export const getPublicCampaignsResponseOneNameMax = 200;
 
 export const getPublicCampaignsResponseOneTaglineMax = 140;
@@ -536,6 +586,12 @@ export const getPublicCampaignsResponseOneBreakdownMax = 50;
 
 export const getPublicCampaignsResponseOneLocationsMax = 3;
 
+export const getPublicCampaignsResponseOneVideoCaptionMax = 2000;
+
+export const getPublicCampaignsResponseOneVideosItemCaptionMax = 2000;
+
+export const getPublicCampaignsResponseOneVideosMax = 10;
+
 export const getPublicCampaignsResponseOneThemeUnitSingularMax = 60;
 
 export const getPublicCampaignsResponseOneThemeUnitPluralMax = 60;
@@ -552,6 +608,12 @@ export const getPublicCampaignsResponseTwoSupporterUnitsMax = 300;
 
 export const GetPublicCampaignsResponseItem = zod
   .object({
+    currency: zod
+      .enum(["gbp", "usd"])
+      .default(getPublicCampaignsResponseOneCurrencyDefault)
+      .describe(
+        "Campaign goals and donations use this currency. Locked once checkout has started.",
+      ),
     name: zod.string().max(getPublicCampaignsResponseOneNameMax).optional(),
     tagline: zod
       .string()
@@ -624,10 +686,31 @@ export const GetPublicCampaignsResponseItem = zod
     video: zod
       .object({
         url: zod.string(),
-        posterUrl: zod.string(),
-        captionsUrl: zod.string(),
+        posterUrl: zod.string().nullable(),
+        captionsUrl: zod.string().nullable(),
+        caption: zod
+          .string()
+          .max(getPublicCampaignsResponseOneVideoCaptionMax)
+          .optional(),
       })
       .nullish(),
+    videos: zod
+      .array(
+        zod.object({
+          url: zod.string(),
+          posterUrl: zod.string().nullable(),
+          captionsUrl: zod.string().nullable(),
+          caption: zod
+            .string()
+            .max(getPublicCampaignsResponseOneVideosItemCaptionMax)
+            .optional(),
+        }),
+      )
+      .max(getPublicCampaignsResponseOneVideosMax)
+      .optional()
+      .describe(
+        "Ordered campaign videos. When present, replaces the legacy single video, including an empty array to remove all videos.",
+      ),
     theme: zod
       .object({
         primaryColor: zod.string().optional(),
@@ -672,6 +755,7 @@ export const GetPublicCampaignsResponseItem = zod
         .number()
         .min(getPublicCampaignsResponseTwoPartnerFundingMatchedGbpMin)
         .optional(),
+      currencyLockedAt: zod.string().nullish(),
       status: zod.string().optional(),
       hasUnpublishedChanges: zod.boolean().optional(),
       sharePath: zod.string().optional(),
@@ -715,6 +799,7 @@ export const CreateCampaignDraftParams = zod.object({
   id: zod.coerce.string(),
 });
 
+export const createCampaignDraftBodyCurrencyDefault = `gbp`;
 export const createCampaignDraftBodyNameMax = 200;
 
 export const createCampaignDraftBodyTaglineMax = 140;
@@ -741,6 +826,12 @@ export const createCampaignDraftBodyBreakdownMax = 50;
 
 export const createCampaignDraftBodyLocationsMax = 3;
 
+export const createCampaignDraftBodyVideoCaptionMax = 2000;
+
+export const createCampaignDraftBodyVideosItemCaptionMax = 2000;
+
+export const createCampaignDraftBodyVideosMax = 10;
+
 export const createCampaignDraftBodyThemeUnitSingularMax = 60;
 
 export const createCampaignDraftBodyThemeUnitPluralMax = 60;
@@ -748,6 +839,12 @@ export const createCampaignDraftBodyThemeUnitPluralMax = 60;
 export const createCampaignDraftBodyEditorStepMax = 5;
 
 export const CreateCampaignDraftBody = zod.object({
+  currency: zod
+    .enum(["gbp", "usd"])
+    .default(createCampaignDraftBodyCurrencyDefault)
+    .describe(
+      "Campaign goals and donations use this currency. Locked once checkout has started.",
+    ),
   name: zod.string().max(createCampaignDraftBodyNameMax).optional(),
   tagline: zod.string().max(createCampaignDraftBodyTaglineMax).optional(),
   description: zod
@@ -813,10 +910,31 @@ export const CreateCampaignDraftBody = zod.object({
   video: zod
     .object({
       url: zod.string(),
-      posterUrl: zod.string(),
-      captionsUrl: zod.string(),
+      posterUrl: zod.string().nullable(),
+      captionsUrl: zod.string().nullable(),
+      caption: zod
+        .string()
+        .max(createCampaignDraftBodyVideoCaptionMax)
+        .optional(),
     })
     .nullish(),
+  videos: zod
+    .array(
+      zod.object({
+        url: zod.string(),
+        posterUrl: zod.string().nullable(),
+        captionsUrl: zod.string().nullable(),
+        caption: zod
+          .string()
+          .max(createCampaignDraftBodyVideosItemCaptionMax)
+          .optional(),
+      }),
+    )
+    .max(createCampaignDraftBodyVideosMax)
+    .optional()
+    .describe(
+      "Ordered campaign videos. When present, replaces the legacy single video, including an empty array to remove all videos.",
+    ),
   theme: zod
     .object({
       primaryColor: zod.string().optional(),
@@ -855,6 +973,7 @@ export const GetManagedCampaignDraftsParams = zod.object({
   id: zod.coerce.string(),
 });
 
+export const getManagedCampaignDraftsResponseOneCurrencyDefault = `gbp`;
 export const getManagedCampaignDraftsResponseOneNameMax = 200;
 
 export const getManagedCampaignDraftsResponseOneTaglineMax = 140;
@@ -881,6 +1000,12 @@ export const getManagedCampaignDraftsResponseOneBreakdownMax = 50;
 
 export const getManagedCampaignDraftsResponseOneLocationsMax = 3;
 
+export const getManagedCampaignDraftsResponseOneVideoCaptionMax = 2000;
+
+export const getManagedCampaignDraftsResponseOneVideosItemCaptionMax = 2000;
+
+export const getManagedCampaignDraftsResponseOneVideosMax = 10;
+
 export const getManagedCampaignDraftsResponseOneThemeUnitSingularMax = 60;
 
 export const getManagedCampaignDraftsResponseOneThemeUnitPluralMax = 60;
@@ -897,6 +1022,12 @@ export const getManagedCampaignDraftsResponseTwoSupporterUnitsMax = 300;
 
 export const GetManagedCampaignDraftsResponseItem = zod
   .object({
+    currency: zod
+      .enum(["gbp", "usd"])
+      .default(getManagedCampaignDraftsResponseOneCurrencyDefault)
+      .describe(
+        "Campaign goals and donations use this currency. Locked once checkout has started.",
+      ),
     name: zod
       .string()
       .max(getManagedCampaignDraftsResponseOneNameMax)
@@ -979,10 +1110,31 @@ export const GetManagedCampaignDraftsResponseItem = zod
     video: zod
       .object({
         url: zod.string(),
-        posterUrl: zod.string(),
-        captionsUrl: zod.string(),
+        posterUrl: zod.string().nullable(),
+        captionsUrl: zod.string().nullable(),
+        caption: zod
+          .string()
+          .max(getManagedCampaignDraftsResponseOneVideoCaptionMax)
+          .optional(),
       })
       .nullish(),
+    videos: zod
+      .array(
+        zod.object({
+          url: zod.string(),
+          posterUrl: zod.string().nullable(),
+          captionsUrl: zod.string().nullable(),
+          caption: zod
+            .string()
+            .max(getManagedCampaignDraftsResponseOneVideosItemCaptionMax)
+            .optional(),
+        }),
+      )
+      .max(getManagedCampaignDraftsResponseOneVideosMax)
+      .optional()
+      .describe(
+        "Ordered campaign videos. When present, replaces the legacy single video, including an empty array to remove all videos.",
+      ),
     theme: zod
       .object({
         primaryColor: zod.string().optional(),
@@ -1027,6 +1179,7 @@ export const GetManagedCampaignDraftsResponseItem = zod
         .number()
         .min(getManagedCampaignDraftsResponseTwoPartnerFundingMatchedGbpMin)
         .optional(),
+      currencyLockedAt: zod.string().nullish(),
       status: zod.string().optional(),
       hasUnpublishedChanges: zod.boolean().optional(),
       sharePath: zod.string().optional(),
@@ -1071,6 +1224,7 @@ export const SaveCampaignDraftParams = zod.object({
   campId: zod.coerce.string(),
 });
 
+export const saveCampaignDraftBodyCurrencyDefault = `gbp`;
 export const saveCampaignDraftBodyNameMax = 200;
 
 export const saveCampaignDraftBodyTaglineMax = 140;
@@ -1097,6 +1251,12 @@ export const saveCampaignDraftBodyBreakdownMax = 50;
 
 export const saveCampaignDraftBodyLocationsMax = 3;
 
+export const saveCampaignDraftBodyVideoCaptionMax = 2000;
+
+export const saveCampaignDraftBodyVideosItemCaptionMax = 2000;
+
+export const saveCampaignDraftBodyVideosMax = 10;
+
 export const saveCampaignDraftBodyThemeUnitSingularMax = 60;
 
 export const saveCampaignDraftBodyThemeUnitPluralMax = 60;
@@ -1104,6 +1264,12 @@ export const saveCampaignDraftBodyThemeUnitPluralMax = 60;
 export const saveCampaignDraftBodyEditorStepMax = 5;
 
 export const SaveCampaignDraftBody = zod.object({
+  currency: zod
+    .enum(["gbp", "usd"])
+    .default(saveCampaignDraftBodyCurrencyDefault)
+    .describe(
+      "Campaign goals and donations use this currency. Locked once checkout has started.",
+    ),
   name: zod.string().max(saveCampaignDraftBodyNameMax).optional(),
   tagline: zod.string().max(saveCampaignDraftBodyTaglineMax).optional(),
   description: zod.string().max(saveCampaignDraftBodyDescriptionMax).optional(),
@@ -1166,10 +1332,31 @@ export const SaveCampaignDraftBody = zod.object({
   video: zod
     .object({
       url: zod.string(),
-      posterUrl: zod.string(),
-      captionsUrl: zod.string(),
+      posterUrl: zod.string().nullable(),
+      captionsUrl: zod.string().nullable(),
+      caption: zod
+        .string()
+        .max(saveCampaignDraftBodyVideoCaptionMax)
+        .optional(),
     })
     .nullish(),
+  videos: zod
+    .array(
+      zod.object({
+        url: zod.string(),
+        posterUrl: zod.string().nullable(),
+        captionsUrl: zod.string().nullable(),
+        caption: zod
+          .string()
+          .max(saveCampaignDraftBodyVideosItemCaptionMax)
+          .optional(),
+      }),
+    )
+    .max(saveCampaignDraftBodyVideosMax)
+    .optional()
+    .describe(
+      "Ordered campaign videos. When present, replaces the legacy single video, including an empty array to remove all videos.",
+    ),
   theme: zod
     .object({
       primaryColor: zod.string().optional(),
@@ -1202,6 +1389,7 @@ export const SaveCampaignDraftBody = zod.object({
   unitChosen: zod.boolean().optional(),
 });
 
+export const saveCampaignDraftResponseOneCurrencyDefault = `gbp`;
 export const saveCampaignDraftResponseOneNameMax = 200;
 
 export const saveCampaignDraftResponseOneTaglineMax = 140;
@@ -1228,6 +1416,12 @@ export const saveCampaignDraftResponseOneBreakdownMax = 50;
 
 export const saveCampaignDraftResponseOneLocationsMax = 3;
 
+export const saveCampaignDraftResponseOneVideoCaptionMax = 2000;
+
+export const saveCampaignDraftResponseOneVideosItemCaptionMax = 2000;
+
+export const saveCampaignDraftResponseOneVideosMax = 10;
+
 export const saveCampaignDraftResponseOneThemeUnitSingularMax = 60;
 
 export const saveCampaignDraftResponseOneThemeUnitPluralMax = 60;
@@ -1244,6 +1438,12 @@ export const saveCampaignDraftResponseTwoSupporterUnitsMax = 300;
 
 export const SaveCampaignDraftResponse = zod
   .object({
+    currency: zod
+      .enum(["gbp", "usd"])
+      .default(saveCampaignDraftResponseOneCurrencyDefault)
+      .describe(
+        "Campaign goals and donations use this currency. Locked once checkout has started.",
+      ),
     name: zod.string().max(saveCampaignDraftResponseOneNameMax).optional(),
     tagline: zod
       .string()
@@ -1314,10 +1514,31 @@ export const SaveCampaignDraftResponse = zod
     video: zod
       .object({
         url: zod.string(),
-        posterUrl: zod.string(),
-        captionsUrl: zod.string(),
+        posterUrl: zod.string().nullable(),
+        captionsUrl: zod.string().nullable(),
+        caption: zod
+          .string()
+          .max(saveCampaignDraftResponseOneVideoCaptionMax)
+          .optional(),
       })
       .nullish(),
+    videos: zod
+      .array(
+        zod.object({
+          url: zod.string(),
+          posterUrl: zod.string().nullable(),
+          captionsUrl: zod.string().nullable(),
+          caption: zod
+            .string()
+            .max(saveCampaignDraftResponseOneVideosItemCaptionMax)
+            .optional(),
+        }),
+      )
+      .max(saveCampaignDraftResponseOneVideosMax)
+      .optional()
+      .describe(
+        "Ordered campaign videos. When present, replaces the legacy single video, including an empty array to remove all videos.",
+      ),
     theme: zod
       .object({
         primaryColor: zod.string().optional(),
@@ -1362,6 +1583,7 @@ export const SaveCampaignDraftResponse = zod
         .number()
         .min(saveCampaignDraftResponseTwoPartnerFundingMatchedGbpMin)
         .optional(),
+      currencyLockedAt: zod.string().nullish(),
       status: zod.string().optional(),
       hasUnpublishedChanges: zod.boolean().optional(),
       sharePath: zod.string().optional(),

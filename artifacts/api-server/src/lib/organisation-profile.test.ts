@@ -256,6 +256,51 @@ test("story autosaves round trip the real wizard payload before selecting unit a
   }
 });
 
+test("campaign currency and ordered uploaded videos survive save/reopen with legacy fallback and explicit removal", async () => {
+  const f = await fixture();
+  const org = readyCampaignFixture(f);
+  org.campaigns[0].amountRaised = 0;
+  const videos = [
+    { url: "/api/uploads/object/org-media/first.mp4", posterUrl: null, captionsUrl: null, caption: "Our work in Kingston" },
+    { url: "https://youtu.be/test123", posterUrl: "/api/poster.jpg", captionsUrl: "/api/captions.vtt", caption: "" },
+    { url: "", posterUrl: null, captionsUrl: null, caption: "Upload still pending" },
+  ];
+  const saved = await invoke(f.router, "patch", "org", {
+    currency: "usd", videos, editorStep: 4, saveAsDraft: true,
+  }, "org", campaignRoute);
+  assert.equal(saved.status, 200);
+  assert.equal(saved.body.currency, "usd");
+  assert.deepEqual(saved.body.videos, videos);
+  const reopened = f.draftFromCampaign(f.campaignForEditor(f.state.docs.get("organisations/org").campaigns[0]));
+  assert.equal(reopened.currency, "usd");
+  assert.deepEqual(reopened.videos.map(({ id, ...video }: any) => video), videos);
+  const removed = await invoke(f.router, "patch", "org", { videos: [], saveAsDraft: true }, "org", campaignRoute);
+  assert.equal(removed.status, 200);
+  assert.deepEqual(removed.body.videos, []);
+  assert.equal(removed.body.video, null);
+  assert.equal(f.draftFromCampaign(removed.body).videos.length, 0);
+  const legacy = f.draftFromCampaign({ video: videos[0] });
+  assert.equal(legacy.currency, "gbp");
+  assert.equal(legacy.videos.length, 1);
+  assert.equal(legacy.videos[0].caption, "Our work in Kingston");
+  assert.equal(f.draftFromCampaign({ videos: [], video: videos[0] }).videos.length, 0);
+});
+
+test("campaign currency cannot relabel existing or in-flight donations and videos remain bounded/validated", async () => {
+  const f = await fixture();
+  const org = readyCampaignFixture(f);
+  const change = () => invoke(f.router, "patch", "org", { currency: "usd", saveAsDraft: true }, "org", campaignRoute);
+  assert.equal((await change()).status, 400);
+  org.campaigns[0].amountRaised = 0;
+  org.campaigns[0].currencyLockedAt = "2026-11-04T00:00:00Z";
+  assert.equal((await change()).status, 400);
+  for (const body of [
+    { currency: "eur" }, { videos: Array(11).fill({ url: "" }) },
+    { videos: [{ url: "https://unsafe.example/video.mp4" }] },
+    { videos: [{ url: "", caption: "x".repeat(2001) }] },
+  ]) assert.throws(() => f.campaignPatch(body));
+});
+
 test("unfinished units do not bypass malformed artwork validation or private revision boundaries", async () => {
   const f = await fixture();
   const org = readyCampaignFixture(f, true);

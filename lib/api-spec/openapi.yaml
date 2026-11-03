@@ -902,6 +902,7 @@ components:
       properties:
         orgId: {type: string}
         campaignId: {type: string}
+        currency: {type: string, enum: [gbp, usd], description: "Must match the campaign currency. Organisation-wide donations remain GBP."}
         amountPence: {type: integer, minimum: 300}
         originalAmountPence: {type: integer, minimum: 300}
         feeCovered: {type: boolean}
@@ -1119,6 +1120,11 @@ components:
     CampaignEditorRequest:
       type: object
       properties:
+        currency:
+          type: string
+          enum: [gbp, usd]
+          default: gbp
+          description: "Campaign goals and donations use this currency. Locked once checkout has started."
         name: {type: string, maxLength: 200}
         tagline: {type: string, maxLength: 140}
         description: {type: string, maxLength: 20000}
@@ -1159,8 +1165,20 @@ components:
         video:
           type: object
           nullable: true
-          properties: {url: {type: string}, posterUrl: {type: string}, captionsUrl: {type: string}}
+          properties: {url: {type: string}, posterUrl: {type: string, nullable: true}, captionsUrl: {type: string, nullable: true}, caption: {type: string, maxLength: 2000}}
           required: [url, posterUrl, captionsUrl]
+        videos:
+          type: array
+          maxItems: 10
+          description: "Ordered campaign videos. When present, replaces the legacy single video, including an empty array to remove all videos."
+          items:
+            type: object
+            properties:
+              url: {type: string}
+              posterUrl: {type: string, nullable: true}
+              captionsUrl: {type: string, nullable: true}
+              caption: {type: string, maxLength: 2000}
+            required: [url, posterUrl, captionsUrl]
         theme:
           type: object
           properties:
@@ -1189,6 +1207,7 @@ components:
             publicId: {type: string}
             amountRaised: {type: number}
             partnerFundingMatchedGbp: {type: number, minimum: 0, readOnly: true}
+            currencyLockedAt: {type: string, nullable: true, readOnly: true}
             status: {type: string}
             hasUnpublishedChanges: {type: boolean}
             sharePath: {type: string}

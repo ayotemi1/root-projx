@@ -146,6 +146,7 @@ export interface Resource {
 }
 
 export interface Donation {
+  receiptAccounting?: import("../../../api-server/src/lib/donation-accounting").DonationAccounting;
   _id: string;
   userId: string;
   orgId: string;
@@ -449,6 +450,7 @@ export interface CampaignVideo {
   url: string;
   posterUrl: string | null;
   captionsUrl: string | null;
+  caption?: string;
 }
 
 export type CampaignEditorStep = 1 | 2 | 3 | 4 | 5;
@@ -485,6 +487,9 @@ export interface CampaignPageContent {
 }
 
 export interface Campaign {
+  currency?: "gbp" | "usd";
+  currencyLockedAt?: string | null;
+  videos?: CampaignVideo[];
   pageContent?: CampaignPageContent | null;
   _id: string;
   name: string;
@@ -537,6 +542,8 @@ export interface PublicSupporter {
 
 /** Editable fields accepted by PATCH, plus editor flags. Never includes amountRaised. */
 export interface CampaignEditorPatch {
+  currency?: "gbp" | "usd";
+  videos?: CampaignVideo[];
   name?: string;
   tagline?: string;
   type?: "fundraising" | "volunteer";
@@ -799,6 +806,7 @@ export const requestPasswordReset = (email: string) =>
 
 export const createDonationCheckout = (
   data: {
+    currency?: "gbp" | "usd";
     orgId: string;
     campaignId?: string;
     amountPence: number;
@@ -820,21 +828,23 @@ export const createDonationCheckout = (
 
 export const confirmDonation = (sessionId: string) =>
   req<{
+    currency?: "gbp" | "usd";
+    receiptAccounting?: import("../../../api-server/src/lib/donation-accounting").DonationAccounting;
     orgId: string;
     orgName: string;
-    amountGbp: number;
+    amountGbp: number | null;
     feePence: number;
     donorEmail: string | null;
     recorded: boolean;
-    chargedGbp?: number;
-    intendedGbp?: number;
-    platformFeeGbp?: number;
+    chargedGbp?: number | null;
+    intendedGbp?: number | null;
+    platformFeeGbp?: number | null;
     feeCovered?: boolean;
-    feeCoverGbp?: number;
-    toOrgGbp?: number;
-    estimatedStripeFeeGbp?: number;
-    grossAmountGbp?: number;
-    netAmountGbp?: number;
+    feeCoverGbp?: number | null;
+    toOrgGbp?: number | null;
+    estimatedStripeFeeGbp?: number | null;
+    grossAmountGbp?: number | null;
+    netAmountGbp?: number | null;
     campaignId?: string | null;
     campaignName?: string | null;
     campaignPath?: string | null;

@@ -6,12 +6,13 @@ import * as api from "@/lib/api";
 import type { Campaign, Org } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { GuestDonateSheet } from "@/components/GuestDonateSheet";
+import { formatWhole } from "@/lib/currency";
 import { CampaignDonateButton } from "@/components/campaign-donate-button";
 
 const RED = "#B50000";
 
-function fmt(n: number) {
-  return "£" + n.toLocaleString("en-GB");
+function fmt(n: number, currency?: string | null) {
+  return formatWhole(n, currency);
 }
 
 function CampaignCard({
@@ -66,7 +67,7 @@ function CampaignCard({
               ✓ Completed
             </span>
             {c.type === "fundraising" && c.amountRaised > 0 && (
-              <span className="text-sm font-semibold text-[#777]">{fmt(c.amountRaised)} raised</span>
+              <span className="text-sm font-semibold text-[#777]">{fmt(c.amountRaised, c.currency)} raised</span>
             )}
           </div>
         ) : c.type === "fundraising" ? (
@@ -81,8 +82,8 @@ function CampaignCard({
               <span className="text-sm font-semibold text-[#444] w-10 text-right shrink-0">{pct}%</span>
             </div>
             <div className="flex items-center justify-between text-sm">
-              <span className="font-bold" style={{ color: RED }}>{fmt(c.amountRaised)} raised</span>
-              <span className="text-[#888]">{fmt(c.goal)} goal</span>
+              <span className="font-bold" style={{ color: RED }}>{fmt(c.amountRaised, c.currency)} raised</span>
+              <span className="text-[#888]">{fmt(c.goal, c.currency)} goal</span>
             </div>
           </div>
         ) : (
@@ -168,6 +169,7 @@ export default function OrgCampaignsPage() {
         campaignName={donationCampaign?.name}
         partnerFunding={donationCampaign?.partnerFunding}
         partnerFundingMatchedGbp={donationCampaign?.partnerFundingMatchedGbp}
+        currency={donationCampaign?.currency ?? "gbp"}
       />
       {/* Back link */}
       <Link

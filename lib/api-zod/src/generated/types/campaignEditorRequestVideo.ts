@@ -8,6 +8,8 @@
 
 export type CampaignEditorRequestVideo = {
   url: string;
-  posterUrl: string;
-  captionsUrl: string;
+  posterUrl: string | null;
+  captionsUrl: string | null;
+  /** @maxLength 2000 */
+  caption?: string;
 } | null;

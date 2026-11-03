@@ -25,6 +25,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/context/AuthContext";
 import * as api from "@/lib/api";
+import { formatMoney } from "@/lib/currency";
 
 function EditProfileDialog({
   open,
@@ -481,7 +482,12 @@ export default function AccountPage() {
                   const date = new Date(d.createdAt).toLocaleDateString("en-GB", {
                     day: "numeric", month: "short", year: "numeric",
                   });
-                  const amount = `£${d.amountGbp.toFixed(2)}`;
+                  // Native receipt amount when the server provides it; older records are GBP.
+                  const native = (d as typeof d & { receiptAccounting?: { amountGbp?: number; chargedGbp?: number } | null }).receiptAccounting;
+                  const nativeAmount = native ? (native.chargedGbp ?? native.amountGbp) : undefined;
+                  const amount = typeof nativeAmount === "number"
+                    ? formatMoney(nativeAmount, d.currency)
+                    : formatMoney(d.amountGbp, "gbp");
                   return (
                     <div key={d._id} className="flex items-center justify-between py-3 gap-3">
                       <div className="min-w-0 flex-1">

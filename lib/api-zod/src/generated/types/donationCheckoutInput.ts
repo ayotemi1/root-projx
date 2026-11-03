@@ -5,10 +5,13 @@
  * Root ProjX API — community giving platform
  * OpenAPI spec version: 0.1.0
  */
+import type { DonationCheckoutInputCurrency } from "./donationCheckoutInputCurrency";
 
 export interface DonationCheckoutInput {
   orgId: string;
   campaignId?: string;
+  /** Must match the campaign currency. Organisation-wide donations remain GBP. */
+  currency?: DonationCheckoutInputCurrency;
   /** @minimum 300 */
   amountPence: number;
   /** @minimum 300 */

@@ -1,22 +1,24 @@
 import { acceptPatch } from "./assist-logic";
 import { AccumulationField } from "@/components/campaign/accumulation-field";
-import { Plus, Trash2, Info, Captions } from "lucide-react";
+import { Plus, Trash2, Info, Captions, Lock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import type { CampaignUnit } from "@/lib/api";
 import { AssistButton, Counter, FieldBlock, MediaUpload } from "./fields";
-import { BUILTIN_UNITS, MAX_LOCATIONS, STORY_MIN, TAGLINE_MAX, type CampaignDraft } from "./model";
+import { BUILTIN_UNITS, MAX_LOCATIONS, MAX_VIDEOS, STORY_MIN, TAGLINE_MAX, emptyVideo, type CampaignDraft, type VideoDraft } from "./model";
+import { currencyName, currencySymbol } from "@/lib/currency";
 
 export interface StepProps {
   d: CampaignDraft;
-  update: (patch: Partial<CampaignDraft>) => void;
+  update: (patch: Partial<CampaignDraft> | ((previous: CampaignDraft) => Partial<CampaignDraft>)) => void;
   token: string;
   campaignId: string;
   assistEnabled: boolean;
   /** Flush the draft before any writing-help request (draft.flush). */
   beforeAssist?: () => Promise<boolean>;
+  /** True once the campaign has received a donation: currency can no longer change. */
+  currencyLocked?: boolean;
 }
 
 const IMAGE_ACCEPT = "image/jpeg,image/png,image/webp,image/gif";
@@ -59,14 +61,35 @@ export function StepBasics({ d, update, token, campaignId, assistEnabled, before
   );
 }
 
-export function StepMoney({ d, update }: StepProps) {
+export function StepMoney({ d, update, currencyLocked = false }: StepProps) {
+  const sym = currencySymbol(d.currency);
   const goal = Number(d.goal) || 0;
   const partner = Number(d.partnerAmount) || 0;
   return (
     <div className="space-y-6">
-      <FieldBlock label="Goal amount" htmlFor="cb-goal" hint="The full amount the work costs, in pounds.">
+      <div className="space-y-2" data-tour-id="campaign-currency">
+        <p id="cb-currency-q" className="text-sm font-semibold">Currency donors are charged in</p>
+        <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-labelledby="cb-currency-q">
+          {([["gbp", "£ GBP", "British pounds"], ["usd", "$ USD", "US dollars"]] as const).map(([v, title, body]) => (
+            <button key={v} type="button" role="radio" aria-checked={d.currency === v} disabled={currencyLocked}
+              onClick={() => update({ currency: v })}
+              className={`text-left p-3 rounded-xl border-2 transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${d.currency === v ? "border-primary bg-primary/5" : "border-border hover:border-primary/40"}`}
+              data-testid={`button-currency-${v}`}>
+              <span className={`block font-bold text-sm ${d.currency === v ? "text-primary" : "text-foreground"}`}>{title}</span>
+              <span className="block text-xs text-muted-foreground mt-0.5">{body}</span>
+            </button>
+          ))}
+        </div>
+        <p className="text-xs text-muted-foreground flex gap-1.5" data-testid="text-currency-note">
+          {currencyLocked ? <Lock className="w-3.5 h-3.5 shrink-0 mt-0.5" /> : <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />}
+          {currencyLocked
+            ? "This campaign has received donations, so its currency is fixed."
+            : "Every amount on this campaign, and every card charge, is in this currency. It is fixed once the first donation arrives."}
+        </p>
+      </div>
+      <FieldBlock label="Goal amount" htmlFor="cb-goal" hint={`The full amount the work costs, in ${currencyName(d.currency)}.`}>
         <div className="relative" data-tour-id="campaign-goal">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">£</span>
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">{sym}</span>
           <Input id="cb-goal" inputMode="decimal" value={d.goal} onChange={(e) => update({ goal: e.target.value.replace(/[^\d.]/g, "") })} className="pl-7" placeholder="4800" data-testid="input-campaign-goal" />
         </div>
       </FieldBlock>
@@ -108,7 +131,7 @@ export function StepMoney({ d, update }: StepProps) {
             <div className="grid gap-4 sm:grid-cols-2">
               <FieldBlock label={d.partnerType === "matching" ? "Total pledged for matching" : "Amount committed"} htmlFor="cb-partner-amount">
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">£</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">{sym}</span>
                   <Input id="cb-partner-amount" inputMode="decimal" className="pl-7" value={d.partnerAmount} onChange={(e) => update({ partnerAmount: e.target.value.replace(/[^\d.]/g, "") })} data-testid="input-partner-amount" />
                 </div>
               </FieldBlock>
@@ -117,15 +140,15 @@ export function StepMoney({ d, update }: StepProps) {
               </FieldBlock>
               {d.partnerType === "matching" && (
                 <>
-                  <FieldBlock label="They add, for every £1 donors give" htmlFor="cb-partner-ratio">
+                  <FieldBlock label={`They add, for every ${sym}1 donors give`} htmlFor="cb-partner-ratio">
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">£</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">{sym}</span>
                       <Input id="cb-partner-ratio" inputMode="decimal" className="pl-7" value={d.partnerRatio} onChange={(e) => update({ partnerRatio: e.target.value.replace(/[^\d.]/g, "") })} placeholder="1" data-testid="input-partner-ratio" />
                     </div>
                   </FieldBlock>
                   <FieldBlock label="Most they will match (optional)" htmlFor="cb-partner-cap">
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">£</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">{sym}</span>
                       <Input id="cb-partner-cap" inputMode="decimal" className="pl-7" value={d.partnerCap} onChange={(e) => update({ partnerCap: e.target.value.replace(/[^\d.]/g, "") })} placeholder={d.partnerAmount || "same as pledged"} data-testid="input-partner-cap" />
                     </div>
                   </FieldBlock>
@@ -136,7 +159,7 @@ export function StepMoney({ d, update }: StepProps) {
               <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
               {d.partnerType === "matching"
                 ? "Donors see what their gift adds, only while matching funds are left. Once the cap is used, the page says matching has been fully claimed. Cards are only ever charged what the donor gives."
-                : `Donors see this as money already committed, alongside what is raised here and what is still needed.${goal > 0 && partner > 0 ? ` Still needed before any donations: £${Math.max(0, goal - partner).toLocaleString("en-GB")}.` : ""}`}
+                : `Donors see this as money already committed, alongside what is raised here and what is still needed.${goal > 0 && partner > 0 ? ` Still needed before any donations: ${sym}${Math.max(0, goal - partner).toLocaleString(d.currency === "usd" ? "en-US" : "en-GB")}.` : ""}`}
             </p>
           </div>
         )}
@@ -150,6 +173,7 @@ export function StepMoney({ d, update }: StepProps) {
 
 export function StepStory({ d, update, token, campaignId, assistEnabled, beforeAssist }: StepProps) {
   const len = d.description.trim().length;
+  const sym = currencySymbol(d.currency);
   const setBreak = (i: number, patch: Partial<CampaignDraft["breakdown"][number]>) =>
     update({ breakdown: d.breakdown.map((b, j) => (j === i ? { ...b, ...patch } : b)) });
   const setLoc = (i: number, patch: Partial<CampaignDraft["locations"][number]>) =>
@@ -168,12 +192,12 @@ export function StepStory({ d, update, token, campaignId, assistEnabled, beforeA
       <section className="space-y-3" data-tour-id="campaign-breakdown">
         <div>
           <h3 className="text-sm font-semibold">What the money buys</h3>
-          <p className="text-xs text-muted-foreground">Concrete beats abstract: "30 places on the programme", "£12 buys a week of meals".</p>
+          <p className="text-xs text-muted-foreground">Concrete beats abstract: "30 places on the programme", "{sym}12 buys a week of meals".</p>
         </div>
         {d.breakdown.map((b, i) => (
           <div key={i} className="rounded-xl border border-border p-3 space-y-2" data-testid={`row-edit-breakdown-${i}`}>
             <div className="flex gap-2">
-              <Input aria-label={`Item ${i + 1} amount or quantity`} value={b.label} onChange={(e) => setBreak(i, { label: e.target.value })} placeholder="£25 or 30 places" className="flex-1 min-w-0" data-testid={`input-breakdown-label-${i}`} />
+              <Input aria-label={`Item ${i + 1} amount or quantity`} value={b.label} onChange={(e) => setBreak(i, { label: e.target.value })} placeholder={`${sym}25 or 30 places`} className="flex-1 min-w-0" data-testid={`input-breakdown-label-${i}`} />
               <Button type="button" variant="ghost" size="sm" className="h-9 w-9 p-0 text-muted-foreground" onClick={() => update({ breakdown: d.breakdown.filter((_, j) => j !== i) })} aria-label={`Remove item ${i + 1}`} data-testid={`button-remove-breakdown-${i}`}><Trash2 className="w-4 h-4" /></Button>
             </div>
             <Textarea rows={2} aria-label={`Item ${i + 1} what it covers`} value={b.detail} onChange={(e) => setBreak(i, { detail: e.target.value })} placeholder="childcare for single mothers on site" data-testid={`input-breakdown-detail-${i}`} />
@@ -225,6 +249,56 @@ function UnitSample({ unit, colour }: { unit: CampaignUnit; colour: string }) {
   );
 }
 
+function VideosEditor({ d, update, token }: Pick<StepProps, "d" | "update" | "token">) {
+  // Merge asynchronous upload results into the latest row, even if another
+  // video was edited or removed while the upload was in flight.
+  const setVideo = (i: number, patch: Partial<VideoDraft>) => {
+    const id = d.videos[i]?.id;
+    update(previous => ({ videos: previous.videos.map(v => v.id === id ? { ...v, ...patch } : v) }));
+  };
+  return (
+    <section className="rounded-xl border border-border p-4 space-y-4" data-tour-id="campaign-video">
+      <div>
+        <h3 className="text-sm font-semibold">Videos (optional)</h3>
+        <p className="text-xs text-muted-foreground">Upload up to {MAX_VIDEOS} videos, or link YouTube or Vimeo. Videos only load when someone taps play.</p>
+      </div>
+      {d.videos.length > 0 && (
+        <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 flex gap-2">
+          <Captions className="w-4 h-4 shrink-0" /> Most people watch with the sound off. Add subtitles so your video still lands.
+        </p>
+      )}
+      {d.videos.map((v, i) => (
+        <div key={v.id} className="rounded-xl border border-border p-3 space-y-3" data-testid={`row-edit-video-${i}`}>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-sm font-bold">Video {i + 1}</p>
+            <Button type="button" variant="ghost" size="sm" className="h-9 w-9 p-0 text-muted-foreground" onClick={() => update(previous => ({ videos: previous.videos.filter(video => video.id !== v.id) }))} aria-label={`Remove video ${i + 1}`} data-testid={`button-remove-video-${i}`}><Trash2 className="w-4 h-4" /></Button>
+          </div>
+          <MediaUpload id={`video-file-${i}`} kind="video" label={v.url ? "Replace with an uploaded file" : "Upload a video file"} accept="video/mp4,video/webm,video/quicktime" url={null} token={token} onUploaded={(u) => setVideo(i, { url: u })} />
+          <FieldBlock label="Or a YouTube or Vimeo link" htmlFor={`cb-video-url-${i}`} hint={v.url && !/youtu|vimeo/i.test(v.url) ? "Uploaded file attached." : undefined}>
+            <Input id={`cb-video-url-${i}`} type="url" inputMode="url" value={v.url} onChange={(e) => setVideo(i, { url: e.target.value })} placeholder="https://youtu.be/..." data-testid={`input-video-url-${i}`} />
+          </FieldBlock>
+          <FieldBlock label="Caption (optional)" htmlFor={`cb-video-caption-${i}`} hint="A short line shown under the video, e.g. who is speaking and where.">
+            <Input id={`cb-video-caption-${i}`} value={v.caption} onChange={(e) => setVideo(i, { caption: e.target.value })} placeholder="Amina at the Mathare reading room, March" data-testid={`input-video-caption-${i}`} />
+          </FieldBlock>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FieldBlock label="Poster frame (optional)">
+              <MediaUpload id={`video-poster-${i}`} label="Upload poster" accept={IMAGE_ACCEPT} aspect="aspect-video" url={v.posterUrl} token={token} onUploaded={(u) => setVideo(i, { posterUrl: u })} onRemove={() => setVideo(i, { posterUrl: null })} />
+            </FieldBlock>
+            <FieldBlock label="Subtitles file, .vtt (optional)" hint="For uploaded videos. YouTube and Vimeo keep their own subtitles.">
+              <MediaUpload id={`video-captions-${i}`} kind="file" label="Upload subtitles" accept=".vtt,text/vtt" url={v.captionsUrl} token={token} onUploaded={(u) => setVideo(i, { captionsUrl: u })} onRemove={() => setVideo(i, { captionsUrl: null })} />
+            </FieldBlock>
+          </div>
+        </div>
+      ))}
+      {d.videos.length < MAX_VIDEOS && (
+        <Button type="button" variant="outline" size="sm" onClick={() => update(previous => ({ videos: [...previous.videos, emptyVideo()] }))} data-testid="button-add-video">
+          <Plus className="w-4 h-4 mr-1" /> {d.videos.length ? "Add another video" : "Add a video"}
+        </Button>
+      )}
+    </section>
+  );
+}
+
 export function StepLook({ d, update, token }: StepProps) {
   const builtin = BUILTIN_UNITS.find((u) => d.unit?.imageUrl === u.imageUrl);
   const custom = !!d.unit && !builtin;
@@ -237,31 +311,7 @@ export function StepLook({ d, update, token }: StepProps) {
         <MediaUpload id="hero" label="Upload a hero image" accept={IMAGE_ACCEPT} url={d.imageUrl} token={token} tourId="campaign-hero" onUploaded={(u) => update({ imageUrl: u })} onRemove={() => update({ imageUrl: null })} />
       </FieldBlock>
 
-      <section className="rounded-xl border border-border p-4 space-y-4" data-tour-id="campaign-video">
-        <div className="flex items-center justify-between gap-4">
-          <label htmlFor="cb-video-on" className="text-sm font-semibold">Add a video</label>
-          <Switch id="cb-video-on" checked={d.videoOn} onCheckedChange={(v) => update({ videoOn: v })} data-testid="switch-video" />
-        </div>
-        {d.videoOn && (
-          <div className="space-y-4">
-            <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 flex gap-2">
-              <Captions className="w-4 h-4 shrink-0" /> Most people watch with the sound off. Add captions so your video still lands.
-            </p>
-            <FieldBlock label="YouTube or Vimeo link" htmlFor="cb-video-url" hint="Or upload a file below. The video only loads when someone taps play.">
-              <Input id="cb-video-url" type="url" inputMode="url" value={d.videoUrl} onChange={(e) => update({ videoUrl: e.target.value })} placeholder="https://youtu.be/..." data-testid="input-video-url" />
-            </FieldBlock>
-            <MediaUpload id="video-file" kind="video" label="Upload a video file" accept="video/mp4,video/webm,video/quicktime" url={null} token={token} onUploaded={(u) => update({ videoUrl: u })} />
-            <div className="grid gap-4 sm:grid-cols-2">
-              <FieldBlock label="Poster frame">
-                <MediaUpload id="video-poster" label="Upload poster" accept={IMAGE_ACCEPT} aspect="aspect-video" url={d.videoPoster} token={token} onUploaded={(u) => update({ videoPoster: u })} onRemove={() => update({ videoPoster: null })} />
-              </FieldBlock>
-              <FieldBlock label="Captions file (.vtt)" hint="For uploaded videos. YouTube and Vimeo keep their own captions.">
-                <MediaUpload id="video-captions" kind="file" label="Upload captions" accept=".vtt,text/vtt" url={d.videoCaptions} token={token} onUploaded={(u) => update({ videoCaptions: u })} onRemove={() => update({ videoCaptions: null })} />
-              </FieldBlock>
-            </div>
-          </div>
-        )}
-      </section>
+      <VideosEditor d={d} update={update} token={token} />
 
       <section className="space-y-3" data-tour-id="campaign-unit">
         <div>

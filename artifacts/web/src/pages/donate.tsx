@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/context/AuthContext";
 import * as api from "@/lib/api";
+import { currencyOf, currencySymbol } from "@/lib/currency";
 import {
   calculateDonationAccounting, donationDisclosure, estimateStripeFeePence,
 } from "../../../api-server/src/lib/donation-accounting";
@@ -53,20 +54,23 @@ export default function DonatePage() {
 
   const org = orgQ.data;
   const campaign = campaignId ? campaignQ.data?.find(c => c._id === campaignId) : undefined;
+  // Campaign gifts charge in the campaign's own currency; organisation gifts are GBP.
+  const currency = currencyOf(campaign?.currency);
+  const sym = currencySymbol(currency);
   const originalAmountGbp = custom ? parseFloat(custom) || 0 : (preset ?? 0);
   const originalAmountPence = Math.round(originalAmountGbp * 100);
 
   const validAmount = Number.isSafeInteger(originalAmountPence) && originalAmountPence > 0;
-  const estimatedFeePence = validAmount ? estimateStripeFeePence(originalAmountPence) : 0;
+  const estimatedFeePence = validAmount ? estimateStripeFeePence(originalAmountPence, undefined, currency) : 0;
 
   // Fee cover offsets estimated processing; the platform fee still applies.
   const chargedAmountPence = feeCovered
     ? originalAmountPence + estimatedFeePence
     : originalAmountPence;
   const accounting = validAmount ? calculateDonationAccounting({
-    intendedPence: originalAmountPence, chargedPence: chargedAmountPence, feeCovered,
+    intendedPence: originalAmountPence, chargedPence: chargedAmountPence, feeCovered, currency,
   }) : null;
-  const disclosure = accounting ? donationDisclosure(accounting, org?.name ?? "The organisation") : null;
+  const disclosure = accounting ? donationDisclosure(accounting, org?.name ?? "The organisation", undefined, currency) : null;
   const chargedAmountGbp = accounting?.chargedGbp ?? 0;
 
   const initials = (org?.name ?? "")
@@ -78,7 +82,7 @@ export default function DonatePage() {
 
   async function handleDonate() {
     if (!accounting || originalAmountGbp < 3) {
-      setError("Minimum donation is £3.");
+      setError(`Minimum donation is ${sym}3.`);
       return;
     }
     if (!isAuthenticated && !guestEmail) {
@@ -98,6 +102,7 @@ export default function DonatePage() {
           orgId,
           amountPence: chargedAmountPence,
           campaignId,
+          ...(campaignId ? { currency } : {}),
           guestEmail: guestEmail || undefined,
           feeCovered,
           originalAmountPence,
@@ -117,7 +122,7 @@ export default function DonatePage() {
 
   async function handleAnonymousDonate() {
     if (!accounting || originalAmountGbp < 3) {
-      setError("Minimum donation is £3.");
+      setError(`Minimum donation is ${sym}3.`);
       return;
     }
     setError("");
@@ -131,6 +136,7 @@ export default function DonatePage() {
           orgId,
           amountPence: chargedAmountPence,
           campaignId,
+          ...(campaignId ? { currency } : {}),
           feeCovered,
           originalAmountPence,
           feeAmountPence: feeCovered ? estimatedFeePence : 0,
@@ -201,7 +207,7 @@ export default function DonatePage() {
                       : {}
                   }
                 >
-                  £{amt}
+                  {sym}{amt}
                 </button>
               ))}
 
@@ -231,7 +237,7 @@ export default function DonatePage() {
                 Enter amount
               </Label>
               <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-muted-foreground">£</span>
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 font-bold text-muted-foreground">{sym}</span>
                 <Input
                   type="number"
                   min="3"
@@ -291,7 +297,7 @@ export default function DonatePage() {
               </div>
 
               <p className="text-xs text-muted-foreground">
-                Fee estimate based on UK card rates (1.5% + £0.20). Actual fee may vary by card type.
+                {currency === "usd" ? "Fee estimate based on card rates for US dollar payments (3.25% + $0.30)." : "Fee estimate based on UK card rates (1.5% + £0.20)."} Actual fee may vary by card type.
               </p>
             </div>
           )}
@@ -347,7 +353,7 @@ export default function DonatePage() {
             {redirecting
               ? "Redirecting to Stripe…"
               : originalAmountGbp > 0
-              ? `Donate £${chargedAmountGbp.toFixed(2)} →`
+              ? `Donate ${sym}${chargedAmountGbp.toFixed(2)} →`
               : "Select an amount"}
           </Button>
 

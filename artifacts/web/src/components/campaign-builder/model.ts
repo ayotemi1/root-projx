@@ -1,11 +1,37 @@
+import { currencyName, currencySymbol } from "@/lib/currency";
 import type {
   Campaign, CampaignBreakdownItem, CampaignEditorPatch, CampaignGate, CampaignLocation,
-  CampaignTheme, CampaignUnit, Org,
+  CampaignTheme, CampaignUnit, CampaignVideo, Org,
 } from "@/lib/api";
 
 export const TAGLINE_MAX = 140;
 export const STORY_MIN = 200;
 export const MAX_LOCATIONS = 3;
+export const MAX_VIDEOS = 10;
+
+export type CampaignCurrencyCode = "gbp" | "usd";
+
+/** One video row in the editor. Blank rows are kept so half-finished uploads survive autosave. */
+export interface VideoDraft {
+  id: string;
+  url: string;
+  posterUrl: string | null;
+  captionsUrl: string | null;
+  /** Optional descriptive text shown under the video (not subtitles). */
+  caption: string;
+}
+
+export const emptyVideo = (): VideoDraft => ({ id: crypto.randomUUID(), url: "", posterUrl: null, captionsUrl: null, caption: "" });
+
+function videoDraftOf(v: (Partial<CampaignVideo> & { id?: string }) | null | undefined, index = 0): VideoDraft {
+  return { id: v?.id ?? `saved-video-${index}`, url: v?.url ?? "", posterUrl: v?.posterUrl ?? null, captionsUrl: v?.captionsUrl ?? null, caption: v?.caption ?? "" };
+}
+
+/** videos wins when the server sends it; legacy single video only when videos is undefined. */
+export function campaignVideos(c: Pick<Campaign, "video" | "videos">): CampaignVideo[] {
+  if (c.videos !== undefined) return c.videos ?? [];
+  return c.video ? [c.video] : [];
+}
 
 export const DEFAULT_COLOURS = {
   primaryColor: "#B50000",
@@ -19,7 +45,7 @@ export interface BuiltinUnit extends CampaignUnit {
   imageUrl: string;
 }
 
-const base = (import.meta.env.BASE_URL ?? "/").replace(/\/$/, "");
+const base = (import.meta.env?.BASE_URL ?? "/").replace(/\/$/, "");
 export const BUILTIN_UNITS: BuiltinUnit[] = [
   { id: "hand", singular: "hand", plural: "hands", imageUrl: `${base}/campaign-units/hand.svg` },
   { id: "brick", singular: "brick", plural: "bricks", imageUrl: `${base}/campaign-units/brick.svg` },
@@ -46,10 +72,8 @@ export interface CampaignDraft {
   breakdown: CampaignBreakdownItem[];
   locations: CampaignLocation[];
   imageUrl: string | null;
-  videoOn: boolean;
-  videoUrl: string;
-  videoPoster: string | null;
-  videoCaptions: string | null;
+  currency: CampaignCurrencyCode;
+  videos: VideoDraft[];
   colours: typeof DEFAULT_COLOURS;
   unit: CampaignUnit | null;
   unitChosen: boolean;
@@ -79,10 +103,8 @@ export function draftFromCampaign(c: Campaign): CampaignDraft {
       name: l.name ?? "", description: l.description ?? "", photoUrl: l.photoUrl ?? null,
     })),
     imageUrl: c.imageUrl ?? null,
-    videoOn: !!c.video,
-    videoUrl: c.video?.url ?? "",
-    videoPoster: c.video?.posterUrl ?? null,
-    videoCaptions: c.video?.captionsUrl ?? null,
+    currency: c.currency === "usd" ? "usd" : "gbp",
+    videos: campaignVideos(c).slice(0, MAX_VIDEOS).map(videoDraftOf),
     colours: t
       ? { primaryColor: t.primaryColor, accentColor: t.accentColor, backgroundColor: t.backgroundColor, textColor: t.textColor }
       : { ...DEFAULT_COLOURS },
@@ -100,23 +122,47 @@ function num(s: string): number | null {
 
 /** Returns a plain-words message when the draft cannot be saved as-is. */
 export function validateDraft(d: CampaignDraft): string | null {
+  const unit = currencyName(d.currency);
+  const sym = currencySymbol(d.currency);
   if (d.tagline.length > TAGLINE_MAX) return `The one-line ask is ${d.tagline.length - TAGLINE_MAX} characters too long. Shorten it to ${TAGLINE_MAX}.`;
   const g = num(d.goal);
-  if (g !== null && (Number.isNaN(g) || g < 0)) return "Goal must be a number of pounds, 0 or more.";
+  if (g !== null && (Number.isNaN(g) || g < 0)) return `Goal must be a number of ${unit}, 0 or more.`;
   const v = num(d.volunteersNeeded);
   if (v !== null && (Number.isNaN(v) || v < 0)) return "Volunteers needed must be a whole number.";
   if (d.partnerOn) {
     const m = num(d.partnerAmount);
-    if (m !== null && (Number.isNaN(m) || m < 0)) return "Partner funding must be a number of pounds.";
+    if (m !== null && (Number.isNaN(m) || m < 0)) return `Partner funding must be a number of ${unit}.`;
     if (d.partnerType === "matching") {
       const r = num(d.partnerRatio);
-      if (r !== null && (Number.isNaN(r) || r <= 0)) return "Match ratio must be a number above 0, like 1 for £1 per £1.";
+      if (r !== null && (Number.isNaN(r) || r <= 0)) return `Match ratio must be a number above 0, like 1 for ${sym}1 per ${sym}1.`;
       const cap = num(d.partnerCap);
-      if (cap !== null && (Number.isNaN(cap) || cap < 0)) return "Match cap must be a number of pounds.";
+      if (cap !== null && (Number.isNaN(cap) || cap < 0)) return `Match cap must be a number of ${unit}.`;
     }
   }
   if (d.locations.length > MAX_LOCATIONS) return `Add up to ${MAX_LOCATIONS} locations.`;
+  if (d.videos.length > MAX_VIDEOS) return `Add up to ${MAX_VIDEOS} videos.`;
   return null;
+}
+
+/** Old local drafts stored one video as videoOn/videoUrl/videoPoster/videoCaptions. */
+export function migrateLegacyVideoDraft(v: CampaignDraft): CampaignDraft {
+  const old = v as CampaignDraft & { videoOn?: boolean; videoUrl?: string; videoPoster?: string | null; videoCaptions?: string | null };
+  const hasOld = "videoOn" in old || "videoUrl" in old || "videoPoster" in old || "videoCaptions" in old;
+  const { videoOn, videoUrl, videoPoster, videoCaptions, ...rest } = old;
+  const videos = Array.isArray(rest.videos)
+    ? rest.videos.map(videoDraftOf)
+    : hasOld && videoOn ? [videoDraftOf({ url: videoUrl ?? "", posterUrl: videoPoster ?? null, captionsUrl: videoCaptions ?? null })] : undefined;
+  return {
+    ...rest,
+    ...(videos ? { videos: videos.slice(0, MAX_VIDEOS) } : {}),
+    ...(rest.currency ? { currency: rest.currency === "usd" ? "usd" : "gbp" } : {}),
+  } as CampaignDraft;
+}
+
+function serializeVideos(d: CampaignDraft): CampaignVideo[] {
+  return d.videos.slice(0, MAX_VIDEOS).map((v) => ({
+    url: v.url.trim(), posterUrl: v.posterUrl, captionsUrl: v.captionsUrl, caption: v.caption,
+  }));
 }
 
 export function draftToPatch(d: CampaignDraft, prevTheme?: CampaignTheme): CampaignEditorPatch {
@@ -147,10 +193,11 @@ export function draftToPatch(d: CampaignDraft, prevTheme?: CampaignTheme): Campa
     breakdown: d.breakdown.map((b) => ({ ...b })),
     locations: d.locations.slice(0, MAX_LOCATIONS).map((l) => ({ ...l })),
     imageUrl: d.imageUrl,
-    // Video switched on keeps its (possibly blank) slot so the controls survive autosave.
-    video: d.videoOn
-      ? { url: d.videoUrl.trim(), posterUrl: d.videoPoster, captionsUrl: d.videoCaptions }
-      : null,
+    currency: d.currency,
+    // Every row (including blank ones) survives autosave; public render filters empties.
+    videos: serializeVideos(d),
+    // Legacy single video: first finished video, for older clients.
+    video: serializeVideos(d).find((v) => v.url) ?? null,
     theme: { ...(prevTheme ?? {}), ...d.colours, unit: d.unit },
     assistUsed: d.assistUsed,
     partnerFundingAnswer: d.partnerAnswer,
@@ -174,7 +221,9 @@ export function draftToPreviewCampaign(d: CampaignDraft, c: Campaign): Campaign 
     breakdown: p.breakdown,
     locations: p.locations,
     imageUrl: p.imageUrl ?? null,
+    currency: d.currency,
     video: p.video ?? null,
+    videos: p.videos ?? [],
     theme: p.theme,
     enabled: true,
   };

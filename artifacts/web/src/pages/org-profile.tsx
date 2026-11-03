@@ -12,6 +12,7 @@ import { useAuth } from "@/context/AuthContext";
 import * as api from "@/lib/api";
 import type { Review, Org, VolunteerRole, Campaign } from "@/lib/api";
 import { GuestDonateSheet } from "@/components/GuestDonateSheet";
+import { formatWhole } from "@/lib/currency";
 import { ContentGallery } from "@/components/org-content/content-gallery";
 import { CampaignDonateButton } from "@/components/campaign-donate-button";
 import { CampaignCardLink } from "@/components/campaign-card-link";
@@ -134,10 +135,10 @@ function CampaignCard({ campaign, orgId, onDonate }: { campaign: Campaign; orgId
             </div>
             <div className="flex items-center justify-between text-xs">
               <span className="text-muted-foreground font-medium">
-                £{(campaign.amountRaised ?? 0).toLocaleString()} raised
+                {formatWhole(campaign.amountRaised ?? 0, campaign.currency)} raised
               </span>
               <span className="font-bold" style={{ color: RED }}>
-                {pct}% of £{campaign.goal.toLocaleString()}
+                {pct}% of {formatWhole(campaign.goal, campaign.currency)}
               </span>
             </div>
           </div>
@@ -209,7 +210,7 @@ function CampaignCard({ campaign, orgId, onDonate }: { campaign: Campaign; orgId
                       )}
                       {phase.targetAmount != null && (
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          Target: £{phase.targetAmount.toLocaleString()}
+                          Target: {formatWhole(phase.targetAmount, campaign.currency)}
                         </p>
                       )}
                     </div>
@@ -458,6 +459,7 @@ export default function OrgProfilePage() {
         campaignName={donationCampaign?.name}
         partnerFunding={donationCampaign?.partnerFunding}
         partnerFundingMatchedGbp={donationCampaign?.partnerFundingMatchedGbp}
+        currency={donationCampaign?.currency ?? "gbp"}
       />
 
       {/* Back nav */}

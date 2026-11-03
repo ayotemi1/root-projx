@@ -9,6 +9,8 @@ import { AccumulationField } from "./accumulation-field";
 import { capOf, partnerMatch, ratioLabel } from "@/lib/partner-funding";
 import { whereYourMoneyGoes } from "@/lib/money-disclosure";
 import { CampaignFeeBreakdown } from "./campaign-fee-breakdown";
+import { currencyOf, currencySymbol, formatWhole } from "@/lib/currency";
+import { campaignVideos } from "@/components/campaign-builder/model";
 
 export type CampaignPageLayout = "responsive" | "phone" | "desktop";
 
@@ -51,7 +53,6 @@ function useMd(layout: CampaignPageLayout) {
       cls.split(" ").map((c) => responsiveUtilities[c] ?? `md:${c}`).join(" ");
 }
 
-const gbp = (n: number) => `£${Math.round(n).toLocaleString("en-GB")}`;
 
 function embedUrl(url: string): string | null {
   const yt = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{6,})/i);
@@ -150,6 +151,9 @@ export function CampaignPageView({
   highlightNewest = false, onDonate, onVolunteer,
 }: CampaignPageViewProps) {
   const md = useMd(layout);
+  const currency = currencyOf(campaign.currency);
+  const gbp = (n: number) => formatWhole(n, currency);
+  const videos = campaignVideos(campaign).filter((v) => v?.url?.trim());
   const [share, setShare] = useState<ShareState>({ k: "idle" });
   const theme = campaign.theme ?? {
     primaryColor: "#B50000", accentColor: "#F5B800", backgroundColor: "#ffffff", textColor: "#111111",
@@ -181,7 +185,7 @@ export function CampaignPageView({
   const recent = campaign.recentSupporters ?? [];
   const anon = campaign.unidentifiedGifts ?? 0;
   const phases = campaign.phases ?? [];
-  const money = whereYourMoneyGoes(org.name);
+  const money = whereYourMoneyGoes(org.name, 300, currency);
   const description = campaign.description?.trim() ?? "";
   const paras = description.split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean);
   const lead = paras[0] ?? "";
@@ -348,7 +352,7 @@ export function CampaignPageView({
                     </Button>
                     <p className="mt-3 text-center text-[11px] font-medium text-[#6b5f55] flex items-center justify-center gap-1.5">
                       <ShieldCheck className="w-3.5 h-3.5 text-green-800" aria-hidden="true" />
-                      {preview ? "Donations are switched off in preview" : "From £3 · Secure payment by Stripe"}
+                      {preview ? "Donations are switched off in preview" : `From ${currencySymbol(currency)}3 · Secure payment by Stripe`}
                     </p>
                   </div>
 
@@ -365,7 +369,7 @@ export function CampaignPageView({
                             {!isMatching
                               ? `${gbp(pf.amount)} already committed by ${funder}. Donations help close the remaining gap.`
                               : matchLeft > 0
-                                ? `${funder} will match gifts ${ratioLabel(pf)}, up to ${gbp(capOf(pf))}. ${gbp(matchedSoFar)} matched so far; ${gbp(matchLeft)} of matching is still available.`
+                                ? `${funder} will match gifts ${ratioLabel(pf, currency)}, up to ${gbp(capOf(pf))}. ${gbp(matchedSoFar)} matched so far; ${gbp(matchLeft)} of matching is still available.`
                                 : "Matching has been fully claimed."}
                           </span>
                         </p>
@@ -394,7 +398,7 @@ export function CampaignPageView({
         </section>
 
         {/* 2. Story */}
-        {(description || (isFundraising && campaign.imageUrl) || campaign.video?.url) && (
+        {(description || (isFundraising && campaign.imageUrl) || videos.length > 0) && (
           <section className={`py-14 ${md("py-20")} bg-white`}>
             <div className={`${wrap} ${sectionPad} space-y-12`}>
               {lead && (
@@ -409,8 +413,19 @@ export function CampaignPageView({
               {isFundraising && campaign.imageUrl && (
                 <img src={campaign.imageUrl} alt="" data-testid="img-campaign-cover" loading="lazy" className={`w-full rounded-2xl object-cover aspect-[4/3] ${md("aspect-[21/9]")}`} />
               )}
-              {campaign.video?.url && (
-                <div className={`${md("max-w-3xl ml-auto")}`}><CampaignVideoBlock video={campaign.video} title={`${campaign.name} video`} /></div>
+              {videos.length > 0 && (
+                <div className={`space-y-8 ${md("max-w-3xl ml-auto")}`} data-testid="list-campaign-videos">
+                  {videos.map((v, i) => (
+                    <figure key={`${v.url}-${i}`} className="space-y-2.5" data-testid={`figure-campaign-video-${i}`}>
+                      <CampaignVideoBlock video={v} title={v.caption?.trim() || `${campaign.name} video${videos.length > 1 ? ` ${i + 1}` : ""}`} />
+                      {v.caption?.trim() && (
+                        <figcaption className="text-sm leading-relaxed text-[#6b5f55] border-l-2 pl-3 break-words" style={{ borderColor: red }} data-testid={`text-video-caption-${i}`}>
+                          {v.caption.trim()}
+                        </figcaption>
+                      )}
+                    </figure>
+                  ))}
+                </div>
               )}
             </div>
           </section>
@@ -594,7 +609,7 @@ export function CampaignPageView({
                 <h2 className={sectionTitle}>Where your money goes</h2>
                 <div className="rounded-2xl bg-[#F9F6F0] p-5 space-y-3">
                   <p className="text-[1.02rem] leading-relaxed text-[#1c1410]" data-testid="text-money-disclosure">{money.sentence}</p>
-                  {campaign.pageContent && <CampaignFeeBreakdown orgName={org.name} colour={red} />}
+                  {campaign.pageContent && <CampaignFeeBreakdown orgName={org.name} colour={red} currency={currency} />}
                   {isMatching && matchLeft > 0 && (
                     <p className="text-sm leading-relaxed text-[#3a2f28]">
                       Matched funds come from {funder}'s pledge, not from your card. You are only ever charged what you choose to give.

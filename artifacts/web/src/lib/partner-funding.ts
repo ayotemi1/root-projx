@@ -7,9 +7,10 @@ export const ratioOf = (pf: PartnerFunding) => (pf.matchRatio && pf.matchRatio >
 export const capOf = (pf: PartnerFunding) => (pf.matchCap && pf.matchCap > 0 ? pf.matchCap : pf.amount);
 
 /** "£1 for £1" / "£2 for every £1". */
-export const ratioLabel = (pf: PartnerFunding) => {
+export const ratioLabel = (pf: PartnerFunding, currency?: string | null) => {
+  const c = currency === "usd" ? "$" : "£";
   const r = ratioOf(pf);
-  return r === 1 ? "£1 for £1" : `£${Number(r.toFixed(2))} for every £1`;
+  return r === 1 ? `${c}1 for ${c}1` : `${c}${Number(r.toFixed(2))} for every ${c}1`;
 };
 
 /** Matching only; committed funding never produces a match. */

@@ -164,12 +164,13 @@ export function donationConfirmationHtml(opts: {
   name: string;
   orgName: string;
   accounting: DonationAccounting;
+  currency?: "gbp" | "usd";
   type: string;
   donationDate: string;
   platformFeePercent?: number;
 }): string {
   const { name, orgName, accounting, type, donationDate, platformFeePercent = 5 } = opts;
-  const disclosure = donationDisclosure(accounting, orgName, platformFeePercent);
+  const disclosure = donationDisclosure(accounting, orgName, platformFeePercent, opts.currency);
   const isRecurring = type === "recurring";
   return `
 <!DOCTYPE html>

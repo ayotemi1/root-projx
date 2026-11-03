@@ -1,5 +1,6 @@
 import { Router } from "express";
-import { fsGet, fsPatch, fsQuery, getServerToken } from "../lib/firebase-rest.js";
+import { fsGet, fsPatch, fsQuery, fsMutateCampaigns, getServerToken } from "../lib/firebase-rest.js";
+import { checkoutCurrency } from "../lib/donation-currency.js";
 import { requireAuth, optionalAuth } from "../lib/auth.js";
 import { getUncachableStripeClient, getStripePublishableKey } from "../lib/stripeClient.js";
 import { MIN_DONATION_PENCE, PLATFORM_FEE_PERCENT, platformFeePence, donationAccounting } from "../lib/fees.js";
@@ -10,6 +11,19 @@ import { checkoutWallMetadata, DonorWallInputError } from "../lib/donor-wall.js"
 const DOMAIN = publicSiteOrigin(process.env);
 
 const router = Router();
+async function campaignCheckoutCurrency(orgId: string, org: Record<string, unknown>, campaignId: string | undefined, requested: unknown, token: string) {
+  const currency = checkoutCurrency(org, campaignId, requested);
+  if (campaignId) {
+    await fsMutateCampaigns(orgId, token, latest => {
+      const confirmedCurrency = checkoutCurrency(latest, campaignId, requested);
+      if (confirmedCurrency !== currency) throw new Error("Campaign currency changed. Refresh before donating.");
+      const campaigns = (latest.campaigns as Record<string, unknown>[]).map(c => c._id === campaignId
+        ? { ...c, currency, currencyLockedAt: c.currencyLockedAt ?? new Date().toISOString() } : c);
+      return { campaigns, result: undefined };
+    });
+  }
+  return currency;
+}
 function anonymousIdentityMetadata(body: Record<string, unknown>): Record<string, string> {
   return typeof body.anonymousDonorId === "string" && /^[a-f0-9-]{36}$/i.test(body.anonymousDonorId)
     ? { anonymousDonorId: body.anonymousDonorId } : {};
@@ -143,7 +157,7 @@ router.post("/donations/anonymous-checkout", async (req, res) => {
       return;
     }
     if (basePence! < MIN_DONATION_PENCE || amountPence! < MIN_DONATION_PENCE) {
-      res.status(400).json({ error: "Minimum donation is £3." });
+      res.status(400).json({ error: req.body.currency === "usd" ? "Minimum donation is US$3." : "Minimum donation is £3." });
       return;
     }
 
@@ -168,6 +182,9 @@ router.post("/donations/anonymous-checkout", async (req, res) => {
       res.status(400).json({ error: "This organisation isn't set up to receive donations yet." });
       return;
     }
+    let currency: "gbp" | "usd";
+    try { currency = await campaignCheckoutCurrency(orgId, org, campaignId, req.body.currency, serverToken); }
+    catch (err) { res.status(400).json({ error: (err as Error).message }); return; }
 
     const stripe = await getUncachableStripeClient();
     // Platform fee calculated on original donation amount (not the grossed-up amount)
@@ -178,7 +195,8 @@ router.post("/donations/anonymous-checkout", async (req, res) => {
       ...checkoutWallMetadata(req.body),
       orgId, orgName: (org["name"] as string) ?? "",
       amountPence: String(amountPence), feePence: String(feePence),
-      intendedGbp: String(basePence! / 100),
+      currency, intendedAmount: String(basePence! / 100),
+      ...(currency === "gbp" ? { intendedGbp: String(basePence! / 100) } : {}),
       feeCovered: feeCovered ? "true" : "false",
       originalAmountPence: String(basePence),
       feeAmountPence: String(feeAmountPence ?? 0),
@@ -192,7 +210,7 @@ router.post("/donations/anonymous-checkout", async (req, res) => {
       line_items: [
         {
           price_data: {
-            currency: "gbp",
+            currency,
             unit_amount: amountPence,
             product_data: {
               name: `Donation to ${org["name"] as string}`,
@@ -396,7 +414,7 @@ router.post("/donations/checkout", optionalAuth, async (req, res) => {
       return;
     }
     if (basePence < MIN_DONATION_PENCE || amountPence < MIN_DONATION_PENCE) {
-      res.status(400).json({ error: "Minimum donation is £3." });
+      res.status(400).json({ error: req.body.currency === "usd" ? "Minimum donation is US$3." : "Minimum donation is £3." });
       return;
     }
 
@@ -428,6 +446,9 @@ router.post("/donations/checkout", optionalAuth, async (req, res) => {
       res.status(400).json({ error: "This organisation isn't set up to receive donations yet." });
       return;
     }
+    let currency: "gbp" | "usd";
+    try { currency = await campaignCheckoutCurrency(orgId, org, campaignId, req.body.currency, serverToken); }
+    catch (err) { res.status(400).json({ error: (err as Error).message }); return; }
 
     // Determine donor email: authenticated user's email takes priority
     let donorEmail: string | undefined = guestEmail;
@@ -445,7 +466,8 @@ router.post("/donations/checkout", optionalAuth, async (req, res) => {
       ...(donorEmail ? { guestEmail: donorEmail } : {}),
       orgId, orgName: (org["name"] as string) ?? "",
       amountPence: String(amountPence), feePence: String(feePence),
-      intendedGbp: String(basePence / 100),
+      currency, intendedAmount: String(basePence / 100),
+      ...(currency === "gbp" ? { intendedGbp: String(basePence / 100) } : {}),
       feeCovered: feeCovered ? "true" : "false",
       originalAmountPence: String(basePence),
       feeAmountPence: String(feeAmountPence ?? 0),
@@ -460,7 +482,7 @@ router.post("/donations/checkout", optionalAuth, async (req, res) => {
       line_items: [
         {
           price_data: {
-            currency: "gbp",
+            currency,
             unit_amount: amountPence,
             product_data: {
               name: `Donation to ${org["name"] as string}`,
@@ -535,12 +557,15 @@ router.get("/donations/confirm", async (req, res) => {
       { limit: 1 },
     );
 
-    const accounting = donationAccounting({
+    const currency = session.currency === "usd" ? "usd" : "gbp";
+    const receiptAccounting = donationAccounting({
       chargedPence: paymentIntent.amount,
       intendedPence: Number(meta.originalAmountPence ?? amountPence),
       feeCovered: meta.feeCovered === "true",
+      currency,
     });
     const saved = existing[0];
+    const accounting = { ...receiptAccounting };
     if (saved && typeof saved.toOrgGbp === "number") {
       for (const key of ["chargedGbp", "intendedGbp", "platformFeeGbp", "feeCovered", "feeCoverGbp", "toOrgGbp",
         "grossAmountGbp", "netAmountGbp", "amountGbp"] as const) {
@@ -557,7 +582,11 @@ router.get("/donations/confirm", async (req, res) => {
       orgId,
       orgName,
       ...accounting,
-      feePence: Math.round(accounting.platformFeeGbp * 100),
+      ...(currency === "usd" && !saved ? Object.fromEntries(Object.keys(accounting)
+        .filter(key => key !== "feeCovered").map(key => [key, null])) : {}),
+      currency,
+      receiptAccounting: saved?.receiptAccounting ?? receiptAccounting,
+      feePence: Math.round(receiptAccounting.platformFeeGbp * 100),
       donorEmail: session.customer_details?.email ?? session.customer_email,
       recorded: existing.length > 0,
       campaignId, campaignPath, campaignName: typeof campaign?.name === "string" ? campaign.name : null,

@@ -49,7 +49,7 @@ export async function queueDonationPayout(
   }
   await fsCreateIfAbsent("payouts", createHash("sha256").update(stripeRef).digest("hex"), {
     orgId: donation.orgId, orgName: donation.orgName ?? "", donationId, stripeRef,
-    amountGbp: donation.toOrgGbp, currency: donation.currency ?? "gbp",
+    amountGbp: donation.toOrgGbp, currency: donation.accountingCurrency ?? donation.currency ?? "gbp",
     method: donation.payoutMethod, status: "queued", createdAt: donation.createdAt,
   }, token);
 }

@@ -94,6 +94,8 @@ function formFromOrganisation(org: Organisation): OrganisationForm {
 }
 
 interface Donation {
+  currency?: string;
+  receiptAccounting?: { chargedGbp: number };
   _id: string;
   orgName: string;
   intendedGbp?: number;
@@ -716,7 +718,7 @@ export default function AdminPage() {
                       <th style={TH}>Organisation</th>
                       <th style={TH}>Donor</th>
                       <th style={TH}>Intended</th>
-                      <th style={TH}>Charged</th>
+                      <th style={TH}>Charged (GBP equivalent)</th>
                       <th style={TH}>Platform fee</th>
                       <th style={TH}>To Org</th>
                       <th style={TH}>Fee covered</th>
@@ -746,6 +748,9 @@ export default function AdminPage() {
                           </td>
                           <td style={{ ...TD, fontSize: 14, fontWeight: 700, color: RED }}>
                             {money(d.chargedGbp)}
+                            {d.currency === "usd" && typeof d.receiptAccounting?.chargedGbp === "number" && (
+                              <div style={{ fontSize: 11, color: "#888" }}>US${d.receiptAccounting.chargedGbp.toFixed(2)} charged</div>
+                            )}
                           </td>
                           <td style={{ ...TD, fontSize: 13, color: "#555" }}>
                             {money(d.platformFeeGbp)}

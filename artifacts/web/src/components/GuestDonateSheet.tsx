@@ -4,6 +4,7 @@ import { Link } from "wouter";
 import { X, Heart } from "lucide-react";
 import { partnerMatch, ratioLabel } from "@/lib/partner-funding";
 import type { PartnerFunding } from "@/lib/api";
+import { currencyOf, currencySymbol, type CampaignCurrency } from "@/lib/currency";
 import { getAnonymousDonorId } from "@/lib/donor-identity";
 import { calculateDonationAccounting, donationDisclosure } from "../../../api-server/src/lib/donation-accounting";
 
@@ -22,14 +23,18 @@ interface Props {
   partnerFunding?: PartnerFunding | null;
   /** Server-owned matching funds already allocated. */
   partnerFundingMatchedGbp?: number;
+  /** Campaign charge currency. Organisation gifts are always GBP. */
+  currency?: CampaignCurrency | null;
 }
 
-export function guestCheckoutBody(orgId: string, amountPence: number, campaignId: string | undefined, anonymousDonorId?: string, wallOptIn = false, donorName = "") {
-  return { orgId, amountPence, ...(campaignId ? { campaignId } : {}), anonymousDonorId,
+export function guestCheckoutBody(orgId: string, amountPence: number, campaignId: string | undefined, anonymousDonorId?: string, wallOptIn = false, donorName = "", currency: CampaignCurrency = "gbp") {
+  return { orgId, amountPence, currency, ...(campaignId ? { campaignId } : {}), anonymousDonorId,
     ...(wallOptIn ? { wallOptIn: true, donorName: donorName.trim() } : {}) };
 }
 
-export function GuestDonateSheet({ open, onClose, orgId, orgName, campaignId, campaignName, partnerFunding, partnerFundingMatchedGbp }: Props) {
+export function GuestDonateSheet({ open, onClose, orgId, orgName, campaignId, campaignName, partnerFunding, partnerFundingMatchedGbp, currency: currencyProp }: Props) {
+  const currency = currencyOf(campaignId ? currencyProp : "gbp");
+  const sym = currencySymbol(currency);
   const [preset, setPreset] = useState<number>(25);
   const [custom, setCustom] = useState("");
   const [loading, setLoading] = useState(false);
@@ -43,12 +48,12 @@ export function GuestDonateSheet({ open, onClose, orgId, orgName, campaignId, ca
   const amountPence = Math.round((amountGbp || 0) * 100);
   const valid = Number.isSafeInteger(amountPence) && amountGbp >= 3;
   const accounting = Number.isSafeInteger(amountPence) && amountPence > 0
-    ? calculateDonationAccounting({chargedPence:amountPence, feeCovered:false}) : null;
+    ? calculateDonationAccounting({chargedPence:amountPence, feeCovered:false, currency}) : null;
   const isMatching = partnerFunding?.type === "matching";
   const matchState = partnerMatch(valid ? amountGbp : 0, partnerFunding, partnerFundingMatchedGbp ?? 0);
   const matchExhausted = isMatching && matchState.availableGbp <= 0;
   const boost = valid ? matchState.matchedGbp : 0;
-  const disclosure = accounting ? donationDisclosure(accounting, orgName) : null;
+  const disclosure = accounting ? donationDisclosure(accounting, orgName, undefined, currency) : null;
   const donationPath = `/donate/${orgId}${campaignId ? `?campaign=${encodeURIComponent(campaignId)}` : ""}`;
 
   function handleClose() {
@@ -69,7 +74,7 @@ export function GuestDonateSheet({ open, onClose, orgId, orgName, campaignId, ca
       const res = await fetch("/api/donations/anonymous-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(guestCheckoutBody(orgId, amountPence, campaignId, getAnonymousDonorId(), wallOptIn, donorName)),
+        body: JSON.stringify(guestCheckoutBody(orgId, amountPence, campaignId, getAnonymousDonorId(), wallOptIn, donorName, currency)),
       });
       const data = await res.json() as { url?: string; error?: string };
       if (!res.ok || !data.url) {
@@ -142,7 +147,7 @@ export function GuestDonateSheet({ open, onClose, orgId, orgName, campaignId, ca
                     cursor: "pointer", transition: "all 0.15s",
                   }}
                 >
-                  £{amt}
+                  {sym}{amt}
                 </button>
               );
             })}
@@ -162,7 +167,7 @@ export function GuestDonateSheet({ open, onClose, orgId, orgName, campaignId, ca
           {/* Custom amount input */}
           {(custom !== "" || preset === 0) && (
             <div style={{ position: "relative", marginBottom: 10 }}>
-              <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontWeight: 700, color: "#888", fontSize: 17 }}>£</span>
+              <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontWeight: 700, color: "#888", fontSize: 17 }}>{sym}</span>
               <input
                 type="number"
                 min="3"
@@ -183,10 +188,10 @@ export function GuestDonateSheet({ open, onClose, orgId, orgName, campaignId, ca
           {boost > 0 && (
             <div data-testid="block-match-boost" style={{ border: `2px solid ${GOLD}`, borderRadius: 12, padding: "12px 14px", marginBottom: 10, background: "#FFFBEB" }}>
               <p style={{ margin: 0, fontSize: 22, fontWeight: 800, color: "#111" }} data-testid="text-match-boost">
-                £{amountGbp.toFixed(amountGbp % 1 ? 2 : 0)} <span style={{ color: RED }}>→</span> £{(amountGbp + boost).toFixed((amountGbp + boost) % 1 ? 2 : 0)} <span style={{ fontSize: 13, fontWeight: 600, color: "#555" }}>toward the programme</span>
+                {sym}{amountGbp.toFixed(amountGbp % 1 ? 2 : 0)} <span style={{ color: RED }}>→</span> {sym}{(amountGbp + boost).toFixed((amountGbp + boost) % 1 ? 2 : 0)} <span style={{ fontSize: 13, fontWeight: 600, color: "#555" }}>toward the programme</span>
               </p>
               <p style={{ margin: "4px 0 0", fontSize: 12, color: "#555" }}>
-                Your own £{amountGbp.toFixed(amountGbp % 1 ? 2 : 0)} + £{boost.toFixed(boost % 1 ? 2 : 0)} from {partnerFunding?.funderName || "the funder"}'s matching pledge ({ratioLabel(partnerFunding!)}{boost < amountGbp * (partnerFunding?.matchRatio || 1) ? `, limited to the £${matchState.availableGbp.toFixed(2)} still available` : ""}). Matching depends on what is still available when your payment succeeds. You are charged only £{amountGbp.toFixed(2)}.
+                Your own {sym}{amountGbp.toFixed(amountGbp % 1 ? 2 : 0)} + {sym}{boost.toFixed(boost % 1 ? 2 : 0)} from {partnerFunding?.funderName || "the funder"}'s matching pledge ({ratioLabel(partnerFunding!, currency)}{boost < amountGbp * (partnerFunding?.matchRatio || 1) ? `, limited to the ${sym}${matchState.availableGbp.toFixed(2)} still available` : ""}). Matching depends on what is still available when your payment succeeds. You are charged only {sym}{amountGbp.toFixed(2)}.
               </p>
             </div>
           )}
@@ -226,7 +231,7 @@ export function GuestDonateSheet({ open, onClose, orgId, orgName, campaignId, ca
             {loading
               ? "Redirecting to Stripe…"
               : valid
-                ? `Donate £${amountGbp.toFixed(2)} — no sign-up needed`
+                ? `Donate ${sym}${amountGbp.toFixed(2)} — no sign-up needed`
                 : "Choose an amount"}
           </button>
 

@@ -34,6 +34,14 @@ function url(value: unknown, label: string) {
 export function campaignPatch(input: unknown, previous: Record<string, unknown> = {}) {
   const body = record(input, "campaign");
   const patch: Record<string, unknown> = {};
+  if ("currency" in body) {
+    if (body.currency !== "gbp" && body.currency !== "usd") invalid("Choose pounds (GBP) or US dollars (USD).");
+    if (body.currency !== (previous.currency ?? "gbp") &&
+      (Number(previous.amountRaised ?? 0) > 0 || previous.currencyLockedAt)) {
+      invalid("Campaign currency cannot change after donation checkout has started. Create a new campaign for a different currency.");
+    }
+    patch.currency = body.currency;
+  }
   if ("pageContent" in body) {
     try { patch.pageContent = campaignPageContent(body.pageContent); }
     catch (err) { invalid((err as Error).message); }
@@ -89,18 +97,30 @@ export function campaignPatch(input: unknown, previous: Record<string, unknown> 
           photoUrl: row.photoUrl == null ? "" : url(row.photoUrl, "location photo") };
     });
   }
-  if ("video" in body) {
-    if (body.video === null) patch.video = null;
-    else {
-      const video = record(body.video, "video");
-      const videoUrl = url(video.url, "video");
-      if (videoUrl) {
-        const parsed = new URL(videoUrl, "https://rootprojx.invalid");
-        if (!/(^|\.)(youtube\.com|youtube-nocookie\.com|youtu\.be|vimeo\.com)$/.test(parsed.hostname) &&
-          !parsed.pathname.startsWith("/api/uploads/object/")) invalid("Use a YouTube or Vimeo link, or upload your video.");
-      }
-      patch.video = { url: videoUrl, posterUrl: url(video.posterUrl ?? "", "video poster"), captionsUrl: url(video.captionsUrl ?? "", "captions") };
+  const parseVideo = (input: unknown) => {
+    const video = record(input, "video");
+    const videoUrl = url(video.url, "video");
+    if (videoUrl) {
+      const parsed = new URL(videoUrl, "https://rootprojx.invalid");
+      if (!/(^|\.)(youtube\.com|youtube-nocookie\.com|youtu\.be|vimeo\.com)$/.test(parsed.hostname) &&
+        !parsed.pathname.startsWith("/api/uploads/object/")) invalid("Use a YouTube or Vimeo link, or upload your video.");
     }
+    return {
+      url: videoUrl,
+      posterUrl: video.posterUrl == null ? null : url(video.posterUrl, "video poster"),
+      captionsUrl: video.captionsUrl == null ? null : url(video.captionsUrl, "captions"),
+      ...("caption" in video ? { caption: text(video.caption, "video caption", 2000) } : {}),
+    };
+  };
+  if ("videos" in body) {
+    if (!Array.isArray(body.videos) || body.videos.length > 10) invalid("Add up to 10 campaign videos.");
+    patch.videos = body.videos.map(parseVideo);
+    patch.video = (patch.videos as Record<string, unknown>[]).find(video => !!video.url) ?? null;
+  } else if ("video" in body) {
+    if (body.video === null) patch.video = null;
+    else patch.video = parseVideo(body.video);
+    // Legacy clients can still replace/remove a single video after an upgrade.
+    if (Array.isArray(previous.videos)) patch.videos = patch.video ? [patch.video] : [];
   }
   if ("theme" in body) {
     const theme = record(body.theme, "theme");

@@ -89,6 +89,30 @@ historical reconciliation is explicitly completed.
 
 ## Organisation self-service — campaign builder
 
+Campaigns can use **GBP or USD**, including the actual one-off Stripe card charge.
+Organisation-wide donations and existing monthly subscriptions remain GBP.
+Legacy campaigns default to GBP. Goals, partner commitments/matches, progress,
+donor checkout, receipt and confirmation email use the campaign currency.
+Currency locks when a donor first starts checkout (or money has already been
+raised), so existing or in-flight gifts can never be relabelled.
+
+Organisation totals and the settlement ledger remain **GBP**. USD donations
+retain native `receiptAccounting`, the presentment `currency`, and Stripe's
+verified `exchangeRateToGbp`; top-level accounting fields remain GBP equivalents.
+The campaign's `amountRaised` increases in its own currency, while the
+organisation's `totalRaised` and `totalOwedGbp` increase by converted pounds.
+USD settlement must supply a GBP balance transaction and exchange rate; if that
+data is not ready, fail the webhook before writes so Stripe can retry. Never
+assume USD equals GBP or invent a conversion. USD checkout estimates processing
+at 3.25% + US$0.30; existing GBP estimates and the platform percentage are unchanged.
+
+Campaigns support up to **10 videos**, uploaded from a device or linked from
+YouTube/Vimeo. Each has optional descriptive caption text, poster and subtitles.
+The ordered `videos` array takes precedence over the legacy single `video`;
+an explicit empty array removes all videos. Unfinished rows remain in drafts,
+but only videos with URLs render publicly. Upload completion merges by stable
+editor row identity into the latest draft, never a stale array index.
+
 The main organisation dashboard is `/dashboard` (`pages/dashboard.tsx`).
 `/org-dashboard` remains a separate routed dashboard; it is not dead code.
 The Campaigns tab uses a five-step editor: ask, money, story, appearance,

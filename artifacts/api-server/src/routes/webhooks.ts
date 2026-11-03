@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { fsCreate, fsCreateIfAbsent, fsGet, fsIncrement, fsPatch, fsQuery, fsMutateCampaigns, getServerToken } from "../lib/firebase-rest.js";
 import { getUncachableStripeClient } from "../lib/stripeClient.js";
+import { accountingInGbp, donationGbpRate } from "../lib/donation-currency.js";
 import { brevoSendEmail, donationConfirmationHtml, shopOrderConfirmationHtml } from "../lib/brevo.js";
 import type Stripe from "stripe";
 import { recurringStatus } from "../lib/recurring-status.js";
@@ -284,12 +285,16 @@ async function handlePaymentSuccess(
 
   // 1. Create donation document in Firestore
   const donationDate = new Date().toISOString();
-  const accounting = donationAccounting({
+  if (currency !== "gbp" && currency !== "usd") throw new Error(`Unsupported donation currency: ${currency}`);
+  const receiptAccounting = donationAccounting({
     chargedPence,
     intendedPence: originalAmountPence === undefined ? undefined : Number(originalAmountPence),
     feeCovered: feeCovered === "true",
-    cardCountry,
+    cardCountry, currency,
   });
+  const exchangeRateToGbp = currency === "usd"
+    ? await donationGbpRate(await getUncachableStripeClient(), stripeRef) : 1;
+  const accounting = currency === "usd" ? accountingInGbp(receiptAccounting, exchangeRateToGbp) : receiptAccounting;
   const { intendedGbp, toOrgGbp } = accounting;
   let identityEmail = guestEmail;
   let publicDonorName: string | null =
@@ -313,6 +318,8 @@ async function handlePaymentSuccess(
       orgName: orgName ?? "",
       ...(campaignId ? { campaignId } : {}),
       ...accounting,
+      receiptAccounting, exchangeRateToGbp,
+      accountingCurrency: "gbp",
       donorIdentityKey: donorIdentity({ userId, email: identityEmail, anonymousDonorId: metadata.anonymousDonorId, stripeRef }),
       publicDonorName,
       ...(metadata.payoutMethod ? { payoutMethod: metadata.payoutMethod } : {}),
@@ -361,7 +368,7 @@ async function handlePaymentSuccess(
         htmlContent: donationConfirmationHtml({
           name: recipientName,
           orgName: orgName ?? "the organisation",
-          accounting,
+          accounting: receiptAccounting, currency,
           platformFeePercent: PLATFORM_FEE_PERCENT,
           type: type ?? "one_time",
           donationDate: new Date(donationDate).toLocaleDateString("en-GB", {
@@ -421,7 +428,9 @@ async function handlePaymentSuccess(
       if (index < 0) throw new Error("Campaign not found on organisation");
       const current = migrateCampaignPartnerFunding(campaigns[index] as Record<string, unknown>);
       const previousAmount = typeof current.amountRaised === "number" ? current.amountRaised : 0;
-      if (!Number.isFinite(previousAmount) || !Number.isFinite(intendedGbp)) {
+      const campaignIntended = receiptAccounting.intendedGbp;
+      if ((current.currency ?? "gbp") !== currency) throw new Error("Campaign currency does not match the payment currency");
+      if (!Number.isFinite(previousAmount) || !Number.isFinite(campaignIntended)) {
         throw new Error("Invalid campaign donation amount");
       }
       const updatedCampaigns = [...campaigns];
@@ -430,10 +439,10 @@ async function handlePaymentSuccess(
         ? Math.max(0, current.partnerFundingMatchedGbp) : 0;
       // Same update-time precondition as amountRaised: concurrent successful
       // payments re-read the remaining cap, so allocated partner money cannot exceed it.
-      const match = campaignMatch(intendedGbp, funding, matchedUsed);
+      const match = campaignMatch(campaignIntended, funding, matchedUsed);
       updatedCampaigns[index] = {
         ...current,
-        amountRaised: Math.round((previousAmount + intendedGbp) * 100) / 100,
+        amountRaised: Math.round((previousAmount + campaignIntended) * 100) / 100,
         ...(funding?.type === "matching" ? {
           partnerFundingMatchedGbp: Math.round((matchedUsed + match.matchedGbp) * 100) / 100,
         } : {}),
@@ -486,7 +495,7 @@ async function handlePaymentSuccess(
   // Propagate ledger failures so Stripe retries. The donation dedup branch
   // repairs only this create-only write without repeating other side effects.
   await queueDonationPayout(donationId, {
-    orgId, orgName: orgName ?? "", stripeRef, toOrgGbp, currency,
+    orgId, orgName: orgName ?? "", stripeRef, toOrgGbp, currency: "gbp",
     payoutMethod: metadata.payoutMethod, createdAt: donationDate,
   }, serverToken);
 }

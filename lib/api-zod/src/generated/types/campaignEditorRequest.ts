@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { CampaignEditorRequestBreakdownItem } from "./campaignEditorRequestBreakdownItem";
+import type { CampaignEditorRequestCurrency } from "./campaignEditorRequestCurrency";
 import type { CampaignEditorRequestLocationsItem } from "./campaignEditorRequestLocationsItem";
 import type { CampaignEditorRequestPageContent } from "./campaignEditorRequestPageContent";
 import type { CampaignEditorRequestPartnerFunding } from "./campaignEditorRequestPartnerFunding";
@@ -13,8 +14,11 @@ import type { CampaignEditorRequestPartnerFundingAnswer } from "./campaignEditor
 import type { CampaignEditorRequestTheme } from "./campaignEditorRequestTheme";
 import type { CampaignEditorRequestType } from "./campaignEditorRequestType";
 import type { CampaignEditorRequestVideo } from "./campaignEditorRequestVideo";
+import type { CampaignEditorRequestVideosItem } from "./campaignEditorRequestVideosItem";
 
 export interface CampaignEditorRequest {
+  /** Campaign goals and donations use this currency. Locked once checkout has started. */
+  currency?: CampaignEditorRequestCurrency;
   /** @maxLength 200 */
   name?: string;
   /** @maxLength 140 */
@@ -36,6 +40,11 @@ export interface CampaignEditorRequest {
   /** @maxItems 3 */
   locations?: CampaignEditorRequestLocationsItem[];
   video?: CampaignEditorRequestVideo;
+  /**
+   * Ordered campaign videos. When present, replaces the legacy single video, including an empty array to remove all videos.
+   * @maxItems 10
+   */
+  videos?: CampaignEditorRequestVideosItem[];
   theme?: CampaignEditorRequestTheme;
   enabled?: boolean;
   saveAsDraft?: boolean;

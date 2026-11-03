@@ -13,7 +13,7 @@ async function isolatedRouters(environment: Record<string, string> = {
     state: `
       export const state = {
         documents: new Map(), writes: [], errors: [], emails: [], checkout: null, event: null,
-        failLedgerOnce: false
+        failLedgerOnce: false, settlementRate: 0.8, settlementCurrency: "gbp"
       };
       state.documents.set("organisations/test-org", {
         _id: "test-org", name: "Test Organisation", stripe_account_id: "acct_synthetic",
@@ -78,6 +78,9 @@ async function isolatedRouters(environment: Record<string, string> = {
       import {state} from "phase0:state";
       export const getStripePublishableKey = async () => { throw Error("Unexpected key fetch"); };
       export const getUncachableStripeClient = async () => ({
+        paymentIntents: { retrieve: async () => ({
+          latest_charge: {balance_transaction: {currency: state.settlementCurrency, exchange_rate: state.settlementRate}}
+        }) },
         webhooks: {
           constructEvent: (body, sig, secret) => {
             if (sig !== "synthetic-signature" || secret !== "synthetic-secret") {
@@ -172,6 +175,88 @@ function checkoutEvent(pi: Record<string, any>, metadata = pi.metadata) {
     } },
   };
 }
+
+for (const path of ["/donations/checkout", "/donations/anonymous-checkout"]) {
+  test(`${path}: campaign-owned USD currency reaches Stripe, locks, and rejects mismatched requests`, async () => {
+    const { donations, state } = await isolatedRouters();
+    const org = state.documents.get("organisations/test-org");
+    org.campaigns[0].currency = "usd";
+    const req = { body: { orgId: "test-org", campaignId: "test-campaign", amountPence: 500,
+      originalAmountPence: 500, currency: "usd", guestEmail: "donor@example.test" },
+      headers: {}, log: { error() {} } };
+    await invoke(donations, path, req);
+    assert.equal(state.checkout.line_items[0].price_data.currency, "usd");
+    assert.equal(state.checkout.payment_intent_data.application_fee_amount, 25);
+    assert.equal(state.checkout.payment_intent_data.transfer_data.destination, "acct_synthetic");
+    assert.equal(state.checkout.metadata.currency, "usd");
+    assert.equal(state.checkout.metadata.intendedAmount, "5");
+    assert.equal(state.checkout.metadata.intendedGbp, undefined, "Dollars must not be called pounds");
+    assert.deepEqual(state.checkout.metadata, state.checkout.payment_intent_data.metadata);
+    assert.ok(state.documents.get("organisations/test-org").campaigns[0].currencyLockedAt);
+    await invoke(donations, path, { ...req, body: { ...req.body, currency: "gbp" } }, 400);
+    await invoke(donations, path, { ...req, body: { ...req.body, campaignId: undefined } }, 400);
+    await invoke(donations, path, { ...req, body: { ...req.body, amountPence: 299, originalAmountPence: 299 } }, 400);
+    // Wise and manual remain platform-balance charges in the chosen currency.
+    for (const setup of [{ payoutMethod: "wise", wiseRecipientId: 123 },
+      { payoutMethod: "bank_transfer", payoutManualApproved: true }]) {
+      const current = state.documents.get("organisations/test-org");
+      Object.assign(current, setup);
+      delete current.stripe_account_id;
+      await invoke(donations, path, req);
+      assert.equal(state.checkout.line_items[0].price_data.currency, "usd");
+      assert.equal(state.checkout.payment_intent_data.transfer_data, undefined);
+      assert.equal(state.checkout.payment_intent_data.application_fee_amount, undefined);
+    }
+  });
+}
+
+for (const feeCovered of [false, true]) {
+  test(`USD donation fee cover ${feeCovered}: native campaign/receipt, GBP aggregates/payout, single write`, async () => {
+    const { donations, webhooks, state } = await isolatedRouters();
+    Object.assign(state.documents.get("organisations/test-org"), {
+      stripe_account_id: null, payoutMethod: "bank_transfer", payoutManualApproved: true,
+      campaigns: [{ _id: "test-campaign", currency: "usd", amountRaised: 10 }],
+    });
+    const log = { info() {}, warn() {}, error(obj: unknown, message: string) { state.errors.push({ obj, message }); } };
+    const meta = { orgId: "test-org", orgName: "Test Organisation", campaignId: "test-campaign",
+      originalAmountPence: "500", feeCovered: String(feeCovered), guestEmail: "donor@example.test", payoutMethod: "manual" };
+    const pi = { id: "pi_usd_synthetic", amount: feeCovered ? 546 : 500, currency: "usd", metadata: meta };
+    state.event = checkoutEvent(pi);
+    const req = { body: Buffer.from(JSON.stringify(state.event)), headers: { "stripe-signature": "synthetic-signature" }, log };
+    await invoke(webhooks, "/stripe", req);
+    await invoke(webhooks, "/stripe", req);
+    await invoke(webhooks, "/stripe", { ...req, body: Buffer.from(JSON.stringify({ type: "payment_intent.succeeded", data: { object: pi } })) });
+    const writes = state.writes.filter((w: any) => w.collection === "donations");
+    assert.equal(writes.length, 1);
+    const d = writes[0].data;
+    assert.equal(d.receiptAccounting.intendedGbp, 5);
+    assert.equal(d.receiptAccounting.chargedGbp, feeCovered ? 5.46 : 5);
+    assert.equal(d.receiptAccounting.platformFeeGbp, 0.25);
+    assert.equal(d.intendedGbp, 4, "GBP equivalent uses Stripe's 0.8 rate");
+    assert.equal(d.toOrgGbp, feeCovered ? 3.8 : 3.43);
+    assert.equal(d.currency, "usd");
+    const org = state.documents.get("organisations/test-org");
+    assert.equal(org.totalRaised, 14);
+    assert.equal(org.totalOwedGbp, d.toOrgGbp);
+    assert.equal(org.campaigns[0].amountRaised, 15);
+    const payout = state.writes.find((w: any) => w.collection === "payouts");
+    assert.equal(payout.data.currency, "gbp");
+    assert.equal(payout.data.amountGbp, d.toOrgGbp);
+    assert.match(state.emails[0].htmlContent, /US\$5\.00/);
+    assert.equal(state.errors.length, 0, JSON.stringify(state.errors));
+  });
+}
+
+test("USD without a verified GBP exchange rate fails before any donation/ledger/aggregate writes", async () => {
+  const { webhooks, state } = await isolatedRouters();
+  state.settlementRate = null;
+  const pi = { id: "pi_usd_waiting", amount: 500, currency: "usd",
+    metadata: { orgId: "test-org", originalAmountPence: "500" } };
+  await invoke(webhooks, "/stripe", { body: Buffer.from(JSON.stringify(checkoutEvent(pi))),
+    headers: { "stripe-signature": "synthetic-signature" }, log: {info() {}, error() {}} }, 500);
+  assert.equal(state.writes.length, 0);
+  assert.equal(state.documents.get("organisations/test-org").totalRaised, 10);
+});
 
 for (const path of ["/donations/checkout", "/donations/anonymous-checkout"]) {
   for (const wallOptIn of [true, false]) {

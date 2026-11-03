@@ -4,16 +4,16 @@ import { calculateDonationAccounting } from "../../../api-server/src/lib/donatio
 
 export { calculateDonationAccounting, donationDisclosure } from "../../../api-server/src/lib/donation-accounting";
 
-const money = (v: number) => (v < 1 ? `${Math.round(v * 100)}p` : `£${v.toFixed(2)}`);
-
-export function whereYourMoneyGoes(orgName: string, examplePence = 300) {
-  const covered = calculateDonationAccounting({ chargedPence: examplePence, intendedPence: examplePence, feeCovered: true });
-  const uncovered = calculateDonationAccounting({ chargedPence: examplePence, feeCovered: false });
-  const gift = `£${(examplePence / 100).toFixed(0)}`;
+export function whereYourMoneyGoes(orgName: string, examplePence = 300, currency: "gbp" | "usd" = "gbp") {
+  const sym = currency === "usd" ? "$" : "£";
+  const money = (v: number) => (v < 1 ? (currency === "usd" ? `${Math.round(v * 100)}c` : `${Math.round(v * 100)}p`) : `${sym}${v.toFixed(2)}`);
+  const covered = calculateDonationAccounting({ chargedPence: examplePence, intendedPence: examplePence, feeCovered: true, currency });
+  const uncovered = calculateDonationAccounting({ chargedPence: examplePence, feeCovered: false, currency });
+  const gift = `${sym}${(examplePence / 100).toFixed(0)}`;
   return {
     covered, uncovered,
     sentence:
-      `${orgName} receives £${covered.toOrgGbp.toFixed(2)} of a ${gift} gift when you cover the card fee, ` +
-      `or £${uncovered.toOrgGbp.toFixed(2)} when you don't. Root ProjX keeps 5% — ${money(covered.platformFeeGbp)} — either way.`,
+      `${orgName} receives ${sym}${covered.toOrgGbp.toFixed(2)} of a ${gift} gift when you cover the card fee, ` +
+      `or ${sym}${uncovered.toOrgGbp.toFixed(2)} when you don't. Root ProjX keeps 5% — ${money(covered.platformFeeGbp)} — either way.`,
   };
 }

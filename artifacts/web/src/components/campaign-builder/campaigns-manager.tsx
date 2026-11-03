@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import * as api from "@/lib/api";
 import type { Campaign, Org } from "@/lib/api";
 import { CampaignWizard } from "./campaign-wizard";
+import { formatWhole } from "@/lib/currency";
 import { CampaignEditorCard } from "./campaign-editor-card";
 
 function StatusPills({ c }: { c: Campaign }) {
@@ -47,7 +48,7 @@ function CampaignRow({ c, onEdit, orgId, token }: { c: Campaign; onEdit: () => v
         <h4 className="font-bold text-sm text-foreground break-words" data-testid={`text-campaign-name-${c._id}`}>{c.name || "Untitled draft"}</h4>
         {c.tagline && <p className="text-xs text-muted-foreground line-clamp-2">{c.tagline}</p>}
         {c.type === "fundraising" && c.goal > 0 && (
-          <p className="text-xs text-muted-foreground">£{(c.amountRaised ?? 0).toLocaleString("en-GB")} raised of £{c.goal.toLocaleString("en-GB")}</p>
+          <p className="text-xs text-muted-foreground">{formatWhole(c.amountRaised ?? 0, c.currency)} raised of {formatWhole(c.goal, c.currency)}</p>
         )}
         {c.type === "volunteer" && c.volunteersNeeded > 0 && (
           <p className="text-xs text-muted-foreground flex items-center gap-1"><Users className="w-3.5 h-3.5" /> {c.volunteersNeeded} volunteers needed</p>

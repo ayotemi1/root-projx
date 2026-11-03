@@ -139,6 +139,7 @@ export default function CampaignLandingPage() {
         campaignName={campaign.name}
         partnerFunding={campaign.partnerFunding ?? null}
         partnerFundingMatchedGbp={campaign.partnerFundingMatchedGbp ?? 0}
+        currency={campaign.currency ?? "gbp"}
       />
       <CampaignPageView
         campaign={campaign}

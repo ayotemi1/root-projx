@@ -11,12 +11,13 @@ export function platformFeePence(basePence: number): number {
   return calculatePlatformFeePence(basePence, PLATFORM_FEE_PERCENT);
 }
 
-/** Donation accounting is calculated in whole pence, then exposed in GBP. */
+/** Calculate in whole minor units; USD needs explicit conversion for the GBP ledger. */
 export function donationAccounting(input: {
   chargedPence: number;
   intendedPence?: number;
   feeCovered: boolean;
   cardCountry?: string | null;
+  currency?: "gbp" | "usd";
 }) {
   return calculateDonationAccounting(input, PLATFORM_FEE_PERCENT);
 }

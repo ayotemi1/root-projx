@@ -4,6 +4,7 @@ import { ArrowRight, Megaphone, RefreshCw, Target } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import * as api from "@/lib/api";
+import { currencyOf, formatWhole } from "@/lib/currency";
 import type { Campaign, ImpactMetricKey, Org } from "@/lib/api";
 
 const gbp = (n: number) => `£${n.toLocaleString("en-GB", { minimumFractionDigits: n % 1 ? 2 : 0, maximumFractionDigits: 2 })}`;
@@ -40,7 +41,10 @@ export function DashboardOverview({ orgId, token, org, campaigns }: { orgId: str
   }
 
   const active = campaigns.filter((c) => c.status !== "completed");
-  const raisedFor = (id: string, fallback: number) => s?.campaignRaised.find((r) => r.campaignId === id)?.raisedGbp ?? fallback;
+  // Summary totals are GBP; USD campaigns show their own native amountRaised instead.
+  const campaignById = (id: string) => campaigns.find((c) => c._id === id);
+  const raisedFor = (id: string, fallback: number) =>
+    currencyOf(campaignById(id)?.currency) === "usd" ? fallback : s?.campaignRaised.find((r) => r.campaignId === id)?.raisedGbp ?? fallback;
   const updateAge = daysSince(s?.latestUpdateAt);
   const metricKeys: ImpactMetricKey[] = ["peopleReached", "groundCovered", "resourcesDelivered"];
   const metrics = metricKeys.map((k) => ({ k, m: org?.impactMetrics?.[k] }));
@@ -92,7 +96,7 @@ export function DashboardOverview({ orgId, token, org, campaigns }: { orgId: str
               {s.campaignRaised.map((r) => (
                 <li key={r.campaignId} className="flex items-baseline justify-between gap-3 text-sm" data-testid={`text-campaign-raised-${r.campaignId}`}>
                   <span className="truncate">{r.name || "Untitled campaign"}</span>
-                  <span className="font-extrabold tabular-nums">{gbp(r.raisedGbp)}</span>
+                  <span className="font-extrabold tabular-nums">{(() => { const c = campaignById(r.campaignId); return c && currencyOf(c.currency) === "usd" ? formatWhole(c.amountRaised ?? 0, "usd") : gbp(r.raisedGbp); })()}</span>
                 </li>
               ))}
             </ul>
@@ -134,7 +138,7 @@ export function DashboardOverview({ orgId, token, org, campaigns }: { orgId: str
                   {c.type === "fundraising" && c.goal > 0 && (
                     <>
                       <div className="h-2 rounded-full bg-secondary mt-1.5 overflow-hidden"><div className="h-full bg-primary rounded-full" style={{ width: `${pct}%` }} /></div>
-                      <p className="text-xs text-muted-foreground mt-1 tabular-nums">{gbp(raised)} of {gbp(c.goal)}</p>
+                      <p className="text-xs text-muted-foreground mt-1 tabular-nums">{formatWhole(raised, c.currency)} of {formatWhole(c.goal, c.currency)}</p>
                     </>
                   )}
                   <div className="flex gap-3">

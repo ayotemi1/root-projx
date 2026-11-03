@@ -14,6 +14,7 @@ export type EditorCampaign = CampaignEditorRequest & {
   amountRaised: number;
   /** @minimum 0 */
   readonly partnerFundingMatchedGbp?: number;
+  readonly currencyLockedAt?: string | null;
   status?: string;
   hasUnpublishedChanges?: boolean;
   sharePath?: string;

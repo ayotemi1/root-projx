@@ -103,7 +103,7 @@ export const TOUR_STEPS: TourStep[] = [
     completionCheck: (c) => !!c.campaign?.imageUrl,
     title: "Hero image", body: "The big picture at the top of your page. Faces near the centre work best." },
   { id: "c-video", tour: "campaign", anchor: "campaign-video", place: { tab: "campaigns", inWizard: true, wizardStep: 4 }, skippable: true,
-    completionCheck: (c) => len(c.campaign?.video?.url) > 0,
+    completionCheck: (c) => (c.campaign?.videos ?? (c.campaign?.video ? [c.campaign.video] : [])).some((v) => len(v?.url) > 0),
     title: "Video (optional)", body: "A YouTube or Vimeo link, or upload a file. Add captions — most people watch on mute. Or skip." },
   { id: "c-unit", tour: "campaign", anchor: "campaign-unit", place: { tab: "campaigns", inWizard: true, wizardStep: 4 }, skippable: false,
     completionCheck: (c) => c.campaign?.unitChosen === true,

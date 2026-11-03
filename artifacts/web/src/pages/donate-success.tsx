@@ -6,6 +6,7 @@ import { storeConfirmedReceipt } from "@/lib/donor-identity";
 import { donationDisclosure } from "@/lib/money-disclosure";
 import { Button } from "@/components/ui/button";
 import * as api from "@/lib/api";
+import { currencyOf, currencySymbol } from "@/lib/currency";
 
 export default function DonateSuccessPage() {
   const queryClient = useQueryClient();
@@ -49,14 +50,25 @@ export default function DonateSuccessPage() {
     if (donation?.recorded === true && donation.campaignId) storeConfirmedReceipt(donation.campaignId);
   }, [donation?.recorded, donation?.campaignId]);
 
-  const receipt = donation?.recorded && typeof donation.toOrgGbp === "number" && typeof donation.chargedGbp === "number"
+  // Native-currency accounting when present; legacy confirmations are GBP top-level fields.
+  type Acc = {
+    amountGbp: number | null; chargedGbp?: number | null; intendedGbp?: number | null; platformFeeGbp?: number | null; feeCovered?: boolean;
+    feeCoverGbp?: number | null; toOrgGbp?: number | null; estimatedStripeFeeGbp?: number | null; grossAmountGbp?: number | null; netAmountGbp?: number | null;
+  };
+  const extra = donation as (typeof donation & { currency?: string | null; receiptAccounting?: Acc | null }) | undefined;
+  const native = extra?.receiptAccounting ?? null;
+  const acc: Acc | undefined = native ?? donation;
+  const displayedAmount = acc?.amountGbp ?? donation?.amountGbp;
+  const currency = native ? currencyOf(extra?.currency) : "gbp";
+  const sym = currencySymbol(currency);
+  const receipt = donation?.recorded && acc && typeof acc.amountGbp === "number" && typeof acc.toOrgGbp === "number" && typeof acc.chargedGbp === "number"
     ? donationDisclosure({
-        chargedGbp: donation.chargedGbp, intendedGbp: donation.intendedGbp ?? donation.amountGbp,
-        platformFeeGbp: donation.platformFeeGbp ?? 0, feeCovered: !!donation.feeCovered,
-        feeCoverGbp: donation.feeCoverGbp ?? 0, toOrgGbp: donation.toOrgGbp,
-        estimatedStripeFeeGbp: donation.estimatedStripeFeeGbp ?? 0, amountGbp: donation.amountGbp,
-        netAmountGbp: donation.netAmountGbp ?? donation.toOrgGbp, grossAmountGbp: donation.grossAmountGbp ?? donation.chargedGbp,
-      }, donation.orgName)
+        chargedGbp: acc.chargedGbp, intendedGbp: acc.intendedGbp ?? acc.amountGbp,
+        platformFeeGbp: acc.platformFeeGbp ?? 0, feeCovered: !!acc.feeCovered,
+        feeCoverGbp: acc.feeCoverGbp ?? 0, toOrgGbp: acc.toOrgGbp,
+        estimatedStripeFeeGbp: acc.estimatedStripeFeeGbp ?? 0, amountGbp: acc.amountGbp,
+        netAmountGbp: acc.netAmountGbp ?? acc.toOrgGbp, grossAmountGbp: acc.grossAmountGbp ?? acc.chargedGbp,
+      }, donation.orgName, undefined, currency)
     : null;
 
   useEffect(() => {
@@ -87,7 +99,7 @@ export default function DonateSuccessPage() {
               <p className="text-muted-foreground text-base">
                 Your donation of{" "}
                 <strong className="text-foreground text-lg">
-                  £{donation.amountGbp.toFixed(2)}
+                  {typeof displayedAmount === "number" ? `${sym}${displayedAmount.toFixed(2)}` : "your gift"}
                 </strong>{" "}
                 to{" "}
                 <strong className="text-foreground">{donation.orgName}</strong>{" "}
