@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import {
-  Share2, MapPin, CheckCircle, Clock, Users, ArrowRight, ShieldCheck, Play, Handshake, Link2,
+  Share2, MapPin, CheckCircle, Clock, Users, ArrowRight, ShieldCheck, Play, Handshake, Link2, Hand,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { Campaign, PublicCampaignLanding, CampaignVideo } from "@/lib/api";
@@ -9,7 +9,8 @@ import { AccumulationField } from "./accumulation-field";
 import { capOf, partnerMatch, ratioLabel } from "@/lib/partner-funding";
 import { whereYourMoneyGoes } from "@/lib/money-disclosure";
 import { CampaignFeeBreakdown } from "./campaign-fee-breakdown";
-import { currencyOf, currencySymbol, formatWhole } from "@/lib/currency";
+import { CampaignDonatePanel, focusDonateBox, type DonateChoice, type ConfirmedReceiptView } from "./campaign-donate-panel";
+import { currencyOf, formatWhole } from "@/lib/currency";
 import { campaignVideos } from "@/components/campaign-builder/model";
 
 export type CampaignPageLayout = "responsive" | "phone" | "desktop";
@@ -44,6 +45,8 @@ const responsiveUtilities: Record<string, string> = {
   "text-[2.5rem]": "md:text-[2.5rem]",
   "max-w-[18ch]": "md:max-w-[18ch]",
   "text-[3.25rem]": "md:text-[3.25rem]",
+  "text-[8rem]": "md:text-[8rem]",
+  "grid-cols-[minmax(0,1fr)_380px]": "md:grid-cols-[minmax(0,1fr)_380px]",
 };
 
 /** Applies responsive variants only where the layout calls for them. */
@@ -115,7 +118,10 @@ export interface CampaignPageViewProps {
   scrolled?: boolean;
   /** Ring the newest unit (only after a recorded receipt). */
   highlightNewest?: boolean;
-  onDonate?: () => void;
+  /** Verified, recorded receipt for this campaign (never inferred from the chosen amount). */
+  confirmedReceipt?: ConfirmedReceiptView | null;
+  /** Called from the hero donate box with the chosen amount and fee-cover choice. */
+  onDonate?: (choice?: DonateChoice) => void;
   onVolunteer?: () => void;
   /** Deprecated: sharing is handled inside the view with a copy-link fallback. */
   onShare?: () => void;
@@ -148,13 +154,23 @@ async function copyOnly(url: string): Promise<ShareState> {
 /** The single render component for public campaign pages and editor previews. */
 export function CampaignPageView({
   campaign, organisation: org, preview = false, layout = "responsive", scrolled = false,
-  highlightNewest = false, onDonate, onVolunteer,
+  highlightNewest = false, confirmedReceipt = null, onDonate, onVolunteer,
 }: CampaignPageViewProps) {
   const md = useMd(layout);
   const currency = currencyOf(campaign.currency);
   const gbp = (n: number) => formatWhole(n, currency);
   const videos = campaignVideos(campaign).filter((v) => v?.url?.trim());
   const [share, setShare] = useState<ShareState>({ k: "idle" });
+  const [smallViewport, setSmallViewport] = useState(() =>
+    typeof window !== "undefined" && window.matchMedia("(max-width: 767px)").matches);
+  useEffect(() => {
+    if (layout !== "responsive") return;
+    const media = window.matchMedia("(max-width: 767px)");
+    const update = () => setSmallViewport(media.matches);
+    update();
+    media.addEventListener("change", update);
+    return () => media.removeEventListener("change", update);
+  }, [layout]);
   const theme = campaign.theme ?? {
     primaryColor: "#B50000", accentColor: "#F5B800", backgroundColor: "#ffffff", textColor: "#111111",
   };
@@ -199,7 +215,9 @@ export function CampaignPageView({
   const fundingNote = t("fundingNote");
   const pctOf = (n: number) => (goal > 0 ? ` · ${Math.round((n / goal) * 100)}%` : "");
 
-  const donate = () => { if (!preview) onDonate?.(); };
+  // Later "give" buttons jump back to the hero box; only the box itself starts checkout.
+  const donate = () => { if (!preview) focusDonateBox(); };
+  const donateWith = (c: DonateChoice) => { if (!preview) onDonate?.(c); };
   const volunteer = () => { if (!preview) onVolunteer?.(); };
   const pageUrl = () => window.location.href.split("#")[0];
   const doShare = async () => {
@@ -215,11 +233,14 @@ export function CampaignPageView({
   ) : (
     <span className="w-8 h-8 rounded-full ring-2 ring-white/80 flex items-center justify-center text-[10px] font-extrabold tracking-tight text-white">{initials}</span>
   );
-  const display = { fontFamily: "'Instrument Serif', 'Playfair Display', Georgia, 'Times New Roman', serif" } as const;
+  const display = { fontFamily: "Inter, system-ui, sans-serif", fontWeight: 800 } as const;
+  const inter = { fontFamily: "Inter, system-ui, sans-serif" } as const;
+  const script = { fontFamily: "'Dancing Script', cursive", fontWeight: 700 } as const;
+  const cohortName = t("cohortName") || (t("cohortHeading") ? campaign.name : "");
   const sectionPad = `px-5 ${md("px-10")}`;
   const wrap = "max-w-6xl mx-auto";
   const twoCol = `grid gap-6 ${md("grid-cols-[minmax(0,5fr)_minmax(0,7fr)] gap-14")}`;
-  const sectionTitle = `text-[2rem] leading-[0.98] font-black tracking-[-0.03em] text-[#1c1410] break-words ${md("text-[2.75rem]")}`;
+  const sectionTitle = `text-[2.25rem] leading-[0.98] font-extrabold tracking-[-0.03em] text-[#1c1410] break-words ${md("text-[3.5rem]")}`;
 
   const fundingBar = goal > 0 && (
     <div className="space-y-3" data-testid="text-campaign-progress">
@@ -242,7 +263,8 @@ export function CampaignPageView({
 
   return (
     <div
-      className={`${preview ? "min-h-full relative" : "min-h-[100dvh]"} flex flex-col font-sans overflow-x-hidden bg-white text-[#1c1410]`}
+      className={`${preview ? "min-h-full relative" : "min-h-[100dvh]"} flex flex-col overflow-x-hidden bg-white text-[#1c1410] [&_button]:[font-family:inherit] [&_input]:[font-family:inherit]`}
+      style={inter}
       data-testid={preview ? "view-campaign-preview" : "view-campaign-page"}
     >
       {/* Top bar */}
@@ -282,25 +304,26 @@ export function CampaignPageView({
       <main className="flex-1">
         {/* 1. Red editorial opening */}
         <section className={`text-white ${preview ? "pt-6" : "pt-20"} pb-12 ${md("pb-16")}`} style={{ backgroundColor: red }}>
-          <div className={`${wrap} ${sectionPad} grid gap-8 ${md("grid-cols-[minmax(0,1fr)_340px] gap-10 pt-6")}`}>
+          <div className={`${wrap} ${sectionPad} text-center ${md("pt-6")}`}>
+            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 mb-3 text-[13px] font-semibold text-white/90">
+              {campaign.status === "completed" && <span className="px-2.5 py-0.5 rounded-full bg-white text-[11px] font-extrabold uppercase tracking-wider" style={{ color: red }}>Completed</span>}
+              {campaign.deadline && <span className="inline-flex items-center gap-1" data-testid="text-campaign-deadline"><Clock className="w-3.5 h-3.5" aria-hidden="true" /> Ends {new Date(campaign.deadline).toLocaleDateString("en-GB", { day: "numeric", month: "long" })}</span>}
+              {org.city && org.country && <span className="inline-flex items-center gap-1"><MapPin className="w-3.5 h-3.5" aria-hidden="true" /> {org.city}, {org.country}</span>}
+            </div>
+            <h1 data-testid="text-campaign-name" style={script}
+              className={`text-[3.6rem] leading-[0.95] tracking-[-0.01em] break-words mx-auto ${md("text-[8rem]")}`}>
+              {campaign.name}
+            </h1>
+            {campaign.tagline && (
+              <p data-testid="text-campaign-tagline" className={`mt-4 mx-auto text-[1.05rem] leading-snug font-medium text-white/95 max-w-2xl ${md("text-lg")}`}>
+                {campaign.tagline}
+              </p>
+            )}
+          </div>
+          <div className={`${wrap} ${sectionPad} mt-8 grid gap-6 ${md("grid-cols-[minmax(0,1fr)_380px] gap-10")}`}>
             <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 mb-4 text-[12px] font-semibold text-white/85">
-                {campaign.status === "completed" && <span className="px-2.5 py-0.5 rounded-full bg-white text-[11px] font-extrabold uppercase tracking-wider" style={{ color: red }}>Completed</span>}
-                {campaign.deadline && <span className="inline-flex items-center gap-1"><Clock className="w-3.5 h-3.5" aria-hidden="true" /> Ends {new Date(campaign.deadline).toLocaleDateString("en-GB", { day: "numeric", month: "long" })}</span>}
-                {org.city && org.country && <span className="inline-flex items-center gap-1"><MapPin className="w-3.5 h-3.5" aria-hidden="true" /> {org.city}, {org.country}</span>}
-              </div>
-              <h1 data-testid="text-campaign-name" style={display}
-                className={`italic text-[3.1rem] leading-[0.92] tracking-[-0.01em] break-words ${md("text-[5.5rem] max-w-[14ch]")}`}>
-                {campaign.name}
-              </h1>
-              {campaign.tagline && (
-                <p data-testid="text-campaign-tagline" className={`mt-5 text-[1.05rem] leading-snug font-medium text-white/95 max-w-xl ${md("text-lg")}`}>
-                  {campaign.tagline}
-                </p>
-              )}
-
               {isFundraising ? (
-                <div className="mt-7 rounded-2xl overflow-hidden ring-1 ring-black/10 shadow-[0_24px_60px_-20px_rgba(60,0,0,0.6)]"
+                <div className="relative rounded-2xl overflow-hidden ring-1 ring-black/10 shadow-[0_24px_60px_-20px_rgba(60,0,0,0.6)]"
                   data-testid="block-campaign-hero" data-tour-id="campaign-accumulation">
                   <AccumulationField
                     count={supporters}
@@ -313,52 +336,58 @@ export function CampaignPageView({
                     background="#F9F6F0"
                     highlightNewest={highlightNewest}
                     still={preview}
-                    height={layout === "phone" ? 240 : 320}
+                    height={layout === "phone" || (layout === "responsive" && smallViewport) ? 200 : 320}
                   />
+                  {confirmedReceipt && (
+                    <div className="pointer-events-none absolute inset-0 flex items-center justify-center" data-testid="marker-your-hand">
+                      <span className="flex flex-col items-center gap-1.5">
+                        <span className="w-20 h-20 rounded-full border-4 flex items-center justify-center shadow-lg motion-safe:animate-[pulse_2.4s_ease-in-out_2]"
+                          style={{ borderColor: gold, backgroundColor: "#F9F6F0" }}>
+                          {unit?.imageUrl
+                            ? <span className="w-12 h-12 block" style={{ backgroundColor: gold, WebkitMaskImage: `url(${unit.imageUrl})`, maskImage: `url(${unit.imageUrl})`, WebkitMaskSize: "contain", maskSize: "contain", WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat", WebkitMaskPosition: "center", maskPosition: "center" }} aria-hidden="true" />
+                            : <Hand className="w-10 h-10" style={{ color: gold }} aria-hidden="true" />}
+                        </span>
+                        <span className="rounded-full px-2.5 py-0.5 text-[12px] font-bold text-[#1F1410]" style={{ backgroundColor: gold }}>Your hand</span>
+                      </span>
+                    </div>
+                  )}
                 </div>
               ) : campaign.imageUrl ? (
-                <div className="mt-7 rounded-2xl overflow-hidden">
+                <div className="rounded-2xl overflow-hidden">
                   <img src={campaign.imageUrl} alt="" data-testid="img-campaign-cover" className={`w-full object-cover aspect-[4/3] ${md("aspect-[16/9]")}`} />
                 </div>
               ) : null}
+              {isFundraising && (
+                <div className="mt-5 flex items-end gap-4 flex-wrap" data-testid="text-supporter-count">
+                  <span className="text-[4rem] leading-[0.85] font-extrabold tabular-nums tracking-[-0.04em]" style={{ color: gold }}>{supporters.toLocaleString("en-GB")}</span>
+                  <span className="pb-1 min-w-0 flex-1">
+                    <span className="block text-lg font-extrabold">{supporters === 1 ? unitSingular : unitPlural} on the wall</span>
+                    <span className="block text-sm text-white/85 leading-snug">{supporters === 0 ? `Every supporter adds one ${unitSingular}. Be the first.` : `One for every person who has given, whatever the amount.`}</span>
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Sidebar */}
             <aside className="space-y-4 min-w-0" aria-label={isFundraising ? "Giving and funding" : "Volunteering"}>
               {isFundraising ? (
                 <>
-                  <div data-testid="text-supporter-count">
-                    <div className="text-[4rem] leading-[0.85] font-black tabular-nums tracking-[-0.04em]" style={{ color: gold }}>
-                      {supporters.toLocaleString("en-GB")}
-                    </div>
-                    <div className="mt-2 text-lg font-extrabold">{supporters === 1 ? unitSingular : unitPlural}</div>
-                    <p className="text-sm text-white/85 mt-1 leading-snug">
-                      {supporters === 0 ? `Every supporter adds one ${unitSingular}. Be the first.` : `One for every person who has given to ${campaign.name}, whatever the amount.`}
-                    </p>
+                  <CampaignDonatePanel
+                    currency={currency}
+                    orgName={org.name}
+                    heading={donateLabel || "Support this campaign"}
+                    cohortName={cohortName || undefined}
+                    preview={preview}
+                    receipt={confirmedReceipt}
+                    onDonate={donateWith}
+                    onShare={doShare}
+                  />
+                  <div aria-live="polite" className="text-sm text-white min-h-0">
+                    {share.k === "copied" && <span className="inline-flex items-center gap-1.5 font-semibold"><CheckCircle className="w-4 h-4" aria-hidden="true" /> Link copied</span>}
                   </div>
-
-                  <div className="rounded-2xl bg-[#F9F6F0] text-[#1c1410] p-5 shadow-lg">
-                    <h2 className="text-lg font-extrabold leading-tight">{donateLabel || `Add your ${unitSingular}`}</h2>
-                    <p className="text-[12px] text-[#6b5f55] mt-0.5">Choose your amount at the next step.</p>
-                    <Button
-                      className="mt-4 w-full h-12 text-base font-extrabold rounded-xl shadow-none hover:brightness-95"
-                      style={{ backgroundColor: gold, color: "#1c1410" }}
-                      onClick={donate}
-                      disabled={preview}
-                      title={previewTitle}
-                      data-testid="button-donate-campaign"
-                    >
-                      Donate <ArrowRight className="w-4 h-4 ml-2" aria-hidden="true" />
-                    </Button>
-                    <p className="mt-3 text-center text-[11px] font-medium text-[#6b5f55] flex items-center justify-center gap-1.5">
-                      <ShieldCheck className="w-3.5 h-3.5 text-green-800" aria-hidden="true" />
-                      {preview ? "Donations are switched off in preview" : `From ${currencySymbol(currency)}3 · Secure payment by Stripe`}
-                    </p>
-                  </div>
-
                   {(goal > 0 || pf || fundingNote) && (
                     <div className="rounded-2xl bg-white text-[#1c1410] p-5 shadow-lg">
-                      <h2 className="text-base font-extrabold">How this is funded</h2>
+                      <h2 className="text-[1.15rem] font-extrabold">{cohortName ? "This cohort\u2019s funding" : "How this is funded"}</h2>
                       {fundingNote && (
                         <p className="mt-3 text-[13px] leading-relaxed text-[#3a2f28] whitespace-pre-wrap" data-testid="text-funding-note">{fundingNote}</p>
                       )}
@@ -538,7 +567,7 @@ export function CampaignPageView({
               </div>
               {(t("cohortHeading") || t("cohortBody") || t("cohortNote")) && (
                 <div className="rounded-2xl bg-[#F9F6F0] p-6 shadow-lg min-w-0" data-testid="card-cohort">
-                  {t("cohortHeading") && <h3 style={display} className="italic text-[2rem] leading-[1]" >{t("cohortHeading")}</h3>}
+                  {t("cohortHeading") && <h3 style={display} className="text-[1.5rem] leading-tight" >{t("cohortHeading")}</h3>}
                   {t("cohortBody") && <p className="mt-3 leading-relaxed text-[#3a2f28]">{t("cohortBody")}</p>}
                   {t("cohortNote") && <p className="mt-4 pt-4 border-t border-[#E0D8CC] text-[13px] leading-relaxed text-[#6b5f55]">{t("cohortNote")}</p>}
                 </div>
@@ -651,7 +680,7 @@ export function CampaignPageView({
         <section className="text-white" style={{ backgroundColor: red }} data-testid="block-share">
           <div className={`${wrap} ${sectionPad} py-12 flex flex-col gap-6 ${md("flex-row items-center justify-between")}`}>
             <div className="min-w-0">
-              <p style={display} className={`italic text-[2.4rem] leading-[0.95] break-words ${md("text-[3.25rem]")}`}>{t("shareHeading") || `Know someone who'd add a ${unitSingular}?`}</p>
+              <p style={display} className={`text-[2.25rem] leading-tight break-words ${md("text-[3.5rem]")}`}>{t("shareHeading") || `Know someone who'd add a ${unitSingular}?`}</p>
               <p className="mt-2 text-white/90">{t("shareBody") || "Share the campaign. A share from you is worth more than any ad."}</p>
             </div>
             <div className="flex flex-col gap-3 shrink-0 min-w-0">

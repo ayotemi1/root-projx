@@ -160,6 +160,15 @@ changes funding metadata only, never donation, organisation or campaign totals.
 Public pages retain the canonical £3 fee example.
 Recorded donation receipts link back to the campaign with a one-time unit
 highlight; client code never fabricates an increased supporter count.
+The November landing-page amendments add scoped Inter typography and a centred
+Dancing Script Bold campaign title. The hero contains inline amount selection
+(default 10), optional estimated card-fee coverage and a canonical accounting
+breakdown; these choices carry into the guest checkout sheet. Subsequent giving
+buttons return to this box. Only a recorded campaign receipt enables its
+thank-you state, showing the native gift amount and currency. A single circled
+gold acknowledgement marker is permitted after confirmation; it is not an
+identity link to another donor's unit and does not alter the supporter count.
+Pre-checkout card charges remain explicitly estimated, not guaranteed Stripe fees.
 
 Campaign `pageContent` optionally holds plain-text editorial section headings,
 programme details, intended-outcome context, cohort plans and sharing copy.

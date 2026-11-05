@@ -170,3 +170,100 @@ test("organisation Donate stays unassigned to a campaign", async () => {
     orgId: "org-1", amountPence: 300, currency: "gbp", anonymousDonorId: "anon-1",
   });
 });
+
+test("amended hero shows inline default gift, canonical fee disclosure and active gold button", async () => {
+  const { CampaignPageView } = await loadComponent("src/components/campaign/campaign-page-view.tsx");
+  const props = {
+    campaign: { _id: "camp", name: "Out of Many Hands", type: "fundraising", goal: 30000,
+      amountRaised: 3, enabled: true, status: "active", phases: [], currency: "gbp",
+      pageContent: { donateLabel: "Support the training", cohortName: "January cohort" } },
+    organisation: { _id: "org", name: "Humanity Ova Vanity", country: "Jamaica" },
+    layout: "phone",
+  };
+  const render = (extra: Record<string, unknown> = {}) => renderToStaticMarkup(
+    createElement(Router, { hook: () => ["/", () => {}] }, createElement(CampaignPageView, { ...props, ...extra })));
+  const html = render();
+  assert.match(html, /Support the training/);
+  assert.match(html, /For January cohort/);
+  assert.match(html, /Dancing Script/);
+  assert.doesNotMatch(html, /Instrument Serif|Playfair Display|Choose your amount at the next step/);
+  assert.match(html, /grid-cols-4/);
+  assert.match(html, /Root ProjX platform fee \(5%\)/);
+  assert.match(html, /Card processing \(estimated\)/);
+  assert.match(html, /data-testid="text-org-receives">£9\.50/);
+  assert.match(html, /data-testid="text-total-charged">£10\.35/);
+  assert.match(html, /background-color:#F5B800;color:#1F1410[^>]*data-testid="button-donate-campaign">Donate £10/);
+  assert.doesNotMatch(html, /marker-your-hand|panel-donate-thanks/);
+  const preview = render({ preview: true });
+  assert.match(preview, /disabled=""[^>]*data-testid="button-donate-campaign"/);
+});
+
+test("hero choice and sheet checkout charge the same intended gift and fee, in either currency", async () => {
+  const { donationPence } = await loadComponent("src/components/campaign/campaign-donate-panel.tsx");
+  const { GuestDonateSheet, guestCheckoutBody } = await loadComponent("src/components/GuestDonateSheet.tsx");
+  for (const [currency, fee] of [["gbp", 35], ["usd", 63]] as const) {
+    for (const covered of [true, false]) {
+      const p = donationPence(10, covered, currency);
+      assert.deepEqual(p, { intendedPence: 1000, feePence: covered ? fee : 0, chargedPence: 1000 + (covered ? fee : 0) });
+      const body = guestCheckoutBody("org", 1000, "camp", "anon", false, "", currency, covered);
+      assert.equal(body.amountPence, p.chargedPence);
+      assert.equal(body.originalAmountPence ?? body.amountPence, 1000);
+      assert.equal(body.feeCovered ?? false, covered);
+      assert.equal(body.currency, currency);
+      assert.equal(body.campaignId, "camp");
+      assert.equal(Object.hasOwn(body, "donorName"), false);
+      const html = renderSheet(GuestDonateSheet, { campaignId: "camp", currency,
+        initialAmount: 10, initialFeeCovered: covered });
+      assert.match(html, new RegExp(`Donate ${currency === "usd" ? "\\$" : "£"}${(p.chargedPence / 100).toFixed(2).replace(".", "\\.")}`));
+    }
+  }
+});
+
+test("confirmed thank-you displays the recorded native gift, not the currently selected amount", async () => {
+  const { CampaignDonatePanel } = await loadComponent("src/components/campaign/campaign-donate-panel.tsx");
+  const html = renderToStaticMarkup(createElement(CampaignDonatePanel, {
+    currency: "usd", orgName: "Community Trust", cohortName: "January",
+    receipt: { amount: 3, currency: "usd" }, onDonate() {}, onShare() {},
+  }));
+  assert.match(html, /Your hand is on the wall/);
+  assert.match(html, /\$3\.00/);
+  assert.doesNotMatch(html, /\$10|button-donate-campaign/);
+  assert.match(html, /for January/);
+  assert.match(html, /Share the wall with your people/);
+});
+
+test("matching disclosure includes processing top-up in what the donor is charged", async () => {
+  const { GuestDonateSheet } = await loadComponent("src/components/GuestDonateSheet.tsx");
+  const html = renderSheet(GuestDonateSheet, {
+    campaignId: "matching-camp", initialAmount: 10, initialFeeCovered: true,
+    partnerFunding: { type: "matching", amount: 100, matchCap: 100, matchRatio: 1, funderName: "Partner" },
+  });
+  assert.match(html, /You are charged £10\.35/);
+  assert.doesNotMatch(html, /charged only £10\.00|You are charged £10\.00/);
+});
+
+test("confirmed receipt acknowledgement is private, campaign-scoped, expiring and consumed once", async () => {
+  const { storeConfirmedReceipt, consumeConfirmedReceiptDetails } = await loadComponent("src/lib/donor-identity.ts");
+  const before = Object.getOwnPropertyDescriptor(globalThis, "sessionStorage");
+  const data = new Map<string, string>();
+  Object.defineProperty(globalThis, "sessionStorage", { configurable: true, value: {
+    getItem: (k: string) => data.get(k) ?? null, setItem: (k: string, v: string) => data.set(k, v),
+    removeItem: (k: string) => data.delete(k),
+  } });
+  try {
+    assert.equal(consumeConfirmedReceiptDetails("camp"), null);
+    storeConfirmedReceipt("camp", { amount: 3, currency: "usd" });
+    assert.equal(consumeConfirmedReceiptDetails("other-campaign"), null);
+    assert.deepEqual(consumeConfirmedReceiptDetails("camp"), { amount: 3, currency: "usd" });
+    assert.equal(consumeConfirmedReceiptDetails("camp"), null);
+    for (const timestamp of [Date.now() - 31 * 60000, Date.now() + 60000]) {
+      data.set("rpx_confirmed_receipt_camp", JSON.stringify({ t: timestamp, amount: 3, currency: "gbp" }));
+      assert.equal(consumeConfirmedReceiptDetails("camp"), null);
+    }
+    data.set("rpx_confirmed_receipt_camp", String(Date.now()));
+    assert.deepEqual(consumeConfirmedReceiptDetails("camp"), { amount: null, currency: "gbp" });
+  } finally {
+    if (before) Object.defineProperty(globalThis, "sessionStorage", before);
+    else delete (globalThis as any).sessionStorage;
+  }
+});

@@ -46,9 +46,6 @@ export default function DonateSuccessPage() {
   const donation = confirmQ.data;
   const waitingForRecord = donation?.recorded === false && !pollExpired;
 
-  useEffect(() => {
-    if (donation?.recorded === true && donation.campaignId) storeConfirmedReceipt(donation.campaignId);
-  }, [donation?.recorded, donation?.campaignId]);
 
   // Native-currency accounting when present; legacy confirmations are GBP top-level fields.
   type Acc = {
@@ -70,6 +67,14 @@ export default function DonateSuccessPage() {
         netAmountGbp: acc.netAmountGbp ?? acc.toOrgGbp, grossAmountGbp: acc.grossAmountGbp ?? acc.chargedGbp,
       }, donation.orgName, undefined, currency)
     : null;
+
+  // Verified receipt handoff: only when confirm says recorded=true for this campaign.
+  const verifiedAmount = donation?.recorded === true && typeof acc?.amountGbp === "number" ? acc.amountGbp : null;
+  useEffect(() => {
+    if (donation?.recorded === true && donation.campaignId) {
+      storeConfirmedReceipt(donation.campaignId, { amount: verifiedAmount, currency });
+    }
+  }, [donation?.recorded, donation?.campaignId, verifiedAmount, currency]);
 
   useEffect(() => {
     void queryClient.invalidateQueries({ queryKey: ["campaign-landing"] });

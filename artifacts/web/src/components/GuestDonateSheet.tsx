@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { GuestDonorWallChoice } from "./guest-donor-wall-choice";
 import { Link } from "wouter";
 import { X, Heart } from "lucide-react";
@@ -6,7 +6,7 @@ import { partnerMatch, ratioLabel } from "@/lib/partner-funding";
 import type { PartnerFunding } from "@/lib/api";
 import { currencyOf, currencySymbol, type CampaignCurrency } from "@/lib/currency";
 import { getAnonymousDonorId } from "@/lib/donor-identity";
-import { calculateDonationAccounting, donationDisclosure } from "../../../api-server/src/lib/donation-accounting";
+import { calculateDonationAccounting, donationDisclosure, estimateStripeFeePence } from "../../../api-server/src/lib/donation-accounting";
 
 const RED = "#B50000";
 const GOLD = "#F5B800";
@@ -25,22 +25,39 @@ interface Props {
   partnerFundingMatchedGbp?: number;
   /** Campaign charge currency. Organisation gifts are always GBP. */
   currency?: CampaignCurrency | null;
+  /** Amount chosen on the campaign page, so nothing resets at this step. */
+  initialAmount?: number | null;
+  /** Fee-cover choice from the campaign page. */
+  initialFeeCovered?: boolean;
 }
 
-export function guestCheckoutBody(orgId: string, amountPence: number, campaignId: string | undefined, anonymousDonorId?: string, wallOptIn = false, donorName = "", currency: CampaignCurrency = "gbp") {
-  return { orgId, amountPence, currency, ...(campaignId ? { campaignId } : {}), anonymousDonorId,
+export function guestCheckoutBody(orgId: string, amountPence: number, campaignId: string | undefined, anonymousDonorId?: string, wallOptIn = false, donorName = "", currency: CampaignCurrency = "gbp", feeCovered = false) {
+  // Fee cover: charge gift + canonical estimated Stripe fee; the server keeps the platform fee on the gift.
+  const feePence = feeCovered ? estimateStripeFeePence(amountPence, null, currency) : 0;
+  return { orgId, amountPence: amountPence + feePence, currency, ...(campaignId ? { campaignId } : {}), anonymousDonorId,
+    ...(feeCovered ? { feeCovered: true, originalAmountPence: amountPence, feeAmountPence: feePence } : {}),
     ...(wallOptIn ? { wallOptIn: true, donorName: donorName.trim() } : {}) };
 }
 
-export function GuestDonateSheet({ open, onClose, orgId, orgName, campaignId, campaignName, partnerFunding, partnerFundingMatchedGbp, currency: currencyProp }: Props) {
+export function GuestDonateSheet({ open, onClose, orgId, orgName, campaignId, campaignName, partnerFunding, partnerFundingMatchedGbp, currency: currencyProp, initialAmount, initialFeeCovered = false }: Props) {
   const currency = currencyOf(campaignId ? currencyProp : "gbp");
   const sym = currencySymbol(currency);
-  const [preset, setPreset] = useState<number>(25);
-  const [custom, setCustom] = useState("");
+  const [preset, setPreset] = useState<number>(() => initialAmount && initialAmount > 0 ? (PRESETS.includes(initialAmount) ? initialAmount : 0) : 25);
+  const [custom, setCustom] = useState(() => initialAmount && initialAmount > 0 && !PRESETS.includes(initialAmount) ? String(initialAmount) : "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [wallOptIn, setWallOptIn] = useState(false);
   const [donorName, setDonorName] = useState("");
+  const [feeCovered, setFeeCovered] = useState(initialFeeCovered);
+
+  useEffect(() => {
+    if (!open) return;
+    setFeeCovered(initialFeeCovered);
+    if (initialAmount && initialAmount > 0) {
+      if (PRESETS.includes(initialAmount)) { setPreset(initialAmount); setCustom(""); }
+      else { setPreset(0); setCustom(String(initialAmount)); }
+    }
+  }, [open, initialAmount, initialFeeCovered]);
 
   if (!open) return null;
 
@@ -48,7 +65,9 @@ export function GuestDonateSheet({ open, onClose, orgId, orgName, campaignId, ca
   const amountPence = Math.round((amountGbp || 0) * 100);
   const valid = Number.isSafeInteger(amountPence) && amountGbp >= 3;
   const accounting = Number.isSafeInteger(amountPence) && amountPence > 0
-    ? calculateDonationAccounting({chargedPence:amountPence, feeCovered:false, currency}) : null;
+    ? calculateDonationAccounting(feeCovered
+      ? { chargedPence: amountPence + estimateStripeFeePence(amountPence, null, currency), intendedPence: amountPence, feeCovered: true, currency }
+      : { chargedPence: amountPence, feeCovered: false, currency }) : null;
   const isMatching = partnerFunding?.type === "matching";
   const matchState = partnerMatch(valid ? amountGbp : 0, partnerFunding, partnerFundingMatchedGbp ?? 0);
   const matchExhausted = isMatching && matchState.availableGbp <= 0;
@@ -62,6 +81,7 @@ export function GuestDonateSheet({ open, onClose, orgId, orgName, campaignId, ca
     setError("");
     setLoading(false);
     setWallOptIn(false); setDonorName("");
+    setFeeCovered(initialFeeCovered);
     onClose();
   }
 
@@ -74,7 +94,7 @@ export function GuestDonateSheet({ open, onClose, orgId, orgName, campaignId, ca
       const res = await fetch("/api/donations/anonymous-checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(guestCheckoutBody(orgId, amountPence, campaignId, getAnonymousDonorId(), wallOptIn, donorName, currency)),
+        body: JSON.stringify(guestCheckoutBody(orgId, amountPence, campaignId, getAnonymousDonorId(), wallOptIn, donorName, currency, feeCovered)),
       });
       const data = await res.json() as { url?: string; error?: string };
       if (!res.ok || !data.url) {
@@ -191,7 +211,7 @@ export function GuestDonateSheet({ open, onClose, orgId, orgName, campaignId, ca
                 {sym}{amountGbp.toFixed(amountGbp % 1 ? 2 : 0)} <span style={{ color: RED }}>→</span> {sym}{(amountGbp + boost).toFixed((amountGbp + boost) % 1 ? 2 : 0)} <span style={{ fontSize: 13, fontWeight: 600, color: "#555" }}>toward the programme</span>
               </p>
               <p style={{ margin: "4px 0 0", fontSize: 12, color: "#555" }}>
-                Your own {sym}{amountGbp.toFixed(amountGbp % 1 ? 2 : 0)} + {sym}{boost.toFixed(boost % 1 ? 2 : 0)} from {partnerFunding?.funderName || "the funder"}'s matching pledge ({ratioLabel(partnerFunding!, currency)}{boost < amountGbp * (partnerFunding?.matchRatio || 1) ? `, limited to the ${sym}${matchState.availableGbp.toFixed(2)} still available` : ""}). Matching depends on what is still available when your payment succeeds. You are charged only {sym}{amountGbp.toFixed(2)}.
+                Your own {sym}{amountGbp.toFixed(amountGbp % 1 ? 2 : 0)} + {sym}{boost.toFixed(boost % 1 ? 2 : 0)} from {partnerFunding?.funderName || "the funder"}'s matching pledge ({ratioLabel(partnerFunding!, currency)}{boost < amountGbp * (partnerFunding?.matchRatio || 1) ? `, limited to the ${sym}${matchState.availableGbp.toFixed(2)} still available` : ""}). Matching depends on what is still available when your payment succeeds. You are charged {sym}{(accounting?.chargedGbp ?? amountGbp).toFixed(2)}.
               </p>
             </div>
           )}
@@ -199,6 +219,10 @@ export function GuestDonateSheet({ open, onClose, orgId, orgName, campaignId, ca
             <p data-testid="text-match-claimed" style={{ fontSize: 12, color: "#555", margin: "0 0 10px" }}>Matching has been fully claimed.</p>
           )}
 
+          <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 13, margin: "0 0 12px", cursor: "pointer" }}>
+            <input type="checkbox" checked={feeCovered} onChange={(e) => setFeeCovered(e.target.checked)} data-testid="checkbox-sheet-cover-fee" style={{ marginTop: 2, accentColor: "#7A0000" }} />
+            <span>Cover the estimated card processing fee{valid ? ` (${sym}${(estimateStripeFeePence(amountPence, null, currency) / 100).toFixed(2)})` : ""} so it does not come out of the gift</span>
+          </label>
           <GuestDonorWallChoice optedIn={wallOptIn} name={donorName} onOptIn={setWallOptIn} onName={setDonorName} />
           {/* Summary */}
           {amountGbp > 0 && (
@@ -231,7 +255,7 @@ export function GuestDonateSheet({ open, onClose, orgId, orgName, campaignId, ca
             {loading
               ? "Redirecting to Stripe…"
               : valid
-                ? `Donate ${sym}${amountGbp.toFixed(2)} — no sign-up needed`
+                ? `Donate ${sym}${(accounting?.chargedGbp ?? amountGbp).toFixed(2)} — no sign-up needed`
                 : "Choose an amount"}
           </button>
 

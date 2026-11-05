@@ -128,7 +128,7 @@ test("matching with funds remaining: sheet shows capped programme impact arrow",
   assert.ok(html.includes('data-testid="block-match-boost"'));
   assert.ok(html.includes("→"));
   assert.match(html, /£25.*→.*£50/s);
-  assert.match(html, /charged only £25\.00/);
+  assert.match(html, /charged £25\.00/);
   const page = renderPage(campaign({ partnerFunding: matching, partnerFundingMatchedGbp: 100 }), org);
   assert.match(page, /will match gifts £1 for £1, up to £500/);
   assert.match(page, /£100 matched so far; £400 of matching is still available/);

@@ -6,7 +6,8 @@ import { getPublicCampaignLanding, getPublicCampaignLandingBySlug } from "@/lib/
 import { CampaignPageView } from "@/components/campaign/campaign-page-view";
 import { GuestDonateSheet } from "@/components/GuestDonateSheet";
 import { Skeleton } from "@/components/ui/skeleton";
-import { consumeConfirmedReceipt } from "@/lib/donor-identity";
+import { consumeConfirmedReceiptDetails, type ConfirmedReceiptDetails } from "@/lib/donor-identity";
+import type { DonateChoice } from "@/components/campaign/campaign-donate-panel";
 
 export default function CampaignLandingPage() {
   const params = useParams<{ publicId?: string; organisationSlug?: string; campaignSlug?: string }>();
@@ -78,10 +79,14 @@ export default function CampaignLandingPage() {
     };
   }, [landing]);
 
-  const [highlight, setHighlight] = useState(false);
+  // Verified receipt only (written by donate-success after confirm recorded=true for this campaign).
+  const [receipt, setReceipt] = useState<(ConfirmedReceiptDetails & { campaignId: string }) | null>(null);
+  const [choice, setChoice] = useState<DonateChoice | null>(null);
   const campaignIdForReceipt = landing?.campaign._id;
   useEffect(() => {
-    if (campaignIdForReceipt && consumeConfirmedReceipt(campaignIdForReceipt)) setHighlight(true);
+    if (!campaignIdForReceipt) return;
+    const r = consumeConfirmedReceiptDetails(campaignIdForReceipt);
+    if (r) setReceipt({ ...r, campaignId: campaignIdForReceipt });
   }, [campaignIdForReceipt]);
 
   useEffect(() => {
@@ -140,13 +145,15 @@ export default function CampaignLandingPage() {
         partnerFunding={campaign.partnerFunding ?? null}
         partnerFundingMatchedGbp={campaign.partnerFundingMatchedGbp ?? 0}
         currency={campaign.currency ?? "gbp"}
+        initialAmount={choice?.amount ?? null}
+        initialFeeCovered={choice?.feeCovered ?? false}
       />
       <CampaignPageView
         campaign={campaign}
         organisation={org}
         scrolled={scrolled}
-        highlightNewest={highlight}
-        onDonate={() => setDonateOpen(true)}
+        confirmedReceipt={receipt?.campaignId === campaign._id ? receipt : null}
+        onDonate={(c) => { setChoice(c ?? null); setDonateOpen(true); }}
         onVolunteer={() => setLocation(`/organisations/${org._id}/volunteer`)}
       />
     </>
