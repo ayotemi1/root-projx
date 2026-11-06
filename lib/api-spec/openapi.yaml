@@ -25,6 +25,79 @@ tags:
   - name: profile
     description: User profile
 paths:
+  /payout/bank-details:
+    get:
+      operationId: getBankDetailsStatus
+      tags: [profile]
+      summary: Get the owning organisation's bank-detail submission status
+      responses:
+        '200':
+          description: Private status only, never account numbers
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/BankDetailsStatus'}
+        '401': {description: Sign-in required}
+        '403': {description: Approved organisation owner required}
+        '503': {description: Secure storage unavailable}
+    put:
+      operationId: saveBankDetails
+      tags: [profile]
+      summary: Encrypt and save payout bank details, withdrawing previous approval atomically
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/BankDetailsInput'}
+      responses:
+        '200':
+          description: Saved for administrator review, not approved and no money sent
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/BankDetailsStatus'}
+        '400': {description: Invalid bank details}
+        '401': {description: Sign-in required}
+        '403': {description: Approved organisation owner required}
+        '503': {description: Save failed or secure storage unavailable}
+  /admin/organisations/{id}/bank-details:
+    get:
+      operationId: reviewBankDetails
+      tags: [profile]
+      summary: Explicit private admin review of decrypted bank details, never cache
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: Submission status and private bank details
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - {$ref: '#/components/schemas/BankDetailsStatus'}
+                  - type: object
+                    properties:
+                      details:
+                        anyOf:
+                          - {$ref: '#/components/schemas/BankDetailsInput'}
+                          - {type: 'null'}
+        '401': {description: Administrator authentication required}
+        '503': {description: Secure storage unavailable}
+  /admin/organisations/{id}/bank-details/approve:
+    post:
+      operationId: approveBankDetails
+      tags: [profile]
+      summary: Approve exactly the reviewed bank-detail revision
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/BankDetailsApprovalInput'}
+      responses:
+        '200': {description: "Approved, no money has been sent"}
+        '400': {description: Missing revision}
+        '401': {description: Administrator authentication required}
+        '409': {description: "Details changed or payout in progress, reopen the review"}
   /auth/forgot-password:
     post:
       operationId: requestPasswordReset
@@ -915,6 +988,36 @@ components:
       properties:
         deleted: {type: boolean}
         orgId: {type: string}
+    BankDetailsStatus:
+      type: object
+      required: [hasDetails, revision, submittedAt, approved]
+      properties:
+        hasDetails: {type: boolean}
+        revision: {type: [string, 'null']}
+        submittedAt: {type: [string, 'null']}
+        approved: {type: boolean}
+    BankDetailsApprovalInput:
+      type: object
+      required: [revision]
+      properties:
+        revision: {type: string, minLength: 1}
+    BankDetailsInput:
+      type: object
+      additionalProperties: false
+      required: [accountHolder, bankName, bankCountry, currency]
+      description: Account number or IBAN required. UK accounts need a sort code unless using IBAN; US accounts need a routing number.
+      properties:
+        accountHolder: {type: string, minLength: 1, maxLength: 150}
+        bankName: {type: string, minLength: 1, maxLength: 150}
+        bankCountry: {type: string, minLength: 2, maxLength: 2}
+        currency: {type: string, minLength: 3, maxLength: 3}
+        accountNumber: {type: string, maxLength: 34}
+        iban: {type: string, maxLength: 34}
+        routingCode: {type: string, maxLength: 30}
+        swiftBic: {type: string, maxLength: 11}
+        branchName: {type: string, maxLength: 150}
+        bankAddress: {type: string, maxLength: 300}
+        beneficiaryAddress: {type: string, maxLength: 300}
     PasswordResetRequest:
       type: object
       required: [email]

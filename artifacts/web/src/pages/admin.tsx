@@ -6,6 +6,7 @@ import { BankTransferApprovals } from "@/components/bank-transfer-approvals";
 import { useQueryClient } from "@tanstack/react-query";
 import { adminPayoutsKey } from "@/lib/payouts-api";
 import { AdminDeleteOrganisation } from "@/components/admin-delete-organisation";
+import { AdminBankDetailsReview } from "@/components/admin-bank-details-review";
 
 const RED_DEEP = "#7A0000";
 const RED = "#B50000";
@@ -66,7 +67,7 @@ function PayoutCell({ org, onManage }: { org: Organisation; onManage: () => void
         </span>
         {org.payoutManualLabel && <span style={{ fontSize: 12, color: "#666" }}>{org.payoutManualLabel}</span>}
         <button data-testid={`button-manual-payout-${org._id}`} onClick={onManage} style={{ padding: "5px 9px", border: "1px solid #d8d0c5", borderRadius: 7, background: "#fff", color: RED_DEEP, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
-          {org.payoutManualApproved ? "Edit label" : "Review & approve"}
+          {org.payoutManualApproved ? "Review bank details" : "Review & approve"}
         </button>
       </div>
     );
@@ -173,42 +174,22 @@ export default function AdminPage() {
   const [orgForm, setOrgForm] = useState<OrganisationForm | null>(null);
   const [savingOrg, setSavingOrg] = useState(false);
   const [payoutOrg, setPayoutOrg] = useState<Organisation | null>(null);
-  const [payoutLabel, setPayoutLabel] = useState("");
-  const [savingPayout, setSavingPayout] = useState(false);
-  const [payoutError, setPayoutError] = useState("");
-  const [payoutConfirmed, setPayoutConfirmed] = useState(false);
+  const [payoutBusy, setPayoutBusy] = useState(false);
   const [payoutNotice, setPayoutNotice] = useState("");
 
   function openPayout(org: Organisation) {
     setPayoutOrg(org);
-    setPayoutLabel(org.payoutManualLabel ?? "");
-    setPayoutError("");
-    setPayoutConfirmed(org.payoutManualApproved === true);
+    setPayoutBusy(false);
     setPayoutNotice("");
   }
 
-  async function saveManualPayout() {
-    if (!payoutOrg || savingPayout || !payoutConfirmed) return;
-    setSavingPayout(true);
-    setPayoutError("");
-    try {
-      const res = await fetch(`/api/admin/organisations/${payoutOrg._id}/manual-payout`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", "x-admin-token": token },
-        body: JSON.stringify({ payoutManualApproved: true, payoutManualLabel: payoutLabel.trim() || null }),
-      });
-      if (res.status === 401) { logout(); return; }
-      const data = await res.json() as Organisation & { error?: string };
-      if (!res.ok) { setPayoutError(data.error ?? "Failed to save bank transfer approval."); return; }
-      setOrganisations((current) => current.map((org) => org._id === data._id ? data : org));
-      setPayoutNotice(`Bank transfer setup approved for ${data.name}. No money has been sent.`);
-      queryClient.invalidateQueries({ queryKey: adminPayoutsKey });
-      setPayoutOrg(null);
-    } catch {
-      setPayoutError("Network error — please try again.");
-    } finally {
-      setSavingPayout(false);
-    }
+  function handleBankApproved() {
+    if (!payoutOrg) return;
+    const id = payoutOrg._id, name = payoutOrg.name;
+    setOrganisations((current) => current.map((org) => org._id === id ? { ...org, payoutManualApproved: true } : org));
+    setPayoutNotice(`Bank details approved for ${name}. No money has been sent.`);
+    queryClient.invalidateQueries({ queryKey: adminPayoutsKey });
+    setPayoutOrg(null);
   }
 
   const token = typeof window !== "undefined" ? localStorage.getItem("admin_token") ?? "" : "";
@@ -649,34 +630,14 @@ export default function AdminPage() {
             <div style={{ width: "min(480px, 100%)", maxHeight: "90vh", overflowY: "auto", background: "#fff", borderRadius: 14, boxShadow: "0 20px 60px rgba(0,0,0,.25)" }}>
               <div style={{ padding: "20px 24px", borderBottom: "1px solid #eee7dd", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div><h2 id="payout-editor-title" style={{ margin: 0, fontSize: 20 }}>Bank transfer payout</h2><p style={{ margin: "4px 0 0", color: "#777", fontSize: 13 }}>{payoutOrg.name}</p></div>
-                <button aria-label="Close" disabled={savingPayout} onClick={() => setPayoutOrg(null)} style={{ border: 0, background: "transparent", cursor: "pointer", padding: 6 }}><X size={20} /></button>
+                <button aria-label="Close" disabled={payoutBusy} onClick={() => setPayoutOrg(null)} style={{ border: 0, background: "transparent", cursor: "pointer", padding: 6 }}><X size={20} /></button>
               </div>
-              <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 14 }}>
-                <p style={{ margin: 0, fontSize: 13, color: "#555" }}>
-                  Status: <strong>{payoutOrg.payoutManualApproved ? "Approved" : "Requested — awaiting approval"}</strong>
-                </p>
-                <div style={{ background: "#FEF9C3", color: "#92400E", borderRadius: 8, padding: "10px 12px", fontSize: 12, lineHeight: 1.5 }}>
-                  Do not enter account numbers, routing numbers, sort codes, IBANs or any bank account details. Those are held with our banking provider, outside the platform.
-                </div>
-                <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13, fontWeight: 700, color: "#444" }}>
-                  Provider / payee label (optional)
-                  <input data-testid="input-manual-payout-label" disabled={savingPayout} maxLength={100} value={payoutLabel} onChange={(e) => setPayoutLabel(e.target.value)} placeholder="e.g. NCB Jamaica — payee saved 20 Oct" style={{ padding: "10px 12px", border: "1.5px solid #ddd5ca", borderRadius: 8, fontSize: 14 }} />
-                  <span style={{ fontSize: 11, fontWeight: 400, color: "#999" }}>{payoutLabel.length}/100</span>
-                </label>
-                {!payoutOrg.payoutManualApproved && (
-                  <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: 13, color: "#444" }}>
-                    <input type="checkbox" data-testid="checkbox-confirm-bank-arrangement" disabled={savingPayout}
-                      checked={payoutConfirmed} onChange={(event) => setPayoutConfirmed(event.target.checked)} />
-                    I have confirmed a way to pay this organisation by bank transfer outside Root ProjX.
-                  </label>
-                )}
-                {payoutError && <p role="alert" style={{ margin: 0, color: RED, fontSize: 13 }}>{payoutError}</p>}
+              <div style={{ padding: 24 }}>
+                <AdminBankDetailsReview key={payoutOrg._id} orgId={payoutOrg._id} orgName={payoutOrg.name} contactEmail={payoutOrg.contact?.email}
+                  token={token} onUnauthorized={logout} onApproved={handleBankApproved} onBusyChange={setPayoutBusy} />
               </div>
-              <div style={{ borderTop: "1px solid #eee7dd", padding: "16px 24px", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-                <button onClick={() => setPayoutOrg(null)} disabled={savingPayout} style={{ padding: "10px 16px", border: "1px solid #d8d0c5", borderRadius: 8, background: "#fff", cursor: "pointer" }}>Cancel</button>
-                <button data-testid="button-save-manual-payout" onClick={saveManualPayout} disabled={savingPayout || !payoutConfirmed || payoutLabel.length > 100} style={{ padding: "10px 18px", border: 0, borderRadius: 8, background: "#16a34a", color: "#fff", fontWeight: 800, cursor: savingPayout ? "wait" : "pointer", opacity: savingPayout ? .65 : 1 }}>
-                  {savingPayout ? "Saving…" : payoutOrg.payoutManualApproved ? "Save label" : "Approve bank transfer"}
-                </button>
+              <div style={{ borderTop: "1px solid #eee7dd", padding: "16px 24px", display: "flex", justifyContent: "flex-end" }}>
+                <button onClick={() => setPayoutOrg(null)} disabled={payoutBusy} style={{ padding: "10px 16px", border: "1px solid #d8d0c5", borderRadius: 8, background: "#fff", cursor: "pointer" }}>Close</button>
               </div>
             </div>
           </div>

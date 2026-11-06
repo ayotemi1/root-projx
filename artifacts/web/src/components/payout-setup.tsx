@@ -10,9 +10,10 @@ import * as api from "@/lib/api";
 import { myPayoutsKey } from "@/lib/payouts-api";
 import { openStripeOnboardingTab } from "@/lib/stripe-onboarding-tab";
 import { WiseLastPayout } from "@/components/wise-last-payout";
+import { BankDetailsOwner, bankDetailsStatusKey, fetchBankDetailsStatus } from "@/components/bank-details-owner";
 import type { PayoutMethod, PayoutSetup as PayoutSetupData, WiseStatus } from "@/lib/api";
 
-export const BANK_APPROVED_TEXT = "Set up: bank transfer — we hold your account details securely outside the platform.";
+export const BANK_APPROVED_TEXT = "Set up: bank transfer. Root ProjX has verified your bank details.";
 
 type Tone = "ready" | "pending" | "error" | "none";
 
@@ -89,6 +90,14 @@ export function PayoutSetup({
     staleTime: 0,
     refetchOnWindowFocus: true,
   });
+
+  const bankQ = useQuery({
+    queryKey: bankDetailsStatusKey(orgId),
+    queryFn: () => fetchBankDetailsStatus(token),
+    enabled: !!token && setupQ.data?.method === "bank_transfer",
+    staleTime: 0,
+  });
+  const bankStatus = bankQ.data;
 
   const refetchConnect = connectQ.refetch;
   useEffect(() => {
@@ -168,8 +177,11 @@ export function PayoutSetup({
     else if (wise?.wise_email) { tone = "pending"; statusText = `Current method: Wise (${wise.wise_email}). Pending verification.`; }
     else { tone = "pending"; statusText = "Current method: Wise. Add your Wise account email to finish setup."; }
   } else if (method === "bank_transfer") {
-    if (setup?.payoutManualApproved) { tone = "ready"; statusText = BANK_APPROVED_TEXT; }
-    else { tone = "pending"; statusText = "Current method: bank transfer. Waiting for Root ProjX to confirm — we'll be in touch to arrange details off-platform."; }
+    if (bankQ.isError) { tone = "error"; statusText = "Current method: bank transfer. Your bank detail status is unavailable. Please retry below."; }
+    else if (bankStatus && !bankStatus.hasDetails) { tone = "pending"; statusText = "Current method: bank transfer. Add your bank details below so Root ProjX can pay you."; }
+    else if (setup?.payoutManualApproved && bankStatus?.hasDetails && bankStatus.approved) { tone = "ready"; statusText = BANK_APPROVED_TEXT; }
+    else if (bankStatus?.hasDetails) { tone = "pending"; statusText = "Current method: bank transfer. Your bank details are saved and awaiting review by Root ProjX."; }
+    else { tone = "pending"; statusText = "Current method: bank transfer. Checking your bank details status."; }
   }
 
   function optionShell(m: PayoutMethod, title: string, icon: React.ReactNode, body: React.ReactNode, selectLabel: string) {
@@ -277,22 +289,12 @@ export function PayoutSetup({
     </div>
   );
 
-  const bankBody = (
-    <>
-      {method === "bank_transfer" ? (
-        setup?.payoutManualApproved ? (
-          <p className="text-sm font-semibold text-green-700" data-testid="text-bank-approved">{BANK_APPROVED_TEXT}</p>
-        ) : (
-          <p className="text-sm font-semibold text-amber-700 flex items-start gap-1.5" data-testid="text-bank-pending">
-            <Clock className="w-4 h-4 mt-0.5 flex-shrink-0" /> Requested — waiting for Root ProjX approval.
-          </p>
-        )
-      ) : (
-        <p className="text-xs text-muted-foreground">
-          We'll arrange your bank details with you directly, off-platform. Never enter account numbers here.
-        </p>
-      )}
-    </>
+  const bankBody = method === "bank_transfer" ? (
+    <BankDetailsOwner key={orgId} orgId={orgId} token={token} />
+  ) : (
+    <p className="text-xs text-muted-foreground">
+      Choose bank transfer to securely add your bank account details for Root ProjX to review.
+    </p>
   );
 
   return (

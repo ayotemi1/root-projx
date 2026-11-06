@@ -8,6 +8,9 @@
 
 export * from "./applyPasswordReset200";
 export * from "./authResponse";
+export * from "./bankDetailsApprovalInput";
+export * from "./bankDetailsInput";
+export * from "./bankDetailsStatus";
 export * from "./campaignAssistRequest";
 export * from "./campaignAssistRequestField";
 export * from "./campaignEditorRequest";
@@ -89,6 +92,7 @@ export * from "./registerRequest";
 export * from "./registerRequestAccountType";
 export * from "./requestCampaignWritingSuggestion200";
 export * from "./requestPasswordReset200";
+export * from "./reviewBankDetails200";
 export * from "./saveCampaignDraft400";
 export * from "./saveCampaignDraft400UnmetGatesItem";
 export * from "./saveOrganisationWalkthrough200";

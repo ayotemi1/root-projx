@@ -257,6 +257,49 @@ export async function fsMutateCampaigns<T>(
   throw new Error("Your organisation changed while saving. Your draft is kept; retry saving.");
 }
 
+/** Bank edits and approval share a two-document compare-and-swap. A stale
+ * admin review cannot approve changed details, and edits cannot race a payout. */
+export async function fsMutateBankDetails<T>(
+  orgId: string, token: string,
+  mutate: (org: Record<string, unknown>, record: Record<string, unknown> | null) => {
+    orgUpdates: Record<string, unknown>; record?: Record<string, unknown>; result: T;
+  },
+): Promise<T> {
+  const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+  const name = `projects/${PROJECT_ID}/databases/(default)/documents`;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const [orgRes, bankRes] = await Promise.all([
+      fetch(`${FIRESTORE}/organisations/${encodeURIComponent(orgId)}`, { headers }),
+      fetch(`${FIRESTORE}/organisation_bank_details/${encodeURIComponent(orgId)}`, { headers }),
+    ]);
+    if (!orgRes.ok || (!bankRes.ok && bankRes.status !== 404)) throw new Error("Cannot load private bank record.");
+    const orgDoc = await orgRes.json() as { fields: Record<string, FsValue>; updateTime: string };
+    const bankDoc = bankRes.ok ? await bankRes.json() as { fields: Record<string, FsValue>; updateTime: string } : null;
+    const org = fromFsDoc(orgDoc.fields ?? {});
+    if (org.deletedAt) throw new Error("Organisation not found.");
+    const bank = bankDoc ? fromFsDoc(bankDoc.fields ?? {}) : null;
+    const mutation = mutate(org, bank);
+    const record = mutation.record ?? bank;
+    if (!record) throw new Error("Submit bank details before approval.");
+    const writes = [{
+      update: { name: `${name}/organisations/${orgId}`,
+        fields: Object.fromEntries(Object.entries(mutation.orgUpdates).map(([k, v]) => [k, toFsVal(v)])) },
+      updateMask: { fieldPaths: Object.keys(mutation.orgUpdates) },
+      currentDocument: { updateTime: orgDoc.updateTime },
+    }, {
+      update: { name: `${name}/organisation_bank_details/${orgId}`,
+        fields: Object.fromEntries(Object.entries(record).map(([k, v]) => [k, toFsVal(v)])) },
+      currentDocument: bankDoc ? { updateTime: bankDoc.updateTime } : { exists: false },
+    }];
+    const saved = await fetch(`${FIRESTORE}:commit`, { method: "POST", headers, body: JSON.stringify({ writes }) });
+    if (saved.ok) return mutation.result;
+    const error = await saved.text();
+    if (saved.status === 409 || saved.status === 400 && error.includes("FAILED_PRECONDITION")) continue;
+    throw new Error("Could not save private bank record.");
+  }
+  throw new Error("Bank details changed while saving. Reload and review again.");
+}
+
 export async function fsPatch(
   collection: string,
   docId: string,

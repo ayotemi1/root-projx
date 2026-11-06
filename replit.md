@@ -323,6 +323,34 @@ All routes prefixed `/api`:
 - `/newsletter/subscribe` — Brevo contact upsert
 - `/webhooks/stripe` — Stripe payment webhook (raw body, mounted BEFORE express.json())
 
+## Private bank-transfer details
+
+Organisations choosing bank transfer enter payout account details under Dashboard
+→ Payouts → Bank transfer. Only approved organisation owners can submit. The
+private `organisation_bank_details/{orgId}` record stores an AES-256-GCM envelope,
+bound to the organisation ID, plus revision and submission time. A dedicated
+`BANK_DETAILS_ENCRYPTION_KEY` must contain a random 32-byte key encoded as base64;
+there is no fallback to session secrets or plaintext. Keep a secure backup: losing
+or replacing it without a migration makes existing records unreadable.
+
+Owner reads return submission status only. Admin full-detail reads require
+explicit review, are not cached, and log access without account data. The browser
+keeps raw input/review data in component memory only. Public organisation
+responses exclude the bank revision and contain no bank record or identifiers.
+Saving details atomically withdraws prior approval. Admin approval is bound to
+the reviewed revision; concurrent changes require review again. Edits are blocked
+while a payout settlement/reconciliation lock exists. Approval never sends money.
+Legacy approved off-platform arrangements are not silently deleted; submitting
+their first on-site record withdraws the old approval and requires fresh review.
+
+Admin credentials now use `ADMIN_PASSWORD`, or existing `ADMIN_SECRET` when no
+password is configured. There is no built-in default. Existing sessions based
+on the old default must sign in again after publication.
+
+Activation also requires manually publishing the server-only
+`organisation_bank_details` rules block in Firebase Console. Do not edit or
+publish `firestore.rules` automatically. Preserve other live collection rules.
+
 ## Organisation content library
 
 The public profile's Posts tab is an Instagram-style three-column square grid.

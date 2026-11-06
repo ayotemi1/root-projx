@@ -19,6 +19,9 @@ import type {
 import type {
   ApplyPasswordReset200,
   AuthResponse,
+  BankDetailsApprovalInput,
+  BankDetailsInput,
+  BankDetailsStatus,
   CampaignAssistRequest,
   CampaignEditorRequest,
   CampaignLandingView,
@@ -59,6 +62,7 @@ import type {
   RegisterRequest,
   RequestCampaignWritingSuggestion200,
   RequestPasswordReset200,
+  ReviewBankDetails200,
   SaveCampaignDraft400,
   SaveOrganisationWalkthrough200,
   SubmitHelpReviewRequest,
@@ -79,6 +83,341 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+/**
+ * @summary Get the owning organisation's bank-detail submission status
+ */
+export const getGetBankDetailsStatusUrl = () => {
+  return `/api/payout/bank-details`;
+};
+
+export const getBankDetailsStatus = async (
+  options?: RequestInit,
+): Promise<BankDetailsStatus> => {
+  return customFetch<BankDetailsStatus>(getGetBankDetailsStatusUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetBankDetailsStatusQueryKey = () => {
+  return [`/api/payout/bank-details`] as const;
+};
+
+export const getGetBankDetailsStatusQueryOptions = <
+  TData = Awaited<ReturnType<typeof getBankDetailsStatus>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getBankDetailsStatus>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetBankDetailsStatusQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getBankDetailsStatus>>
+  > = ({ signal }) => getBankDetailsStatus({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getBankDetailsStatus>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetBankDetailsStatusQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getBankDetailsStatus>>
+>;
+export type GetBankDetailsStatusQueryError = ErrorType<void>;
+
+/**
+ * @summary Get the owning organisation's bank-detail submission status
+ */
+
+export function useGetBankDetailsStatus<
+  TData = Awaited<ReturnType<typeof getBankDetailsStatus>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getBankDetailsStatus>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetBankDetailsStatusQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Encrypt and save payout bank details, withdrawing previous approval atomically
+ */
+export const getSaveBankDetailsUrl = () => {
+  return `/api/payout/bank-details`;
+};
+
+export const saveBankDetails = async (
+  bankDetailsInput: BankDetailsInput,
+  options?: RequestInit,
+): Promise<BankDetailsStatus> => {
+  return customFetch<BankDetailsStatus>(getSaveBankDetailsUrl(), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(bankDetailsInput),
+  });
+};
+
+export const getSaveBankDetailsMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveBankDetails>>,
+    TError,
+    { data: BodyType<BankDetailsInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof saveBankDetails>>,
+  TError,
+  { data: BodyType<BankDetailsInput> },
+  TContext
+> => {
+  const mutationKey = ["saveBankDetails"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof saveBankDetails>>,
+    { data: BodyType<BankDetailsInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return saveBankDetails(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SaveBankDetailsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof saveBankDetails>>
+>;
+export type SaveBankDetailsMutationBody = BodyType<BankDetailsInput>;
+export type SaveBankDetailsMutationError = ErrorType<void>;
+
+/**
+ * @summary Encrypt and save payout bank details, withdrawing previous approval atomically
+ */
+export const useSaveBankDetails = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveBankDetails>>,
+    TError,
+    { data: BodyType<BankDetailsInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof saveBankDetails>>,
+  TError,
+  { data: BodyType<BankDetailsInput> },
+  TContext
+> => {
+  return useMutation(getSaveBankDetailsMutationOptions(options));
+};
+
+/**
+ * @summary Explicit private admin review of decrypted bank details, never cache
+ */
+export const getReviewBankDetailsUrl = (id: string) => {
+  return `/api/admin/organisations/${id}/bank-details`;
+};
+
+export const reviewBankDetails = async (
+  id: string,
+  options?: RequestInit,
+): Promise<ReviewBankDetails200> => {
+  return customFetch<ReviewBankDetails200>(getReviewBankDetailsUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getReviewBankDetailsQueryKey = (id: string) => {
+  return [`/api/admin/organisations/${id}/bank-details`] as const;
+};
+
+export const getReviewBankDetailsQueryOptions = <
+  TData = Awaited<ReturnType<typeof reviewBankDetails>>,
+  TError = ErrorType<void>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof reviewBankDetails>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getReviewBankDetailsQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof reviewBankDetails>>
+  > = ({ signal }) => reviewBankDetails(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof reviewBankDetails>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ReviewBankDetailsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof reviewBankDetails>>
+>;
+export type ReviewBankDetailsQueryError = ErrorType<void>;
+
+/**
+ * @summary Explicit private admin review of decrypted bank details, never cache
+ */
+
+export function useReviewBankDetails<
+  TData = Awaited<ReturnType<typeof reviewBankDetails>>,
+  TError = ErrorType<void>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof reviewBankDetails>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getReviewBankDetailsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Approve exactly the reviewed bank-detail revision
+ */
+export const getApproveBankDetailsUrl = (id: string) => {
+  return `/api/admin/organisations/${id}/bank-details/approve`;
+};
+
+export const approveBankDetails = async (
+  id: string,
+  bankDetailsApprovalInput: BankDetailsApprovalInput,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getApproveBankDetailsUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(bankDetailsApprovalInput),
+  });
+};
+
+export const getApproveBankDetailsMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof approveBankDetails>>,
+    TError,
+    { id: string; data: BodyType<BankDetailsApprovalInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof approveBankDetails>>,
+  TError,
+  { id: string; data: BodyType<BankDetailsApprovalInput> },
+  TContext
+> => {
+  const mutationKey = ["approveBankDetails"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof approveBankDetails>>,
+    { id: string; data: BodyType<BankDetailsApprovalInput> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return approveBankDetails(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ApproveBankDetailsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof approveBankDetails>>
+>;
+export type ApproveBankDetailsMutationBody = BodyType<BankDetailsApprovalInput>;
+export type ApproveBankDetailsMutationError = ErrorType<void>;
+
+/**
+ * @summary Approve exactly the reviewed bank-detail revision
+ */
+export const useApproveBankDetails = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof approveBankDetails>>,
+    TError,
+    { id: string; data: BodyType<BankDetailsApprovalInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof approveBankDetails>>,
+  TError,
+  { id: string; data: BodyType<BankDetailsApprovalInput> },
+  TContext
+> => {
+  return useMutation(getApproveBankDetailsMutationOptions(options));
+};
 
 /**
  * Rate-limited. Returns the same confirmation for registered and unknown addresses. Firebase handles expiring single-use reset links.

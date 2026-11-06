@@ -206,7 +206,11 @@ router.post("/applications/org", async (req, res) => {
 router.post("/admin/login", async (req, res) => {
   try {
     const { password } = req.body as { password?: string };
-    const adminPassword = process.env.ADMIN_PASSWORD ?? "rootprojx-admin";
+    const adminPassword = process.env.ADMIN_PASSWORD || process.env.ADMIN_SECRET;
+    if (!adminPassword) {
+      res.status(503).json({ error: "Administrator credentials are not configured" });
+      return;
+    }
     if (!password || password !== adminPassword) {
       res.status(401).json({ error: "Invalid admin password" });
       return;
@@ -493,6 +497,10 @@ router.patch("/admin/organisations/:id/manual-payout", requireAdmin, async (req,
     }
     if (org.payoutManualRequested !== true || activePayoutMethod(org) !== "bank_transfer") {
       res.status(409).json({ error: "The organisation must first request bank transfer as its payout method" });
+      return;
+    }
+    if (org.bankDetailsRevision || org.payoutManualApproved !== true) {
+      res.status(409).json({ error: "The organisation must submit bank details, then you must approve the current revision using the secure bank-details review." });
       return;
     }
     const updates: Record<string, unknown> = { payoutManualApproved: true };

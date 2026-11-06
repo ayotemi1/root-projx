@@ -52,7 +52,7 @@ export default function PrivacyPage() {
                 <li>Organisation name and contact person name</li>
                 <li>Country of operation</li>
                 <li>Registration or charity number (optional)</li>
-                <li>Bank account details (collected and stored by Stripe only — never by Root ProjX)</li>
+                <li>For manual bank-transfer payouts: account holder, bank, account identifiers and routing details supplied privately by the organisation. Root ProjX stores these encrypted for authorised administrators to arrange payouts.</li>
               </ul>
             </div>
             <div>
@@ -115,9 +115,11 @@ export default function PrivacyPage() {
             Data Processing Agreement with Google LLC in accordance with UK GDPR Article 28.
           </p>
           <p className="mt-3">
-            Payment data is handled exclusively by Stripe, Inc. — a PCI DSS Level 1 certified payment processor.
-            Root ProjX maintains a Data Processing Agreement with Stripe. We never store card numbers, bank
-            account details, or payment credentials.
+            Card payments are handled by Stripe, Inc. — a PCI DSS Level 1 certified payment processor.
+            Root ProjX does not store card numbers, online banking passwords or banking login credentials.
+            Where an organisation chooses manual bank transfer, Root ProjX stores its submitted payout bank
+            details in an encrypted private record. Access is restricted to authorised administration
+            for verification and payouts; those details are never part of the public organisation profile.
           </p>
           <p className="mt-3">
             Email communications are handled by Brevo (formerly Sendinblue). Root ProjX maintains a Data

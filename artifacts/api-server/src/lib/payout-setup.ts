@@ -43,6 +43,7 @@ export function withoutPrivatePayoutSetup(org: Record<string, unknown>) {
     payoutManualRequested: _requested,
     payoutManualApproved: _approved,
     payoutManualLabel: _label,
+    bankDetailsRevision: _bankRevision,
     payoutSettlementBatchId: _settlementBatch,
     walkthrough: _walkthrough, profilePreviewedAt: _profilePreview,
     campaignPreviewedAt: _campaignPreview, campaignPreviewedId: _campaignPreviewId,

@@ -235,7 +235,7 @@ test("only approved organisation owners can select a method; bank requests canno
   assert.equal((await invoke(payout, "/payout/setup", "GET", { headers })).body.method, "bank_transfer");
 });
 
-test("admin approval requires a request, rejects sensitive data, persists the label and survives method switches", async () => {
+test("legacy manual labels reject sensitive data; new approvals must use bank-detail review", async () => {
   const { applications, payout, state } = await fixture();
   const route = "/admin/organisations/:id/manual-payout";
   const params = { id: "org" };
@@ -247,6 +247,9 @@ test("admin approval requires a request, rejects sensitive data, persists the la
   for (const invalid of [{ ...body, iban: "synthetic" }, { ...body, payoutManualLabel: "12-34-56" }]) {
     assert.equal((await invoke(applications, route, "PATCH", { params, body: invalid, headers: adminHeaders })).status, 400);
   }
+  assert.equal((await invoke(applications, route, "PATCH", { params, body, headers: adminHeaders })).status, 409,
+    "New approvals require submitted bank details and revision-bound review");
+  state.docs.set("organisations/org", { ...state.docs.get("organisations/org"), payoutManualApproved: true });
   assert.equal((await invoke(applications, route, "PATCH", { params, body, headers: adminHeaders })).status, 200);
   assert.deepEqual(state.writes.at(-1).patch, body);
   let saved = (await invoke(payout, "/payout/setup", "GET", { headers })).body;

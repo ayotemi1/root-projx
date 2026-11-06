@@ -8,6 +8,191 @@
 import * as zod from "zod";
 
 /**
+ * @summary Get the owning organisation's bank-detail submission status
+ */
+export const GetBankDetailsStatusResponse = zod.object({
+  hasDetails: zod.boolean(),
+  revision: zod.string().nullable(),
+  submittedAt: zod.string().nullable(),
+  approved: zod.boolean(),
+});
+
+/**
+ * @summary Encrypt and save payout bank details, withdrawing previous approval atomically
+ */
+export const saveBankDetailsBodyAccountHolderMax = 150;
+
+export const saveBankDetailsBodyBankNameMax = 150;
+
+export const saveBankDetailsBodyBankCountryMin = 2;
+export const saveBankDetailsBodyBankCountryMax = 2;
+
+export const saveBankDetailsBodyCurrencyMin = 3;
+export const saveBankDetailsBodyCurrencyMax = 3;
+
+export const saveBankDetailsBodyAccountNumberMax = 34;
+
+export const saveBankDetailsBodyIbanMax = 34;
+
+export const saveBankDetailsBodyRoutingCodeMax = 30;
+
+export const saveBankDetailsBodySwiftBicMax = 11;
+
+export const saveBankDetailsBodyBranchNameMax = 150;
+
+export const saveBankDetailsBodyBankAddressMax = 300;
+
+export const saveBankDetailsBodyBeneficiaryAddressMax = 300;
+
+export const SaveBankDetailsBody = zod
+  .object({
+    accountHolder: zod.string().min(1).max(saveBankDetailsBodyAccountHolderMax),
+    bankName: zod.string().min(1).max(saveBankDetailsBodyBankNameMax),
+    bankCountry: zod
+      .string()
+      .min(saveBankDetailsBodyBankCountryMin)
+      .max(saveBankDetailsBodyBankCountryMax),
+    currency: zod
+      .string()
+      .min(saveBankDetailsBodyCurrencyMin)
+      .max(saveBankDetailsBodyCurrencyMax),
+    accountNumber: zod
+      .string()
+      .max(saveBankDetailsBodyAccountNumberMax)
+      .optional(),
+    iban: zod.string().max(saveBankDetailsBodyIbanMax).optional(),
+    routingCode: zod.string().max(saveBankDetailsBodyRoutingCodeMax).optional(),
+    swiftBic: zod.string().max(saveBankDetailsBodySwiftBicMax).optional(),
+    branchName: zod.string().max(saveBankDetailsBodyBranchNameMax).optional(),
+    bankAddress: zod.string().max(saveBankDetailsBodyBankAddressMax).optional(),
+    beneficiaryAddress: zod
+      .string()
+      .max(saveBankDetailsBodyBeneficiaryAddressMax)
+      .optional(),
+  })
+  .describe(
+    "Account number or IBAN required. UK accounts need a sort code unless using IBAN; US accounts need a routing number.",
+  );
+
+export const SaveBankDetailsResponse = zod.object({
+  hasDetails: zod.boolean(),
+  revision: zod.string().nullable(),
+  submittedAt: zod.string().nullable(),
+  approved: zod.boolean(),
+});
+
+/**
+ * @summary Explicit private admin review of decrypted bank details, never cache
+ */
+export const ReviewBankDetailsParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const reviewBankDetailsResponseTwoDetailsOneAccountHolderMax = 150;
+
+export const reviewBankDetailsResponseTwoDetailsOneBankNameMax = 150;
+
+export const reviewBankDetailsResponseTwoDetailsOneBankCountryMin = 2;
+export const reviewBankDetailsResponseTwoDetailsOneBankCountryMax = 2;
+
+export const reviewBankDetailsResponseTwoDetailsOneCurrencyMin = 3;
+export const reviewBankDetailsResponseTwoDetailsOneCurrencyMax = 3;
+
+export const reviewBankDetailsResponseTwoDetailsOneAccountNumberMax = 34;
+
+export const reviewBankDetailsResponseTwoDetailsOneIbanMax = 34;
+
+export const reviewBankDetailsResponseTwoDetailsOneRoutingCodeMax = 30;
+
+export const reviewBankDetailsResponseTwoDetailsOneSwiftBicMax = 11;
+
+export const reviewBankDetailsResponseTwoDetailsOneBranchNameMax = 150;
+
+export const reviewBankDetailsResponseTwoDetailsOneBankAddressMax = 300;
+
+export const reviewBankDetailsResponseTwoDetailsOneBeneficiaryAddressMax = 300;
+
+export const ReviewBankDetailsResponse = zod
+  .object({
+    hasDetails: zod.boolean(),
+    revision: zod.string().nullable(),
+    submittedAt: zod.string().nullable(),
+    approved: zod.boolean(),
+  })
+  .and(
+    zod.object({
+      details: zod
+        .union([
+          zod
+            .object({
+              accountHolder: zod
+                .string()
+                .min(1)
+                .max(reviewBankDetailsResponseTwoDetailsOneAccountHolderMax),
+              bankName: zod
+                .string()
+                .min(1)
+                .max(reviewBankDetailsResponseTwoDetailsOneBankNameMax),
+              bankCountry: zod
+                .string()
+                .min(reviewBankDetailsResponseTwoDetailsOneBankCountryMin)
+                .max(reviewBankDetailsResponseTwoDetailsOneBankCountryMax),
+              currency: zod
+                .string()
+                .min(reviewBankDetailsResponseTwoDetailsOneCurrencyMin)
+                .max(reviewBankDetailsResponseTwoDetailsOneCurrencyMax),
+              accountNumber: zod
+                .string()
+                .max(reviewBankDetailsResponseTwoDetailsOneAccountNumberMax)
+                .optional(),
+              iban: zod
+                .string()
+                .max(reviewBankDetailsResponseTwoDetailsOneIbanMax)
+                .optional(),
+              routingCode: zod
+                .string()
+                .max(reviewBankDetailsResponseTwoDetailsOneRoutingCodeMax)
+                .optional(),
+              swiftBic: zod
+                .string()
+                .max(reviewBankDetailsResponseTwoDetailsOneSwiftBicMax)
+                .optional(),
+              branchName: zod
+                .string()
+                .max(reviewBankDetailsResponseTwoDetailsOneBranchNameMax)
+                .optional(),
+              bankAddress: zod
+                .string()
+                .max(reviewBankDetailsResponseTwoDetailsOneBankAddressMax)
+                .optional(),
+              beneficiaryAddress: zod
+                .string()
+                .max(
+                  reviewBankDetailsResponseTwoDetailsOneBeneficiaryAddressMax,
+                )
+                .optional(),
+            })
+            .describe(
+              "Account number or IBAN required. UK accounts need a sort code unless using IBAN; US accounts need a routing number.",
+            ),
+          zod.null(),
+        ])
+        .optional(),
+    }),
+  );
+
+/**
+ * @summary Approve exactly the reviewed bank-detail revision
+ */
+export const ApproveBankDetailsParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const ApproveBankDetailsBody = zod.object({
+  revision: zod.string().min(1),
+});
+
+/**
  * Rate-limited. Returns the same confirmation for registered and unknown addresses. Firebase handles expiring single-use reset links.
  * @summary Request a Firebase password-reset email
  */

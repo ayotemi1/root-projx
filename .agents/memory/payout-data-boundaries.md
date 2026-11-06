@@ -3,19 +3,23 @@ name: Payout data boundaries
 description: Organisation bank-transfer privacy policy and the limits of payout setup.
 ---
 
-Bank-transfer account details must be exchanged off-platform and held in the
-banking provider, never collected or stored in Root ProjX. This includes account
-numbers, sort codes, routing numbers and IBANs. Manual setup may hold only a
-request, approval and an optional short provider/payee reminder. The selected
-payout method is exclusive; keeping a provider connection does not select it.
+Bank-transfer details are collected privately through the organisation dashboard
+and kept in Root ProjX records for administrators to pay organisations. They must
+be encrypted with a dedicated, persistent secret, isolated from public profile
+data and accessible only through authorised server endpoints. Never put banking
+details in logs, public APIs, browser persistence, exports or agent memory.
+Changing details withdraws approval; approval must apply to the exact reviewed
+revision and must not race an in-progress payout. The selected payout method is
+exclusive; keeping a provider connection does not select it.
 
-**Why:** The user deliberately excludes banking credentials from the platform.
-If a future flow appears to require another bank-detail field, stop and ask
-instead of introducing it.
+**Why:** On 2026-11-06 the user explicitly replaced the previous off-platform
+policy: “We should collect it through the site and store in our records this is
+how we will pay them out.”
 
-**How to apply:** Preserve this boundary in organisation/admin forms, API
-validation, logging, exports and future payout execution. Manual setup approval
-confirms an off-platform arrangement; it does not initiate a transfer.
+**How to apply:** Preserve this boundary in forms, validation, logging and future
+payout execution. Legacy approved off-platform arrangements may remain, but
+must not be described as bank details already saved on the site. Approval does
+not initiate a transfer. New account details require fresh independent review.
 
 Public payout routing uses `stripe_connect`, `wise`, `manual`, or `none`;
 dashboard selections retain `stripe`, `wise`, and `bank_transfer` for backwards

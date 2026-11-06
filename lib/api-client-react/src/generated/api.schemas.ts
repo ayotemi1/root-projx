@@ -14,6 +14,60 @@ export interface OrganisationDeletionResult {
   orgId: string;
 }
 
+export interface BankDetailsStatus {
+  hasDetails: boolean;
+  /** @nullable */
+  revision: string | null;
+  /** @nullable */
+  submittedAt: string | null;
+  approved: boolean;
+}
+
+export interface BankDetailsApprovalInput {
+  /** @minLength 1 */
+  revision: string;
+}
+
+/**
+ * Account number or IBAN required. UK accounts need a sort code unless using IBAN; US accounts need a routing number.
+ */
+export interface BankDetailsInput {
+  /**
+   * @minLength 1
+   * @maxLength 150
+   */
+  accountHolder: string;
+  /**
+   * @minLength 1
+   * @maxLength 150
+   */
+  bankName: string;
+  /**
+   * @minLength 2
+   * @maxLength 2
+   */
+  bankCountry: string;
+  /**
+   * @minLength 3
+   * @maxLength 3
+   */
+  currency: string;
+  /** @maxLength 34 */
+  accountNumber?: string;
+  /** @maxLength 34 */
+  iban?: string;
+  /** @maxLength 30 */
+  routingCode?: string;
+  /** @maxLength 11 */
+  swiftBic?: string;
+  /** @maxLength 150 */
+  branchName?: string;
+  /** @maxLength 300 */
+  bankAddress?: string;
+  /** @maxLength 300 */
+  beneficiaryAddress?: string;
+}
+
 export interface PasswordResetRequest {
   /** @maxLength 254 */
   email: string;
@@ -836,6 +890,10 @@ export interface UpdateProfileRequest {
   email?: string;
   phone?: string;
 }
+
+export type ReviewBankDetails200 = BankDetailsStatus & {
+  details?: BankDetailsInput | null;
+};
 
 export type RequestPasswordReset200 = {
   message: string;
