@@ -96,6 +96,21 @@ export async function firebaseSendPasswordResetEmail(email: string): Promise<voi
   }
 }
 
+// Firebase validates expiry/single-use and enforces its password policy.
+// Never log the code, password or Firebase response (which can contain email).
+export async function firebaseResetPassword(oobCode: string, newPassword?: string): Promise<void> {
+  const res = await fetch(`${IDENTITY}:resetPassword?key=${API_KEY}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ oobCode, ...(newPassword !== undefined ? { newPassword } : {}) }),
+  });
+  if (!res.ok) {
+    const data = await res.json() as Record<string, unknown>;
+    const code = ((data.error as Record<string, unknown>)?.message as string) ?? "PASSWORD_RESET_FAILED";
+    throw Object.assign(new Error("Password reset failed"), { firebaseCode: code.split(" : ")[0] });
+  }
+}
+
 // ─── Firestore REST ───────────────────────────────────────────────────────────
 
 type FsValue =

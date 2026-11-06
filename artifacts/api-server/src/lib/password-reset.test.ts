@@ -20,7 +20,7 @@ const compiled = await build({
       b.onLoad({ filter: /.*/, namespace: "reset" }, a => ({
         loader: "js",
         contents: a.path === "state"
-          ? 'export const state = {calls: [], mode: "success", logs: []};'
+          ? 'export const state = {calls: [], actions: [], mode: "success", logs: []};'
           : a.path === "firebase-rest.js" ? `
             import {state} from "reset:state";
             const forbidden = async () => {throw Error("Unexpected account read/write");};
@@ -28,6 +28,10 @@ const compiled = await build({
               fsGet=forbidden, fsPatch=forbidden, getServerToken=forbidden;
             export async function firebaseSendPasswordResetEmail(email) {
               state.calls.push(email);
+              if (state.mode !== "success") throw Object.assign(new Error("Private provider payload"), {firebaseCode: state.mode});
+            }
+            export async function firebaseResetPassword(code, password) {
+              state.actions.push({code, password});
               if (state.mode !== "success") throw Object.assign(new Error("Private provider payload"), {firebaseCode: state.mode});
             }`
           : a.path === "auth.js" ? "export const requireAuth=()=>{throw Error('Reset must not require login');};"
@@ -44,12 +48,13 @@ function fixture() {
   const route = router.stack.find((l: any) => l.route?.path === "/auth/forgot-password").route;
   return {
     state,
-    async request(body: unknown) {
+    async request(body: unknown, path = "/auth/forgot-password") {
       let status = 200, data: any;
-      const res = { status(code: number) { status = code; return this; }, json(value: unknown) { data = value; } };
+      const res = { setHeader() {}, status(code: number) { status = code; return this; }, json(value: unknown) { data = value; } };
       const req = { body, headers: {}, socket: { remoteAddress: "synthetic-client" },
         log: { error(...args: unknown[]) { state.logs.push(args); } } };
-      for (const layer of route.stack) {
+      const selected = path === "/auth/forgot-password" ? route : router.stack.find((l: any) => l.route?.path === path).route;
+      for (const layer of selected.stack) {
         let next = false;
         await layer.handle(req, res, () => { next = true; });
         if (!next) break;
@@ -95,4 +100,50 @@ test("reset-email requests are limited to five per client per window", async () 
   assert.equal(blocked.status, 429);
   assert.match(blocked.data.error, /too many/i);
   assert.equal(f.state.calls.length, 5);
+});
+
+test("a valid code can be checked without changing a password, then used to reset it", async () => {
+  const f = fixture();
+  const path = "/auth/reset-password";
+  assert.equal((await f.request({ oobCode: "synthetic-code" }, path)).status, 200);
+  assert.equal((await f.request({ oobCode: "synthetic-code", newPassword: "synthetic-password" }, path)).status, 200);
+  assert.deepEqual(f.state.actions, [
+    { code: "synthetic-code", password: undefined },
+    { code: "synthetic-code", password: "synthetic-password" },
+  ]);
+  assert.deepEqual(f.state.calls, []);
+});
+
+test("expired and used links lead to recovery, and a new email can be requested without signing in", async () => {
+  const f = fixture();
+  for (const [provider, expected] of [["EXPIRED_OOB_CODE", "RESET_LINK_EXPIRED"], ["INVALID_OOB_CODE", "RESET_LINK_INVALID"]]) {
+    f.state.mode = provider;
+    const result = await f.request({ oobCode: "synthetic-code" }, "/auth/reset-password");
+    assert.equal(result.status, 400);
+    assert.equal(result.data.code, expected);
+    assert.match(result.data.error, /request a new link/i);
+  }
+  f.state.mode = "success";
+  assert.equal((await f.request({ email: "owner@example.test" })).status, 200);
+});
+
+test("password validation, retryable outages and rate limits never expose provider payloads", async () => {
+  const f = fixture();
+  const path = "/auth/reset-password";
+  for (const body of [{}, { oobCode: [] }, { oobCode: "code", newPassword: "123" }]) {
+    assert.equal((await f.request(body, path)).status, 400);
+  }
+  assert.deepEqual(f.state.actions, []);
+  f.state.mode = "WEAK_PASSWORD";
+  const weak = await f.request({ oobCode: "code", newPassword: "123456" }, path);
+  assert.equal(weak.data.code, "WEAK_PASSWORD");
+  f.state.mode = "INTERNAL_ERROR";
+  const outage = await f.request({ oobCode: "code" }, path);
+  assert.equal(outage.status, 503);
+  assert.doesNotMatch(JSON.stringify([outage, f.state.logs]), /Private provider payload|synthetic-code|INTERNAL_ERROR/);
+  const limited = fixture();
+  for (let i = 0; i < 30; i++) assert.equal((await limited.request({ oobCode: "code" }, path)).status, 200);
+  assert.equal((await limited.request({ oobCode: "code" }, path)).status, 429);
+  // Exhausting code attempts does not exhaust the separate email recovery limit.
+  assert.equal((await limited.request({ email: "owner@example.test" })).status, 200);
 });

@@ -189,7 +189,17 @@ payment references or identity hashes. Campaign pages refresh this list while op
 
 Web sign-in links to `/forgot-password`, which requests
 `POST /api/auth/forgot-password`. Organisation and supporter accounts both use
-the existing Firebase reset-email flow and Firebase-hosted new-password page.
+the existing Firebase reset-email flow. The website `/reset-password` action
+handler verifies Firebase codes, accepts a confirmed new password, and offers
+fresh-link recovery for expired, invalid or already-used links. Provider outages
+remain retryable without being misreported as expiry. `/forgot-password` offers
+resend after a 60-second cooldown, a different-email option, and sign-in links.
+Firebase still enforces code expiry, single use and its password policy.
+**Activation:** after publishing, Firebase Console → Authentication → Templates
+→ Password reset → Edit → Customize action URL must point to
+`https://rootprojx.com/reset-password`. This is an external Firebase setting;
+deploying code does not change it. Previously sent emails still open their
+original Firebase-hosted handler; request a fresh link after activation.
 Do not retrieve, display or set users' passwords through administrator tooling.
 Registered and unknown addresses receive identical confirmation; malformed
 input is rejected and requests are limited separately from sign-in attempts.

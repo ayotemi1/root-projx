@@ -17,6 +17,7 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  ApplyPasswordReset200,
   AuthResponse,
   CampaignAssistRequest,
   CampaignEditorRequest,
@@ -46,6 +47,7 @@ import type {
   OrganisationDeletionInput,
   OrganisationDeletionResult,
   OrganisationRunningSummary,
+  PasswordResetActionInput,
   PasswordResetRequest,
   PayoutOverview,
   PayoutRunResult,
@@ -79,7 +81,7 @@ type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 /**
- * Rate-limited. Returns the same confirmation for registered and unknown addresses. Firebase handles expiring reset links and the new-password form.
+ * Rate-limited. Returns the same confirmation for registered and unknown addresses. Firebase handles expiring single-use reset links.
  * @summary Request a Firebase password-reset email
  */
 export const getRequestPasswordResetUrl = () => {
@@ -163,6 +165,93 @@ export const useRequestPasswordReset = <
   TContext
 > => {
   return useMutation(getRequestPasswordResetMutationOptions(options));
+};
+
+/**
+ * No sign-in required. Omitting newPassword verifies only and does not consume the code. Firebase enforces expiry, single use and password policy. Never log request bodies.
+ * @summary Verify a reset code or apply a new password using that code
+ */
+export const getApplyPasswordResetUrl = () => {
+  return `/api/auth/reset-password`;
+};
+
+export const applyPasswordReset = async (
+  passwordResetActionInput: PasswordResetActionInput,
+  options?: RequestInit,
+): Promise<ApplyPasswordReset200> => {
+  return customFetch<ApplyPasswordReset200>(getApplyPasswordResetUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(passwordResetActionInput),
+  });
+};
+
+export const getApplyPasswordResetMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof applyPasswordReset>>,
+    TError,
+    { data: BodyType<PasswordResetActionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof applyPasswordReset>>,
+  TError,
+  { data: BodyType<PasswordResetActionInput> },
+  TContext
+> => {
+  const mutationKey = ["applyPasswordReset"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof applyPasswordReset>>,
+    { data: BodyType<PasswordResetActionInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return applyPasswordReset(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ApplyPasswordResetMutationResult = NonNullable<
+  Awaited<ReturnType<typeof applyPasswordReset>>
+>;
+export type ApplyPasswordResetMutationBody = BodyType<PasswordResetActionInput>;
+export type ApplyPasswordResetMutationError = ErrorType<void>;
+
+/**
+ * @summary Verify a reset code or apply a new password using that code
+ */
+export const useApplyPasswordReset = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof applyPasswordReset>>,
+    TError,
+    { data: BodyType<PasswordResetActionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof applyPasswordReset>>,
+  TError,
+  { data: BodyType<PasswordResetActionInput> },
+  TContext
+> => {
+  return useMutation(getApplyPasswordResetMutationOptions(options));
 };
 
 /**

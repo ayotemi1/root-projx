@@ -6,6 +6,7 @@ import {
   firebaseSignIn,
   firebaseUpdateProfile,
   firebaseSendPasswordResetEmail,
+  firebaseResetPassword,
   fsGet,
   fsPatch,
   getServerToken,
@@ -58,8 +59,9 @@ function makeRateLimiter(maxRequests: number, windowMs: number) {
 // 10 attempts per 15 minutes on auth endpoints
 const authRateLimit = makeRateLimiter(10, 15 * 60 * 1000);
 const passwordResetRateLimit = makeRateLimiter(5, 15 * 60 * 1000);
+const passwordResetActionRateLimit = makeRateLimiter(30, 15 * 60 * 1000);
 
-// Firebase owns token generation, expiry, single use and the new-password form.
+// Firebase owns token generation, expiry and single use.
 // Never look up accounts or disclose whether a particular address is registered.
 router.post("/auth/forgot-password", passwordResetRateLimit, async (req, res) => {
   const email = passwordResetEmail(req.body);
@@ -79,6 +81,39 @@ router.post("/auth/forgot-password", passwordResetRateLimit, async (req, res) =>
     }
   }
   res.json({ message: PASSWORD_RESET_MESSAGE });
+});
+
+// Public, token-authorised action. No admin lookup or password storage.
+router.post("/auth/reset-password", passwordResetActionRateLimit, async (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  const { oobCode, newPassword } = req.body ?? {};
+  if (typeof oobCode !== "string" || !oobCode.trim() || oobCode.length > 2048) {
+    res.status(400).json({ error: "This reset link is invalid. Request a new link.", code: "RESET_LINK_INVALID" });
+    return;
+  }
+  if (newPassword !== undefined && (typeof newPassword !== "string" || newPassword.length < 6 || newPassword.length > 4096)) {
+    res.status(400).json({ error: "Choose a password with at least 6 characters.", code: "WEAK_PASSWORD" });
+    return;
+  }
+  try {
+    await firebaseResetPassword(oobCode, newPassword);
+    res.json({ message: newPassword === undefined ? "Reset link is valid." : "Your password has been changed. You can now sign in." });
+  } catch (err) {
+    const code = (err as { firebaseCode?: string }).firebaseCode;
+    if (code === "EXPIRED_OOB_CODE" || code === "INVALID_OOB_CODE") {
+      res.status(400).json({
+        error: code === "EXPIRED_OOB_CODE"
+          ? "This reset link has expired. Request a new link."
+          : "This reset link is invalid or has already been used. Request a new link.",
+        code: code === "EXPIRED_OOB_CODE" ? "RESET_LINK_EXPIRED" : "RESET_LINK_INVALID",
+      });
+    } else if (code === "WEAK_PASSWORD" || code === "PASSWORD_DOES_NOT_MEET_REQUIREMENTS") {
+      res.status(400).json({ error: "This password doesn't meet the account's security requirements. Choose a stronger password.", code: "WEAK_PASSWORD" });
+    } else {
+      req.log?.error("Firebase password reset action could not be completed");
+      res.status(503).json({ error: "We couldn't reset your password right now. Please try again.", code: "RESET_UNAVAILABLE" });
+    }
+  }
 });
 
 function avatarInitials(name: string): string {

@@ -19,6 +19,19 @@ export interface PasswordResetRequest {
   email: string;
 }
 
+export interface PasswordResetActionInput {
+  /**
+   * @minLength 1
+   * @maxLength 2048
+   */
+  oobCode: string;
+  /**
+   * @minLength 6
+   * @maxLength 4096
+   */
+  newPassword?: string;
+}
+
 /**
  * Must match the campaign currency. Organisation-wide donations remain GBP.
  */
@@ -825,6 +838,10 @@ export interface UpdateProfileRequest {
 }
 
 export type RequestPasswordReset200 = {
+  message: string;
+};
+
+export type ApplyPasswordReset200 = {
   message: string;
 };
 

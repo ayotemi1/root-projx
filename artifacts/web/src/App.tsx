@@ -25,6 +25,7 @@ import DashboardPage from "@/pages/dashboard";
 import { AdminOrganisationAccess } from "@/components/admin-organisation-access";
 import LoginPage from "@/pages/login";
 import ForgotPasswordPage from "@/pages/forgot-password";
+import ResetPasswordPage from "@/pages/reset-password";
 import RegisterPage from "@/pages/register";
 import ShopPage from "@/pages/shop";
 import ShopSuccessPage from "@/pages/shop-success";
@@ -146,6 +147,7 @@ function AppRoutes() {
                 {() => <AuthRoute component={LoginPage} />}
               </Route>
               <Route path="/forgot-password" component={ForgotPasswordPage} />
+              <Route path="/reset-password" component={ResetPasswordPage} />
               <Route path="/register">
                 {() => <AuthRoute component={RegisterPage} />}
               </Route>

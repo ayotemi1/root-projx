@@ -8,7 +8,7 @@
 import * as zod from "zod";
 
 /**
- * Rate-limited. Returns the same confirmation for registered and unknown addresses. Firebase handles expiring reset links and the new-password form.
+ * Rate-limited. Returns the same confirmation for registered and unknown addresses. Firebase handles expiring single-use reset links.
  * @summary Request a Firebase password-reset email
  */
 export const requestPasswordResetBodyEmailMax = 254;
@@ -18,6 +18,28 @@ export const RequestPasswordResetBody = zod.object({
 });
 
 export const RequestPasswordResetResponse = zod.object({
+  message: zod.string(),
+});
+
+/**
+ * No sign-in required. Omitting newPassword verifies only and does not consume the code. Firebase enforces expiry, single use and password policy. Never log request bodies.
+ * @summary Verify a reset code or apply a new password using that code
+ */
+export const applyPasswordResetBodyOobCodeMax = 2048;
+
+export const applyPasswordResetBodyNewPasswordMin = 6;
+export const applyPasswordResetBodyNewPasswordMax = 4096;
+
+export const ApplyPasswordResetBody = zod.object({
+  oobCode: zod.string().min(1).max(applyPasswordResetBodyOobCodeMax),
+  newPassword: zod
+    .string()
+    .min(applyPasswordResetBodyNewPasswordMin)
+    .max(applyPasswordResetBodyNewPasswordMax)
+    .optional(),
+});
+
+export const ApplyPasswordResetResponse = zod.object({
   message: zod.string(),
 });
 

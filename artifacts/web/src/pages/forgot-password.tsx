@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,14 +11,22 @@ export default function ForgotPasswordPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [retryIn, setRetryIn] = useState(0);
 
-  async function submit(event: React.FormEvent) {
-    event.preventDefault();
-    if (loading) return;
+  useEffect(() => {
+    if (!retryIn) return;
+    const timer = window.setTimeout(() => setRetryIn(value => Math.max(0, value - 1)), 1000);
+    return () => window.clearTimeout(timer);
+  }, [retryIn]);
+
+  async function submit(event?: React.FormEvent) {
+    event?.preventDefault();
+    if (loading || retryIn > 0) return;
     setLoading(true); setError("");
     try {
       const result = await requestPasswordReset(email.trim().toLowerCase());
       setMessage(result.message);
+      setRetryIn(60);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Couldn't request a reset link. Please try again.");
     } finally {
@@ -36,6 +44,7 @@ export default function ForgotPasswordPage() {
           <CardTitle className="text-2xl">Reset your password</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
+          {error && <p role="alert" className="bg-destructive/10 border border-destructive/20 text-destructive rounded-md px-3 py-2 text-sm">{error}</p>}
           {message ? (
             <div className="space-y-4">
               <p role="status" className="text-sm leading-relaxed" data-testid="password-reset-sent">{message}</p>
@@ -43,7 +52,13 @@ export default function ForgotPasswordPage() {
                 Open the link in the email to choose a new password, then return here to sign in.
                 It works for both organisation and supporter accounts.
               </p>
-              <Button variant="outline" className="w-full" onClick={() => { setMessage(""); setError(""); }}>
+              <p className="text-sm text-muted-foreground">
+                Link expired or already used? Request a fresh one below. Check your spam folder and use the newest email.
+              </p>
+              <Button className="w-full" disabled={loading || retryIn > 0} onClick={() => void submit()} data-testid="button-resend-reset">
+                {loading ? "Sending…" : retryIn > 0 ? `Resend in ${retryIn}s` : "Send a new reset link"}
+              </Button>
+              <Button variant="outline" className="w-full" disabled={loading} onClick={() => { setMessage(""); setError(""); }}>
                 Try a different email
               </Button>
             </div>
@@ -52,15 +67,14 @@ export default function ForgotPasswordPage() {
               <p className="text-sm text-muted-foreground">
                 Enter the email you use to sign in. We'll send a secure link so you can choose a new password.
               </p>
-              {error && <p role="alert" className="bg-destructive/10 border border-destructive/20 text-destructive rounded-md px-3 py-2 text-sm">{error}</p>}
               <div className="space-y-1.5">
                 <Label htmlFor="reset-email">Account email</Label>
                 <Input id="reset-email" type="email" autoComplete="email" required maxLength={254}
                   value={email} onChange={e => setEmail(e.target.value)} disabled={loading}
                   placeholder="you@example.com" data-testid="input-reset-email" />
               </div>
-              <Button type="submit" className="w-full" disabled={loading || !email.trim()} data-testid="button-send-reset">
-                {loading ? "Sending…" : "Send reset link"}
+              <Button type="submit" className="w-full" disabled={loading || retryIn > 0 || !email.trim()} data-testid="button-send-reset">
+                {loading ? "Sending…" : retryIn > 0 ? `Resend in ${retryIn}s` : "Send reset link"}
               </Button>
             </form>
           )}

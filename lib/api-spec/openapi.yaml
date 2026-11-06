@@ -30,7 +30,7 @@ paths:
       operationId: requestPasswordReset
       tags: [auth]
       summary: Request a Firebase password-reset email
-      description: Rate-limited. Returns the same confirmation for registered and unknown addresses. Firebase handles expiring reset links and the new-password form.
+      description: Rate-limited. Returns the same confirmation for registered and unknown addresses. Firebase handles expiring single-use reset links.
       requestBody:
         required: true
         content:
@@ -49,6 +49,30 @@ paths:
         '400': {description: Invalid email}
         '429': {description: Too many requests}
         '503': {description: Reset email provider temporarily unavailable}
+  /auth/reset-password:
+    post:
+      operationId: applyPasswordReset
+      tags: [auth]
+      summary: Verify a reset code or apply a new password using that code
+      description: No sign-in required. Omitting newPassword verifies only and does not consume the code. Firebase enforces expiry, single use and password policy. Never log request bodies.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/PasswordResetActionInput'}
+      responses:
+        '200':
+          description: Valid code or password successfully changed
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [message]
+                properties:
+                  message: {type: string}
+        '400': {description: "Expired or invalid code, or password does not meet requirements"}
+        '429': {description: Too many requests}
+        '503': {description: Reset provider temporarily unavailable}
   /donations/checkout:
     post:
       operationId: createDonationCheckoutSession
@@ -896,6 +920,12 @@ components:
       required: [email]
       properties:
         email: {type: string, format: email, maxLength: 254}
+    PasswordResetActionInput:
+      type: object
+      required: [oobCode]
+      properties:
+        oobCode: {type: string, minLength: 1, maxLength: 2048}
+        newPassword: {type: string, minLength: 6, maxLength: 4096, writeOnly: true}
     DonationCheckoutInput:
       type: object
       required: [orgId, amountPence]

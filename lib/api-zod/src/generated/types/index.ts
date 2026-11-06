@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./applyPasswordReset200";
 export * from "./authResponse";
 export * from "./campaignAssistRequest";
 export * from "./campaignAssistRequestField";
@@ -65,6 +66,7 @@ export * from "./organisationRunningSummaryUnavailableItem";
 export * from "./orgPayoutSummary";
 export * from "./orgPayoutSummaryLastSettled";
 export * from "./orgPayoutSummaryPayoutMethod";
+export * from "./passwordResetActionInput";
 export * from "./passwordResetRequest";
 export * from "./payoutOrgSummary";
 export * from "./payoutOrgSummaryMethod";
