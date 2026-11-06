@@ -2,7 +2,8 @@ import { randomUUID } from "node:crypto";
 import { Router } from "express";
 import { requireAuth, requireApprovedOrganisation } from "../lib/auth.js";
 import { requireAdmin } from "../lib/admin-auth.js";
-import { fsGet, fsMutateBankDetails, getServerToken } from "../lib/firebase-rest.js";
+import { fsCreateIfAbsent, fsGet, fsMutateBankDetails, getServerToken } from "../lib/firebase-rest.js";
+import { BANK_AUDIT_COLLECTION, bankAudit } from "../lib/bank-audit.ts";
 import { activePayoutMethod } from "../lib/payout-setup.js";
 import { bankDetailsSummary, decryptBankDetails, encryptBankDetails, validateBankDetails } from "../lib/bank-details.js";
 
@@ -54,6 +55,19 @@ router.put("/payout/bank-details", requireAuth, requireApprovedOrganisation, asy
   }
 });
 
+// Metadata only: opening a review must not decrypt anything.
+router.get("/admin/organisations/:id/bank-details/status", requireAdmin, async (req, res) => {
+  try {
+    const id = String(req.params.id), token = await getServerToken();
+    const org = await fsGet("organisations", id, token, { includeDeleted: true });
+    if (!org) { res.status(404).json({ error: "Organisation not found." }); return; }
+    const record = await fsGet("organisation_bank_details", id, token);
+    res.json(bankDetailsSummary(record, org));
+  } catch {
+    res.status(503).json({ error: "Bank detail status is unavailable. Please retry." });
+  }
+});
+
 router.get("/admin/organisations/:id/bank-details", requireAdmin, async (req, res) => {
   try {
     const id = String(req.params.id), token = await getServerToken();
@@ -62,6 +76,11 @@ router.get("/admin/organisations/:id/bank-details", requireAdmin, async (req, re
     const record = await fsGet("organisation_bank_details", id, token);
     if (!record) { res.json({ ...bankDetailsSummary(null, org), details: null }); return; }
     const details = decryptBankDetails(String(record.encrypted), id);
+    const audit = bankAudit("reveal", id, record.revision);
+    // Never release plaintext if durable audit storage is unavailable.
+    if (!await fsCreateIfAbsent(BANK_AUDIT_COLLECTION, audit.id, audit.record, token)) {
+      throw new Error("Bank audit could not be recorded.");
+    }
     req.log?.info({ organisationId: id }, "Administrator viewed private payout bank details");
     res.json({ ...bankDetailsSummary(record, org), details });
   } catch {
@@ -77,6 +96,7 @@ router.post("/admin/organisations/:id/bank-details/approve", requireAdmin, async
   }
   try {
     const id = String(req.params.id), token = await getServerToken();
+    const audit = bankAudit("approve", id, revision);
     await fsMutateBankDetails(id, token, (org, record) => {
       if (!record || record.revision !== revision || org.bankDetailsRevision !== revision) {
         throw new Error("Bank details changed. Close and reopen this review before approving.");
@@ -87,7 +107,7 @@ router.post("/admin/organisations/:id/bank-details/approve", requireAdmin, async
       // Decryption must succeed before an unusable encrypted record is approved.
       decryptBankDetails(String(record.encrypted), id);
       return { orgUpdates: { payoutManualApproved: true }, result: null };
-    });
+    }, audit);
     req.log?.info({ organisationId: id }, "Administrator approved reviewed bank detail revision");
     res.json({ approved: true });
   } catch {

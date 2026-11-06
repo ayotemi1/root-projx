@@ -58,11 +58,27 @@ paths:
         '401': {description: Sign-in required}
         '403': {description: Approved organisation owner required}
         '503': {description: Save failed or secure storage unavailable}
+  /admin/organisations/{id}/bank-details/status:
+    get:
+      operationId: getAdminBankDetailsStatus
+      tags: [profile]
+      summary: Metadata-only bank review with no decryption
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: Submission status only
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/BankDetailsStatus'}
+        '401': {description: Administrator authentication required}
+        '404': {description: Organisation not found}
+        '503': {description: Secure storage unavailable}
   /admin/organisations/{id}/bank-details:
     get:
       operationId: reviewBankDetails
       tags: [profile]
-      summary: Explicit private admin review of decrypted bank details, never cache
+      summary: Explicit audited reveal of decrypted bank details, never cache
       parameters:
         - {name: id, in: path, required: true, schema: {type: string}}
       responses:
@@ -80,7 +96,7 @@ paths:
                           - {$ref: '#/components/schemas/BankDetailsInput'}
                           - {type: 'null'}
         '401': {description: Administrator authentication required}
-        '503': {description: Secure storage unavailable}
+        '503': {description: Secure storage or durable audit unavailable}
   /admin/organisations/{id}/bank-details/approve:
     post:
       operationId: approveBankDetails

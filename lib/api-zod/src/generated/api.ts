@@ -82,7 +82,21 @@ export const SaveBankDetailsResponse = zod.object({
 });
 
 /**
- * @summary Explicit private admin review of decrypted bank details, never cache
+ * @summary Metadata-only bank review with no decryption
+ */
+export const GetAdminBankDetailsStatusParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetAdminBankDetailsStatusResponse = zod.object({
+  hasDetails: zod.boolean(),
+  revision: zod.string().nullable(),
+  submittedAt: zod.string().nullable(),
+  approved: zod.boolean(),
+});
+
+/**
+ * @summary Explicit audited reveal of decrypted bank details, never cache
  */
 export const ReviewBankDetailsParams = zod.object({
   id: zod.coerce.string(),

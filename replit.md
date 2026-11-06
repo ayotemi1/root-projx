@@ -351,6 +351,32 @@ Activation also requires manually publishing the server-only
 `organisation_bank_details` rules block in Firebase Console. Do not edit or
 publish `firestore.rules` automatically. Preserve other live collection rules.
 
+Bank reviews open with metadata and masked placeholders only; no partial bank
+identifiers are stored for display. Explicit Reveal decrypts and creates a
+`bank_details_audit` record before returning plaintext. A failed audit prevents
+disclosure. Approval and its audit entry are in one atomic Firestore commit, so
+neither can succeed alone. Audit fields are `adminIdentity`, `identityType`,
+`action`, `timestamp`, `orgId`, and `revision`. The present shared credential can
+only identify `shared-admin`, not an individual person. No credentials, tokens
+or banking values are audit fields.
+
+The audit collection needs server-only read/create rules and unconditional denial
+of update/delete, including for the ordinary API server identity. Do not add an
+overlapping permissive wildcard: Firestore allow rules are additive. Firebase
+privileged IAM/Admin SDK access can bypass rules; this is application-level
+append-only storage, not a WORM guarantee against project administrators.
+Until those rules are manually published, reveals/approvals fail closed.
+
+New encryption envelopes are `v2.primary.<iv>.<tag>.<ciphertext>` with the key ID
+authenticated as part of AAD. `primary` names the existing dedicated key.
+Legacy `v1` records use that same current key and are not rewritten by deployment.
+Unknown key IDs fail closed. A rotation still needs a retained keyring and an
+explicit re-encryption migration; do not replace the secret assuming the key ID
+alone preserves readability. The storage helper validates the envelope and
+permits only encrypted/revision/submittedAt fields. Structured logger redaction
+covers bank identifiers and names in common nested body/detail objects; never
+interpolate banking values into message strings.
+
 ## Organisation content library
 
 The public profile's Posts tab is an Instagram-style three-column square grid.
@@ -435,7 +461,7 @@ organisations, so deleting a profile does not prevent settling existing liabilit
 No Firestore rules changes or real organisation deletions are used for verification.
 
 - URL: `/admin` (login at `/admin/login`)
-- Password: `ADMIN_PASSWORD` env var (defaults to `rootprojx-admin` — set in Replit Secrets for production)
+- Password: non-empty `ADMIN_PASSWORD` takes precedence, otherwise `ADMIN_SECRET`; no built-in default. Missing both fails closed.
 - Tabs: **Applications** (pending/approved/declined org applications, approve/decline actions) | **Supporters** (all registered supporters)
 - Approve action: creates Firebase Auth account + org profile, emails temp password to org
 - Decline action: sends decline email
@@ -461,5 +487,5 @@ No Firestore rules changes or real organisation deletions are used for verificat
 - `BREVO_SENDER_EMAIL` — sender email for transactional emails (optional, defaults to noreply@rootprojx.com)
 - `STRIPE_PLATFORM_FEE_PERCENT` — platform fee % (default 5)
 - `STRIPE_WEBHOOK_SECRET` — Stripe webhook signing secret (set in production for signature verification)
-- `ADMIN_PASSWORD` — password for `/admin` dashboard (set in Replit Secrets; defaults to `rootprojx-admin`)
+- `ADMIN_PASSWORD` — optional admin password, takes precedence over `ADMIN_SECRET`; no built-in default or strength validation
 - `TEAM_EMAIL` — internal notification recipient (defaults to `info@rootprojx.com`)

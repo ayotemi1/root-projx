@@ -21,6 +21,18 @@ payout execution. Legacy approved off-platform arrangements may remain, but
 must not be described as bank details already saved on the site. Approval does
 not initiate a transfer. New account details require fresh independent review.
 
+Bank-detail disclosure must require a durable audit, and approvals must not
+succeed without their audit record. Audit storage is create-only even for the
+ordinary server identity. Reviews must remain masked until explicit reveal.
+Never imply shared administrator credentials identify an individual person.
+
+**Why:** On 2026-11-06 the user made immutable access/approval auditing the highest
+priority prerequisite for enabling bank-detail saving and required masked review.
+
+**How to apply:** Fail closed if audit persistence fails; retain the manual
+Firestore-rule publication boundary. Describe privileged Firebase IAM bypasses
+honestly rather than claiming project-administrator-proof immutability.
+
 Public payout routing uses `stripe_connect`, `wise`, `manual`, or `none`;
 dashboard selections retain `stripe`, `wise`, and `bank_transfer` for backwards
 compatibility. Manual donation routing requires explicit admin approval: a

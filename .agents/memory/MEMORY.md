@@ -6,7 +6,7 @@
 - [Campaign share metadata](campaign-share-metadata.md) — readable share URLs are API-rendered for crawler metadata, then hand off to the static React campaign page
 - [Stabilisation boundaries](stabilisation-boundaries.md) — one fix at a time, existing API tests after each fix, no unrelated refactors or automatic rules edits
 - [Mobile donation policy](mobile-donation-policy.md) — Apple rejected in-app donations; mobile must hand donations off to rootprojx.com.
-- [Payout data boundaries](payout-data-boundaries.md) — banking credentials stay off-platform; manual setup stores only request/approval and a short payee reminder.
+- [Payout data boundaries](payout-data-boundaries.md) — bank details stay private and encrypted; disclosure requires durable audit, approval requires an atomic audit.
 - [Node route-test bundling](node-route-test-bundling.md) — bundle generated workspace validators in raw Node tests; app-build module resolution does not carry over.
 - [Media attachment recovery](media-attachment-recovery.md) — an uploaded asset is not saved content until attachment succeeds; pending URLs need a usable recovery action.
 - [Campaign publication safety](campaign-publication-safety.md) — keep revisions private; committed funding is not matching; default and migrate legacy funding to committed.

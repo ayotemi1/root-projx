@@ -39,14 +39,18 @@ export function AdminBankDetailsReview({ orgId, orgName, contactEmail, token, on
   const busyRef = useRef(onBusyChange);
   busyRef.current = onBusyChange;
 
-  useEffect(() => { alive.current = true; return () => { alive.current = false; setData(null); }; }, []);
+  useEffect(() => {
+    alive.current = true;
+    void load("", false, false);
+    return () => { alive.current = false; setData(null); };
+  }, []);
   useEffect(() => { busyRef.current?.(loading || approving); }, [loading, approving]);
 
-  async function load(note = "", afterApproval = false) {
+  async function load(note = "", afterApproval = false, reveal = true) {
     if (loading || (approving && !afterApproval)) return;
     setLoading(true); setError(note); setVerified(false); setData(null);
     try {
-      const res = await fetch(`/api/admin/organisations/${orgId}/bank-details`, { headers: { "x-admin-token": token }, cache: "no-store" });
+      const res = await fetch(`/api/admin/organisations/${orgId}/bank-details${reveal ? "" : "/status"}`, { headers: { "x-admin-token": token }, cache: "no-store" });
       if (res.status === 401) { onUnauthorized(); return; }
       const body = await res.json().catch(() => ({})) as ReviewResponse & { error?: string };
       if (!alive.current) return;
@@ -74,8 +78,8 @@ export function AdminBankDetailsReview({ orgId, orgName, contactEmail, token, on
       if (res.status === 409 || res.status === 503) {
         setApproving(false);
         await load(res.status === 409
-          ? "The organisation changed its bank details since you loaded them. Review the new details below and verify again."
-          : "Bank details service unavailable. Nothing was approved. Reloaded for review.", true);
+          ? "Approval was not confirmed. Details may have changed or secure review may be unavailable. Reveal the latest details and verify again."
+          : "Bank details service unavailable. Approval was not confirmed. Reloaded for review.", true, false);
         return;
       }
       if (!res.ok || body.approved !== true) { setError(body.error ?? `Approval failed (${res.status}). Nothing was approved.`); return; }
@@ -98,16 +102,33 @@ export function AdminBankDetailsReview({ orgId, orgName, contactEmail, token, on
       </div>
 
       {!data && (
-        <button data-testid="button-view-bank-details" onClick={() => load()} disabled={loading} style={{ ...btn(false, loading), alignSelf: "flex-start" }}>
-          <Eye size={14} /> {loading ? "Loading…" : "View bank details"}
+        <button data-testid="button-bank-status-retry" onClick={() => load("", false, false)} disabled={loading} style={{ ...btn(false, loading), alignSelf: "flex-start" }}>
+          {loading ? "Loading status…" : "Retry status"}
         </button>
       )}
 
       {error && <p role="alert" style={{ margin: 0, color: RED, fontSize: 13 }} data-testid="error-admin-bank-review">{error}</p>}
 
-      {data && !d && (
+      {data && !data.hasDetails && (
         <div data-testid="text-admin-bank-none" style={{ background: "#f9f6f0", borderRadius: 8, padding: 12, fontSize: 13, color: "#444", lineHeight: 1.5 }}>
           <strong>No bank details on file.</strong> {orgName} must add them in their dashboard under Payouts (How you get paid, Bank transfer) before this can be approved.
+        </div>
+      )}
+
+      {data?.hasDetails && !d && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <p style={{ margin: 0, fontSize: 13 }}>Bank details on file · {data.approved ? "Approved" : "Awaiting review"}</p>
+          <dl style={{ margin: 0, fontSize: 13 }} data-testid="list-masked-bank-details">
+            {LABELS.map(([key, label]) => (
+              <div key={key} style={{ display: "grid", gridTemplateColumns: "minmax(110px, 38%) 1fr", padding: "6px 0", gap: 10 }}>
+                <dt>{label}</dt><dd style={{ margin: 0 }}>••••••</dd>
+              </div>
+            ))}
+          </dl>
+          <p style={{ margin: 0, fontSize: 12, color: "#666" }}>Values remain encrypted until you reveal this record. Each reveal is recorded in the access audit.</p>
+          <button data-testid="button-reveal-bank-details" onClick={() => load()} disabled={loading || approving} style={{ ...btn(false, loading || approving), alignSelf: "flex-start" }}>
+            <Eye size={14} /> Reveal
+          </button>
         </div>
       )}
 
@@ -125,7 +146,7 @@ export function AdminBankDetailsReview({ orgId, orgName, contactEmail, token, on
               </div>
             ))}
           </dl>
-          <button onClick={() => { setData(null); setVerified(false); setError(""); }} disabled={approving} style={{ ...btn(false, approving), alignSelf: "flex-start", padding: "6px 10px", fontSize: 12 }} data-testid="button-hide-bank-details">
+          <button onClick={() => { setData(previous => previous ? { ...previous, details: null } : null); setVerified(false); setError(""); }} disabled={approving} style={{ ...btn(false, approving), alignSelf: "flex-start", padding: "6px 10px", fontSize: 12 }} data-testid="button-hide-bank-details">
             <EyeOff size={13} /> Hide details
           </button>
           {!data.approved ? (

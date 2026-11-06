@@ -246,7 +246,96 @@ export const useSaveBankDetails = <
 };
 
 /**
- * @summary Explicit private admin review of decrypted bank details, never cache
+ * @summary Metadata-only bank review with no decryption
+ */
+export const getGetAdminBankDetailsStatusUrl = (id: string) => {
+  return `/api/admin/organisations/${id}/bank-details/status`;
+};
+
+export const getAdminBankDetailsStatus = async (
+  id: string,
+  options?: RequestInit,
+): Promise<BankDetailsStatus> => {
+  return customFetch<BankDetailsStatus>(getGetAdminBankDetailsStatusUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetAdminBankDetailsStatusQueryKey = (id: string) => {
+  return [`/api/admin/organisations/${id}/bank-details/status`] as const;
+};
+
+export const getGetAdminBankDetailsStatusQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAdminBankDetailsStatus>>,
+  TError = ErrorType<void>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getAdminBankDetailsStatus>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetAdminBankDetailsStatusQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getAdminBankDetailsStatus>>
+  > = ({ signal }) =>
+    getAdminBankDetailsStatus(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminBankDetailsStatus>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetAdminBankDetailsStatusQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAdminBankDetailsStatus>>
+>;
+export type GetAdminBankDetailsStatusQueryError = ErrorType<void>;
+
+/**
+ * @summary Metadata-only bank review with no decryption
+ */
+
+export function useGetAdminBankDetailsStatus<
+  TData = Awaited<ReturnType<typeof getAdminBankDetailsStatus>>,
+  TError = ErrorType<void>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getAdminBankDetailsStatus>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetAdminBankDetailsStatusQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Explicit audited reveal of decrypted bank details, never cache
  */
 export const getReviewBankDetailsUrl = (id: string) => {
   return `/api/admin/organisations/${id}/bank-details`;
@@ -306,7 +395,7 @@ export type ReviewBankDetailsQueryResult = NonNullable<
 export type ReviewBankDetailsQueryError = ErrorType<void>;
 
 /**
- * @summary Explicit private admin review of decrypted bank details, never cache
+ * @summary Explicit audited reveal of decrypted bank details, never cache
  */
 
 export function useReviewBankDetails<

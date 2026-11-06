@@ -1,9 +1,12 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createRequire } from "node:module";
+import { createCipheriv } from "node:crypto";
 import { build } from "esbuild";
 import { validateBankDetails, encryptBankDetails, decryptBankDetails } from "./bank-details.ts";
 import { fsMutateBankDetails } from "./firebase-rest.ts";
+import { parseBankEnvelope } from "./bank-envelope.ts";
+import { bankAudit } from "./bank-audit.ts";
 
 const syntheticKey = Buffer.alloc(32, 17).toString("base64");
 const input = {
@@ -32,8 +35,17 @@ test("bank records are authenticated encrypted, randomised, org-bound and fail c
     assert.ok(!a.includes(input.accountNumber) && !a.includes(input.accountHolder));
     assert.deepEqual(decryptBankDetails(a, "org-a"), details);
     assert.throws(() => decryptBankDetails(a, "org-b"));
-    const parts = a.split("."); parts[2] = Buffer.alloc(16).toString("base64");
+    assert.ok(a.startsWith("v2.primary."));
+    assert.notEqual(parseBankEnvelope(a).iv, parseBankEnvelope(b).iv);
+    const parts = a.split("."); parts[3] = Buffer.alloc(16).toString("base64");
     assert.throws(() => decryptBankDetails(parts.join("."), "org-a"));
+    assert.throws(() => decryptBankDetails(a.replace("v2.primary.", "v2.unknown."), "org-a"));
+    const iv = Buffer.alloc(12, 7);
+    const legacy = createCipheriv("aes-256-gcm", Buffer.from(syntheticKey, "base64"), iv);
+    legacy.setAAD(Buffer.from("rootprojx:bank-details:v1:org-a"));
+    const ciphertext = Buffer.concat([legacy.update(JSON.stringify(details), "utf8"), legacy.final()]);
+    const v1 = ["v1", iv.toString("base64"), legacy.getAuthTag().toString("base64"), ciphertext.toString("base64")].join(".");
+    assert.deepEqual(decryptBankDetails(v1, "org-a"), details);
     delete process.env.BANK_DETAILS_ENCRYPTION_KEY;
     assert.throws(() => encryptBankDetails(details, "org-a"), /not configured/);
   } finally {
@@ -55,16 +67,22 @@ async function fixture() {
         b.onResolve({ filter: /\/lib\/(firebase-rest|auth|admin-auth)\.js$/ }, a => ({ path: a.path.split("/").pop()!, namespace: "bank" }));
         b.onLoad({ filter: /.*/, namespace: "bank" }, a => ({
           loader: "js",
-          contents: a.path === "state" ? `export const state={org:{payoutMethod:"bank_transfer",payoutManualApproved:true},record:null,logs:[],fail:false};`
+          contents: a.path === "state" ? `export const state={org:{payoutMethod:"bank_transfer",payoutManualApproved:true},record:null,logs:[],audits:[],fail:false,failAudit:false};`
             : a.path === "firebase-rest.js" ? `
               import {state} from "bank:state";
               export const getServerToken=async()=>"synthetic-server";
               export const fsGet=async(c,id)=> c==="organisations" ? id==="owner" ? {...state.org} : null : state.record;
-              export const fsMutateBankDetails=async(id,token,mutate)=>{
+              export const fsCreateIfAbsent=async(c,id,record,token)=>{
+                if(state.failAudit) throw Error("Audit unavailable");
+                state.audits.push({id,...record}); return true;
+              };
+              export const fsMutateBankDetails=async(id,token,mutate,audit)=>{
                 if(state.fail) throw Error("Private provider payload");
                 const value=mutate({...state.org},state.record);
+                if(audit && state.failAudit) throw Error("Audit unavailable");
                 state.org={...state.org,...value.orgUpdates};
                 if(value.record) state.record=value.record;
+                if(audit) state.audits.push({id:audit.id,...audit.record});
                 return value.result;
               };`
             : a.path === "admin-auth.js" ? `export const requireAdmin=(req,res,next)=>req.headers["x-admin-token"]==="synthetic-admin"?next():res.status(401).json({error:"Unauthorized"});`
@@ -101,7 +119,7 @@ test("only owner can submit; save encrypts privately, revokes approval, and owne
   const saved = await f.request("/payout/bank-details", "put", input, owner);
   assert.equal(saved.status, 200); assert.equal(saved.data.approved, false);
   assert.equal(f.state.org.payoutManualApproved, false);
-  assert.ok(f.state.record.encrypted.startsWith("v1."));
+  assert.ok(f.state.record.encrypted.startsWith("v2.primary."));
   assert.equal(f.state.record.accountNumber, undefined);
   assert.equal(f.state.org.encrypted, undefined);
   const status = await f.request("/payout/bank-details", "get", {}, owner);
@@ -116,12 +134,48 @@ test("admin explicitly reviews full details and approves only the exact revision
   assert.equal((await f.request(path, "get", {}, owner)).status, 401);
   const review = await f.request(path, "get", {}, admin);
   assert.equal(review.data.details.accountNumber, input.accountNumber);
+  assert.equal(f.state.audits.length, 1);
+  assert.deepEqual(Object.keys(f.state.audits[0]).sort(),
+    ["id", "adminIdentity", "identityType", "action", "timestamp", "orgId", "revision"].sort());
+  assert.equal(f.state.audits[0].action, "reveal");
+  assert.equal(f.state.audits[0].adminIdentity, "shared-admin");
+  assert.equal(f.state.audits[0].revision, saved.data.revision);
   assert.equal((await f.request(path + "/approve", "post", { revision: "stale" }, admin)).status, 409);
   assert.equal((await f.request(path + "/approve", "post", { revision: saved.data.revision }, admin)).status, 200);
   assert.equal(f.state.org.payoutManualApproved, true);
+  assert.equal(f.state.audits.length, 2);
+  assert.equal(f.state.audits[1].action, "approve");
+  assert.notEqual(f.state.audits[0].id, f.state.audits[1].id);
+  assert.doesNotMatch(JSON.stringify(f.state.audits), /12345678|Example Bank|Example Organisation/);
   await f.request("/payout/bank-details", "put", { ...input, accountNumber: "87654321" }, owner);
   assert.equal(f.state.org.payoutManualApproved, false);
   assert.equal((await f.request(path + "/approve", "post", { revision: saved.data.revision }, admin)).status, 409);
+});
+
+test("masked admin status never decrypts; failed audits prevent reveal and approval", async () => {
+  const f = await fixture(), owner = { authorization: "Bearer owner" }, admin = { "x-admin-token": "synthetic-admin" };
+  const path = "/admin/organisations/:id/bank-details";
+  const saved = await f.request("/payout/bank-details", "put", input, owner);
+  const masked = await f.request(path + "/status", "get", {}, admin);
+  assert.equal(masked.data.hasDetails, true);
+  assert.equal(masked.data.details, undefined);
+  assert.equal(f.state.audits.length, 0);
+  assert.doesNotMatch(JSON.stringify(masked), /12345678|Example Bank|Example Organisation/);
+  f.state.failAudit = true;
+  assert.equal((await f.request(path, "get", {}, admin)).status, 503);
+  assert.equal((await f.request(path + "/approve", "post", { revision: saved.data.revision }, admin)).status, 409);
+  assert.equal(f.state.org.payoutManualApproved, false);
+  assert.equal(f.state.audits.length, 0);
+  f.state.failAudit = false;
+  const envelope = f.state.record.encrypted;
+  f.state.record.encrypted = "invalid";
+  assert.equal((await f.request(path + "/status", "get", {}, admin)).status, 200);
+  assert.equal((await f.request(path, "get", {}, admin)).status, 503);
+  assert.equal(f.state.audits.length, 0);
+  f.state.record.encrypted = envelope;
+  await f.request(path, "get", {}, admin);
+  await f.request(path, "get", {}, admin);
+  assert.equal(f.state.audits.length, 2, "each repeated reveal must be audited");
 });
 
 test("save failures preserve the previous record and block changes while a settlement is locked", async () => {
@@ -155,13 +209,71 @@ test("real Firestore adapter commits revocation and encrypted bank record atomic
     };
     const result = await fsMutateBankDetails("synthetic-org", "synthetic-token", () => ({
       orgUpdates: { payoutManualApproved: false, bankDetailsRevision: "revision" },
-      record: { encrypted: "synthetic-ciphertext", revision: "revision" }, result: "saved",
+      record: { encrypted: syntheticEnvelope(), revision: "revision", submittedAt: new Date().toISOString() }, result: "saved",
     }));
     assert.equal(result, "saved"); assert.equal(commits.length, 2);
     assert.equal(commits[1].writes.length, 2);
     assert.equal(commits[1].writes[0].update.fields.payoutManualApproved.booleanValue, false);
     assert.equal(commits[1].writes[1].currentDocument.exists, false);
     assert.ok(commits[1].writes[0].currentDocument.updateTime);
+  } finally { globalThis.fetch = previousFetch; }
+});
+
+function syntheticEnvelope() {
+  return ["v2", "primary", Buffer.alloc(12, 1).toString("base64"), Buffer.alloc(16, 2).toString("base64"),
+    Buffer.from("synthetic encrypted bytes").toString("base64")].join(".");
+}
+
+test("storage rejects missing/malformed envelopes and plaintext side fields before any commit", async () => {
+  const previousFetch = globalThis.fetch;
+  let writes = 0;
+  try {
+    globalThis.fetch = async (url, options) => {
+      if (options?.method === "POST") { writes++; return new Response("{}"); }
+      return String(url).includes("/organisation_bank_details/") ? new Response("", { status: 404 })
+        : new Response(JSON.stringify({ updateTime: "snapshot", fields: {} }));
+    };
+    for (const invalid of [
+      {}, { encrypted: input.accountNumber }, { encrypted: "v1.bad.bad.bad" },
+      { encrypted: syntheticEnvelope(), accountNumber: input.accountNumber },
+      { encrypted: syntheticEnvelope().replace("v2.primary", "v9.primary") },
+    ]) {
+      await assert.rejects(fsMutateBankDetails("org", "token", () => ({
+        orgUpdates: {}, record: { revision: "r", submittedAt: new Date().toISOString(), ...invalid }, result: null,
+      })), /Invalid encrypted bank record/);
+    }
+    assert.equal(writes, 0);
+  } finally { globalThis.fetch = previousFetch; }
+});
+
+test("approval and create-only audit are in the same Firestore commit; denied audit cannot approve", async () => {
+  const previousFetch = globalThis.fetch, commits: any[] = [];
+  try {
+    globalThis.fetch = async (url, options) => {
+      if (String(url).endsWith(":commit")) {
+        commits.push(JSON.parse(String(options?.body)));
+        return new Response("Permission denied", { status: 403 });
+      }
+      const fields = String(url).includes("/organisation_bank_details/") ? {
+        encrypted: { stringValue: syntheticEnvelope() }, revision: { stringValue: "r" },
+        submittedAt: { stringValue: new Date().toISOString() },
+      } : {};
+      return new Response(JSON.stringify({ updateTime: "snapshot", fields }));
+    };
+    await assert.rejects(fsMutateBankDetails("org", "token", () => ({
+      orgUpdates: { payoutManualApproved: true }, result: null,
+    })), /requires a matching audit/);
+    assert.equal(commits.length, 0);
+    const audit = bankAudit("approve", "org", "r");
+    await assert.rejects(fsMutateBankDetails("org", "token", () => ({
+      orgUpdates: { payoutManualApproved: true }, result: null,
+    }), audit), /Could not save/);
+    assert.equal(commits.length, 1);
+    const writes = commits[0].writes;
+    assert.equal(writes.length, 3);
+    assert.equal(writes[2].currentDocument.exists, false);
+    assert.ok(writes[2].update.name.endsWith(`/bank_details_audit/${audit.id}`));
+    assert.equal(writes[2].update.fields.revision.stringValue, "r");
   } finally { globalThis.fetch = previousFetch; }
 });
 

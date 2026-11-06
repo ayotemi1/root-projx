@@ -1,4 +1,8 @@
 import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
+import { parseBankEnvelope } from "./bank-envelope.ts";
+
+// Identifier, not key material. A future keyring must retain this mapping.
+export const BANK_DETAILS_KEY_ID = "primary";
 
 export interface BankDetails {
   accountHolder: string;
@@ -67,18 +71,18 @@ function key(): Buffer {
 export function encryptBankDetails(details: BankDetails, orgId: string): string {
   const iv = randomBytes(12);
   const cipher = createCipheriv("aes-256-gcm", key(), iv);
-  cipher.setAAD(Buffer.from(`rootprojx:bank-details:v1:${orgId}`));
+  cipher.setAAD(Buffer.from(`rootprojx:bank-details:v2:${BANK_DETAILS_KEY_ID}:${orgId}`));
   const encrypted = Buffer.concat([cipher.update(JSON.stringify(details), "utf8"), cipher.final()]);
-  return ["v1", iv.toString("base64"), cipher.getAuthTag().toString("base64"), encrypted.toString("base64")].join(".");
+  return ["v2", BANK_DETAILS_KEY_ID, iv.toString("base64"), cipher.getAuthTag().toString("base64"), encrypted.toString("base64")].join(".");
 }
 
 export function decryptBankDetails(envelope: string, orgId: string): BankDetails {
-  const [version, iv, tag, encrypted, extra] = envelope.split(".");
-  if (version !== "v1" || !iv || !tag || !encrypted || extra) throw new Error("Invalid bank record.");
+  const { version, keyId, iv, tag, ciphertext } = parseBankEnvelope(envelope);
+  if (keyId !== BANK_DETAILS_KEY_ID) throw new Error("Bank encryption key is unavailable.");
   const decipher = createDecipheriv("aes-256-gcm", key(), Buffer.from(iv, "base64"));
-  decipher.setAAD(Buffer.from(`rootprojx:bank-details:v1:${orgId}`));
+  decipher.setAAD(Buffer.from(version === "v1" ? `rootprojx:bank-details:v1:${orgId}` : `rootprojx:bank-details:v2:${keyId}:${orgId}`));
   decipher.setAuthTag(Buffer.from(tag, "base64"));
-  return JSON.parse(Buffer.concat([decipher.update(Buffer.from(encrypted, "base64")), decipher.final()]).toString("utf8"));
+  return JSON.parse(Buffer.concat([decipher.update(Buffer.from(ciphertext, "base64")), decipher.final()]).toString("utf8"));
 }
 
 export function bankDetailsSummary(record: Record<string, unknown> | null, org: Record<string, unknown>) {

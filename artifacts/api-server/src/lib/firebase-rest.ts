@@ -1,3 +1,6 @@
+import { assertEncryptedBankRecord } from "./bank-envelope.ts";
+import { BANK_AUDIT_COLLECTION, type BankAudit } from "./bank-audit.ts";
+
 const API_KEY = process.env.FIREBASE_API_KEY!;
 const PROJECT_ID = process.env.FIREBASE_PROJECT_ID!;
 const IDENTITY = "https://identitytoolkit.googleapis.com/v1/accounts";
@@ -264,6 +267,7 @@ export async function fsMutateBankDetails<T>(
   mutate: (org: Record<string, unknown>, record: Record<string, unknown> | null) => {
     orgUpdates: Record<string, unknown>; record?: Record<string, unknown>; result: T;
   },
+  approvalAudit?: BankAudit,
 ): Promise<T> {
   const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
   const name = `projects/${PROJECT_ID}/databases/(default)/documents`;
@@ -281,6 +285,12 @@ export async function fsMutateBankDetails<T>(
     const mutation = mutate(org, bank);
     const record = mutation.record ?? bank;
     if (!record) throw new Error("Submit bank details before approval.");
+    assertEncryptedBankRecord(record);
+    if (mutation.orgUpdates.payoutManualApproved === true &&
+        (!approvalAudit || approvalAudit.record.action !== "approve" ||
+          approvalAudit.record.orgId !== orgId || approvalAudit.record.revision !== record.revision)) {
+      throw new Error("Bank approval requires a matching audit record.");
+    }
     const writes = [{
       update: { name: `${name}/organisations/${orgId}`,
         fields: Object.fromEntries(Object.entries(mutation.orgUpdates).map(([k, v]) => [k, toFsVal(v)])) },
@@ -291,6 +301,13 @@ export async function fsMutateBankDetails<T>(
         fields: Object.fromEntries(Object.entries(record).map(([k, v]) => [k, toFsVal(v)])) },
       currentDocument: bankDoc ? { updateTime: bankDoc.updateTime } : { exists: false },
     }];
+    if (approvalAudit) {
+      writes.push({
+        update: { name: `${name}/${BANK_AUDIT_COLLECTION}/${approvalAudit.id}`,
+          fields: Object.fromEntries(Object.entries(approvalAudit.record).map(([k, v]) => [k, toFsVal(v)])) },
+        currentDocument: { exists: false },
+      });
+    }
     const saved = await fetch(`${FIRESTORE}:commit`, { method: "POST", headers, body: JSON.stringify({ writes }) });
     if (saved.ok) return mutation.result;
     const error = await saved.text();
