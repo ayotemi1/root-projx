@@ -975,7 +975,8 @@ export default function OrgProfilePage() {
         {/* ── RIGHT COLUMN ── */}
         <div className="space-y-5">
 
-          {/* Active Campaigns card */}
+          {/* The Campaigns tab already shows the full list; don't repeat it in the sidebar. */}
+          {tab !== "campaigns" && (
           <div className="bg-white border border-border rounded-2xl overflow-hidden">
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
               <h3 className="font-bold text-foreground text-base">Active Campaigns</h3>
@@ -989,7 +990,7 @@ export default function OrgProfilePage() {
             </div>
 
             <div className="px-5 pb-3">
-              {updatesQ.isLoading ? (
+              {campaignsQ.isLoading ? (
                 <div className="space-y-3">
                   <Skeleton className="h-20" /><Skeleton className="h-20" />
                 </div>
@@ -1014,6 +1015,7 @@ export default function OrgProfilePage() {
               </Link>
             </div>
           </div>
+          )}
 
           {/* Ways to Volunteer card */}
           <div className="bg-white border border-border rounded-2xl overflow-hidden">
