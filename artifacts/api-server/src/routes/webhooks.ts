@@ -9,6 +9,7 @@ import { donationAccounting, PLATFORM_FEE_PERCENT } from "../lib/fees.js";
 import { queueDonationPayout } from "../lib/payouts.js";
 import { donorIdentity, firstNameLastInitial } from "../lib/campaign-supporters.js";
 import { campaignMatch, migrateCampaignPartnerFunding, partnerFundingFor } from "../lib/campaign-matching.js";
+import { notifyDonationReceived } from "../lib/donation-notifications.js";
 
 const router = Router();
 
@@ -383,6 +384,12 @@ async function handlePaymentSuccess(
   } catch (emailErr) {
     log.error({ emailErr }, "Brevo donation email failed (non-fatal)");
   }
+
+  await notifyDonationReceived({
+    orgId, orgName: orgName ?? "", campaignId, publicDonorName,
+    accounting: receiptAccounting, currency, type: type ?? "one_time",
+    stripeRef, donationDate,
+  }, serverToken, log);
 
   // 2. Auto-follow the org — only for authenticated users (guests have no account)
   if (userId) {

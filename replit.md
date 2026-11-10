@@ -409,6 +409,16 @@ No separate collection or Firestore rules change is required.
 - Optional `BREVO_SENDER_EMAIL` env var (defaults to `noreply@rootprojx.com`)
 - All Brevo calls are fire-and-forget — errors are logged but never block responses
 - Triggers: registration (welcome email + contact upsert) and donation success (confirmation email)
+- Each newly recorded successful one-off donation and recurring invoice payment
+  also sends separate notifications to the receiving organisation and Root ProjX.
+  Organisation alerts use `users/{orgId}.email`, falling back to `contact.email`;
+  team alerts use `TEAM_EMAIL`, falling back to `info@rootprojx.com`.
+  They include campaign attribution, native-currency canonical accounting and
+  payment reference, never the donor's email. Only consented public donor names
+  appear; otherwise the donor is anonymous. Existing webhook dedup guards prevent
+  replay alerts. Each recipient is attempted independently; notification failures
+  are logged without interrupting accounting. As with receipts, these are Brevo
+  delivery attempts, not a durable retry queue or a guarantee of inbox delivery.
 
 ### Firebase REST API
 - No Admin SDK service account needed — uses Firebase REST API with ID tokens

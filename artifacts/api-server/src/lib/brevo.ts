@@ -160,6 +160,41 @@ export function welcomeEmailHtml(name: string): string {
 `.trim();
 }
 
+/** Organisation/team alert. Monetary values come only from recorded accounting. */
+export function donationReceivedHtml(opts: {
+  orgName: string;
+  campaignName?: string;
+  donorName?: string | null;
+  accounting: DonationAccounting;
+  currency: "gbp" | "usd";
+  recurring: boolean;
+  reference: string;
+  donationDate: string;
+  platformFeePercent: number;
+}): string {
+  const money = (value: number) => `${opts.currency === "usd" ? "US$" : "£"}${value.toFixed(2)}`;
+  const rows = [
+    ["Organisation", opts.orgName],
+    ...(opts.campaignName ? [["Campaign", opts.campaignName]] : []),
+    ["Donor", opts.donorName || "Anonymous supporter"],
+    ["Donation", money(opts.accounting.intendedGbp)],
+    ...(opts.accounting.feeCovered ? [["Card-fee cover", money(opts.accounting.feeCoverGbp)]] : []),
+    ["Total charged", money(opts.accounting.chargedGbp)],
+    ["Root ProjX platform fee", `${money(opts.accounting.platformFeeGbp)} (${opts.platformFeePercent}%)`],
+    ...(!opts.accounting.feeCovered ? [["Estimated card processing", money(opts.accounting.estimatedStripeFeeGbp)]] : []),
+    ["Estimated organisation proceeds", money(opts.accounting.toOrgGbp)],
+    ["Payment", opts.recurring ? "Monthly donation payment" : "One-off donation"],
+    ["Date", opts.donationDate],
+    ["Payment reference", opts.reference],
+  ];
+  return `<html><body style="font-family:Arial,sans-serif;color:#1a1a1a;">
+    <h1>New donation received</h1>
+    <p>A successful donation to ${escapeHtml(opts.orgName)} has been recorded.</p>
+    <table>${rows.map(([label, value]) => `<tr><th style="text-align:left;padding:8px;">${escapeHtml(label!)}</th><td style="padding:8px;">${escapeHtml(value!)}</td></tr>`).join("")}</table>
+    <p>Organisation proceeds are estimated after fees. This notification does not mean a bank payout has been sent.</p>
+    </body></html>`;
+}
+
 export function donationConfirmationHtml(opts: {
   name: string;
   orgName: string;

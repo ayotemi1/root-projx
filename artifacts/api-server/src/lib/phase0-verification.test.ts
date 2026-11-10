@@ -13,14 +13,17 @@ async function isolatedRouters(environment: Record<string, string> = {
     state: `
       export const state = {
         documents: new Map(), writes: [], errors: [], emails: [], checkout: null, event: null,
-        failLedgerOnce: false, settlementRate: 0.8, settlementCurrency: "gbp"
+        failLedgerOnce: false, settlementRate: 0.8, settlementCurrency: "gbp",
+        failEmailTo: null
       };
       state.documents.set("organisations/test-org", {
         _id: "test-org", name: "Test Organisation", stripe_account_id: "acct_synthetic",
+        contact: {email: "public-contact@example.test"},
         totalRaised: 10,
         campaigns: [{_id: "test-campaign", title: "Test Campaign", amountRaised: 10}]
       });
       state.documents.set("users/test-user", {name:"Test Donor", email:"donor@example.test"});
+      state.documents.set("users/test-org", {name:"Organisation Owner", email:"org@example.test"});
     `,
     "firebase-rest.js": `
       import {state} from "phase0:state";
@@ -105,8 +108,11 @@ async function isolatedRouters(environment: Record<string, string> = {
     `,
     "brevo.js": `
       import {state} from "phase0:state";
-      export const brevoSendEmail = async (email) => {state.emails.push(email);};
-      export {donationConfirmationHtml, shopOrderConfirmationHtml}
+      export const brevoSendEmail = async (email) => {
+        state.emails.push(email);
+        if (email.to[0].email === state.failEmailTo) throw Error("Synthetic mail outage");
+      };
+      export {donationConfirmationHtml, donationReceivedHtml, shopOrderConfirmationHtml}
         from ${JSON.stringify(new URL("./brevo.ts", import.meta.url).pathname)};
     `,
   };
@@ -535,7 +541,15 @@ for (const feeCovered of [true, false]) {
     assert.equal(org.campaigns[0].partnerFundingMatchedGbp, 5, "Only the remaining £1 is matched, once, even on webhook replay");
     assert.equal(org.totalRaised, 13, "Public raised amount uses the intended donation");
     assert.equal(org.totalOwedGbp, toOrgGbp, "Missing owed aggregate starts at zero");
-    assert.equal(state.emails.length, 1, "Replay must not send another confirmation");
+    assert.equal(state.emails.length, 3, "Donor, organisation and team each receive one email despite replay");
+    assert.deepEqual(state.emails.map((email: any) => email.to[0].email).sort(),
+      ["donor@example.test", "info@rootprojx.com", "org@example.test"].sort());
+    for (const notification of state.emails.slice(1)) {
+      assert.match(notification.htmlContent, /Test Campaign/);
+      assert.match(notification.htmlContent, /£3\.00/);
+      assert.match(notification.htmlContent, feeCovered ? /£2\.85/ : /£2\.60/);
+      assert.doesNotMatch(notification.htmlContent, /donor@example\.test|Test Donor/);
+    }
     const html = state.emails[0].htmlContent;
     assert.match(html, /£3\.00/);
     assert.ok(html.includes(feeCovered
@@ -597,6 +611,55 @@ test("invoice donations use the same accounting and add to existing owed totals"
   assert.equal(org.campaigns[0].amountRaised, 13);
   assert.equal(org.totalOwedGbp, 7.60);
   assert.equal(state.errors.length, 0);
+  assert.equal(state.emails.length, 3);
+  assert.match(state.emails[1].subject, /monthly donation: £3\.00/);
+  assert.match(state.emails[2].htmlContent, /Monthly donation payment/);
+  await invoke(webhooks, "/stripe", {
+    body: Buffer.from(JSON.stringify(event)),
+    headers: { "stripe-signature": "synthetic-signature" }, log,
+  });
+  assert.equal(state.emails.length, 3, "Invoice replay must not repeat any notification");
+});
+
+test("donation alerts use the org contact fallback, configured team email, and escaped consented names", async () => {
+  const { webhooks, state } = await isolatedRouters({ TEAM_EMAIL: "team@example.test" });
+  state.documents.delete("users/test-org");
+  state.documents.get("organisations/test-org").contact = { email: "contact@example.test" };
+  const event = checkoutEvent({ id: "pi_alert_guest", amount: 300, currency: "gbp",
+    metadata: { orgId: "test-org", orgName: "Test Organisation", originalAmountPence: "300",
+      guestEmail: "private-donor@example.test", wallOptIn: "true", publicDonorName: "<Alex>" } });
+  const req = { body: Buffer.from(JSON.stringify(event)),
+    headers: { "stripe-signature": "synthetic-signature" }, log: { info() {}, error() {} } };
+  await invoke(webhooks, "/stripe", req);
+  await invoke(webhooks, "/stripe", req);
+  assert.equal(state.emails.length, 3);
+  const alerts = state.emails.filter((mail: any) => mail.to[0].email !== "private-donor@example.test");
+  assert.deepEqual(alerts.map((mail: any) => mail.to[0].email).sort(),
+    ["contact@example.test", "team@example.test"]);
+  for (const mail of alerts) {
+    assert.equal(mail.to.length, 1, "Recipients never share an address list");
+    assert.match(mail.htmlContent, /pi_alert_guest/);
+    assert.match(mail.htmlContent, /&lt;Alex&gt;/);
+    assert.doesNotMatch(mail.htmlContent, /<Alex>|private-donor@example\.test/);
+    assert.doesNotMatch(mail.htmlContent, /<th[^>]*>Campaign<\/th>/);
+  }
+});
+
+test("organisation email failure does not block the team alert or donation accounting", async () => {
+  const { webhooks, state } = await isolatedRouters();
+  state.failEmailTo = "org@example.test";
+  const errors: unknown[] = [];
+  const event = checkoutEvent({ id: "pi_alert_failure", amount: 300, currency: "gbp",
+    metadata: { orgId: "test-org", originalAmountPence: "300" } });
+  await invoke(webhooks, "/stripe", {
+    body: Buffer.from(JSON.stringify(event)), headers: { "stripe-signature": "synthetic-signature" },
+    log: { info() {}, error(obj: unknown) { errors.push(obj); } },
+  });
+  assert.deepEqual(state.emails.map((mail: any) => mail.to[0].email).sort(),
+    ["info@rootprojx.com", "org@example.test"]);
+  assert.equal(errors.length, 1);
+  assert.equal(state.documents.get("organisations/test-org").totalRaised, 13);
+  assert.equal(state.writes.filter((write: any) => write.collection === "donations").length, 1);
 });
 
 test("expanded international card country selects international fees", async () => {
@@ -695,4 +758,5 @@ test("unpaid, subscription and unrelated Checkout completions never record donat
   }
   assert.equal(state.writes.length, 0);
   assert.equal(state.documents.get("organisations/test-org").totalRaised, 10);
+  assert.equal(state.emails.length, 0, "No receipt or alerts for unsuccessful/unrelated events");
 });

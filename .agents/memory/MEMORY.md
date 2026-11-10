@@ -16,6 +16,7 @@
 - [Stripe onboarding experience](stripe-onboarding-experience.md) — start and continue setup in a separate tab; keep the original dashboard open.
 - [Payment return origins](payment-return-origins.md) — live payment callbacks must ignore inherited preview domains; a failed return does not mean a failed charge.
 - [Donation event authority](donation-event-authority.md) — Checkout owns one-off recording; PI success is a donation no-op; preserve verified fee/payout logic.
+- [Donation notifications](donation-notification-policy.md) — notify the receiving organisation and Root ProjX for each successful donation, retaining donor privacy.
 - [Web UI SSR tests](web-ui-ssr-tests.md) — Wouter components need a static Router hook in raw Node React SSR tests.
 - [Campaign template reference](campaign-template-reference.md) — use the supplied “Out of Many Hands — Campaign Page” PDF as the shared campaign-page design.
 - [Admin organisation access](admin-organisation-access.md) — manage content on behalf of organisations without sharing their login or taking over banking setup.
