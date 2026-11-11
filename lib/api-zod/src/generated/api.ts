@@ -8,6 +8,35 @@
 import * as zod from "zod";
 
 /**
+ * @summary Request a direct storage upload for an organisation video
+ */
+export const requestVideoUploadBodyNameMax = 255;
+
+export const requestVideoUploadBodySizeMax = 524288000;
+
+export const RequestVideoUploadBody = zod.object({
+  name: zod.string().min(1).max(requestVideoUploadBodyNameMax),
+  size: zod.number().min(1).max(requestVideoUploadBodySizeMax),
+  contentType: zod.enum(["video/mp4", "video/webm", "video/quicktime"]),
+});
+
+export const RequestVideoUploadResponse = zod.object({
+  uploadUrl: zod.string(),
+  objectPath: zod.string(),
+});
+
+/**
+ * @summary Verify uploaded video and return its public playback URL
+ */
+export const CompleteVideoUploadBody = zod.object({
+  objectPath: zod.string(),
+});
+
+export const CompleteVideoUploadResponse = zod.object({
+  url: zod.string(),
+});
+
+/**
  * @summary Send one labelled test email to the configured team address
  */
 export const SendAdminTestEmailHeader = zod.object({

@@ -5,6 +5,42 @@
  * Root ProjX API — community giving platform
  * OpenAPI spec version: 0.1.0
  */
+export type VideoUploadRequestContentType =
+  (typeof VideoUploadRequestContentType)[keyof typeof VideoUploadRequestContentType];
+
+export const VideoUploadRequestContentType = {
+  "video/mp4": "video/mp4",
+  "video/webm": "video/webm",
+  "video/quicktime": "video/quicktime",
+} as const;
+
+export interface VideoUploadRequest {
+  /**
+   * @minLength 1
+   * @maxLength 255
+   */
+  name: string;
+  /**
+   * @minimum 1
+   * @maximum 524288000
+   */
+  size: number;
+  contentType: VideoUploadRequestContentType;
+}
+
+export interface VideoUploadTarget {
+  uploadUrl: string;
+  objectPath: string;
+}
+
+export interface VideoUploadCompletion {
+  objectPath: string;
+}
+
+export interface VideoUploadResult {
+  url: string;
+}
+
 export interface OrganisationDeletionInput {
   confirmationName: string;
 }

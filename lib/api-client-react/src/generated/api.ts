@@ -71,6 +71,10 @@ import type {
   UpdateOrganisationRequest,
   UpdateProfileRequest,
   UpdateWithOrg,
+  VideoUploadCompletion,
+  VideoUploadRequest,
+  VideoUploadResult,
+  VideoUploadTarget,
   WalkthroughPreviewEvent,
   WalkthroughProgress,
   WalkthroughView,
@@ -84,6 +88,178 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+/**
+ * @summary Request a direct storage upload for an organisation video
+ */
+export const getRequestVideoUploadUrl = () => {
+  return `/api/uploads/video/request`;
+};
+
+export const requestVideoUpload = async (
+  videoUploadRequest: VideoUploadRequest,
+  options?: RequestInit,
+): Promise<VideoUploadTarget> => {
+  return customFetch<VideoUploadTarget>(getRequestVideoUploadUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(videoUploadRequest),
+  });
+};
+
+export const getRequestVideoUploadMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestVideoUpload>>,
+    TError,
+    { data: BodyType<VideoUploadRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof requestVideoUpload>>,
+  TError,
+  { data: BodyType<VideoUploadRequest> },
+  TContext
+> => {
+  const mutationKey = ["requestVideoUpload"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof requestVideoUpload>>,
+    { data: BodyType<VideoUploadRequest> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return requestVideoUpload(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RequestVideoUploadMutationResult = NonNullable<
+  Awaited<ReturnType<typeof requestVideoUpload>>
+>;
+export type RequestVideoUploadMutationBody = BodyType<VideoUploadRequest>;
+export type RequestVideoUploadMutationError = ErrorType<void>;
+
+/**
+ * @summary Request a direct storage upload for an organisation video
+ */
+export const useRequestVideoUpload = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestVideoUpload>>,
+    TError,
+    { data: BodyType<VideoUploadRequest> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof requestVideoUpload>>,
+  TError,
+  { data: BodyType<VideoUploadRequest> },
+  TContext
+> => {
+  return useMutation(getRequestVideoUploadMutationOptions(options));
+};
+
+/**
+ * @summary Verify uploaded video and return its public playback URL
+ */
+export const getCompleteVideoUploadUrl = () => {
+  return `/api/uploads/video/complete`;
+};
+
+export const completeVideoUpload = async (
+  videoUploadCompletion: VideoUploadCompletion,
+  options?: RequestInit,
+): Promise<VideoUploadResult> => {
+  return customFetch<VideoUploadResult>(getCompleteVideoUploadUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(videoUploadCompletion),
+  });
+};
+
+export const getCompleteVideoUploadMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof completeVideoUpload>>,
+    TError,
+    { data: BodyType<VideoUploadCompletion> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof completeVideoUpload>>,
+  TError,
+  { data: BodyType<VideoUploadCompletion> },
+  TContext
+> => {
+  const mutationKey = ["completeVideoUpload"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof completeVideoUpload>>,
+    { data: BodyType<VideoUploadCompletion> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return completeVideoUpload(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CompleteVideoUploadMutationResult = NonNullable<
+  Awaited<ReturnType<typeof completeVideoUpload>>
+>;
+export type CompleteVideoUploadMutationBody = BodyType<VideoUploadCompletion>;
+export type CompleteVideoUploadMutationError = ErrorType<void>;
+
+/**
+ * @summary Verify uploaded video and return its public playback URL
+ */
+export const useCompleteVideoUpload = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof completeVideoUpload>>,
+    TError,
+    { data: BodyType<VideoUploadCompletion> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof completeVideoUpload>>,
+  TError,
+  { data: BodyType<VideoUploadCompletion> },
+  TContext
+> => {
+  return useMutation(getCompleteVideoUploadMutationOptions(options));
+};
 
 /**
  * @summary Send one labelled test email to the configured team address

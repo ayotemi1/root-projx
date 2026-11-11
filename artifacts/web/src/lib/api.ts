@@ -1,3 +1,4 @@
+import { uploadVideo } from "./video-upload";
 export const API_BASE = "/api";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -313,7 +314,24 @@ export async function uploadMedia(files: File[], token: string): Promise<string[
  * Upload files to POST /uploads/media?type=media (field `files`) with real
  * upload progress via XMLHttpRequest. Resolves with the returned URLs.
  */
-export function uploadMediaWithProgress(
+export async function uploadMediaWithProgress(
+  files: Array<File | Blob>,
+  token: string,
+  onProgress?: (fraction: number) => void,
+): Promise<string[]> {
+  if (!files.some(file => file.type.startsWith("video/"))) {
+    return uploadMultipartWithProgress(files, token, onProgress);
+  }
+  const urls: string[] = [];
+  for (const [i, file] of files.entries()) {
+    const progress = (fraction: number) => onProgress?.((i + fraction) / files.length);
+    if (file.type.startsWith("video/")) urls.push(await uploadVideo(file, token, API_BASE, progress));
+    else urls.push(...await uploadMultipartWithProgress([file], token, progress));
+  }
+  return urls;
+}
+
+function uploadMultipartWithProgress(
   files: Array<File | Blob>,
   token: string,
   onProgress?: (fraction: number) => void,
@@ -337,7 +355,9 @@ export function uploadMediaWithProgress(
         onProgress?.(1);
         resolve(body.urls);
       } else {
-        reject(new Error(body.error ?? `Upload failed (${xhr.status})`));
+        reject(Object.assign(new Error(body.error ?? (xhr.status === 413
+          ? "File is too large. Images must be under 20 MB; videos can be up to 500 MB."
+          : `Upload failed (${xhr.status})`)), { status: xhr.status }));
       }
     };
     xhr.onerror = () => reject(new Error("Upload failed. Check your connection and try again."));

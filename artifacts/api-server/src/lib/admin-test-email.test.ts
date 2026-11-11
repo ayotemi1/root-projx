@@ -53,7 +53,7 @@ async function fixture(options: { missingKey?: boolean; failure?: string; produc
         headers: { "Content-Type": "application/json", ...(auth ? { "x-admin-token": module.exports.getAdminTokenValue() } : {}) },
         body: JSON.stringify(body),
       });
-      return { status: result.status, body: await result.json(), retryAfter: result.headers.get("retry-after") };
+      return { status: result.status, body: await result.json() as Record<string, any>, retryAfter: result.headers.get("retry-after") };
     },
     close: () => new Promise<void>((resolve, reject) => server.close(err => err ? reject(err) : resolve())),
   };

@@ -108,6 +108,14 @@ at 3.25% + US$0.30; existing GBP estimates and the platform percentage are uncha
 
 Campaigns support up to **10 videos**, uploaded from a device or linked from
 YouTube/Vimeo. Each has optional descriptive caption text, poster and subtitles.
+Website video uploads support MP4, MOV and WebM up to **500 MB per video**.
+The authenticated API issues a short-lived direct-storage PUT URL, so file bytes
+do not pass through the old 20 MB multipart/application request limit. Pending
+objects are not served publicly. Completion validates actual storage metadata
+and organisation ownership before moving the video into the existing media
+proxy namespace; repeated completion returns the same asset. Images/subtitles
+retain their existing multipart path. A completed upload still needs its campaign
+draft saved; never treat file transfer alone as publication.
 The ordered `videos` array takes precedence over the legacy single `video`;
 an explicit empty array removes all videos. Unfinished rows remain in drafts,
 but only videos with URLs render publicly. Upload completion merges by stable

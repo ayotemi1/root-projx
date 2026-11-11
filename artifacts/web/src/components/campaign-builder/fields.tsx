@@ -7,6 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import * as api from "@/lib/api";
 import { ApiError, type CampaignAssistField } from "@/lib/api";
+import { formatUploadSize, uploadFeedback, videoFileProblem, type UploadFeedback } from "@/lib/upload-feedback";
 
 export function FieldBlock({ label, htmlFor, hint, children, counter, error }: {
   label: string; htmlFor?: string; hint?: ReactNode; children: ReactNode; counter?: ReactNode; error?: string | null;
@@ -35,7 +36,7 @@ export function Counter({ n, max, min, id }: { n: number; max?: number; min?: nu
 }
 
 /**
- * Upload via multipart with progress. The URL is handed to the draft as soon as it
+ * Upload with progress (videos go directly to storage). The URL is handed to the draft as soon as it
  * returns, so it is kept in local recovery and re-attached on the next save without uploading again.
  */
 export function MediaUpload({
@@ -47,19 +48,23 @@ export function MediaUpload({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [progress, setProgress] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<UploadFeedback | null>(null);
   const [lastFile, setLastFile] = useState<File | null>(null);
 
   async function upload(file: File) {
     setLastFile(file);
     setError(null);
+    if (kind === "video") {
+      const problem = videoFileProblem(file);
+      if (problem) { setError(problem); return; }
+    }
     setProgress(0);
     try {
       const urls = await api.uploadMediaWithProgress([file], token, setProgress);
       onUploaded(urls[0]);
       setLastFile(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Upload failed.");
+      setError(uploadFeedback(e, kind, file.size));
     } finally {
       setProgress(null);
     }
@@ -72,6 +77,8 @@ export function MediaUpload({
         onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void upload(f); }}
         data-testid={`input-file-${id}`}
       />
+      {kind === "video" && <p className="text-xs text-muted-foreground">Maximum video size: <strong>500 MB per video</strong>. MP4, MOV or WebM. Videos are uploaded as selected, not automatically compressed.</p>}
+      {lastFile && <p className="text-xs text-muted-foreground break-words">Selected: {lastFile.name} · {formatUploadSize(lastFile.size)}</p>}
       {url && kind === "image" ? (
         <div className={`relative rounded-xl overflow-hidden border border-border bg-secondary ${aspect}`}>
           <img src={url} alt={label} className="w-full h-full object-cover" />
@@ -110,12 +117,13 @@ export function MediaUpload({
       )}
       {error && (
         <div role="alert" className="flex flex-wrap items-center gap-2 text-xs text-destructive">
-          <AlertCircle className="w-3.5 h-3.5" /> <span>{error}</span>
-          {lastFile && (
+          <AlertCircle className="w-3.5 h-3.5" /> <span>{error.message}</span>
+          {lastFile && error.retryable && (
             <button type="button" className="font-bold underline underline-offset-2 inline-flex items-center gap-1" onClick={() => void upload(lastFile)} data-testid={`button-retry-upload-${id}`}>
               <RotateCcw className="w-3 h-3" /> Try again
             </button>
           )}
+          {!error.retryable && <button type="button" className="font-bold underline underline-offset-2" onClick={() => inputRef.current?.click()}>Choose another file</button>}
         </div>
       )}
     </div>
