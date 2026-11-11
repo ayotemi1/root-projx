@@ -96,6 +96,8 @@ export * from "./reviewBankDetails200";
 export * from "./saveCampaignDraft400";
 export * from "./saveCampaignDraft400UnmetGatesItem";
 export * from "./saveOrganisationWalkthrough200";
+export * from "./sendAdminTestEmail200";
+export * from "./sendAdminTestEmail200Environment";
 export * from "./submitHelpReviewRequest";
 export * from "./update";
 export * from "./updateOrganisationRequest";

@@ -405,6 +405,12 @@ No separate collection or Firestore rules change is required.
 
 ### Brevo
 - API key in `BREVO_API_KEY` secret
+- Admin dashboard includes **Send test email**, calling authenticated
+  `POST /api/admin/email/test`. It sends only to `TEAM_EMAIL` (fallback
+  `info@rootprojx.com`), never a caller-selected recipient. One attempt per minute
+  per server instance; no automatic retry. The response identifies production
+  versus development and reports Brevo acceptance, not inbox delivery. Test from
+  the published admin page to check the production server's IP authorisation.
 - Optional `BREVO_NEWSLETTER_LIST_ID` env var for list subscription
 - Optional `BREVO_SENDER_EMAIL` env var (defaults to `noreply@rootprojx.com`)
 - All Brevo calls are fire-and-forget — errors are logged but never block responses

@@ -65,6 +65,7 @@ import type {
   ReviewBankDetails200,
   SaveCampaignDraft400,
   SaveOrganisationWalkthrough200,
+  SendAdminTestEmail200,
   SubmitHelpReviewRequest,
   Update,
   UpdateOrganisationRequest,
@@ -83,6 +84,87 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+/**
+ * @summary Send one labelled test email to the configured team address
+ */
+export const getSendAdminTestEmailUrl = () => {
+  return `/api/admin/email/test`;
+};
+
+export const sendAdminTestEmail = async (
+  options?: RequestInit,
+): Promise<SendAdminTestEmail200> => {
+  return customFetch<SendAdminTestEmail200>(getSendAdminTestEmailUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getSendAdminTestEmailMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendAdminTestEmail>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof sendAdminTestEmail>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["sendAdminTestEmail"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof sendAdminTestEmail>>,
+    void
+  > = () => {
+    return sendAdminTestEmail(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SendAdminTestEmailMutationResult = NonNullable<
+  Awaited<ReturnType<typeof sendAdminTestEmail>>
+>;
+
+export type SendAdminTestEmailMutationError = ErrorType<void>;
+
+/**
+ * @summary Send one labelled test email to the configured team address
+ */
+export const useSendAdminTestEmail = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof sendAdminTestEmail>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof sendAdminTestEmail>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getSendAdminTestEmailMutationOptions(options));
+};
 
 /**
  * @summary Get the owning organisation's bank-detail submission status

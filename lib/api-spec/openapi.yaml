@@ -25,6 +25,32 @@ tags:
   - name: profile
     description: User profile
 paths:
+  /admin/email/test:
+    post:
+      operationId: sendAdminTestEmail
+      summary: Send one labelled test email to the configured team address
+      parameters:
+        - in: header
+          name: x-admin-token
+          required: true
+          schema: {type: string}
+      responses:
+        '200':
+          description: Brevo accepted the message, not proof of inbox delivery
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [accepted, recipient, environment, sentAt]
+                properties:
+                  accepted: {type: boolean}
+                  recipient: {type: string}
+                  environment: {type: string, enum: [production, development]}
+                  sentAt: {type: string}
+        '401': {description: Administrator authentication required}
+        '429': {description: Wait one minute between attempts}
+        '502': {description: Brevo rejected the request or could not be reached}
+        '503': {description: Administrator or email configuration missing}
   /payout/bank-details:
     get:
       operationId: getBankDetailsStatus

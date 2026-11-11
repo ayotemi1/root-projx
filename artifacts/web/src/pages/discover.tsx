@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import * as api from "@/lib/api";
 import type { Org } from "@/lib/api";
 import { DISCOVER_COUNTRIES } from "@/lib/countries";
+import { OrganisationLogo } from "@/components/organisation-logo";
 
 const CATEGORIES = [
   "All Causes",
@@ -168,11 +169,7 @@ function OrgCard({ org }: { org: Org }) {
             {[org.city, org.country].filter(Boolean).join(", ")}
           </p>
         </div>
-        <div className="w-12 h-12 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0">
-          <span className="text-primary font-bold text-sm">
-            {org.name.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()}
-          </span>
-        </div>
+        <OrganisationLogo name={org.name} logo={org.logo} />
       </div>
 
       <Badge

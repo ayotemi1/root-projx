@@ -7,6 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { adminPayoutsKey } from "@/lib/payouts-api";
 import { AdminDeleteOrganisation } from "@/components/admin-delete-organisation";
 import { AdminBankDetailsReview } from "@/components/admin-bank-details-review";
+import { AdminTestEmail } from "@/components/admin-test-email";
 
 const RED_DEEP = "#7A0000";
 const RED = "#B50000";
@@ -391,6 +392,7 @@ export default function AdminPage() {
 
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px" }}>
 
+        <AdminTestEmail token={token} onUnauthorized={logout} />
         {error && <p style={{ color: RED, marginBottom: 16 }}>{error}</p>}
 
         {payoutNotice && <p role="status" style={{ color: RED_DEEP, marginBottom: 16 }}>{payoutNotice}</p>}

@@ -891,6 +891,21 @@ export interface UpdateProfileRequest {
   phone?: string;
 }
 
+export type SendAdminTestEmail200Environment =
+  (typeof SendAdminTestEmail200Environment)[keyof typeof SendAdminTestEmail200Environment];
+
+export const SendAdminTestEmail200Environment = {
+  production: "production",
+  development: "development",
+} as const;
+
+export type SendAdminTestEmail200 = {
+  accepted: boolean;
+  recipient: string;
+  environment: SendAdminTestEmail200Environment;
+  sentAt: string;
+};
+
 export type ReviewBankDetails200 = BankDetailsStatus & {
   details?: BankDetailsInput | null;
 };

@@ -8,6 +8,20 @@
 import * as zod from "zod";
 
 /**
+ * @summary Send one labelled test email to the configured team address
+ */
+export const SendAdminTestEmailHeader = zod.object({
+  "x-admin-token": zod.string(),
+});
+
+export const SendAdminTestEmailResponse = zod.object({
+  accepted: zod.boolean(),
+  recipient: zod.string(),
+  environment: zod.enum(["production", "development"]),
+  sentAt: zod.string(),
+});
+
+/**
  * @summary Get the owning organisation's bank-detail submission status
  */
 export const GetBankDetailsStatusResponse = zod.object({

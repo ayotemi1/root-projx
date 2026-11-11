@@ -19,10 +19,12 @@ import payoutsRouter from "./payouts.js";
 import campaignAssistRouter from "./campaign-assist.js";
 import organisationSelfServiceRouter from "./organisation-self-service.js";
 import organisationDeletionRouter from "./organisation-deletion.js";
+import adminEmailRouter from "./admin-email.js";
 
 const router: IRouter = Router();
 
 router.use(applicationsRouter);
+router.use(adminEmailRouter);
 router.use(organisationDeletionRouter);
 router.use(payoutSetupRouter);
 router.use(bankDetailsRouter);
