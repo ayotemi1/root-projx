@@ -23,3 +23,4 @@
 - [Organisation content](organisation-content.md) — profiles need browsable photos, watchable videos and optional social links without requiring Instagram connection.
 - [OpenAPI body naming](openapi-inline-body-names.md) — named request schemas prevent Orval validator/type export collisions.
 - [Organisation deletion](organisation-deletion.md) — remove public presence and owner access while retaining financial history and settlement capability.
+- [Drum Life campaign](drum-life-campaign.md) — 50 drums at US$150 each; the HOV reclaimed-wood centre drum is included, not additional.
