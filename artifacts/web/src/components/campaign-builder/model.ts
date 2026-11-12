@@ -1,7 +1,7 @@
 import { currencyName, currencySymbol } from "@/lib/currency";
 import type {
   Campaign, CampaignBreakdownItem, CampaignEditorPatch, CampaignGate, CampaignLocation,
-  CampaignTheme, CampaignUnit, CampaignVideo, Org,
+  CampaignTheme, CampaignUnit, CampaignVideo, DrumExperience, DrumUpdate, Org,
 } from "@/lib/api";
 
 export const TAGLINE_MAX = 140;
@@ -78,6 +78,30 @@ export interface CampaignDraft {
   unit: CampaignUnit | null;
   unitChosen: boolean;
   assistUsed: boolean;
+  drumExperience: DrumExperience;
+}
+
+export const MAX_DRUM_UPDATES = 20;
+export const emptyDrumUpdate = (): DrumUpdate => ({
+  id: crypto.randomUUID(), date: new Date().toISOString().slice(0, 10), text: "", photoUrl: null, caption: "",
+});
+
+function drumExperienceOf(x: Partial<DrumExperience> | null | undefined): DrumExperience {
+  const updates = Array.isArray(x?.updates) ? x!.updates : [];
+  return {
+    enabled: x?.enabled === true,
+    updates: updates.slice(0, MAX_DRUM_UPDATES).map((u, i) => ({
+      id: u?.id || `saved-drum-update-${i}`, date: u?.date ?? "", text: u?.text ?? "",
+      photoUrl: u?.photoUrl ?? null, caption: u?.caption ?? "",
+    })),
+  };
+}
+
+/** Drum display needs a USD fundraising campaign; never change currency to fit it. */
+export function drumBlockReason(d: Pick<CampaignDraft, "type" | "currency">): string | null {
+  if (d.type !== "fundraising") return "The drum build counts money raised, so it only works for fundraising campaigns.";
+  if (d.currency !== "usd") return "Each drum costs US$150, so the drum build needs this campaign to raise in US dollars. Switch currency in Money first.";
+  return null;
 }
 
 export function draftFromCampaign(c: Campaign): CampaignDraft {
@@ -111,6 +135,7 @@ export function draftFromCampaign(c: Campaign): CampaignDraft {
     unit: t?.unit ?? null,
     unitChosen: c.unitChosen === true,
     assistUsed: !!c.assistUsed,
+    drumExperience: drumExperienceOf(c.drumExperience),
   };
 }
 
@@ -141,6 +166,11 @@ export function validateDraft(d: CampaignDraft): string | null {
   }
   if (d.locations.length > MAX_LOCATIONS) return `Add up to ${MAX_LOCATIONS} locations.`;
   if (d.videos.length > MAX_VIDEOS) return `Add up to ${MAX_VIDEOS} videos.`;
+  if (d.drumExperience?.enabled) {
+    const why = drumBlockReason(d);
+    if (why) return why;
+    if (d.drumExperience.updates.length > MAX_DRUM_UPDATES) return `Add up to ${MAX_DRUM_UPDATES} build updates.`;
+  }
   return null;
 }
 
@@ -156,6 +186,7 @@ export function migrateLegacyVideoDraft(v: CampaignDraft): CampaignDraft {
     ...rest,
     ...(videos ? { videos: videos.slice(0, MAX_VIDEOS) } : {}),
     ...(rest.currency ? { currency: rest.currency === "usd" ? "usd" : "gbp" } : {}),
+    drumExperience: drumExperienceOf((rest as Partial<CampaignDraft>).drumExperience),
   } as CampaignDraft;
 }
 
@@ -202,6 +233,9 @@ export function draftToPatch(d: CampaignDraft, prevTheme?: CampaignTheme): Campa
     assistUsed: d.assistUsed,
     partnerFundingAnswer: d.partnerAnswer,
     unitChosen: d.unitChosen,
+    drumExperience: d.drumExperience
+      ? { enabled: d.drumExperience.enabled, updates: d.drumExperience.updates.slice(0, MAX_DRUM_UPDATES).map((u) => ({ ...u })) }
+      : null,
   };
 }
 
@@ -225,6 +259,7 @@ export function draftToPreviewCampaign(d: CampaignDraft, c: Campaign): Campaign 
     video: p.video ?? null,
     videos: p.videos ?? [],
     theme: p.theme,
+    drumExperience: p.drumExperience ?? null,
     enabled: true,
   };
 }

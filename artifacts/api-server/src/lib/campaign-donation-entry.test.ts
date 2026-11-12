@@ -26,6 +26,43 @@ async function loadComponent(path: string) {
   return mod.exports;
 }
 
+test("Drum Life renders 50 drums from money in public and preview; other campaigns retain the supporter wall", async () => {
+  const { CampaignPageView } = await loadComponent("src/components/campaign/campaign-page-view.tsx");
+  const { DRUM_SPOTS, fundedDrums } = await loadComponent("src/lib/drum-experience.ts");
+  assert.equal(DRUM_SPOTS.length, 50);
+  assert.equal(DRUM_SPOTS.filter((s: any) => s.ring === 0).length, 1);
+  assert.equal(new Set(DRUM_SPOTS.map((s: any) => s.n)).size, 50);
+  for (const [amount, expected] of [[0, 0], [149.99, 0], [150, 1], [300, 2], [7500, 50], [15000, 50], [Infinity, 0]]) {
+    assert.equal(fundedDrums(amount), expected);
+  }
+  const campaign = { _id: "drum-test", name: "Drum Life", type: "fundraising", currency: "usd",
+    goal: 15000, amountRaised: 300, supporterCount: 99, description: "", phases: [], status: "active",
+    enabled: true, drumExperience: { enabled: true, updates: [] } };
+  const organisation = { _id: "lifeyard", name: "Lifeyard", country: "Jamaica" };
+  const render = (changes: any, preview: boolean) => renderToStaticMarkup(createElement(Router, { hook: () => ["/", () => {}] },
+    createElement(CampaignPageView, { campaign: { ...campaign, ...changes }, organisation, preview, layout: "phone" })));
+  for (const preview of [false, true]) {
+    const html = render({}, preview);
+    assert.match(html, /block-drum-circle/);
+    assert.equal((html.match(/data-testid="button-drum-\d+"/g) ?? []).length, 50);
+    assert.match(html, /Drum build: 2 of 50 drums funded/);
+    assert.match(html, /Drum 1, the reclaimed-wood centre drum, funded/);
+    assert.match(html, /Drum 3, waiting for funding/);
+    assert.match(html, /Humanity Ova Vanity/);
+    assert.doesNotMatch(html, /99 supporters|data-testid="text-supporter-count"|marker-your-hand/);
+    assert.match(html, /select-drum/);
+    assert.match(html, /block-campaign-donate-box|Support this campaign/);
+    const zero = render({ amountRaised: 0 }, preview);
+    assert.match(zero, /Drum build: 0 of 50 drums funded/);
+    assert.match(zero, /Drum 1, the reclaimed-wood centre drum, waiting for funding/);
+    for (const changes of [{ drumExperience: null }, { drumExperience: { enabled: false, updates: [] } }, { currency: "gbp" }]) {
+      const ordinary = render(changes, preview);
+      assert.doesNotMatch(ordinary, /block-drum-circle/);
+      assert.match(ordinary, /canvas-accumulation/);
+    }
+  }
+});
+
 test("USD campaign sheet displays dollars and sends USD without changing organisation-level GBP", async () => {
   const { GuestDonateSheet, guestCheckoutBody } = await loadComponent("src/components/GuestDonateSheet.tsx");
   const html = renderSheet(GuestDonateSheet, { campaignId: "usd-campaign", campaignName: "Skills",

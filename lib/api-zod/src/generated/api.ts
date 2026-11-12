@@ -401,6 +401,14 @@ export const GetOwnerCampaignPreviewParams = zod.object({
   campId: zod.coerce.string(),
 });
 
+export const getOwnerCampaignPreviewResponseCampaignOneDrumExperienceOneUpdatesItemIdMax = 80;
+
+export const getOwnerCampaignPreviewResponseCampaignOneDrumExperienceOneUpdatesItemTextMax = 5000;
+
+export const getOwnerCampaignPreviewResponseCampaignOneDrumExperienceOneUpdatesItemCaptionMax = 500;
+
+export const getOwnerCampaignPreviewResponseCampaignOneDrumExperienceOneUpdatesMax = 20;
+
 export const getOwnerCampaignPreviewResponseCampaignOneCurrencyDefault = `gbp`;
 export const getOwnerCampaignPreviewResponseCampaignOneNameMax = 200;
 
@@ -451,6 +459,48 @@ export const getOwnerCampaignPreviewResponseCampaignTwoSupporterUnitsMax = 300;
 export const GetOwnerCampaignPreviewResponse = zod.object({
   campaign: zod
     .object({
+      drumExperience: zod
+        .union([
+          zod
+            .object({
+              enabled: zod.boolean(),
+              updates: zod
+                .array(
+                  zod.object({
+                    id: zod
+                      .string()
+                      .min(1)
+                      .max(
+                        getOwnerCampaignPreviewResponseCampaignOneDrumExperienceOneUpdatesItemIdMax,
+                      ),
+                    date: zod
+                      .string()
+                      .describe(
+                        "ISO calendar date YYYY-MM-DD, or empty while drafting.",
+                      ),
+                    text: zod
+                      .string()
+                      .max(
+                        getOwnerCampaignPreviewResponseCampaignOneDrumExperienceOneUpdatesItemTextMax,
+                      ),
+                    photoUrl: zod.string().nullable(),
+                    caption: zod
+                      .string()
+                      .max(
+                        getOwnerCampaignPreviewResponseCampaignOneDrumExperienceOneUpdatesItemCaptionMax,
+                      ),
+                  }),
+                )
+                .max(
+                  getOwnerCampaignPreviewResponseCampaignOneDrumExperienceOneUpdatesMax,
+                ),
+            })
+            .describe(
+              "Optional Drum Life illustration. 50 drums including the centre, US$150 each; requires USD fundraising. Progress is derived from native amountRaised, never editable.",
+            ),
+          zod.null(),
+        ])
+        .optional(),
       currency: zod
         .enum(["gbp", "usd"])
         .default(getOwnerCampaignPreviewResponseCampaignOneCurrencyDefault)
@@ -823,6 +873,14 @@ export const GetPublicCampaignsParams = zod.object({
   id: zod.coerce.string(),
 });
 
+export const getPublicCampaignsResponseOneDrumExperienceOneUpdatesItemIdMax = 80;
+
+export const getPublicCampaignsResponseOneDrumExperienceOneUpdatesItemTextMax = 5000;
+
+export const getPublicCampaignsResponseOneDrumExperienceOneUpdatesItemCaptionMax = 500;
+
+export const getPublicCampaignsResponseOneDrumExperienceOneUpdatesMax = 20;
+
 export const getPublicCampaignsResponseOneCurrencyDefault = `gbp`;
 export const getPublicCampaignsResponseOneNameMax = 200;
 
@@ -872,6 +930,46 @@ export const getPublicCampaignsResponseTwoSupporterUnitsMax = 300;
 
 export const GetPublicCampaignsResponseItem = zod
   .object({
+    drumExperience: zod
+      .union([
+        zod
+          .object({
+            enabled: zod.boolean(),
+            updates: zod
+              .array(
+                zod.object({
+                  id: zod
+                    .string()
+                    .min(1)
+                    .max(
+                      getPublicCampaignsResponseOneDrumExperienceOneUpdatesItemIdMax,
+                    ),
+                  date: zod
+                    .string()
+                    .describe(
+                      "ISO calendar date YYYY-MM-DD, or empty while drafting.",
+                    ),
+                  text: zod
+                    .string()
+                    .max(
+                      getPublicCampaignsResponseOneDrumExperienceOneUpdatesItemTextMax,
+                    ),
+                  photoUrl: zod.string().nullable(),
+                  caption: zod
+                    .string()
+                    .max(
+                      getPublicCampaignsResponseOneDrumExperienceOneUpdatesItemCaptionMax,
+                    ),
+                }),
+              )
+              .max(getPublicCampaignsResponseOneDrumExperienceOneUpdatesMax),
+          })
+          .describe(
+            "Optional Drum Life illustration. 50 drums including the centre, US$150 each; requires USD fundraising. Progress is derived from native amountRaised, never editable.",
+          ),
+        zod.null(),
+      ])
+      .optional(),
     currency: zod
       .enum(["gbp", "usd"])
       .default(getPublicCampaignsResponseOneCurrencyDefault)
@@ -1063,6 +1161,14 @@ export const CreateCampaignDraftParams = zod.object({
   id: zod.coerce.string(),
 });
 
+export const createCampaignDraftBodyDrumExperienceOneUpdatesItemIdMax = 80;
+
+export const createCampaignDraftBodyDrumExperienceOneUpdatesItemTextMax = 5000;
+
+export const createCampaignDraftBodyDrumExperienceOneUpdatesItemCaptionMax = 500;
+
+export const createCampaignDraftBodyDrumExperienceOneUpdatesMax = 20;
+
 export const createCampaignDraftBodyCurrencyDefault = `gbp`;
 export const createCampaignDraftBodyNameMax = 200;
 
@@ -1103,6 +1209,46 @@ export const createCampaignDraftBodyThemeUnitPluralMax = 60;
 export const createCampaignDraftBodyEditorStepMax = 5;
 
 export const CreateCampaignDraftBody = zod.object({
+  drumExperience: zod
+    .union([
+      zod
+        .object({
+          enabled: zod.boolean(),
+          updates: zod
+            .array(
+              zod.object({
+                id: zod
+                  .string()
+                  .min(1)
+                  .max(
+                    createCampaignDraftBodyDrumExperienceOneUpdatesItemIdMax,
+                  ),
+                date: zod
+                  .string()
+                  .describe(
+                    "ISO calendar date YYYY-MM-DD, or empty while drafting.",
+                  ),
+                text: zod
+                  .string()
+                  .max(
+                    createCampaignDraftBodyDrumExperienceOneUpdatesItemTextMax,
+                  ),
+                photoUrl: zod.string().nullable(),
+                caption: zod
+                  .string()
+                  .max(
+                    createCampaignDraftBodyDrumExperienceOneUpdatesItemCaptionMax,
+                  ),
+              }),
+            )
+            .max(createCampaignDraftBodyDrumExperienceOneUpdatesMax),
+        })
+        .describe(
+          "Optional Drum Life illustration. 50 drums including the centre, US$150 each; requires USD fundraising. Progress is derived from native amountRaised, never editable.",
+        ),
+      zod.null(),
+    ])
+    .optional(),
   currency: zod
     .enum(["gbp", "usd"])
     .default(createCampaignDraftBodyCurrencyDefault)
@@ -1237,6 +1383,14 @@ export const GetManagedCampaignDraftsParams = zod.object({
   id: zod.coerce.string(),
 });
 
+export const getManagedCampaignDraftsResponseOneDrumExperienceOneUpdatesItemIdMax = 80;
+
+export const getManagedCampaignDraftsResponseOneDrumExperienceOneUpdatesItemTextMax = 5000;
+
+export const getManagedCampaignDraftsResponseOneDrumExperienceOneUpdatesItemCaptionMax = 500;
+
+export const getManagedCampaignDraftsResponseOneDrumExperienceOneUpdatesMax = 20;
+
 export const getManagedCampaignDraftsResponseOneCurrencyDefault = `gbp`;
 export const getManagedCampaignDraftsResponseOneNameMax = 200;
 
@@ -1286,6 +1440,48 @@ export const getManagedCampaignDraftsResponseTwoSupporterUnitsMax = 300;
 
 export const GetManagedCampaignDraftsResponseItem = zod
   .object({
+    drumExperience: zod
+      .union([
+        zod
+          .object({
+            enabled: zod.boolean(),
+            updates: zod
+              .array(
+                zod.object({
+                  id: zod
+                    .string()
+                    .min(1)
+                    .max(
+                      getManagedCampaignDraftsResponseOneDrumExperienceOneUpdatesItemIdMax,
+                    ),
+                  date: zod
+                    .string()
+                    .describe(
+                      "ISO calendar date YYYY-MM-DD, or empty while drafting.",
+                    ),
+                  text: zod
+                    .string()
+                    .max(
+                      getManagedCampaignDraftsResponseOneDrumExperienceOneUpdatesItemTextMax,
+                    ),
+                  photoUrl: zod.string().nullable(),
+                  caption: zod
+                    .string()
+                    .max(
+                      getManagedCampaignDraftsResponseOneDrumExperienceOneUpdatesItemCaptionMax,
+                    ),
+                }),
+              )
+              .max(
+                getManagedCampaignDraftsResponseOneDrumExperienceOneUpdatesMax,
+              ),
+          })
+          .describe(
+            "Optional Drum Life illustration. 50 drums including the centre, US$150 each; requires USD fundraising. Progress is derived from native amountRaised, never editable.",
+          ),
+        zod.null(),
+      ])
+      .optional(),
     currency: zod
       .enum(["gbp", "usd"])
       .default(getManagedCampaignDraftsResponseOneCurrencyDefault)
@@ -1488,6 +1684,14 @@ export const SaveCampaignDraftParams = zod.object({
   campId: zod.coerce.string(),
 });
 
+export const saveCampaignDraftBodyDrumExperienceOneUpdatesItemIdMax = 80;
+
+export const saveCampaignDraftBodyDrumExperienceOneUpdatesItemTextMax = 5000;
+
+export const saveCampaignDraftBodyDrumExperienceOneUpdatesItemCaptionMax = 500;
+
+export const saveCampaignDraftBodyDrumExperienceOneUpdatesMax = 20;
+
 export const saveCampaignDraftBodyCurrencyDefault = `gbp`;
 export const saveCampaignDraftBodyNameMax = 200;
 
@@ -1528,6 +1732,44 @@ export const saveCampaignDraftBodyThemeUnitPluralMax = 60;
 export const saveCampaignDraftBodyEditorStepMax = 5;
 
 export const SaveCampaignDraftBody = zod.object({
+  drumExperience: zod
+    .union([
+      zod
+        .object({
+          enabled: zod.boolean(),
+          updates: zod
+            .array(
+              zod.object({
+                id: zod
+                  .string()
+                  .min(1)
+                  .max(saveCampaignDraftBodyDrumExperienceOneUpdatesItemIdMax),
+                date: zod
+                  .string()
+                  .describe(
+                    "ISO calendar date YYYY-MM-DD, or empty while drafting.",
+                  ),
+                text: zod
+                  .string()
+                  .max(
+                    saveCampaignDraftBodyDrumExperienceOneUpdatesItemTextMax,
+                  ),
+                photoUrl: zod.string().nullable(),
+                caption: zod
+                  .string()
+                  .max(
+                    saveCampaignDraftBodyDrumExperienceOneUpdatesItemCaptionMax,
+                  ),
+              }),
+            )
+            .max(saveCampaignDraftBodyDrumExperienceOneUpdatesMax),
+        })
+        .describe(
+          "Optional Drum Life illustration. 50 drums including the centre, US$150 each; requires USD fundraising. Progress is derived from native amountRaised, never editable.",
+        ),
+      zod.null(),
+    ])
+    .optional(),
   currency: zod
     .enum(["gbp", "usd"])
     .default(saveCampaignDraftBodyCurrencyDefault)
@@ -1653,6 +1895,14 @@ export const SaveCampaignDraftBody = zod.object({
   unitChosen: zod.boolean().optional(),
 });
 
+export const saveCampaignDraftResponseOneDrumExperienceOneUpdatesItemIdMax = 80;
+
+export const saveCampaignDraftResponseOneDrumExperienceOneUpdatesItemTextMax = 5000;
+
+export const saveCampaignDraftResponseOneDrumExperienceOneUpdatesItemCaptionMax = 500;
+
+export const saveCampaignDraftResponseOneDrumExperienceOneUpdatesMax = 20;
+
 export const saveCampaignDraftResponseOneCurrencyDefault = `gbp`;
 export const saveCampaignDraftResponseOneNameMax = 200;
 
@@ -1702,6 +1952,46 @@ export const saveCampaignDraftResponseTwoSupporterUnitsMax = 300;
 
 export const SaveCampaignDraftResponse = zod
   .object({
+    drumExperience: zod
+      .union([
+        zod
+          .object({
+            enabled: zod.boolean(),
+            updates: zod
+              .array(
+                zod.object({
+                  id: zod
+                    .string()
+                    .min(1)
+                    .max(
+                      saveCampaignDraftResponseOneDrumExperienceOneUpdatesItemIdMax,
+                    ),
+                  date: zod
+                    .string()
+                    .describe(
+                      "ISO calendar date YYYY-MM-DD, or empty while drafting.",
+                    ),
+                  text: zod
+                    .string()
+                    .max(
+                      saveCampaignDraftResponseOneDrumExperienceOneUpdatesItemTextMax,
+                    ),
+                  photoUrl: zod.string().nullable(),
+                  caption: zod
+                    .string()
+                    .max(
+                      saveCampaignDraftResponseOneDrumExperienceOneUpdatesItemCaptionMax,
+                    ),
+                }),
+              )
+              .max(saveCampaignDraftResponseOneDrumExperienceOneUpdatesMax),
+          })
+          .describe(
+            "Optional Drum Life illustration. 50 drums including the centre, US$150 each; requires USD fundraising. Progress is derived from native amountRaised, never editable.",
+          ),
+        zod.null(),
+      ])
+      .optional(),
     currency: zod
       .enum(["gbp", "usd"])
       .default(saveCampaignDraftResponseOneCurrencyDefault)

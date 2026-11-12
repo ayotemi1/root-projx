@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import { profilePatch, ProfileValidationError } from "../lib/organisation-profile.js";
 import { campaignPatch, campaignForEditor, campaignPublishGates, CampaignInputError } from "../lib/campaign-editor.js";
+import { publicDrumExperience } from "../lib/drum-experience.js";
 import { campaignSupporters } from "../lib/campaign-supporters.js";
 import { Router } from "express";
 import multer from "multer";
@@ -387,6 +388,7 @@ export function publicCampaignFields(campaign: Record<string, unknown>): Record<
     theme: parseCampaignTheme(campaign["theme"]),
     tagline: campaign.tagline ?? "",
     pageContent: campaign.pageContent ?? null,
+    drumExperience: publicDrumExperience(campaign.drumExperience, campaign.currency, campaign.type),
     partnerFunding: partnerFundingFor(campaign),
     partnerFundingMatchedGbp: typeof campaign.partnerFundingMatchedGbp === "number" ? campaign.partnerFundingMatchedGbp : 0,
     breakdown: Array.isArray(campaign.breakdown) ? campaign.breakdown : [],

@@ -4,6 +4,44 @@ import test from "node:test";
 import { build } from "esbuild";
 import { profilePatch, PROFILE_SECTORS } from "./organisation-profile.ts";
 import { suggest } from "./campaign-assist.ts";
+import { drumsFunded } from "./drum-experience.ts";
+
+test("drum configuration survives owner autosave and reopening without changing money or publication", async () => {
+  const f = await fixture();
+  const org = readyCampaignFixture(f);
+  org.campaigns[0].currency = "usd";
+  const before = structuredClone(org.campaigns[0]);
+  const drumExperience = { enabled: true, updates: [
+    { id: "wood", date: "2026-11-12", text: "Building the centre drum", photoUrl: null, caption: "" },
+  ] };
+  const response = await invoke(f.router, "patch", "org", { drumExperience, saveAsDraft: true }, "org", campaignRoute);
+  assert.equal(response.status, 200);
+  const stored = f.state.docs.get("organisations/org").campaigns[0];
+  assert.equal(stored.amountRaised, before.amountRaised);
+  assert.equal(stored.goal, before.goal);
+  assert.equal(stored.currency, "usd");
+  assert.equal(stored.enabled, before.enabled);
+  const reopened = f.draftFromCampaign(f.campaignForEditor(stored));
+  assert.deepEqual(reopened.drumExperience, drumExperience);
+  assert.deepEqual(f.draftToPatch(reopened).drumExperience, drumExperience);
+  if (before.enabled !== false) assert.equal(stored.drumExperience, undefined, "published page remains unchanged until publish");
+  const forbidden = await invoke(f.router, "patch", "org", { drumExperience }, "other", campaignRoute);
+  assert.equal(forbidden.status, 403);
+});
+
+test("drum circle cannot be enabled for pounds or volunteer campaigns, or reset verified financial progress", async () => {
+  const f = await fixture();
+  const config = { enabled: true, updates: [] };
+  assert.throws(() => f.campaignPatch({ drumExperience: config }, { currency: "gbp" }), /USD/);
+  assert.throws(() => f.campaignPatch({ drumExperience: config }, { currency: "usd", type: "volunteer" }), /fundraising/);
+  const previous = { currency: "usd", type: "fundraising", amountRaised: 300, drumExperience: config };
+  assert.throws(() => f.campaignPatch({ currency: "gbp" }, previous));
+  assert.throws(() => f.campaignPatch({ type: "volunteer" }, previous));
+  assert.deepEqual(f.campaignPatch({ drumExperience: config, amountRaised: 7500, totalRaised: 7500 }, previous),
+    { drumExperience: config });
+  assert.equal(drumsFunded(previous.amountRaised, previous.currency), 2);
+  assert.deepEqual(f.campaignPatch({ drumExperience: null }, previous), { drumExperience: null });
+});
 
 test("profile patches are partial and cannot touch financial or campaign fields", () => {
   assert.deepEqual(profilePatch({

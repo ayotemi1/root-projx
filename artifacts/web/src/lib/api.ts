@@ -506,7 +506,22 @@ export interface CampaignPageContent {
   [key: string]: string | undefined;
 }
 
+export interface DrumUpdate {
+  id: string;
+  date: string;
+  text: string;
+  photoUrl: string | null;
+  caption: string;
+}
+
+/** Drum Life build display. Only valid for USD fundraising campaigns. */
+export interface DrumExperience {
+  enabled: boolean;
+  updates: DrumUpdate[];
+}
+
 export interface Campaign {
+  drumExperience?: DrumExperience | null;
   currency?: "gbp" | "usd";
   currencyLockedAt?: string | null;
   videos?: CampaignVideo[];
@@ -562,6 +577,7 @@ export interface PublicSupporter {
 
 /** Editable fields accepted by PATCH, plus editor flags. Never includes amountRaised. */
 export interface CampaignEditorPatch {
+  drumExperience?: DrumExperience | null;
   currency?: "gbp" | "usd";
   videos?: CampaignVideo[];
   name?: string;

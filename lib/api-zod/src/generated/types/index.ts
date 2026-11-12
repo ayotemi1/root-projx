@@ -41,6 +41,8 @@ export * from "./donationCheckoutInputCurrency";
 export * from "./donationCheckoutResult";
 export * from "./donationIntentResponse";
 export * from "./donationWithOrg";
+export * from "./drumBuildUpdate";
+export * from "./drumExperience";
 export * from "./editorCampaign";
 export * from "./errorResponse";
 export * from "./followRequest";

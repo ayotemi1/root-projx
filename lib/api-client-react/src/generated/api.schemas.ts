@@ -467,7 +467,32 @@ export const CampaignEditorRequestPartnerFundingAnswer = {
   no: "no",
 } as const;
 
+export interface DrumBuildUpdate {
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  id: string;
+  /** ISO calendar date YYYY-MM-DD, or empty while drafting. */
+  date: string;
+  /** @maxLength 5000 */
+  text: string;
+  photoUrl: string | null;
+  /** @maxLength 500 */
+  caption: string;
+}
+
+/**
+ * Optional Drum Life illustration. 50 drums including the centre, US$150 each; requires USD fundraising. Progress is derived from native amountRaised, never editable.
+ */
+export interface DrumExperience {
+  enabled: boolean;
+  /** @maxItems 20 */
+  updates: DrumBuildUpdate[];
+}
+
 export interface CampaignEditorRequest {
+  drumExperience?: DrumExperience | null;
   /** Campaign goals and donations use this currency. Locked once checkout has started. */
   currency?: CampaignEditorRequestCurrency;
   /** @maxLength 200 */

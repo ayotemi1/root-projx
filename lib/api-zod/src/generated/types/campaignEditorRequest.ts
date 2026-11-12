@@ -15,8 +15,10 @@ import type { CampaignEditorRequestTheme } from "./campaignEditorRequestTheme";
 import type { CampaignEditorRequestType } from "./campaignEditorRequestType";
 import type { CampaignEditorRequestVideo } from "./campaignEditorRequestVideo";
 import type { CampaignEditorRequestVideosItem } from "./campaignEditorRequestVideosItem";
+import type { DrumExperience } from "./drumExperience";
 
 export interface CampaignEditorRequest {
+  drumExperience?: DrumExperience | null;
   /** Campaign goals and donations use this currency. Locked once checkout has started. */
   currency?: CampaignEditorRequestCurrency;
   /** @maxLength 200 */

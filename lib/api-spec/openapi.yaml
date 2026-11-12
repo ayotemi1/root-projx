@@ -1356,6 +1356,10 @@ components:
     CampaignEditorRequest:
       type: object
       properties:
+        drumExperience:
+          anyOf:
+            - $ref: "#/components/schemas/DrumExperience"
+            - type: "null"
         currency:
           type: string
           enum: [gbp, usd]
@@ -1434,6 +1438,28 @@ components:
         assistUsed: {type: boolean}
         partnerFundingAnswer: {type: string, nullable: true, enum: [yes, no, null]}
         unitChosen: {type: boolean}
+    DrumExperience:
+      type: object
+      description: "Optional Drum Life illustration. 50 drums including the centre, US$150 each; requires USD fundraising. Progress is derived from native amountRaised, never editable."
+      properties:
+        enabled: {type: boolean}
+        updates:
+          type: array
+          maxItems: 20
+          items:
+            $ref: "#/components/schemas/DrumBuildUpdate"
+      required: [enabled, updates]
+      additionalProperties: false
+    DrumBuildUpdate:
+      type: object
+      properties:
+        id: {type: string, minLength: 1, maxLength: 80}
+        date: {type: string, description: "ISO calendar date YYYY-MM-DD, or empty while drafting."}
+        text: {type: string, maxLength: 5000}
+        photoUrl: {type: string, nullable: true}
+        caption: {type: string, maxLength: 500}
+      required: [id, date, text, photoUrl, caption]
+      additionalProperties: false
     EditorCampaign:
       allOf:
         - $ref: "#/components/schemas/CampaignEditorRequest"

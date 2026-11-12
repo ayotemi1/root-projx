@@ -8,6 +8,7 @@ import type { CampaignUnit } from "@/lib/api";
 import { AssistButton, Counter, FieldBlock, MediaUpload } from "./fields";
 import { BUILTIN_UNITS, MAX_LOCATIONS, MAX_VIDEOS, STORY_MIN, TAGLINE_MAX, emptyVideo, type CampaignDraft, type VideoDraft } from "./model";
 import { currencyName, currencySymbol } from "@/lib/currency";
+import { AppearanceSelector, DrumUpdatesEditor } from "./drum-editor";
 
 export interface StepProps {
   d: CampaignDraft;
@@ -312,6 +313,9 @@ export function StepLook({ d, update, token }: StepProps) {
       </FieldBlock>
 
       <VideosEditor d={d} update={update} token={token} />
+
+      <AppearanceSelector d={d} update={update} />
+      {d.drumExperience.enabled && <DrumUpdatesEditor d={d} update={update} token={token} />}
 
       <section className="space-y-3" data-tour-id="campaign-unit">
         <div>

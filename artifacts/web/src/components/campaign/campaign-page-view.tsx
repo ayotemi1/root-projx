@@ -12,6 +12,8 @@ import { CampaignFeeBreakdown } from "./campaign-fee-breakdown";
 import { CampaignDonatePanel, focusDonateBox, type DonateChoice, type ConfirmedReceiptView } from "./campaign-donate-panel";
 import { currencyOf, formatWhole } from "@/lib/currency";
 import { campaignVideos } from "@/components/campaign-builder/model";
+import { DrumCircle } from "./drum-circle";
+import { fundedDrums, isDrumCampaign } from "@/lib/drum-experience";
 
 export type CampaignPageLayout = "responsive" | "phone" | "desktop";
 
@@ -177,6 +179,7 @@ export function CampaignPageView({
   const red = theme.primaryColor;
   const gold = theme.accentColor;
   const isFundraising = campaign.type === "fundraising";
+  const drumMode = isDrumCampaign(campaign);
   const pf = campaign.partnerFunding && campaign.partnerFunding.amount > 0 ? campaign.partnerFunding : null;
   const isMatching = pf?.type === "matching";
   const funder = pf?.funderName?.trim() || "a funding partner";
@@ -184,6 +187,8 @@ export function CampaignPageView({
   const matchedSoFar = isMatching ? Math.max(0, campaign.partnerFundingMatchedGbp ?? 0) : 0;
   const committed = pf ? (isMatching ? matchedSoFar : pf.amount) : 0;
   const raised = campaign.amountRaised ?? 0;
+  const completedDrums = drumMode ? fundedDrums(raised) : 0;
+  const drumDonateLabel = completedDrums < 50 ? "Help fund a drum" : "Support this campaign";
   const goal = campaign.goal ?? 0;
   const stillNeeded = Math.max(0, goal - committed - raised);
   const denom = Math.max(goal, committed + raised, 1);
@@ -322,7 +327,12 @@ export function CampaignPageView({
           </div>
           <div className={`${wrap} ${sectionPad} mt-8 grid gap-6 ${md("grid-cols-[minmax(0,1fr)_380px] gap-10")}`}>
             <div className="min-w-0">
-              {isFundraising ? (
+              {drumMode ? (
+                <div className="rounded-2xl overflow-hidden ring-1 ring-black/10 shadow-[0_24px_60px_-20px_rgba(60,0,0,0.6)]"
+                  data-testid="block-campaign-hero" data-tour-id="campaign-accumulation">
+                  <DrumCircle campaign={campaign} orgName={org.name} />
+                </div>
+              ) : isFundraising ? (
                 <div className="relative rounded-2xl overflow-hidden ring-1 ring-black/10 shadow-[0_24px_60px_-20px_rgba(60,0,0,0.6)]"
                   data-testid="block-campaign-hero" data-tour-id="campaign-accumulation">
                   <AccumulationField
@@ -357,7 +367,7 @@ export function CampaignPageView({
                   <img src={campaign.imageUrl} alt="" data-testid="img-campaign-cover" className={`w-full object-cover aspect-[4/3] ${md("aspect-[16/9]")}`} />
                 </div>
               ) : null}
-              {isFundraising && (
+              {isFundraising && !drumMode && (
                 <div className="mt-5 flex items-end gap-4 flex-wrap" data-testid="text-supporter-count">
                   <span className="text-[4rem] leading-[0.85] font-extrabold tabular-nums tracking-[-0.04em]" style={{ color: gold }}>{supporters.toLocaleString("en-GB")}</span>
                   <span className="pb-1 min-w-0 flex-1">
@@ -562,7 +572,7 @@ export function CampaignPageView({
                 )}
                 <Button className="mt-6 h-12 px-6 rounded-xl text-base font-extrabold text-white" style={{ backgroundColor: red }}
                   onClick={donate} disabled={preview} title={previewTitle} data-testid="button-donate-campaign-strip">
-                  {donateLabel || `Add your ${unitSingular}`} <ArrowRight className="w-4 h-4 ml-2" aria-hidden="true" />
+                  {donateLabel || (drumMode ? drumDonateLabel : `Add your ${unitSingular}`)} <ArrowRight className="w-4 h-4 ml-2" aria-hidden="true" />
                 </Button>
               </div>
               {(t("cohortHeading") || t("cohortBody") || t("cohortNote")) && (
@@ -581,11 +591,13 @@ export function CampaignPageView({
           <section style={{ backgroundColor: gold }} className="text-[#1c1410]">
             <div className={`${wrap} ${sectionPad} py-10 flex flex-col gap-5 ${md("flex-row items-center justify-between")}`}>
               <p className={`text-[1.9rem] leading-[1] font-black tracking-[-0.03em] ${md("text-[2.5rem] max-w-[18ch]")}`}>
-                {supporters === 0 ? `The first ${unitSingular} could be yours.` : `${supporters.toLocaleString("en-GB")} ${supporters === 1 ? unitSingular : unitPlural} and counting.`}
+                {drumMode
+                  ? `${completedDrums} of 50 drums funded.${completedDrums < 50 ? " Help fund the next." : ""}`
+                  : supporters === 0 ? `The first ${unitSingular} could be yours.` : `${supporters.toLocaleString("en-GB")} ${supporters === 1 ? unitSingular : unitPlural} and counting.`}
               </p>
               <Button className="h-12 px-6 rounded-xl text-base font-extrabold shrink-0 text-white" style={{ backgroundColor: red }}
                 onClick={donate} disabled={preview} title={previewTitle} data-testid="button-donate-campaign-strip">
-                {donateLabel || `Add your ${unitSingular}`} <ArrowRight className="w-4 h-4 ml-2" aria-hidden="true" />
+                {donateLabel || (drumMode ? drumDonateLabel : `Add your ${unitSingular}`)} <ArrowRight className="w-4 h-4 ml-2" aria-hidden="true" />
               </Button>
             </div>
           </section>

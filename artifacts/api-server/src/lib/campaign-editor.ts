@@ -2,6 +2,7 @@ import { resolvePayoutMethod } from "./payout-setup.js";
 import { PROFILE_SECTORS } from "./organisation-profile.js";
 import { migrateCampaignPartnerFunding, partnerFundingFor } from "./campaign-matching.js";
 import { campaignPageContent } from "./campaign-page-content.js";
+import { parseDrumExperience } from "./drum-experience.js";
 
 export class CampaignInputError extends Error {}
 export type PublishGate = { id: string; message: string; step: number };
@@ -156,6 +157,15 @@ export function campaignPatch(input: unknown, previous: Record<string, unknown> 
   if ("unitChosen" in body) {
     if (typeof body.unitChosen !== "boolean") invalid("Choose a campaign unit and try saving again.");
     patch.unitChosen = body.unitChosen;
+  }
+  if ("drumExperience" in body) {
+    try { patch.drumExperience = parseDrumExperience(body.drumExperience); }
+    catch (err) { invalid((err as Error).message); }
+  }
+  const merged = { ...previous, ...patch };
+  if ((merged.drumExperience as { enabled?: boolean } | null)?.enabled &&
+      (merged.currency !== "usd" || merged.type === "volunteer")) {
+    invalid("The drum circle uses US$150 per drum. Choose USD and fundraising in Money, or switch back to the supporter wall.");
   }
   return patch;
 }
