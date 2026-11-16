@@ -9,12 +9,14 @@ import { AssistButton, Counter, FieldBlock, MediaUpload } from "./fields";
 import { BUILTIN_UNITS, MAX_LOCATIONS, MAX_VIDEOS, STORY_MIN, TAGLINE_MAX, emptyVideo, type CampaignDraft, type VideoDraft } from "./model";
 import { currencyName, currencySymbol } from "@/lib/currency";
 import { AppearanceSelector, DrumUpdatesEditor } from "./drum-editor";
+import { canUseDrumExperience } from "@/lib/drum-experience";
 
 export interface StepProps {
   d: CampaignDraft;
   update: (patch: Partial<CampaignDraft> | ((previous: CampaignDraft) => Partial<CampaignDraft>)) => void;
   token: string;
   campaignId: string;
+  orgId?: string;
   assistEnabled: boolean;
   /** Flush the draft before any writing-help request (draft.flush). */
   beforeAssist?: () => Promise<boolean>;
@@ -300,7 +302,7 @@ function VideosEditor({ d, update, token }: Pick<StepProps, "d" | "update" | "to
   );
 }
 
-export function StepLook({ d, update, token }: StepProps) {
+export function StepLook({ d, update, token, orgId, campaignId }: StepProps) {
   const builtin = BUILTIN_UNITS.find((u) => d.unit?.imageUrl === u.imageUrl);
   const custom = !!d.unit && !builtin;
   const colourKeys: Array<[keyof CampaignDraft["colours"], string]> = [
@@ -314,8 +316,10 @@ export function StepLook({ d, update, token }: StepProps) {
 
       <VideosEditor d={d} update={update} token={token} />
 
-      <AppearanceSelector d={d} update={update} />
-      {d.drumExperience.enabled && <DrumUpdatesEditor d={d} update={update} token={token} />}
+      {canUseDrumExperience(orgId, campaignId) && <>
+        <AppearanceSelector d={d} update={update} />
+        {d.drumExperience.enabled && <DrumUpdatesEditor d={d} update={update} token={token} />}
+      </>}
 
       <section className="space-y-3" data-tour-id="campaign-unit">
         <div>

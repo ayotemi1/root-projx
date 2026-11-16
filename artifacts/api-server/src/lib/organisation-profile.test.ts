@@ -4,19 +4,23 @@ import test from "node:test";
 import { build } from "esbuild";
 import { profilePatch, PROFILE_SECTORS } from "./organisation-profile.ts";
 import { suggest } from "./campaign-assist.ts";
-import { drumsFunded } from "./drum-experience.ts";
+import { drumsFunded, DRUM_LIFE_ORG_ID, DRUM_LIFE_CAMPAIGN_ID } from "./drum-experience.ts";
 
 test("drum configuration survives owner autosave and reopening without changing money or publication", async () => {
   const f = await fixture();
   const org = readyCampaignFixture(f);
   org.campaigns[0].currency = "usd";
   const before = structuredClone(org.campaigns[0]);
+  const lifeyard = structuredClone(org);
+  lifeyard.campaigns[0]._id = DRUM_LIFE_CAMPAIGN_ID;
+  f.state.docs.set(`organisations/${DRUM_LIFE_ORG_ID}`, lifeyard);
+  f.state.docs.set(`users/${DRUM_LIFE_ORG_ID}`, f.state.docs.get("users/org"));
   const drumExperience = { enabled: true, updates: [
     { id: "wood", date: "2026-11-12", text: "Building the centre drum", photoUrl: null, caption: "" },
   ] };
-  const response = await invoke(f.router, "patch", "org", { drumExperience, saveAsDraft: true }, "org", campaignRoute);
+  const response = await invoke(f.router, "patch", DRUM_LIFE_ORG_ID, { drumExperience, saveAsDraft: true }, DRUM_LIFE_ORG_ID, campaignRoute);
   assert.equal(response.status, 200);
-  const stored = f.state.docs.get("organisations/org").campaigns[0];
+  const stored = f.state.docs.get(`organisations/${DRUM_LIFE_ORG_ID}`).campaigns[0];
   assert.equal(stored.amountRaised, before.amountRaised);
   assert.equal(stored.goal, before.goal);
   assert.equal(stored.currency, "usd");
@@ -27,6 +31,13 @@ test("drum configuration survives owner autosave and reopening without changing 
   if (before.enabled !== false) assert.equal(stored.drumExperience, undefined, "published page remains unchanged until publish");
   const forbidden = await invoke(f.router, "patch", "org", { drumExperience }, "other", campaignRoute);
   assert.equal(forbidden.status, 403);
+  const otherOrg = await invoke(f.router, "patch", "org", { drumExperience }, "org", campaignRoute);
+  assert.equal(otherOrg.status, 400);
+  assert.match(otherOrg.body.error, /exclusive to Lifeyard/);
+  const appearance = { ...stored, _id: DRUM_LIFE_CAMPAIGN_ID, drumExperience };
+  assert.equal(f.publicCampaignFields(appearance, "hov").drumExperience, null);
+  assert.equal(f.publicCampaignFields(appearance).drumExperience, null);
+  assert.deepEqual(f.publicCampaignFields(appearance, DRUM_LIFE_ORG_ID).drumExperience, drumExperience);
 });
 
 test("drum circle cannot be enabled for pounds or volunteer campaigns, or reset verified financial progress", async () => {
@@ -97,7 +108,7 @@ async function fixture(assistSetting = "true") {
     "firebase-rest.js": `
       import {state} from "profile-test:state";
       export const getServerToken=async()=>"synthetic-server";
-      export const firebaseLookup=async(token)=>["org","other","pending","supporter"].includes(token)?{uid:token,email:token+"@example.test"}:null;
+      export const firebaseLookup=async(token)=>["org","other","pending","supporter","LTMwjXVEgxNideK0XtIQudxZXjc2"].includes(token)?{uid:token,email:token+"@example.test"}:null;
       export const fsGet=async(c,id)=>structuredClone(state.docs.get(c+"/"+id)??null);
       export const fsPatch=async(c,id,patch)=>{
         state.writes.push({c,id,patch:structuredClone(patch)});
@@ -127,7 +138,7 @@ async function fixture(assistSetting = "true") {
   const bundle = await build({
     define: { "process.env.CAMPAIGN_ASSIST_ENABLED": assistSetting === "unset" ? "undefined" : JSON.stringify(assistSetting),
       "import.meta.env.BASE_URL": '"/"' },
-    stdin: { contents: `export {default as router} from "./routes/organisations.ts";
+    stdin: { contents: `export {default as router,publicCampaignFields} from "./routes/organisations.ts";
       export {campaignPatch,campaignPublishGates,campaignForEditor} from "./lib/campaign-editor.ts";
       export {draftFromCampaign,draftToPatch} from "../../web/src/components/campaign-builder/model.ts";
       export {suggest} from "./lib/campaign-assist.ts";
@@ -164,7 +175,7 @@ async function invoke(router: any, method: string, token?: string, body: unknown
   assert.ok(route);
   let status = 200;
   let result: any;
-  const req = { body, params: { id: orgId, campId: "camp" }, headers: token ? { authorization: "Bearer " + token } : {},
+  const req = { body, params: { id: orgId, campId: orgId === DRUM_LIFE_ORG_ID ? DRUM_LIFE_CAMPAIGN_ID : "camp" }, headers: token ? { authorization: "Bearer " + token } : {},
     query: {}, log: { error() {}, info() {} } };
   const headers: Record<string, string> = {};
   const res = { status(code: number) { status = code; return this; }, json(data: unknown) { result = data; },

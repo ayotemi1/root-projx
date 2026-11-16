@@ -1,3 +1,4 @@
+import { appFetch as fetch, userErrorMessage } from "./error-feedback";
 import type {
   OrgPayoutSummary,
   PayoutOverview,
@@ -29,7 +30,7 @@ async function call<T>(path: string, init: RequestInit, headers: Record<string, 
     const msg = (body && typeof body === "object" && "error" in body && typeof (body as { error: unknown }).error === "string")
       ? (body as { error: string }).error
       : `Request failed (${res.status})`;
-    throw new PayoutApiError(msg, res.status, body);
+    throw new PayoutApiError(userErrorMessage({ message: msg, status: res.status }, "confirm this payout action"), res.status, body);
   }
   return body as T;
 }

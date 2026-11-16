@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@/lib/error-feedback";
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, Banknote, CheckCircle, Clock, ExternalLink, Landmark, RefreshCw } from "lucide-react";
@@ -61,7 +62,7 @@ export function PayoutSetup({
     setStripeError("");
     setStripeStarting(true);
     api.startConnectOnboarding(token).then(({ url }) => window.location.assign(url)).catch((error: Error) => {
-      setStripeError(error.message);
+      setStripeError(userErrorMessage(error, "start Stripe onboarding"));
       setStripeStarting(false);
     });
   }, [token]);
@@ -112,7 +113,7 @@ export function PayoutSetup({
       queryClient.invalidateQueries({ queryKey: ["payout-setup", orgId] });
       queryClient.invalidateQueries({ queryKey: myPayoutsKey(orgId) });
     },
-    onError: (e: Error) => setSelectError(e.message || "Could not change payout method."),
+    onError: (e: Error) => setSelectError(userErrorMessage(e, "change your payout method")),
   });
 
   const wiseConnectMut = useMutation({
@@ -123,7 +124,7 @@ export function PayoutSetup({
       setShowWiseInput(false);
       queryClient.invalidateQueries({ queryKey: ["wise-status", orgId] });
     },
-    onError: (e: Error) => setWiseError(e.message),
+    onError: (e: Error) => setWiseError(userErrorMessage(e, "connect your Wise account")),
   });
 
   const wiseDisconnectMut = useMutation({
@@ -133,7 +134,7 @@ export function PayoutSetup({
       setWiseError("");
       queryClient.invalidateQueries({ queryKey: ["wise-status", orgId] });
     },
-    onError: (e: Error) => setWiseError(e.message),
+    onError: (e: Error) => setWiseError(userErrorMessage(e, "disconnect your Wise account")),
   });
 
   async function startStripe() {
@@ -142,7 +143,7 @@ export function PayoutSetup({
     try {
       await openStripeOnboardingTab(() => api.startConnectOnboarding(token));
     } catch (e) {
-      setStripeError(e instanceof Error ? e.message : "Could not start Stripe onboarding.");
+      setStripeError(userErrorMessage(e, "start Stripe onboarding"));
     } finally {
       setStripeStarting(false);
     }
@@ -220,7 +221,7 @@ export function PayoutSetup({
   ) : connectQ.isLoading ? (
     <Skeleton className="h-16 w-full rounded-lg" />
   ) : connectQ.isError ? (
-    <p className="text-xs text-destructive">Couldn't load Stripe status.</p>
+    <p className="text-xs text-destructive">{userErrorMessage(connectQ.error, "load your Stripe connection status")}</p>
   ) : stripe?.payouts_enabled ? (
     <>
       <p className="text-sm font-semibold text-green-700 flex items-center gap-1.5"><CheckCircle className="w-4 h-4" /> Payouts enabled</p>
@@ -250,7 +251,7 @@ export function PayoutSetup({
   ) : wiseQ.isLoading ? (
     <Skeleton className="h-16 w-full rounded-lg" />
   ) : wiseQ.isError ? (
-    <p className="text-xs text-destructive">Couldn't load Wise status.</p>
+    <p className="text-xs text-destructive">{userErrorMessage(wiseQ.error, "load your Wise connection status")}</p>
   ) : wise?.wise_email && !showWiseInput ? (
     <>
       <p className={`text-sm font-semibold flex items-center gap-1.5 ${wise.wise_verified ? "text-green-700" : "text-amber-700"}`}>
@@ -313,7 +314,7 @@ export function PayoutSetup({
         ) : setupQ.isError ? (
           <div className={`flex items-start gap-2 rounded-lg border p-3 text-sm ${TONE.error}`} data-testid="status-payout-error">
             <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-            <span className="flex-1">Couldn't load your payout setup. {(setupQ.error as Error)?.message}</span>
+            <span className="flex-1">{userErrorMessage(setupQ.error, "load your payout setup")}</span>
             <Button size="sm" variant="outline" className="h-7" onClick={() => setupQ.refetch()}>Retry</Button>
           </div>
         ) : (

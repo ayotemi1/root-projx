@@ -1,3 +1,4 @@
+import { appFetch as fetch, userErrorMessage } from "@/lib/error-feedback";
 import { useEffect, useState } from "react";
 import { GuestDonorWallChoice } from "./guest-donor-wall-choice";
 import { Link } from "wouter";
@@ -98,13 +99,13 @@ export function GuestDonateSheet({ open, onClose, orgId, orgName, campaignId, ca
       });
       const data = await res.json() as { url?: string; error?: string };
       if (!res.ok || !data.url) {
-        setError(data.error ?? "Something went wrong — please try again.");
+        setError(userErrorMessage({ message: data.error, status: res.status }, "start checkout"));
         setLoading(false);
         return;
       }
       window.location.href = data.url;
-    } catch {
-      setError("Network error — please check your connection.");
+    } catch (error) {
+      setError(userErrorMessage(error, "start checkout"));
       setLoading(false);
     }
   }

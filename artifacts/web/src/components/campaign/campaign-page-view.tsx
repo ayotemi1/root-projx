@@ -179,7 +179,7 @@ export function CampaignPageView({
   const red = theme.primaryColor;
   const gold = theme.accentColor;
   const isFundraising = campaign.type === "fundraising";
-  const drumMode = isDrumCampaign(campaign);
+  const drumMode = isDrumCampaign(campaign, org._id);
   const pf = campaign.partnerFunding && campaign.partnerFunding.amount > 0 ? campaign.partnerFunding : null;
   const isMatching = pf?.type === "matching";
   const funder = pf?.funderName?.trim() || "a funding partner";

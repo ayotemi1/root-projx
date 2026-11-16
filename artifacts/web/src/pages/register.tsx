@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@/lib/error-feedback";
 import { useState } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -47,7 +48,7 @@ export default function RegisterPage() {
       });
       navigate(nextPath);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Registration failed.");
+      setError(userErrorMessage(err, "create your account"));
     } finally {
       setLoading(false);
     }

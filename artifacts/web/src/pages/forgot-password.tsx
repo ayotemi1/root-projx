@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@/lib/error-feedback";
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -28,7 +29,7 @@ export default function ForgotPasswordPage() {
       setMessage(result.message);
       setRetryIn(60);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Couldn't request a reset link. Please try again.");
+      setError(userErrorMessage(err, "request a new password reset link"));
     } finally {
       setLoading(false);
     }

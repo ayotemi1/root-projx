@@ -1,3 +1,4 @@
+import { appFetch as fetch, userErrorMessage } from "@/lib/error-feedback";
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -31,7 +32,7 @@ export default function ResetPasswordPage() {
 
   function fail(err: unknown, verifying: boolean) {
     const value = err as { message?: string; code?: string };
-    setError(value.message || "We couldn't connect. Please try again.");
+    setError(userErrorMessage(value, "reset your password"));
     if (value.code === "RESET_LINK_EXPIRED" || value.code === "RESET_LINK_INVALID") setStage("invalid");
     else if (verifying) setStage("unavailable");
   }

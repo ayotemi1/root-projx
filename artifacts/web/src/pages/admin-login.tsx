@@ -1,3 +1,4 @@
+import { appFetch as fetch, userErrorMessage } from "@/lib/error-feedback";
 import { useState } from "react";
 import { useLocation } from "wouter";
 
@@ -23,14 +24,14 @@ export default function AdminLoginPage() {
       });
       const data = await res.json() as { token?: string; error?: string };
       if (!res.ok || !data.token) {
-        setError(data.error ?? "Invalid password");
+        setError(userErrorMessage({ message: data.error ?? "The password was not accepted. Check it and try again.", status: res.status }, "sign into the admin panel"));
         setLoading(false);
         return;
       }
       localStorage.setItem("admin_token", data.token);
       setLocation("/admin");
-    } catch {
-      setError("Network error — please try again.");
+    } catch (error) {
+      setError(userErrorMessage(error, "sign into the admin panel"));
       setLoading(false);
     }
   }

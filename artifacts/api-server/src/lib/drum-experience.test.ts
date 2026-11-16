@@ -1,6 +1,15 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { drumsFunded, parseDrumExperience, publicDrumExperience } from "./drum-experience.ts";
+import { drumsFunded, parseDrumExperience, publicDrumExperience, canUseDrumExperience, assertDrumExperienceAccess, DRUM_LIFE_ORG_ID, DRUM_LIFE_CAMPAIGN_ID } from "./drum-experience.ts";
+
+test("bespoke drum appearance is exclusive to Lifeyard's Drum Life, not HOV or another Lifeyard campaign", () => {
+  assert.equal(canUseDrumExperience(DRUM_LIFE_ORG_ID, DRUM_LIFE_CAMPAIGN_ID), true);
+  for (const [org, campaign] of [["hov", DRUM_LIFE_CAMPAIGN_ID], [DRUM_LIFE_ORG_ID, "other"], [undefined, undefined]]) {
+    assert.equal(canUseDrumExperience(org, campaign), false);
+    assert.throws(() => assertDrumExperienceAccess(org, campaign, { drumExperience: { enabled: true } }), /exclusive to Lifeyard/);
+    assert.doesNotThrow(() => assertDrumExperienceAccess(org, campaign, { drumExperience: { enabled: false } }));
+  }
+});
 
 const update = { id: "build-1", date: "2026-11-12", text: "The reclaimed wood has arrived.",
   photoUrl: "/api/uploads/object/org-media/wood.jpg", caption: "Reclaimed wood for the centre drum" };

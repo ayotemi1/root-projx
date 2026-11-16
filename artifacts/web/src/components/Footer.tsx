@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@/lib/error-feedback";
 import { useState } from "react";
 import * as api from "@/lib/api";
 
@@ -16,7 +17,7 @@ export default function Footer() {
       setEmail("");
     } catch (err) {
       setStatus("error");
-      setErrorMsg(err instanceof Error ? err.message : "Something went wrong. Please try again.");
+      setErrorMsg(userErrorMessage(err, "subscribe to the newsletter"));
     }
   }
 

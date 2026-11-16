@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@/lib/error-feedback";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -27,7 +28,7 @@ export default function LoginPage() {
         navigate("/feed");
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Login failed.");
+      setError(userErrorMessage(err, "sign in"));
     } finally {
       setLoading(false);
     }

@@ -1,3 +1,4 @@
+import { appFetch as fetch, userErrorMessage, responseError } from "@/lib/error-feedback";
 import { useState, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { CheckCircle2, XCircle, Clock, Users, FileText, LogOut, RefreshCw, Building2, CreditCard, Pencil, X, Wallet } from "lucide-react";
@@ -207,10 +208,11 @@ export default function AdminPage() {
       const url = statusFilter === "all" ? "/api/admin/applications" : `/api/admin/applications?status=${statusFilter}`;
       const res = await fetch(url, { headers: { "x-admin-token": token } });
       if (res.status === 401) { logout(); return; }
+      if (!res.ok) throw await responseError(res, "load organisation applications");
       const data = await res.json() as OrgApplication[];
       setApplications(data);
     } catch {
-      setError("Failed to load applications.");
+      setError("We couldn’t load applications. Check your connection and refresh the list. If it still fails, sign into the admin panel again or contact Root ProjX.");
     } finally {
       setLoadingApps(false);
     }
@@ -222,10 +224,11 @@ export default function AdminPage() {
     try {
       const res = await fetch("/api/admin/supporters", { headers: { "x-admin-token": token } });
       if (res.status === 401) { logout(); return; }
+      if (!res.ok) throw await responseError(res, "load supporters");
       const data = await res.json() as Supporter[];
       setSupporters(data);
     } catch {
-      setError("Failed to load supporters.");
+      setError("We couldn’t load supporters. Check your connection and refresh the list. If it still fails, sign into the admin panel again or contact Root ProjX.");
     } finally {
       setLoadingSups(false);
     }
@@ -254,10 +257,11 @@ export default function AdminPage() {
     try {
       const res = await fetch("/api/admin/donations", { headers: { "x-admin-token": token } });
       if (res.status === 401) { logout(); return; }
+      if (!res.ok) throw await responseError(res, "load donation records");
       const data = await res.json() as Donation[];
       setDonations(data);
     } catch {
-      setError("Failed to load donations.");
+      setError("We couldn’t load donations. Refresh the list when your connection is stable. No figures are being estimated. If it continues, contact Root ProjX.");
     } finally {
       setLoadingDons(false);
     }
@@ -287,10 +291,10 @@ export default function AdminPage() {
     try {
       const res = await fetch(`/api/admin/applications/${id}/approve`, { method: "POST", headers: { "x-admin-token": token } });
       const data = await res.json() as { error?: string };
-      if (!res.ok) { alert(data.error ?? "Failed to approve application."); return; }
+      if (!res.ok) { alert(userErrorMessage({ message: data.error, status: res.status }, "approve this application")); return; }
       await fetchApplications();
     } catch {
-      alert("Network error — please try again.");
+      alert("We couldn’t confirm the approval. Check your connection and refresh the application status before approving again.");
     } finally {
       setActionLoading(null);
     }
@@ -302,10 +306,10 @@ export default function AdminPage() {
     try {
       const res = await fetch(`/api/admin/applications/${id}/decline`, { method: "POST", headers: { "x-admin-token": token } });
       const data = await res.json() as { error?: string };
-      if (!res.ok) { alert(data.error ?? "Failed to decline application."); return; }
+      if (!res.ok) { alert(userErrorMessage({ message: data.error, status: res.status }, "decline this application")); return; }
       await fetchApplications();
     } catch {
-      alert("Network error — please try again.");
+      alert("We couldn’t confirm the decision. Check your connection and refresh the application status before trying again.");
     } finally {
       setActionLoading(null);
     }
@@ -337,12 +341,12 @@ export default function AdminPage() {
       });
       const data = await res.json() as Organisation & { error?: string };
       if (res.status === 401) { logout(); return; }
-      if (!res.ok) { alert(data.error ?? "Failed to save organisation."); return; }
+      if (!res.ok) { alert(userErrorMessage({ message: data.error, status: res.status }, "save this organisation")); return; }
       setOrganisations((current) => current.map((org) => org._id === data._id ? data : org));
       setEditingOrg(null);
       setOrgForm(null);
     } catch {
-      alert("Network error — please try again.");
+      alert("We couldn’t confirm your changes were saved. Keep this page open, check your connection and retry. If it continues, contact Root ProjX.");
     } finally {
       setSavingOrg(false);
     }

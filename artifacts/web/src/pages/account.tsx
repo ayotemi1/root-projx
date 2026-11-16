@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@/lib/error-feedback";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
@@ -56,7 +57,7 @@ function EditProfileDialog({
       onSaved();
       onClose();
     } catch (e: unknown) {
-      setErr(e instanceof Error ? e.message : "Update failed.");
+      setErr(userErrorMessage(e, "save your account details"));
     } finally { setSaving(false); }
   }
 
@@ -142,7 +143,7 @@ function PublicProfileCard({ profile, token }: { profile: api.ApiUser, token: st
 
       toast({ title: "Public profile updated" });
     } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Update failed");
+      setError(userErrorMessage(e, "save your profile"));
     } finally {
       setSaving(false);
     }

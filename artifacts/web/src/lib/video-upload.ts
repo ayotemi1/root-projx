@@ -1,4 +1,5 @@
 import { videoFileProblem } from "./upload-feedback";
+import { appFetch, responseError } from "./error-feedback";
 export { MAX_VIDEO_BYTES } from "./upload-feedback";
 
 /** Only small JSON requests pass through the application. Video bytes go
@@ -9,20 +10,19 @@ export async function uploadVideo(file: File | Blob, token: string, apiBase: str
   const problem = videoFileProblem(file);
   if (problem) throw Object.assign(new Error(problem.message), { retryable: false });
   const json = async (path: string, body: object) => {
-    const response = await fetch(`${apiBase}${path}`, {
+    const response = await appFetch(`${apiBase}${path}`, {
       method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
+    if (!response.ok) throw Object.assign(await responseError(response, path.endsWith("/complete") ? "confirm the uploaded video" : "prepare the video upload"), { stage: "api" });
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw Object.assign(
-      new Error(data.error || `Upload failed (${response.status})`),
-      { status: response.status, stage: "api" },
-    );
     return data;
   };
   const target = await json("/uploads/video/request", {
     name: file instanceof File ? file.name : "video.mp4", contentType: file.type, size: file.size,
   });
+  if (typeof target.uploadUrl !== "string" || typeof target.objectPath !== "string")
+    throw new Error("The upload service didn’t provide a valid upload link. No video was uploaded. Try again shortly, or contact Root ProjX if it continues.");
   await new Promise<void>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("PUT", target.uploadUrl);
@@ -39,6 +39,8 @@ export async function uploadVideo(file: File | Blob, token: string, apiBase: str
     xhr.send(file);
   });
   const complete = await json("/uploads/video/complete", { objectPath: target.objectPath });
+  if (typeof complete.url !== "string" || !complete.url)
+    throw new Error("The video transfer finished, but the service didn’t confirm a saved video. Keep this page open and contact Root ProjX before uploading it again.");
   onProgress?.(1);
   return complete.url;
 }

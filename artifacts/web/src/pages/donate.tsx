@@ -1,3 +1,4 @@
+import { appFetch as fetch, userErrorMessage } from "@/lib/error-feedback";
 import { getAnonymousDonorId } from "@/lib/donor-identity";
 import { GuestDonorWallChoice } from "@/components/guest-donor-wall-choice";
 import { useState } from "react";
@@ -115,7 +116,7 @@ export default function DonatePage() {
       );
       window.location.href = url;
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Could not start checkout. Please try again.");
+      setError(userErrorMessage(err, "start checkout"));
       setRedirecting(false);
     }
   }
@@ -150,8 +151,8 @@ export default function DonatePage() {
         return;
       }
       window.location.href = data.url;
-    } catch {
-      setError("Network error — please check your connection.");
+    } catch (error) {
+      setError(userErrorMessage(error, "start checkout"));
       setRedirecting(false);
     }
   }

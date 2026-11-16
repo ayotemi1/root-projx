@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@/lib/error-feedback";
 import { useEffect, useRef, useState } from "react";
 import { Upload, X, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -44,7 +45,7 @@ export function ImageUploadField({
       setImg(loaded);
       setPosition(0.5);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not read image.");
+      setError(userErrorMessage(err, "read this image; choose another image if it cannot be opened"));
     }
   }
 
@@ -58,7 +59,7 @@ export function ImageUploadField({
       setLastBlob(null);
     } catch (err) {
       setLastBlob(blob);
-      setError(err instanceof Error ? err.message : "Upload failed.");
+      setError(userErrorMessage(err, "upload this image"));
     } finally {
       setProgress(null);
     }
@@ -70,7 +71,7 @@ export function ImageUploadField({
       const blob = await cropAndResize(img, spec, position);
       await upload(blob);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not prepare image.");
+      setError(userErrorMessage(err, "prepare this image; choose a different file if it cannot be opened"));
     }
   }
 

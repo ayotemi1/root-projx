@@ -1,3 +1,4 @@
+import { appFetch as fetch, userErrorMessage } from "@/lib/error-feedback";
 import { useState } from "react";
 import {
   AlertDialog, AlertDialogContent, AlertDialogTitle, AlertDialogDescription,
@@ -50,7 +51,7 @@ export function AdminDeleteOrganisation({ org, token, onDeleted, onUnauthorized 
       if (!deleted.deleted || deleted.orgId !== organisation._id) throw new Error("Deletion was not confirmed. Please refresh and try again.");
       onDeleted(organisation._id);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not delete the organisation.");
+      setError(userErrorMessage(err, "delete this organisation"));
     } finally {
       setBusy(false);
     }

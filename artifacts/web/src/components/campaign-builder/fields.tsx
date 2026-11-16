@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@/lib/error-feedback";
 import { runAssistRequest } from "./assist-logic";
 import { useRef, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
@@ -168,7 +169,7 @@ export function AssistButton({ enabled, campaignId, field, token, onAccept, fiel
       if (e instanceof ApiError && (e.status === 503 || (e.body as { unavailable?: boolean })?.unavailable)) {
         setSt({ k: "unavailable", msg: "Writing help is not available right now. You can keep writing yourself." });
       } else {
-        setSt({ k: "error", msg: e instanceof Error ? e.message : "Something went wrong." });
+        setSt({ k: "error", msg: userErrorMessage(e, "request writing help") });
       }
     }
   }

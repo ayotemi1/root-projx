@@ -35,10 +35,10 @@ test("Drum Life renders 50 drums from money in public and preview; other campaig
   for (const [amount, expected] of [[0, 0], [149.99, 0], [150, 1], [300, 2], [7500, 50], [15000, 50], [Infinity, 0]]) {
     assert.equal(fundedDrums(amount), expected);
   }
-  const campaign = { _id: "drum-test", name: "Drum Life", type: "fundraising", currency: "usd",
+  const campaign = { _id: "9d5e9d29323a434f8706", name: "Drum Life", type: "fundraising", currency: "usd",
     goal: 15000, amountRaised: 300, supporterCount: 99, description: "", phases: [], status: "active",
     enabled: true, drumExperience: { enabled: true, updates: [] } };
-  const organisation = { _id: "lifeyard", name: "Lifeyard", country: "Jamaica" };
+  const organisation = { _id: "LTMwjXVEgxNideK0XtIQudxZXjc2", name: "Lifeyard", country: "Jamaica" };
   const render = (changes: any, preview: boolean) => renderToStaticMarkup(createElement(Router, { hook: () => ["/", () => {}] },
     createElement(CampaignPageView, { campaign: { ...campaign, ...changes }, organisation, preview, layout: "phone" })));
   for (const preview of [false, true]) {
@@ -61,6 +61,19 @@ test("Drum Life renders 50 drums from money in public and preview; other campaig
       assert.match(ordinary, /canvas-accumulation/);
     }
   }
+});
+
+test("Drum Life builder is invisible to HOV and other campaigns, including USD campaigns", async () => {
+  const { StepLook } = await loadComponent("src/components/campaign-builder/steps.tsx");
+  const { draftFromCampaign } = await loadComponent("src/components/campaign-builder/model.ts");
+  const d = draftFromCampaign({ _id: "other", name: "Out of Many Hands", currency: "usd", type: "fundraising" });
+  const render = (orgId: string, campaignId: string) => renderToStaticMarkup(createElement(StepLook, {
+    d, orgId, campaignId, update() {}, token: "synthetic", assistEnabled: false,
+  }));
+  for (const [org, campaign] of [["hov", "other"], ["hov", "9d5e9d29323a434f8706"], ["LTMwjXVEgxNideK0XtIQudxZXjc2", "other"]]) {
+    assert.doesNotMatch(render(org!, campaign!), /button-appearance-drum|US\$150|Drum build/);
+  }
+  assert.match(render("LTMwjXVEgxNideK0XtIQudxZXjc2", "9d5e9d29323a434f8706"), /button-appearance-drum/);
 });
 
 test("USD campaign sheet displays dollars and sends USD without changing organisation-level GBP", async () => {

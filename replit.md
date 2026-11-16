@@ -124,7 +124,12 @@ editor row identity into the latest draft, never a stale array index.
 ### Drum Life campaign appearance
 
 The optional `drumExperience` display replaces the supporter-count hero only for
-an explicitly selected USD fundraising campaign. It represents **50 drums total:
+Lifeyard’s Drum Life campaign only, not a universal builder option. Eligibility
+is checked by both stable organisation/campaign IDs on the server and in the
+editor/public renderer. Other organisations cannot enable it by changing a request.
+The first cohort receives bespoke interactive themes; shared infrastructure is
+the foundation for a future AI theme builder, not permission to reuse another
+organisation’s commissioned content. It represents **50 drums total:
 the Humanity Ova Vanity reclaimed-wood centre drum plus 49 surrounding drums**.
 Each costs **US$150**; completed drums are derived from verified native USD
 `amountRaised` in whole US$150 increments, capped at 50, never donor count,
@@ -132,7 +137,7 @@ GBP settlement amounts, partner commitments or invented initial funding.
 The centre fills first and is not pre-funded simply because it is being made.
 The US$7,500 drum cost does not silently replace an existing programme goal.
 
-In the campaign editor's Look step, organisations and delegated administrators
+In Drum Life's Look step, Lifeyard and its delegated administrators
 can select Drum build and maintain up to 20 centre-drum build updates with
 date, plain text, optional uploaded photo and optional caption. Unfinished
 rows stay editable; only dated rows with text or a photo appear publicly.
@@ -141,6 +146,22 @@ The shared preview/public component supports keyboard drum selection, large
 select/play controls, mute and a build dialog. Short synthetic WebAudio sounds
 start only on interaction, never autoplay; they are not recordings of the actual
 drums. This is a bounded campaign appearance, not an AI theme generator.
+
+### Actionable website errors and post uploads
+
+Website requests use the shared `error-feedback` network boundary. Error copy
+explains known validation, permissions, session expiry, file limits/formats,
+rate limits and service failures, and gives a next action. A network failure
+does not establish whether a write succeeded: never automatically retry payments
+or payouts or claim “nothing happened” without confirmation. Avoid displaying
+raw infrastructure errors or secrets. Regression tests guard website fetch
+call sites against bypassing this boundary.
+
+Video posts use the same direct-storage, completion-verified 500 MB video path
+as campaigns, not the older 20 MB multipart video path. Images remain limited
+to 20 MB and posts to five attachments. Persist successful attachments one at
+a time so later upload or publication failures can be retried without uploading
+successful files again. Captions remain optional.
 
 The main organisation dashboard is `/dashboard` (`pages/dashboard.tsx`).
 `/org-dashboard` remains a separate routed dashboard; it is not dead code.

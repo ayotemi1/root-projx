@@ -14,6 +14,19 @@ export interface DrumExperience {
 export const DRUM_COUNT = 50;
 export const DRUM_COST_USD_CENTS = 15000;
 
+// Cohort appearances are commissioned for an organisation AND campaign.
+// Future AI suggestions must not grant another organisation a bespoke theme.
+export const DRUM_LIFE_ORG_ID = "LTMwjXVEgxNideK0XtIQudxZXjc2";
+export const DRUM_LIFE_CAMPAIGN_ID = "9d5e9d29323a434f8706";
+export function canUseDrumExperience(orgId: unknown, campaignId: unknown): boolean {
+  return orgId === DRUM_LIFE_ORG_ID && campaignId === DRUM_LIFE_CAMPAIGN_ID;
+}
+export function assertDrumExperienceAccess(orgId: unknown, campaignId: unknown, body: Record<string, unknown>): void {
+  if ((body.drumExperience as DrumExperience | null)?.enabled && !canUseDrumExperience(orgId, campaignId)) {
+    throw Object.assign(new Error("The Drum Life appearance is exclusive to Lifeyard’s Drum Life campaign. Choose your campaign’s own appearance instead."), { status: 400 });
+  }
+}
+
 export function drumsFunded(amountRaised: number, currency: string): number {
   if (currency !== "usd" || !Number.isFinite(amountRaised)) return 0;
   return Math.min(DRUM_COUNT, Math.max(0, Math.floor(Math.round(amountRaised * 100) / DRUM_COST_USD_CENTS)));

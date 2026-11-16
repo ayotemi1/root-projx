@@ -1,3 +1,4 @@
+import { appFetch as fetch, userErrorMessage } from "@/lib/error-feedback";
 import { useEffect, useState, type ReactNode } from "react";
 import { Redirect, useLocation } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -33,7 +34,7 @@ function AccessSession({ orgId, children }: { orgId: string; children: ReactNode
       if (!res.ok) throw new Error(data.error ?? "Could not open organisation dashboard");
       sessionStorage.setItem("admin_managed_org", orgId);
       setAccess(data);
-    }).catch((err) => { if (err.name !== "AbortError") setError(err.message); });
+    }).catch((err) => { if (err.name !== "AbortError") setError(userErrorMessage(err, "open this organisation’s dashboard")); });
     return () => { controller.abort(); client.clear(); };
   }, [orgId, client]);
   const back = `${import.meta.env.BASE_URL}admin`;

@@ -1,5 +1,6 @@
 import type { Campaign } from "@/lib/api";
-import { drumsFunded } from "../../../api-server/src/lib/drum-experience";
+import { drumsFunded, canUseDrumExperience } from "../../../api-server/src/lib/drum-experience";
+export { canUseDrumExperience };
 
 export const DRUM_COST_USD = 150;
 export const DRUM_TOTAL = 50;
@@ -11,8 +12,8 @@ export function fundedDrums(amountRaised: number | null | undefined): number {
 }
 
 /** True only for an explicitly enabled, USD, fundraising campaign. */
-export function isDrumCampaign(c: Pick<Campaign, "drumExperience" | "currency" | "type">): boolean {
-  return c.drumExperience?.enabled === true && c.type === "fundraising" && c.currency === "usd";
+export function isDrumCampaign(c: Pick<Campaign, "_id" | "drumExperience" | "currency" | "type">, orgId?: string): boolean {
+  return canUseDrumExperience(orgId, c._id) && c.drumExperience?.enabled === true && c.type === "fundraising" && c.currency === "usd";
 }
 
 /** Rings around the centre drum: 12 + 16 + 21 = 49. */

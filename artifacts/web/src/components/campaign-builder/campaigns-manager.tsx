@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@/lib/error-feedback";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useSearch } from "wouter";
@@ -33,7 +34,7 @@ function CampaignRow({ c, onEdit, orgId, token }: { c: Campaign; onEdit: () => v
 
   async function run(fn: () => Promise<unknown>, fail: string) {
     setBusy(true); setMsg(null);
-    try { await fn(); await refresh(); } catch (e) { setMsg(e instanceof Error ? `${fail}: ${e.message}` : fail); } finally { setBusy(false); }
+    try { await fn(); await refresh(); } catch (e) { setMsg(`${fail}: ${userErrorMessage(e, "update this campaign")}`); } finally { setBusy(false); }
   }
 
   return (
@@ -110,7 +111,7 @@ export function CampaignsManager({ orgId, userId, token, org }: { orgId: string;
       qc.setQueryData<Campaign[]>(["campaigns", orgId], (old) => [c, ...(old ?? [])]);
       open(c._id);
     } catch (e) {
-      setCreateError(e instanceof Error ? `Could not start a draft: ${e.message}` : "Could not start a draft.");
+      setCreateError(userErrorMessage(e, "start a campaign draft"));
     } finally { setCreating(false); }
   }
 

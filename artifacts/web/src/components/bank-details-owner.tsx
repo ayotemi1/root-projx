@@ -1,3 +1,4 @@
+import { appFetch as fetch, userErrorMessage } from "@/lib/error-feedback";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, CheckCircle, Clock, Lock, ShieldCheck } from "lucide-react";
@@ -34,7 +35,7 @@ export const bankDetailsStatusKey = (orgId: string) => ["bank-details-status", o
 export async function fetchBankDetailsStatus(token: string): Promise<BankDetailsStatus> {
   const res = await fetch("/api/payout/bank-details", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
   const body = await res.json().catch(() => ({})) as BankDetailsStatus & { error?: string };
-  if (!res.ok) throw new Error(body.error ?? `Request failed (${res.status})`);
+  if (!res.ok) throw Object.assign(new Error(userErrorMessage({ message: body.error, status: res.status }, "load your bank-details status")), { status: res.status });
   return { hasDetails: !!body.hasDetails, revision: body.revision ?? null, submittedAt: body.submittedAt ?? null, approved: !!body.approved };
 }
 
@@ -118,7 +119,7 @@ export function BankDetailsOwner({ orgId, token }: { orgId: string; token: strin
         cache: "no-store",
       });
       const data = await res.json().catch(() => ({})) as BankDetailsStatus & { error?: string };
-      if (!res.ok) { setSaveError(data.error ?? `Could not save bank details (${res.status}).`); return; }
+      if (!res.ok) { setSaveError(userErrorMessage({ message: data.error, status: res.status }, "save your bank details")); return; }
       setForm(EMPTY); setEditing(false); setConfirmed(false); setErrors({});
       queryClient.setQueryData(bankDetailsStatusKey(orgId), {
         hasDetails: true, revision: data.revision ?? null, submittedAt: data.submittedAt ?? new Date().toISOString(), approved: false,
@@ -128,7 +129,7 @@ export function BankDetailsOwner({ orgId, token }: { orgId: string; token: strin
       queryClient.invalidateQueries({ queryKey: myPayoutsKey(orgId) });
       setNotice("Saved. Root ProjX will check these details with you before approving them.");
     } catch {
-      setSaveError("Network error. Your entries are still here. Try again.");
+      setSaveError("We couldn’t confirm whether your bank details were saved. Your entries are still here. Check your connection and reload the saved-details status before trying again. Don’t send bank details by email.");
     } finally {
       setSaving(false);
     }
@@ -138,7 +139,7 @@ export function BankDetailsOwner({ orgId, token }: { orgId: string; token: strin
   if (statusQ.isError) {
     return (
       <div className="rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive space-y-2" data-testid="error-bank-status">
-        <p className="flex items-start gap-1.5"><AlertCircle className="w-4 h-4 flex-shrink-0" /> Couldn't load your bank details status.</p>
+        <p className="flex items-start gap-1.5"><AlertCircle className="w-4 h-4 flex-shrink-0" /> {userErrorMessage(statusQ.error, "load your bank-details status")}</p>
         <Button size="sm" variant="outline" className="h-7" onClick={() => statusQ.refetch()}>Retry</Button>
       </div>
     );

@@ -1,3 +1,4 @@
+import { appFetch as fetch, userErrorMessage } from "@/lib/error-feedback";
 import { useEffect, useRef, useState } from "react";
 import { Eye, EyeOff, ShieldAlert } from "lucide-react";
 
@@ -54,10 +55,10 @@ export function AdminBankDetailsReview({ orgId, orgName, contactEmail, token, on
       if (res.status === 401) { onUnauthorized(); return; }
       const body = await res.json().catch(() => ({})) as ReviewResponse & { error?: string };
       if (!alive.current) return;
-      if (!res.ok) { setError(body.error ?? `Could not load bank details (${res.status}).`); return; }
+      if (!res.ok) { setError(userErrorMessage({ message: body.error, status: res.status }, "load the bank details for review")); return; }
       setData({ hasDetails: !!body.hasDetails, revision: body.revision ?? null, submittedAt: body.submittedAt ?? null, approved: !!body.approved, details: body.details ?? null });
-    } catch {
-      if (alive.current) setError("Network error. Try again.");
+    } catch (error) {
+      if (alive.current) setError(userErrorMessage(error, "load the bank details for review"));
     } finally {
       if (alive.current) setLoading(false);
     }
@@ -82,11 +83,11 @@ export function AdminBankDetailsReview({ orgId, orgName, contactEmail, token, on
           : "Bank details service unavailable. Approval was not confirmed. Reloaded for review.", true, false);
         return;
       }
-      if (!res.ok || body.approved !== true) { setError(body.error ?? `Approval failed (${res.status}). Nothing was approved.`); return; }
+      if (!res.ok || body.approved !== true) { setError(userErrorMessage({ message: body.error, status: res.status }, "confirm bank-details approval") + " Reload the latest details before approving again."); return; }
       setData(null);
       onApproved();
     } catch {
-      if (alive.current) setError("Network error. Approval was not confirmed. Reload the details before trying again.");
+      if (alive.current) setError("We couldn’t confirm bank-details approval. Check your connection, reload the latest details and verify their status before approving again. If it continues, contact Root ProjX.");
     } finally {
       if (alive.current) setApproving(false);
     }

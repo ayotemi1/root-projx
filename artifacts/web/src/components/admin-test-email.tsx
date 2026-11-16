@@ -1,3 +1,4 @@
+import { appFetch as fetch, userErrorMessage } from "@/lib/error-feedback";
 import { useState } from "react";
 
 export function AdminTestEmail({ token, onUnauthorized }: {
@@ -23,7 +24,7 @@ export function AdminTestEmail({ token, onUnauthorized }: {
       if (data.accepted !== true) throw new Error("The server did not confirm email acceptance.");
       setNotice(`Brevo accepted the test for ${data.recipient} from the ${data.environment} server. Check the inbox, spam folder and Brevo Transactional Logs; acceptance is not proof of inbox delivery.`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not confirm the send. Check Brevo logs before retrying.");
+      setError(userErrorMessage(err, "confirm this email was sent") + " Check Brevo delivery logs before sending another test.");
     } finally {
       setSending(false);
     }

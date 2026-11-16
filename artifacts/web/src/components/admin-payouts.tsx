@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@/lib/error-feedback";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, Lock, RefreshCw, Send, Wallet, X } from "lucide-react";
@@ -145,7 +146,7 @@ export function AdminPayouts({ token, onUnauthorized }: { token: string; onUnaut
         </div>
       ) : q.isError || !data ? (
         <div role="alert" style={{ background: "#FEE2E2", color: "#991B1B", padding: 14, borderRadius: 12, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-          <AlertTriangle size={16} /> <span style={{ flex: 1 }}>Couldn't load payouts. {(q.error as Error)?.message}</span>
+          <AlertTriangle size={16} /> <span style={{ flex: 1 }}>{userErrorMessage(q.error, "load payout records")}</span>
           <button onClick={() => q.refetch()} style={btn(false)}>Retry</button>
         </div>
       ) : (

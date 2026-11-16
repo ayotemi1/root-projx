@@ -25,6 +25,8 @@ import { ProfileEditor, ProfilePreviewButton } from "@/components/profile-editor
 import type { FeedUpdate } from "@/lib/api";
 import { externalLinkError, EXTERNAL_LINK_HELP, mediaKind } from "@/lib/content-media";
 import { loadPendingPost, savePendingPost, clearPendingPost, type PendingPost } from "@/lib/pending-post";
+import { userErrorMessage } from "@/lib/error-feedback";
+import { videoFileProblem, uploadFeedback } from "@/lib/upload-feedback";
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -105,12 +107,18 @@ export default function DashboardPage() {
       let mediaUrls = uploadedUrls;
       if (selectedFiles.length > 0) {
         setUploadProgress("uploading");
-        const fresh = await api.uploadMedia(selectedFiles, token!);
-        mediaUrls = [...uploadedUrls, ...fresh];
-        // Keep returned URLs so a failed publish never re-uploads.
-        setUploadedUrls(mediaUrls);
-        setSelectedFiles([]); setPreviewUrls([]);
-        savePendingPost(orgId, { urls: mediaUrls, title: postTitle, content: postContent, type: postType, externalUrl, savedAt: new Date().toISOString() });
+        // Persist each successful attachment before starting the next. A later
+        // upload failure must not lose or re-upload the earlier files on retry.
+        for (const file of selectedFiles) {
+          let fresh: string[];
+          try { fresh = await api.uploadMedia([file], token!); }
+          catch (error) { throw new Error(uploadFeedback(error, file.type.startsWith("video/") ? "video" : "image", file.size).message); }
+          mediaUrls = [...mediaUrls, ...fresh];
+          setUploadedUrls(mediaUrls);
+          setSelectedFiles(previous => previous.filter(candidate => candidate !== file));
+          setPreviewUrls(previous => previous.slice(1));
+          savePendingPost(orgId, { urls: mediaUrls, title: postTitle, content: postContent, type: postType, externalUrl, savedAt: new Date().toISOString() });
+        }
       }
       setUploadProgress("done");
       const link = externalUrl.trim();
@@ -133,8 +141,8 @@ export default function DashboardPage() {
     onError: (e: Error) => {
       setUploadProgress("idle");
       setFormError(uploadedUrls.length > 0 || loadPendingPost(orgId)
-        ? `${e.message} Your attached media is saved. Press publish again to retry without re-uploading.`
-        : e.message);
+        ? `${userErrorMessage(e, "publish this post")} Already uploaded attachments are saved; remaining files still need to upload. Press Publish post to retry.`
+        : userErrorMessage(e, "publish this post"));
     },
   });
 
@@ -142,8 +150,13 @@ export default function DashboardPage() {
     const files = Array.from(e.target.files ?? []);
     e.target.value = "";
     if (files.length + selectedFiles.length + uploadedUrls.length > 5) { setFormError("You can attach up to 5 files per post."); return; }
-    if (files.some((file) => file.size > 20 * 1024 * 1024)) {
-      setFormError("Each photo or video must be 20 MB or smaller."); return;
+    for (const file of files) {
+      const problem = file.type.startsWith("video/") ? videoFileProblem(file)?.message
+        : !file.size ? "This image file is empty. Choose another file."
+        : !["image/jpeg", "image/png", "image/webp", "image/gif"].includes(file.type)
+          ? "This image format isn’t supported. Choose JPEG, PNG, WebP or GIF. Convert HEIC photos to JPEG first."
+        : file.size > 20 * 1024 * 1024 ? "This image is too large. Choose an image of 20 MB or smaller." : null;
+      if (problem) { setFormError(problem); return; }
     }
     setFormError("");
     const newFiles = [...selectedFiles, ...files].slice(0, 5);
@@ -361,7 +374,7 @@ export default function DashboardPage() {
                       <>
                         <input ref={fileInputRef} type="file" accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/quicktime,video/webm" multiple className="hidden" onChange={handleFileChange} />
                         <button type="button" onClick={() => fileInputRef.current?.click()} className="flex items-center justify-center gap-2 h-16 w-full border-2 border-dashed border-border rounded-lg text-sm font-semibold text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors hover:bg-primary/5"><ImageIcon className="w-4 h-4" /> {selectedFiles.length + uploadedUrls.length === 0 ? "Upload photos or videos" : `Add more (${selectedFiles.length + uploadedUrls.length}/5)`}</button>
-                        <p className="text-xs text-muted-foreground mt-2">Choose directly from your device. Up to 5 files, 20 MB each. Videos: MP4, MOV or WebM.</p>
+                        <p className="text-xs text-muted-foreground mt-2">Up to 5 files. Images: up to 20 MB each. Videos: MP4, MOV or WebM, up to 500 MB each. Keep this page open until uploading finishes.</p>
                       </>
                     )}
                   </div>

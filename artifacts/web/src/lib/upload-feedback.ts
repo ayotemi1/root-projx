@@ -42,7 +42,9 @@ export function uploadFeedback(error: unknown, kind: string, size?: number): Upl
     retryable: (error as { stage?: string })?.stage === "storage",
   };
   if (status === 415 || /file type|format|not a supported video/i.test(raw))
-    return { message: "This file format isn't supported. For videos, choose MP4, MOV or WebM, up to 500 MB.", retryable: false };
+    return { message: kind === "video"
+      ? "This file format isn't supported. For videos, choose MP4, MOV or WebM, up to 500 MB."
+      : "This image format isn't supported. Choose JPEG, PNG, WebP or GIF, up to 20 MB. Convert HEIC photos to JPEG before uploading.", retryable: false };
   if (status === 429) return { message: "Too many uploads were attempted. Please wait before trying again.", retryable: false };
   if (status === 408 || /timed? out|timeout/i.test(raw))
     return { message: "The upload took too long. Try again on a stronger connection, or export a smaller video.", retryable: true };

@@ -1,4 +1,5 @@
 import { uploadVideo } from "./video-upload";
+import { appFetch, userErrorMessage, responseError } from "./error-feedback";
 export const API_BASE = "/api";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -197,7 +198,7 @@ async function req<T>(
     ...(options.headers as Record<string, string> ?? {}),
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  const res = await appFetch(`${API_BASE}${path}`, { ...options, headers });
   if (!res.ok) {
     let msg = `Request failed (${res.status})`;
     let body: unknown = null;
@@ -206,9 +207,10 @@ async function req<T>(
       const b = body as { error?: string };
       if (b && b.error) msg = b.error;
     } catch { /* ignore */ }
-    throw new ApiError(msg, res.status, body);
+    throw new ApiError(userErrorMessage({ message: msg, status: res.status },
+      /donations|checkout/.test(path) ? "start checkout" : /payout/.test(path) ? "confirm this payout action" : "complete this request"), res.status, body);
   }
-  return res.json() as Promise<T>;
+  return res.json().catch(() => { throw new Error("The service returned an unreadable response, so we couldn’t confirm the result. Keep your work, check the saved status before retrying, and contact Root ProjX if it continues."); }) as Promise<T>;
 }
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
@@ -292,22 +294,7 @@ export const postUpdate = (
 
 /** Upload media files for a feed update. Returns download URLs. */
 export async function uploadMedia(files: File[], token: string): Promise<string[]> {
-  const formData = new FormData();
-  files.forEach((f) => formData.append("files", f));
-
-  const response = await fetch(`${API_BASE}/uploads/media?type=media`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
-    body: formData,
-  });
-
-  if (!response.ok) {
-    const err = await response.json().catch(() => ({ error: "Upload failed" })) as { error?: string };
-    throw new Error(err.error ?? "Upload failed");
-  }
-
-  const result = await response.json() as { urls: string[] };
-  return result.urls;
+  return uploadMediaWithProgress(files, token);
 }
 
 /**
@@ -355,9 +342,9 @@ function uploadMultipartWithProgress(
         onProgress?.(1);
         resolve(body.urls);
       } else {
-        reject(Object.assign(new Error(body.error ?? (xhr.status === 413
+        reject(Object.assign(new Error(userErrorMessage({ message: body.error ?? (xhr.status === 413
           ? "File is too large. Images must be under 20 MB; videos can be up to 500 MB."
-          : `Upload failed (${xhr.status})`)), { status: xhr.status }));
+          : `Upload failed (${xhr.status})`), status: xhr.status }, "upload this file")), { status: xhr.status }));
       }
     };
     xhr.onerror = () => reject(new Error("Upload failed. Check your connection and try again."));
@@ -379,15 +366,14 @@ export async function uploadOrgProfileImage(
   const formData = new FormData();
   formData.append("file", file);
 
-  const response = await fetch(`${API_BASE}/organisations/${orgId}/images?type=${type}`, {
+  const response = await appFetch(`${API_BASE}/organisations/${orgId}/images?type=${type}`, {
     method: "POST",
     headers: { Authorization: `Bearer ${token}` },
     body: formData,
   });
 
   if (!response.ok) {
-    const err = await response.json().catch(() => ({ error: "Upload failed" })) as { error?: string };
-    throw new Error(err.error ?? "Upload failed");
+    throw await responseError(response, `upload your ${type} image`);
   }
 
   return response.json() as Promise<Org>;

@@ -126,7 +126,7 @@ function ApplyModal({
             />
           </div>
           {mutation.isError && (
-            <p className="text-sm text-red-600">Something went wrong. Please try again.</p>
+            <p className="text-sm text-red-600">We couldn’t load the volunteer information. Check your connection and reload this page. If it continues, contact Root ProjX.</p>
           )}
         </div>
         <div className="px-6 pb-6 flex justify-end gap-3">
@@ -220,7 +220,7 @@ function SuggestModal({
             </select>
           </div>
           {mutation.isError && (
-            <p className="text-sm text-red-600">Something went wrong. Please try again.</p>
+            <p className="text-sm text-red-600">We couldn’t confirm your volunteer request. Keep a copy of your message, check your connection and try again. If it continues, contact Root ProjX.</p>
           )}
         </div>
         <div className="px-6 pb-6 flex justify-end gap-3">

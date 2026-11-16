@@ -1,3 +1,4 @@
+import { userErrorMessage } from "@/lib/error-feedback";
 import { useQuery } from "@tanstack/react-query";
 import { AlertCircle, Clock, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,7 +25,7 @@ export function PendingPayout({ orgId, token }: { orgId: string; token: string }
         ) : q.isError || !q.data ? (
           <div className="flex items-start gap-2 rounded-lg border p-3 text-sm bg-destructive/10 border-destructive/30 text-destructive" role="alert">
             <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-            <span className="flex-1">Couldn't load your payout status.</span>
+            <span className="flex-1">{userErrorMessage(q.error, "load your payout status")}</span>
             <Button size="sm" variant="outline" className="h-7" onClick={() => q.refetch()}>Retry</Button>
           </div>
         ) : (

@@ -1,3 +1,4 @@
+import { appFetch as fetch, userErrorMessage } from "@/lib/error-feedback";
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { COUNTRIES } from "@/lib/countries";
@@ -248,13 +249,13 @@ export default function OnboardingPage() {
       });
       const data = await res.json() as { error?: string };
       if (!res.ok) {
-        setError(data.error ?? "Something went wrong. Please try again.");
+        setError(userErrorMessage({ message: data.error, status: res.status }, "submit your organisation application"));
         setLoading(false);
         return;
       }
       setStep(4);
-    } catch {
-      setError("Network error — please check your connection and try again.");
+    } catch (error) {
+      setError(userErrorMessage(error, "confirm your organisation application was submitted"));
     } finally {
       setLoading(false);
     }

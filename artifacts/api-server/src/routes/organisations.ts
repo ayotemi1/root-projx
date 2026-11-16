@@ -1,7 +1,7 @@
 import { randomUUID } from "crypto";
 import { profilePatch, ProfileValidationError } from "../lib/organisation-profile.js";
 import { campaignPatch, campaignForEditor, campaignPublishGates, CampaignInputError } from "../lib/campaign-editor.js";
-import { publicDrumExperience } from "../lib/drum-experience.js";
+import { publicDrumExperience, canUseDrumExperience, assertDrumExperienceAccess } from "../lib/drum-experience.js";
 import { campaignSupporters } from "../lib/campaign-supporters.js";
 import { Router } from "express";
 import multer from "multer";
@@ -366,7 +366,7 @@ function organisationDisplayName(
   return "Community organisation";
 }
 
-export function publicCampaignFields(campaign: Record<string, unknown>): Record<string, unknown> {
+export function publicCampaignFields(campaign: Record<string, unknown>, orgId?: string): Record<string, unknown> {
   return {
     _id: campaign["_id"],
     publicId: campaign["publicId"],
@@ -388,7 +388,8 @@ export function publicCampaignFields(campaign: Record<string, unknown>): Record<
     theme: parseCampaignTheme(campaign["theme"]),
     tagline: campaign.tagline ?? "",
     pageContent: campaign.pageContent ?? null,
-    drumExperience: publicDrumExperience(campaign.drumExperience, campaign.currency, campaign.type),
+    drumExperience: canUseDrumExperience(orgId, campaign._id)
+      ? publicDrumExperience(campaign.drumExperience, campaign.currency, campaign.type) : null,
     partnerFunding: partnerFundingFor(campaign),
     partnerFundingMatchedGbp: typeof campaign.partnerFundingMatchedGbp === "number" ? campaign.partnerFundingMatchedGbp : 0,
     breakdown: Array.isArray(campaign.breakdown) ? campaign.breakdown : [],
@@ -451,7 +452,7 @@ router.get("/organisations/:id/campaigns", async (req, res) => {
       .map((campaign) => publicCampaignFields({
         ...campaign,
         ...campaignSharePath(orgWithIdentity, campaign),
-      }));
+      }, orgId));
     res.json(campaigns);
   } catch (err) {
     req.log.error({ err }, "GET /organisations/:id/campaigns error");
@@ -479,7 +480,7 @@ export async function findPublicCampaign(
     if (!campaign) continue;
     const share = campaignSharePath(orgWithIdentity, campaign);
     return {
-      campaign: { ...publicCampaignFields({ ...campaign, ...share }),
+      campaign: { ...publicCampaignFields({ ...campaign, ...share }, String(org._id)),
         ...await campaignSupporters(String(org._id), String(campaign._id), token, org.supporterWall) },
       organisation: {
         _id: org["_id"],
@@ -564,6 +565,8 @@ router.post("/organisations/:id/campaigns", requireAuth, requireApprovedOrganisa
     };
 
     const body = (req.body ?? {}) as Record<string, unknown>;
+    try { assertDrumExperienceAccess(orgId, null, body); }
+    catch (error) { throw new CampaignInputError((error as Error).message); }
     const content = campaignPatch(body, { theme: DEFAULT_CAMPAIGN_THEME });
     const now = new Date().toISOString();
     const campaignId = randomUUID().replace(/-/g, "").slice(0, 20);
@@ -632,6 +635,8 @@ router.patch("/organisations/:id/campaigns/:campId", requireAuth, requireApprove
       if (idx < 0) throw Object.assign(new Error("Campaign not found"), { status: 404 });
       const current = migrateCampaignPartnerFunding(campaigns[idx]!);
       const editor = campaignForEditor(current);
+      try { assertDrumExperienceAccess(orgId, campId, body); }
+      catch (error) { throw new CampaignInputError((error as Error).message); }
       const updates = campaignPatch(body, editor);
       if ("phases" in body) updates.phases = parsePhases(body.phases);
       if ("status" in body) {

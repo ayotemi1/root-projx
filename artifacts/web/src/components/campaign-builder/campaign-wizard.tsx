@@ -1,3 +1,5 @@
+import { userErrorMessage } from "@/lib/error-feedback";
+import { canUseDrumExperience } from "@/lib/drum-experience";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
@@ -61,6 +63,11 @@ export function CampaignWizard({ campaign, org, orgId, userId, token, onClose }:
 
   const draft = useCampaignDraft({ campaign, orgId, userId, token, onSaved });
   const { value: d, setValue, step, setStep } = draft;
+  useEffect(() => {
+    if (!canUseDrumExperience(orgId, campaign._id) && d.drumExperience.enabled) {
+      setValue(previous => ({ ...previous, drumExperience: { ...previous.drumExperience, enabled: false } }));
+    }
+  }, [orgId, campaign._id, d.drumExperience.enabled, setValue]);
   const update = useCallback((patch: Partial<CampaignDraft> | ((previous: CampaignDraft) => Partial<CampaignDraft>)) =>
     setValue((p) => ({ ...p, ...(typeof patch === "function" ? patch(p) : patch) })), [setValue]);
   const gates = useMemo(() => computeGates(d, org), [d, org]);
@@ -104,7 +111,7 @@ export function CampaignWizard({ campaign, org, orgId, userId, token, onClose }:
         setPublishError("Not published yet. These still need doing:");
         void qc.invalidateQueries({ queryKey: ["org", orgId] });
       } else {
-        setPublishError(e instanceof Error ? `Not published: ${e.message}` : "Not published. Try again.");
+        setPublishError(userErrorMessage(e, "confirm campaign publication"));
       }
     } finally {
       setPublishing(false);
@@ -120,7 +127,7 @@ export function CampaignWizard({ campaign, org, orgId, userId, token, onClose }:
       setNotice("Unpublished. The page is offline; your draft is kept.");
       await qc.invalidateQueries({ queryKey: ["campaigns", orgId] });
     } catch (e) {
-      setPublishError(e instanceof Error ? `Could not unpublish: ${e.message}` : "Could not unpublish.");
+      setPublishError(userErrorMessage(e, "confirm this campaign is unpublished"));
     } finally {
       setPublishing(false);
     }
@@ -149,7 +156,7 @@ export function CampaignWizard({ campaign, org, orgId, userId, token, onClose }:
 
   // Server locks currency after the first donation; mirror that here.
   const currencyLocked = !!current.currencyLockedAt || (current.amountRaised ?? 0) > 0 || (current.supporterCount ?? 0) > 0;
-  const stepProps = { d, update, token, campaignId: campaign._id, assistEnabled, beforeAssist: draft.flush, currencyLocked };
+  const stepProps = { d, update, token, orgId, campaignId: campaign._id, assistEnabled, beforeAssist: draft.flush, currencyLocked };
 
   // Preview as donor: save the latest draft first; never navigate on a save error.
   const [, navigate] = useLocation();
