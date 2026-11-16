@@ -844,6 +844,42 @@ export interface DonationWithOrg {
   createdAt: string;
 }
 
+export type ManagedPostStatus =
+  (typeof ManagedPostStatus)[keyof typeof ManagedPostStatus];
+
+export const ManagedPostStatus = {
+  published: "published",
+  archived: "archived",
+  deleted: "deleted",
+} as const;
+
+export interface ManagedPost {
+  _id: string;
+  orgId: string;
+  orgName?: string;
+  title?: string;
+  content?: string;
+  createdAt: string;
+  mediaUrls?: string[];
+  /** @nullable */
+  externalUrl?: string | null;
+  status?: ManagedPostStatus;
+  statusChangedAt?: string;
+}
+
+export type PostStatusInputStatus =
+  (typeof PostStatusInputStatus)[keyof typeof PostStatusInputStatus];
+
+export const PostStatusInputStatus = {
+  published: "published",
+  archived: "archived",
+  deleted: "deleted",
+} as const;
+
+export interface PostStatusInput {
+  status: PostStatusInputStatus;
+}
+
 export type UpdateTag = (typeof UpdateTag)[keyof typeof UpdateTag];
 
 export const UpdateTag = {

@@ -2,16 +2,61 @@ import { Router } from "express";
 import { fsQuery, fsCreate, fsGet, fsPatch, getServerToken } from "../lib/firebase-rest.js";
 import { requireApprovedOrganisation, requireAuth, optionalAuth } from "../lib/auth.js";
 import { normaliseContentLink } from "../lib/feed-content.js";
+import { SetPostStatusBody, SetPostStatusParams } from "@workspace/api-zod";
 
 const router = Router();
 
 async function visiblePosts(posts: Record<string, unknown>[], token: string) {
+  posts = posts.filter((post) => post.status !== "archived" && post.status !== "deleted");
   const ids = [...new Set(posts.map((post) => String(post.orgId ?? "")))];
   const visible = new Set((await Promise.all(ids.map(async (id) =>
     id && await fsGet("organisations", id, token) ? id : null,
   ))).filter(Boolean));
   return posts.filter((post) => visible.has(String(post.orgId ?? "")));
 }
+
+// Includes archived posts only for the owning organisation or its delegated admin.
+router.get("/feed/managed", requireAuth, requireApprovedOrganisation, async (req, res) => {
+  try {
+    if (req.user!.accountType !== "organisation") {
+      res.status(403).json({ error: "Only organisation accounts can manage posts." }); return;
+    }
+    const posts = await fsQuery("updates", [
+      { field: "orgId", op: "EQUAL", value: req.user!.userId },
+    ], await getServerToken());
+    res.setHeader("Cache-Control", "no-store");
+    res.json(posts.filter((post) => post.status !== "deleted").sort((a, b) =>
+      String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? ""))));
+  } catch (err) {
+    req.log.error({ err }, "GET /feed/managed error");
+    res.status(500).json({ error: "We couldn't load your posts. Try again in a moment." });
+  }
+});
+
+router.patch("/feed/:postId/status", requireAuth, requireApprovedOrganisation, async (req, res) => {
+  const body = SetPostStatusBody.safeParse(req.body);
+  const params = SetPostStatusParams.safeParse(req.params);
+  if (!body.success || !params.success || params.data.postId.includes("/")) {
+    res.status(400).json({ error: "Choose Archive, Restore or Delete for a valid post." }); return;
+  }
+  try {
+    const token = await getServerToken();
+    const post = await fsGet("updates", params.data.postId, token);
+    if (!post || post.status === "deleted") {
+      res.status(404).json({ error: "This post has already been deleted or no longer exists." }); return;
+    }
+    if (req.user!.accountType !== "organisation" || post.orgId !== req.user!.userId) {
+      res.status(403).json({ error: "You can only manage posts belonging to your organisation." }); return;
+    }
+    const patch = { status: body.data.status, statusChangedAt: new Date().toISOString() };
+    await fsPatch("updates", params.data.postId, patch, token);
+    res.setHeader("Cache-Control", "no-store");
+    res.json({ ...post, ...patch });
+  } catch (err) {
+    req.log.error({ err }, "PATCH /feed/:postId/status error");
+    res.status(500).json({ error: "We couldn't confirm this post change. Refresh your posts to check its status before trying again." });
+  }
+});
 
 // GET /feed/public — all published organisation posts; no auth required
 router.get("/feed/public", async (req, res) => {

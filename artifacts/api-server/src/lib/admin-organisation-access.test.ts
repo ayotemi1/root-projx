@@ -23,12 +23,14 @@ test("admin organisation access allows editors, previews and uploads, not other 
     ["GET", "/api/organisations/org-a/campaigns/camp-a/preview"],
     ["POST", "/api/organisations/org-a/walkthrough/events"],
     ["POST", "/api/uploads/media"], ["GET", "/api/payouts/my"],
+    ["GET", "/api/feed/managed"], ["PATCH", "/api/feed/post-a/status"],
   ]) assert.equal(organisationAccessAllows("org-a", method, path), true, path);
   for (const [method, path] of [
     ["PATCH", "/api/organisations/org-b"], ["PATCH", "/api/organisations/org-ab"],
     ["DELETE", "/api/organisations/org-a"], ["POST", "/api/stripe/connect"],
     ["POST", "/api/admin/payouts/run"], ["PUT", "/api/payout/setup"],
     ["POST", "/api/donations/checkout"], ["GET", "/api/auth/me"],
+    ["DELETE", "/api/feed/post-a/status"], ["PATCH", "/api/feed/post-a/status/extra"],
   ]) assert.equal(organisationAccessAllows("org-a", method, path), false, path);
 });
 

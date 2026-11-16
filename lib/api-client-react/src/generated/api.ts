@@ -44,6 +44,7 @@ import type {
   HelpReview,
   ListOrganisationsParams,
   LoginRequest,
+  ManagedPost,
   MessageResponse,
   OrgPayoutSummary,
   Organisation,
@@ -56,6 +57,7 @@ import type {
   PayoutRunResult,
   PayoutSettlementInput,
   PayoutSettlementResult,
+  PostStatusInput,
   ProfileResponse,
   PublicUser,
   RecordOrganisationPreviewOpen200,
@@ -3656,6 +3658,168 @@ export const usePostUpdate = <
   TContext
 > => {
   return useMutation(getPostUpdateMutationOptions(options));
+};
+
+/**
+ * @summary List the authenticated organisation's published and archived posts
+ */
+export const getGetManagedPostsUrl = () => {
+  return `/api/feed/managed`;
+};
+
+export const getManagedPosts = async (
+  options?: RequestInit,
+): Promise<ManagedPost[]> => {
+  return customFetch<ManagedPost[]>(getGetManagedPostsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetManagedPostsQueryKey = () => {
+  return [`/api/feed/managed`] as const;
+};
+
+export const getGetManagedPostsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getManagedPosts>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getManagedPosts>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetManagedPostsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getManagedPosts>>> = ({
+    signal,
+  }) => getManagedPosts({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getManagedPosts>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetManagedPostsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getManagedPosts>>
+>;
+export type GetManagedPostsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List the authenticated organisation's published and archived posts
+ */
+
+export function useGetManagedPosts<
+  TData = Awaited<ReturnType<typeof getManagedPosts>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getManagedPosts>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetManagedPostsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Archive, restore or delete an owned post
+ */
+export const getSetPostStatusUrl = (postId: string) => {
+  return `/api/feed/${postId}/status`;
+};
+
+export const setPostStatus = async (
+  postId: string,
+  postStatusInput: PostStatusInput,
+  options?: RequestInit,
+): Promise<ManagedPost> => {
+  return customFetch<ManagedPost>(getSetPostStatusUrl(postId), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(postStatusInput),
+  });
+};
+
+export const getSetPostStatusMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof setPostStatus>>,
+    TError,
+    { postId: string; data: BodyType<PostStatusInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof setPostStatus>>,
+  TError,
+  { postId: string; data: BodyType<PostStatusInput> },
+  TContext
+> => {
+  const mutationKey = ["setPostStatus"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof setPostStatus>>,
+    { postId: string; data: BodyType<PostStatusInput> }
+  > = (props) => {
+    const { postId, data } = props ?? {};
+
+    return setPostStatus(postId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SetPostStatusMutationResult = NonNullable<
+  Awaited<ReturnType<typeof setPostStatus>>
+>;
+export type SetPostStatusMutationBody = BodyType<PostStatusInput>;
+export type SetPostStatusMutationError = ErrorType<void>;
+
+/**
+ * @summary Archive, restore or delete an owned post
+ */
+export const useSetPostStatus = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof setPostStatus>>,
+    TError,
+    { postId: string; data: BodyType<PostStatusInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof setPostStatus>>,
+  TError,
+  { postId: string; data: BodyType<PostStatusInput> },
+  TContext
+> => {
+  return useMutation(getSetPostStatusMutationOptions(options));
 };
 
 /**

@@ -39,6 +39,8 @@ export function organisationAccessAllows(orgId: string, method: string, original
     (path?.startsWith("/api/uploads/") && method === "POST") ||
     (path === "/api/uploads" && method === "POST") ||
     (path === "/api/feed" && method === "POST") ||
+    (path === "/api/feed/managed" && method === "GET") ||
+    (/^\/api\/feed\/[\w-]+\/status$/.test(path ?? "") && method === "PATCH") ||
     (path === `/api/feed/org/${orgId}` && method === "GET") ||
     (path === "/api/campaigns/assist/status" && method === "GET") ||
     (path === "/api/campaigns/assist" && method === "POST");

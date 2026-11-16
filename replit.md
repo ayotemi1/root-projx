@@ -444,6 +444,14 @@ Uploaded-but-unpublished attachment URLs are recoverable per organisation in
 the browser, and retries reuse them rather than uploading the same files again.
 No separate collection or Firestore rules change is required.
 
+Dashboard → Posts includes Published and Archived lists. Archive hides a post
+from public and personalised feeds and profile grids; Restore republishes it.
+Delete requires confirmation and is not restorable through the site. It retains
+the underlying record with `status: deleted` and does not erase uploaded files.
+Managed post reads and status changes require the owning approved organisation
+or an admin delegated to it; public endpoints always exclude archived/deleted
+posts. Legacy posts without a status remain published.
+
 ## Critical Implementation Notes
 
 ### Stripe

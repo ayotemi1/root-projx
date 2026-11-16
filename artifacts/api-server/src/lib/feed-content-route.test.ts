@@ -15,6 +15,12 @@ test("organisation content persists links with media, derives ownership, and kee
     entryPoints: [new URL("../routes/feed.ts", import.meta.url).pathname],
     bundle: true, write: false, platform: "node", format: "cjs", packages: "external",
     plugins: [{ name: "content-boundaries", setup(b) {
+      b.onResolve({ filter: /^@workspace\/api-zod$/ }, () => ({
+        path: new URL("../../../../lib/api-zod/src/generated/api.ts", import.meta.url).pathname,
+      }));
+      b.onResolve({ filter: /^zod$/ }, () => ({
+        path: new URL("../../../../lib/api-zod/node_modules/zod/index.cjs", import.meta.url).pathname,
+      }));
       b.onResolve({ filter: /\/(auth|firebase-rest)\.js$/ }, args => ({
         path: args.path.split("/").at(-1)!, namespace: "mock",
       }));

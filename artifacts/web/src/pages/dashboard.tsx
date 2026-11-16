@@ -59,6 +59,8 @@ export default function DashboardPage() {
   /** URLs already uploaded for this draft. Never re-uploaded on retry. */
   const [uploadedUrls, setUploadedUrls] = useState<string[]>([]);
   const [recoverable, setRecoverable] = useState<PendingPost | null>(null);
+  const [postFilter, setPostFilter] = useState<"published" | "archived">("published");
+  const [postAction, setPostAction] = useState<{ post: FeedUpdate; status: "archived" | "deleted" } | null>(null);
 
   // Campaign form state
 
@@ -77,11 +79,23 @@ export default function DashboardPage() {
 
 
   const updatesQ = useQuery({
-    queryKey: ["org-feed", orgId],
-    queryFn: () => api.getOrgFeed(orgId),
-    enabled: !!orgId,
+    queryKey: ["managed-posts", orgId, token],
+    queryFn: () => api.getManagedPosts(token!),
+    enabled: !!orgId && !!token,
     staleTime: 30_000,
     refetchOnMount: "always",
+  });
+  const postStatusMut = useMutation({
+    mutationFn: ({ postId, status }: { postId: string; status: "published" | "archived" | "deleted" }) =>
+      api.setPostStatus(postId, status, token!),
+    onSuccess: (post) => {
+      setPostAction(null);
+      queryClient.setQueryData<FeedUpdate[]>(["managed-posts", orgId, token], (posts) =>
+        posts?.flatMap((item) => item._id === post._id ? post.status === "deleted" ? [] : [post] : [item]));
+      for (const key of ["managed-posts", "org-feed", "feed", "dashboard-summary"]) {
+        queryClient.invalidateQueries({ queryKey: [key] });
+      }
+    },
   });
 
   const campaignsQ = useQuery({
@@ -132,6 +146,8 @@ export default function DashboardPage() {
       setPostTitle(""); setPostContent(""); setExternalUrl(""); setUploadedUrls([]);
       setSelectedFiles([]); setPreviewUrls([]); setUploadProgress("idle");
       setShowForm(false); setFormError("");
+      setPostFilter("published");
+      queryClient.invalidateQueries({ queryKey: ["managed-posts", orgId] });
       queryClient.invalidateQueries({ queryKey: ["org-feed", orgId] });
       queryClient.invalidateQueries({ queryKey: ["feed", "public"] });
       queryClient.invalidateQueries({ queryKey: ["feed", "mine"] });
@@ -216,7 +232,8 @@ export default function DashboardPage() {
   const tab = explicitTab ? urlTab : (tour.active ? "build" : "overview");
   const setTab = (v: string) => setLocation(`${adminAccess ? `/admin/organisations/${orgId}/manage` : "/dashboard"}?tab=${v}`);
   const doneCount = tour.items.filter((i) => i.done).length;
-  const updates = updatesQ.data ?? [];
+  const updates = (updatesQ.data ?? []).filter((post) => postFilter === "archived"
+    ? post.status === "archived" : post.status !== "archived");
   const campaigns = (campaignsQ.data ?? []).filter((c) => c.status !== "deleted");
 
   const isSubmitting = postMut.isPending;
@@ -399,10 +416,17 @@ export default function DashboardPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="pt-4 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                <div className="flex gap-2 mb-4" aria-label="Post status">
+                  <Button variant={postFilter === "published" ? "default" : "outline"} onClick={() => setPostFilter("published")}>Published</Button>
+                  <Button variant={postFilter === "archived" ? "default" : "outline"} onClick={() => setPostFilter("archived")}>Archived</Button>
+                </div>
+                {postStatusMut.isError && <p role="alert" className="text-sm text-destructive mb-3">{userErrorMessage(postStatusMut.error, "change this post")}</p>}
                 {updatesQ.isLoading ? (
                   <div className="space-y-4"><Skeleton className="h-20" /><Skeleton className="h-20" /></div>
+                ) : updatesQ.isError ? (
+                  <div role="alert" className="text-sm"><p>{userErrorMessage(updatesQ.error, "load your posts")}</p><Button variant="outline" onClick={() => updatesQ.refetch()}>Try again</Button></div>
                 ) : updates.length === 0 ? (
-                  <p className="text-muted-foreground text-sm text-center py-10 px-4">No posts yet. Your published posts will appear here.</p>
+                  <p className="text-muted-foreground text-sm text-center py-10 px-4">{postFilter === "archived" ? "No archived posts. Archived posts are hidden from your public profile and the Live Feed. You can restore them here." : "No published posts yet."}</p>
                 ) : (
                   <div className="space-y-4">
                     {updates.map((u: FeedUpdate) => (
@@ -414,6 +438,23 @@ export default function DashboardPage() {
                         </div>
                         <h4 className="font-bold text-foreground text-sm leading-tight mb-1">{u.title || (u.mediaUrls?.length ? "Photo / video post" : "Post")}</h4>
                         <p className="text-muted-foreground text-xs leading-relaxed line-clamp-3">{u.content}</p>
+                        <div className="flex gap-2 mt-3 flex-wrap">
+                          {postFilter === "archived" ? (
+                            <Button size="sm" variant="outline" disabled={postStatusMut.isPending} onClick={() => { postStatusMut.reset(); postStatusMut.mutate({ postId: u._id, status: "published" }); }}>Restore post</Button>
+                          ) : (
+                            <Button size="sm" variant="outline" disabled={postStatusMut.isPending} onClick={() => { postStatusMut.reset(); setPostAction({ post: u, status: "archived" }); }}>Archive</Button>
+                          )}
+                          <Button size="sm" variant="outline" className="text-destructive" disabled={postStatusMut.isPending} onClick={() => { postStatusMut.reset(); setPostAction({ post: u, status: "deleted" }); }}>Delete</Button>
+                        </div>
+                        {postAction?.post._id === u._id && (
+                          <div role="group" aria-label="Confirm post action" className="mt-3 p-3 border rounded-lg space-y-3">
+                            <p className="text-sm">{postAction.status === "deleted" ? "Delete this post? It will be removed from your posts, profile and Live Feed. You cannot restore it. Uploaded files are not erased from storage." : "Archive this post? It will be hidden from your profile and Live Feed. You can restore it from Archived."}</p>
+                            <div className="flex gap-2 flex-wrap">
+                              <Button size="sm" variant="outline" disabled={postStatusMut.isPending} onClick={() => setPostAction(null)}>Cancel</Button>
+                              <Button size="sm" disabled={postStatusMut.isPending} onClick={() => postStatusMut.mutate({ postId: u._id, status: postAction.status })}>{postStatusMut.isPending ? "Saving…" : postAction.status === "deleted" ? "Delete post" : "Archive post"}</Button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

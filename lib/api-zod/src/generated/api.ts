@@ -3311,6 +3311,48 @@ export const PostUpdateBody = zod
   );
 
 /**
+ * @summary List the authenticated organisation's published and archived posts
+ */
+export const GetManagedPostsResponseItem = zod.object({
+  _id: zod.string(),
+  orgId: zod.string(),
+  orgName: zod.string().optional(),
+  title: zod.string().optional(),
+  content: zod.string().optional(),
+  createdAt: zod.string(),
+  mediaUrls: zod.array(zod.string()).optional(),
+  externalUrl: zod.string().nullish(),
+  status: zod.enum(["published", "archived", "deleted"]).optional(),
+  statusChangedAt: zod.string().optional(),
+});
+export const GetManagedPostsResponse = zod.array(GetManagedPostsResponseItem);
+
+/**
+ * @summary Archive, restore or delete an owned post
+ */
+
+export const SetPostStatusParams = zod.object({
+  postId: zod.coerce.string().min(1),
+});
+
+export const SetPostStatusBody = zod.object({
+  status: zod.enum(["published", "archived", "deleted"]),
+});
+
+export const SetPostStatusResponse = zod.object({
+  _id: zod.string(),
+  orgId: zod.string(),
+  orgName: zod.string().optional(),
+  title: zod.string().optional(),
+  content: zod.string().optional(),
+  createdAt: zod.string(),
+  mediaUrls: zod.array(zod.string()).optional(),
+  externalUrl: zod.string().nullish(),
+  status: zod.enum(["published", "archived", "deleted"]).optional(),
+  statusChangedAt: zod.string().optional(),
+});
+
+/**
  * @summary Get public feed (no auth required)
  */
 export const GetPublicFeedResponseItem = zod

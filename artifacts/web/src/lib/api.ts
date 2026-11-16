@@ -112,6 +112,7 @@ export interface WiseStatus {
 }
 
 export interface FeedUpdate {
+  status?: "published" | "archived" | "deleted";
   _id: string;
   orgId: string;
   orgName: string;
@@ -284,6 +285,9 @@ export const updateOrganisation = (id: string, data: Partial<Org> | OrgProfilePa
 export const getPublicFeed = () => req<FeedUpdate[]>("/feed/public");
 export const getMyFeed = (token: string) => req<FeedUpdate[]>("/feed", {}, token);
 export const getOrgFeed = (orgId: string) => req<FeedUpdate[]>(`/feed/org/${orgId}`);
+export const getManagedPosts = (token: string) => req<FeedUpdate[]>("/feed/managed", {}, token);
+export const setPostStatus = (postId: string, status: "published" | "archived" | "deleted", token: string) =>
+  req<FeedUpdate>(`/feed/${encodeURIComponent(postId)}/status`, { method: "PATCH", body: JSON.stringify({ status }) }, token);
 export const postUpdate = (
   data: { title: string; content: string; type: string; mediaUrls?: string[]; externalUrl?: string },
   token: string,

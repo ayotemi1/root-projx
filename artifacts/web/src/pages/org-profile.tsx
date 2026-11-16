@@ -303,6 +303,7 @@ export default function OrgProfilePage() {
     enabled: !!id,
     staleTime: 30_000,
     refetchOnMount: "always",
+    refetchInterval: 30_000,
   });
 
   const reviewsQ = useQuery({
