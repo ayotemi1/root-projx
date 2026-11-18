@@ -120,6 +120,21 @@ test("Lifeyard's centred Story and purpose-led budget preserve saved copy withou
   }
 });
 
+test("Who's running it sits centred above Lifeyard's details without changing other campaigns", async () => {
+  const { CampaignPageView } = await loadComponent("src/components/campaign/campaign-page-view.tsx");
+  const render = (orgId: string, layout: string) => renderToStaticMarkup(createElement(Router, { hook: () => ["/", () => {}] },
+    createElement(CampaignPageView, {
+      campaign: { _id: "9d5e9d29323a434f8706", name: "Drum Life", type: "fundraising",
+        currency: "usd", goal: 18000, amountRaised: 0, status: "active", enabled: false },
+      organisation: { _id: orgId, name: "Lifeyard", country: "Jamaica" }, layout, preview: true,
+    })));
+  for (const layout of ["phone", "desktop", "responsive"]) {
+    const html = render("LTMwjXVEgxNideK0XtIQudxZXjc2", layout);
+    assert.match(html, /class="mx-auto grid max-w-3xl grid-cols-1 gap-7 text-center" data-testid="block-organisation"><h2[^>]*>Who&#x27;s running it<\/h2><div class="min-w-0"><div class="flex items-center gap-3 justify-center"/);
+    assert.doesNotMatch(render("another-organisation", layout), /max-w-3xl grid-cols-1 gap-7 text-center/);
+  }
+});
+
 test("Lifeyard budget purpose labels use real descriptions, not row positions or invented claims", async () => {
   const { DRUM_LIFE_COPY, drumBudgetPurpose } = await loadComponent("src/lib/drum-life-copy.ts");
   const descriptions = [

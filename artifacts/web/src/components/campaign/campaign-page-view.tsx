@@ -620,10 +620,10 @@ export function CampaignPageView({
         {/* 6. Organisation + money */}
         <section className={`py-14 ${md("py-20")} bg-white`}>
           <div className={`${wrap} ${sectionPad} space-y-14`}>
-            <div className={twoCol} data-testid="block-organisation">
+            <div className={lifeyard ? "mx-auto grid max-w-3xl grid-cols-1 gap-7 text-center" : twoCol} data-testid="block-organisation">
               <h2 className={sectionTitle}>Who's running it</h2>
-              <div>
-                <div className="flex items-center gap-3">
+              <div className={lifeyard ? "min-w-0" : undefined}>
+                <div className={`flex items-center gap-3 ${lifeyard ? "justify-center" : ""}`}>
                   {org.logo ? <img src={org.logo} alt="" className="w-14 h-14 rounded-full object-cover" /> : (
                     <span className="w-14 h-14 rounded-full flex items-center justify-center text-base font-black text-white" style={{ backgroundColor: red }}>{initials}</span>
                   )}
@@ -636,7 +636,7 @@ export function CampaignPageView({
                 {team.length > 0 && (
                   <ul className={`mt-6 grid grid-cols-1 gap-4 ${md("grid-cols-2")}`} data-testid="list-campaign-team">
                     {team.map((t, i) => (
-                      <li key={i} className="flex items-center gap-3 min-w-0" data-testid={`card-team-${i}`}>
+                      <li key={i} className={`flex items-center gap-3 min-w-0 ${lifeyard ? "justify-center" : ""}`} data-testid={`card-team-${i}`}>
                         {t.photoUrl ? <img src={t.photoUrl} alt="" loading="lazy" className="w-11 h-11 rounded-full object-cover shrink-0" /> : (
                           <span className="w-11 h-11 rounded-full bg-[#F2EDE4] flex items-center justify-center text-sm font-extrabold shrink-0" style={{ color: red }}>{t.name.charAt(0)}</span>
                         )}
