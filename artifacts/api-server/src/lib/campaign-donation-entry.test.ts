@@ -76,6 +76,87 @@ test("Drum Life builder is invisible to HOV and other campaigns, including USD c
   assert.match(render("LTMwjXVEgxNideK0XtIQudxZXjc2", "9d5e9d29323a434f8706"), /button-appearance-drum/);
 });
 
+test("Lifeyard's centred Story and purpose-led budget preserve saved copy without changing other campaigns", async () => {
+  const { CampaignPageView } = await loadComponent("src/components/campaign/campaign-page-view.tsx");
+  const campaign = { _id: "9d5e9d29323a434f8706", name: "Drum Life", type: "fundraising", currency: "usd",
+    goal: 18000, amountRaised: 0, supporterCount: 0, status: "active", enabled: false,
+    description: "Our saved opening paragraph.\n\nOur saved second paragraph.",
+    drumExperience: { enabled: true, updates: [] },
+    breakdown: [
+      { label: "$7500", detail: "50 drums for hands-on learning, practice and performance." },
+      { label: "$650", detail: "Three months of drumming tuition with master drummer Moustafa Reds." },
+      { label: "Locally donated space", detail: "Keep this custom row exactly as written." },
+      { detail: "A description-only item should not leave a vacant cost column." },
+    ],
+    pageContent: { programmeIntro: "Our saved intro explains a funding gap, without hiding anything." },
+  };
+  const organisation = { _id: "LTMwjXVEgxNideK0XtIQudxZXjc2", name: "Lifeyard", country: "Jamaica" };
+  const render = (c: any, org: any, layout = "phone") => renderToStaticMarkup(createElement(Router, { hook: () => ["/", () => {}] },
+    createElement(CampaignPageView, { campaign: c, organisation: org, preview: true, layout })));
+  for (const layout of ["phone", "desktop", "responsive"]) {
+    const html = render(campaign, organisation, layout);
+    assert.match(html, /data-testid="block-lifeyard-story"/);
+    assert.match(html, /text-center/);
+    assert.match(html, /Our saved opening paragraph/);
+    assert.match(html, /Our saved second paragraph/);
+    assert.match(html, /aria-label="Programme costs"/);
+    assert.match(html, /50 drums for hands-on learning, practice and performance/);
+    assert.match(html, /Drumming tuition/);
+    assert.match(html, /Locally donated space/);
+    assert.match(html, /Keep this custom row exactly as written/);
+    assert.match(html, /Our saved intro explains a funding gap, without hiding anything/);
+    assert.doesNotMatch(html, /not itemised|six listed budget items/);
+    assert.match(html, /block-drum-circle/);
+    assert.equal((html.match(/data-testid="button-drum-\d+"/g) ?? []).length, 50);
+  }
+  for (const [c, org] of [
+    [campaign, { ...organisation, _id: "hov", name: "Humanity Ova Vanity" }],
+    [{ ...campaign, _id: "another-lifeyard-campaign" }, organisation],
+  ]) {
+    const html = render(c, org);
+    assert.doesNotMatch(html, /block-lifeyard-story|Programme costs|Drumming tuition/);
+    assert.match(html, /The story/);
+    assert.match(html, /What your money buys/);
+  }
+});
+
+test("Lifeyard budget purpose labels use real descriptions, not row positions or invented claims", async () => {
+  const { DRUM_LIFE_COPY, drumBudgetPurpose } = await loadComponent("src/lib/drum-life-copy.ts");
+  const descriptions = [
+    "50 drums for hands-on learning, practice and performance.",
+    "Three months of drumming tuition with master drummer Moustafa Reds.",
+    "Workshop spaces where children can come together to learn and rehearse.",
+    "Transport and refreshments to help children attend and participate in the workshops.",
+    "An on-site social worker to support the children’s wellbeing and provide a trusted person.",
+    "Contingency fund to cover unforeseen programme costs.",
+  ];
+  assert.deepEqual(descriptions.map(drumBudgetPurpose),
+    ["50 drums", "Drumming tuition", "Workshop spaces", "Transport & refreshments", "On-site wellbeing support", "Contingency"]);
+  assert.equal(drumBudgetPurpose("An organisation's new custom purpose."), null);
+  assert.doesNotMatch(DRUM_LIFE_COPY.budgetIntro, /18,?000|16,?000|2,?000|not itemised/);
+});
+
+test("Lifeyard budget formats dollar labels without changing values and honours forced phone previews", async () => {
+  const { LifeyardBreakdown, formatCostLabel } = await loadComponent("src/components/campaign/lifeyard-sections.tsx");
+  for (const [label, expected] of [
+    ["$7500", "US$7,500"], ["$2,850 ", "US$2,850"], ["$ 650", "US$650"],
+    ["Donated instruments", "Donated instruments"], ["$75 per session", "$75 per session"],
+    ["$1,00", "$1,00"], ["£200", "£200"],
+  ]) assert.equal(formatCostLabel(label, "usd"), expected);
+  assert.equal(formatCostLabel("£200", "gbp"), "£200");
+  const props = { heading: "What your money buys", summary: "", intro: [], afterword: [],
+    rows: [{ label: "$7500", detail: "Our saved cost description." }], red: "#B50000", gold: "#F5B800" };
+  const phone = renderToStaticMarkup(createElement(LifeyardBreakdown, { ...props, currency: "usd", layout: "phone" }));
+  assert.match(phone, /US\$7,500/);
+  assert.doesNotMatch(phone, /sm:grid-cols|grid-cols-\[8.5rem/);
+  assert.match(phone, /All listed amounts are in US dollars/);
+  const gbp = renderToStaticMarkup(createElement(LifeyardBreakdown, { ...props, currency: "gbp", layout: "desktop" }));
+  assert.doesNotMatch(gbp, /All listed amounts are in US dollars/);
+  const detailOnly = renderToStaticMarkup(createElement(LifeyardBreakdown, { ...props,
+    rows: [{ detail: "Only this description" }], currency: "usd", layout: "desktop" }));
+  assert.doesNotMatch(detailOnly, /grid-cols-\[8.5rem/);
+});
+
 test("USD campaign sheet displays dollars and sends USD without changing organisation-level GBP", async () => {
   const { GuestDonateSheet, guestCheckoutBody } = await loadComponent("src/components/GuestDonateSheet.tsx");
   const html = renderSheet(GuestDonateSheet, { campaignId: "usd-campaign", campaignName: "Skills",

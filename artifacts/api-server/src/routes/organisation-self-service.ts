@@ -26,7 +26,7 @@ router.get("/organisations/:id/campaigns/:campId/preview", ...owner, async (req,
     // Explicit public profile projection: never include payee/provider credentials.
     const organisation = Object.fromEntries(["name", "country", "city", "category", "description", "shortDescription", "mission", "logo", "coverImage", "verified", "team"]
       .map(key => [key, profile[key] ?? null]));
-    res.json({ campaign: { ...publicCampaignFields(campaignForEditor(campaign)),
+    res.json({ campaign: { ...publicCampaignFields(campaignForEditor(campaign), String(req.params.id)),
       ...await campaignSupporters(String(req.params.id), String(req.params.campId), token, org.supporterWall) },
       organisation: { ...organisation, _id: req.params.id }, preview: true });
   } catch (err) {

@@ -13,7 +13,9 @@ import { CampaignDonatePanel, focusDonateBox, type DonateChoice, type ConfirmedR
 import { currencyOf, formatWhole } from "@/lib/currency";
 import { campaignVideos } from "@/components/campaign-builder/model";
 import { DrumCircle } from "./drum-circle";
-import { fundedDrums, isDrumCampaign } from "@/lib/drum-experience";
+import { fundedDrums, isDrumCampaign, canUseDrumExperience } from "@/lib/drum-experience";
+import { LifeyardStory, LifeyardBreakdown } from "./lifeyard-sections";
+import { DRUM_LIFE_COPY } from "@/lib/drum-life-copy";
 
 export type CampaignPageLayout = "responsive" | "phone" | "desktop";
 
@@ -180,6 +182,7 @@ export function CampaignPageView({
   const gold = theme.accentColor;
   const isFundraising = campaign.type === "fundraising";
   const drumMode = isDrumCampaign(campaign, org._id);
+  const lifeyard = canUseDrumExperience(org._id, campaign._id);
   const pf = campaign.partnerFunding && campaign.partnerFunding.amount > 0 ? campaign.partnerFunding : null;
   const isMatching = pf?.type === "matching";
   const funder = pf?.funderName?.trim() || "a funding partner";
@@ -332,7 +335,11 @@ export function CampaignPageView({
                   data-testid="block-campaign-hero" data-tour-id="campaign-accumulation">
                   <DrumCircle campaign={campaign} orgName={org.name} />
                 </div>
-              ) : isFundraising ? (
+              ) : null}
+              {drumMode && lifeyard && DRUM_LIFE_COPY.drumIntro && (
+                <p className="mt-4 text-[0.98rem] leading-relaxed text-white/95 text-center max-w-xl mx-auto" data-testid="text-drum-intro">{DRUM_LIFE_COPY.drumIntro}</p>
+              )}
+              {drumMode ? null : isFundraising ? (
                 <div className="relative rounded-2xl overflow-hidden ring-1 ring-black/10 shadow-[0_24px_60px_-20px_rgba(60,0,0,0.6)]"
                   data-testid="block-campaign-hero" data-tour-id="campaign-accumulation">
                   <AccumulationField
@@ -440,7 +447,10 @@ export function CampaignPageView({
         {(description || (isFundraising && campaign.imageUrl) || videos.length > 0) && (
           <section className={`py-14 ${md("py-20")} bg-white`}>
             <div className={`${wrap} ${sectionPad} space-y-12`}>
-              {lead && (
+              {lead && lifeyard && (
+                <LifeyardStory heading={t("storyHeading") || DRUM_LIFE_COPY.storyHeading} lead={lead} rest={rest} red={red} layout={layout} />
+              )}
+              {lead && !lifeyard && (
                 <div className={twoCol}>
                   <h2 className={sectionTitle}>{t("storyHeading") || "The story"}</h2>
                   <div data-testid="text-campaign-description" className="space-y-4 text-[1.02rem] leading-relaxed text-[#3a2f28] break-words">
@@ -474,7 +484,11 @@ export function CampaignPageView({
         {(breakdown.length > 0 || locations.length > 0) && (
           <section className={`pb-14 ${md("pb-20")} bg-white`}>
             <div className={`${wrap} ${sectionPad} border-t-2 border-[#1c1410] pt-10 space-y-14`}>
-              {breakdown.length > 0 && (
+              {breakdown.length > 0 && lifeyard && (
+                <LifeyardBreakdown heading={t("programmeHeading") || DRUM_LIFE_COPY.budgetHeading} summary={t("programmeSummary")}
+                  intro={splitParas(t("programmeIntro"))} afterword={splitParas(t("programmeAfterword"))} rows={breakdown} red={red} gold={gold} currency={campaign.currency} layout={layout} />
+              )}
+              {breakdown.length > 0 && !lifeyard && (
                 <div className={twoCol} data-testid="list-campaign-breakdown">
                   <div className="min-w-0">
                     <h2 className={sectionTitle}>{t("programmeHeading") || "What your money buys"}</h2>

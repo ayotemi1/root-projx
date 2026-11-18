@@ -505,6 +505,29 @@ test("direct draft preview is approved-owner-only, no-store and contains no paye
   assert.equal(publicView.body[0].name, publicName);
 });
 
+test("Lifeyard's direct draft preview preserves its enabled drum display without exposing it to HOV", async () => {
+  const f = await fixture();
+  const path = "/organisations/:id/campaigns/:campId/preview";
+  const drumExperience = { enabled: true, updates: [] };
+  const org = readyCampaignFixture(f);
+  org.campaigns = [{ ...org.campaigns[0], _id: DRUM_LIFE_CAMPAIGN_ID,
+    currency: "usd", type: "fundraising", drumExperience, enabled: false }];
+  f.state.docs.set(`organisations/${DRUM_LIFE_ORG_ID}`, structuredClone(org));
+  f.state.docs.set(`users/${DRUM_LIFE_ORG_ID}`, { accountType: "organisation", approvalStatus: "approved" });
+  const preview = await invoke(f.selfServiceRouter, "get", DRUM_LIFE_ORG_ID, {}, DRUM_LIFE_ORG_ID, path);
+  assert.equal(preview.status, 200);
+  assert.equal(preview.body.organisation._id, DRUM_LIFE_ORG_ID);
+  assert.deepEqual(preview.body.campaign.drumExperience, drumExperience);
+  assert.equal(preview.body.campaign.enabled, false);
+  assert.equal(preview.headers["Cache-Control"], "no-store");
+  // The same copied configuration never enables Lifeyard's theme for another organisation.
+  org.campaigns[0]._id = "camp";
+  const otherPreview = await invoke(f.selfServiceRouter, "get", "org", {}, "org", path);
+  assert.equal(otherPreview.status, 200);
+  assert.equal(otherPreview.body.campaign.drumExperience, null);
+  assert.equal(f.state.writes.length, 0);
+});
+
 test("running dashboard uses actual unpaid ledger and real payout references, not accrued lifetime totals", async () => {
   const f = await fixture();
   const org = readyCampaignFixture(f);

@@ -7,6 +7,8 @@ export const modules: ModuleMap = {
   "./components/mockups/screenshots/Screenshot4.tsx": () => import("../components/mockups/screenshots/Screenshot4.tsx"),
   "./components/mockups/screenshots/Screenshot5.tsx": () => import("../components/mockups/screenshots/Screenshot5.tsx"),
   "./components/mockups/screenshots/Screenshot6.tsx": () => import("../components/mockups/screenshots/Screenshot6.tsx"),
+  "./components/mockups/lifeyard-sections/Current.tsx": () => import("../components/mockups/lifeyard-sections/Current.tsx"),
+  "./components/mockups/lifeyard-sections/Revised.tsx": () => import("../components/mockups/lifeyard-sections/Revised.tsx"),
   "./components/mockups/screenshots/shared/PhoneFrame.tsx": () => import("../components/mockups/screenshots/shared/PhoneFrame.tsx"),
   "./components/mockups/screenshots/shared/ScreenBase.tsx": () => import("../components/mockups/screenshots/shared/ScreenBase.tsx")
 };
