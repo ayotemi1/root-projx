@@ -39,7 +39,7 @@ export function PublishStep({
         <span className="text-xs text-muted-foreground">Preview of your latest draft. Donations and sharing are off here.</span>
       </div>
 
-      <div className="rounded-2xl bg-secondary/50 border border-border p-2 sm:p-4 overflow-hidden" data-tour-id="campaign-preview">
+      <div className="border-[1.5px] border-[#17100F] bg-[#EDE4D6] p-2 sm:p-4 overflow-hidden" data-tour-id="campaign-preview">
         <div className={`mx-auto rounded-xl overflow-auto bg-background shadow-lg border border-border h-[640px] ${device === "phone" ? "w-full max-w-[390px]" : "w-full"}`}>
           <div className={device === "desktop" ? "min-w-[900px]" : ""}>
             <CampaignPageView campaign={preview} organisation={organisation} preview layout={device} />
@@ -47,16 +47,16 @@ export function PublishStep({
         </div>
       </div>
 
-      <section className="rounded-2xl border border-border p-4 sm:p-5 space-y-4" data-tour-id="campaign-publish-gates">
+      <section className="ops-block space-y-4" style={{ borderTopWidth: 4 }} data-tour-id="campaign-publish-gates">
         <div className="flex flex-wrap items-center gap-2">
-          <h3 className="font-extrabold text-base">Ready to publish?</h3>
+          <h3 className="ops-display uppercase text-2xl leading-none">Ready to publish?</h3>
           {live ? (
-            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-green-50 text-green-700" data-testid="status-live">Live</span>
+            <span className="text-[11px] font-bold px-2 py-0.5 border border-current text-green-800 font-mono uppercase tracking-wider" data-testid="status-live">Live</span>
           ) : (
-            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-secondary text-muted-foreground" data-testid="status-draft">Not live</span>
+            <span className="text-[11px] font-bold px-2 py-0.5 border border-current text-muted-foreground font-mono uppercase tracking-wider" data-testid="status-draft">Not live</span>
           )}
           {live && campaign.hasUnpublishedChanges && (
-            <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-800" data-testid="status-unpublished-changes">Unpublished changes</span>
+            <span className="text-[11px] font-bold px-2 py-0.5 border border-current text-amber-800 bg-[#F3BF2C]/20 font-mono uppercase tracking-wider" data-testid="status-unpublished-changes">Unpublished changes</span>
           )}
         </div>
         {live && <p className="text-xs text-muted-foreground">Your live page does not change until you publish these edits.</p>}
@@ -64,9 +64,9 @@ export function PublishStep({
         {shown.length === 0 ? (
           <p className="text-sm text-green-700 flex items-center gap-2"><CheckCircle2 className="w-4 h-4" /> Everything donors need is in place.</p>
         ) : (
-          <ul className="space-y-2" data-testid="list-publish-gates">
+          <ul className="border-t border-[#DDD5CC]" data-testid="list-publish-gates">
             {shown.map((g) => (
-              <li key={g.id} className="flex items-start gap-2 text-sm" data-testid={`gate-${g.id}`}>
+              <li key={g.id} className="flex items-start gap-2 text-sm py-2.5 border-b border-[#DDD5CC]" data-testid={`gate-${g.id}`}>
                 <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                 <span className="flex-1 min-w-0">{g.message}</span>
                 {g.step > 0 ? (
@@ -85,7 +85,7 @@ export function PublishStep({
           <Button
             onClick={onPublish}
             disabled={publishing || gates.length > 0 || !!saveBlocked || (live && !campaign.hasUnpublishedChanges)}
-            className="font-bold h-11 sm:flex-1"
+            className="font-bold h-11 sm:flex-1 bg-[#CA0813] hover:bg-[#CA0813]/90 text-[#FFFDF9]"
             data-testid="button-publish-campaign" data-tour-id="campaign-publish"
           >
             {publishing ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving and publishing</> : live ? (campaign.hasUnpublishedChanges ? "Publish changes" : "Live and up to date") : "Publish campaign"}

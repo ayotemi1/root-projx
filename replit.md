@@ -337,18 +337,35 @@ chosen text and `assistUsed` together; editing a suggestion alone never saves it
 | `@workspace/web` | React + Vite web app (port 22333) |
 | `@workspace/mockup-sandbox` | Component preview server for canvas mockups |
 
-## Colour System (CRITICAL — do not deviate)
+## Website visual reference (November 2026)
 
-- **--red**: `#B50000` — primary buttons, destructive
-- **--red-deep**: `#7A0000` — nav bar background, tab bar background
-- **--red-mid**: `#9E0000` — hover/pressed states
-- **--gold**: `#F5B800` — active tab, highlights, CTAs, goal fill
-- **--white**: `#FFFFFF` — backgrounds, inactive tab
-- **--white-faint**: `rgba(255,255,255,0.12)` — overlay text on dark surfaces
-- **Card surface**: `#F9F6F0`
-- **Secondary surface**: `#F2EDE4`
-- **Border**: `#E0D8CC`
-- **Muted text**: `#888888`
+The user-approved nine-page Website Preview Pack supersedes the website's earlier
+colour/font instructions and campaign script-heading amendments. Its original
+HTML models guide the presentation of the existing React pages, never their
+sample records or simulated donation behaviour.
+
+- **Site red:** `#CA0813`
+- **Yellow:** `#F3BF2C` — primary actions with ink labels
+- **Ink:** `#17100F`
+- **Cream:** `#F4EFE6`
+- **White:** `#FFFFFF`
+- **Campaign defaults:** accent `#B3121B`, highlight `#F5B82E`; retain intentionally
+  customised campaign themes.
+- **Typography:** condensed Archivo headings, Familjen Grotesk body/controls and
+  JetBrains Mono metadata; square controls and thin borders.
+
+Retain the actual routed pages, Firebase login/recovery, live content, private
+drafts, publishing gates, walkthrough anchors and canonical donation disclosures.
+Drum Life remains bespoke to Lifeyard, with its US$18,000 programme goal supplied
+by real campaign data and its existing 50-drum interactions.
+
+Do not copy the pack's fictional fundraising totals, donors or local donation
+increments. The current feed supports All posts and Following, not giving-history
+ranking or generated milestones. Campaign currency remains campaign-selected and
+locked, not donor-selected. The handover's 30-day payout-hold wording conflicts
+with its admin model: preserve the existing seven-day eligibility hold, £250
+threshold and 30-day age trigger unless a separate policy change is approved.
+Do not publish the website or any draft campaign automatically.
 
 ## Firestore Collections
 

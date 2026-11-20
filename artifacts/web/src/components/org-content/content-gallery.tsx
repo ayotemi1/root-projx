@@ -55,11 +55,11 @@ function ClickToPlayEmbed({ link, title }: { link: Ext; title: string }) {
   );
 }
 
-function ContentDialog({ item, onClose }: { item: FeedUpdate | null; onClose: () => void }) {
+export function ContentDialog({ item, onClose }: { item: FeedUpdate | null; onClose: () => void }) {
   const s = item ? summarise(item) : null;
   return (
     <Dialog open={!!item} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="max-w-2xl w-[calc(100vw-1rem)] max-h-[92dvh] overflow-y-auto p-4 sm:p-6 rounded-2xl">
+      <DialogContent className="max-w-2xl w-[calc(100vw-1rem)] max-h-[92dvh] overflow-y-auto p-4 sm:p-6 rounded-none border-[#17100F]">
         {item && s && (
           <>
             <div className="pr-8">

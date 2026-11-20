@@ -1,14 +1,13 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { userErrorMessage } from "@/lib/error-feedback";
 import { Link, useLocation } from "wouter";
-import { Search, BadgeCheck, LayoutGrid, MapPin } from "lucide-react";
+import { Search, BadgeCheck, LayoutGrid, MapPin, ArrowRight, Plus, ChevronDown, Check } from "lucide-react";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
 import * as api from "@/lib/api";
 import type { Org } from "@/lib/api";
 import { DISCOVER_COUNTRIES } from "@/lib/countries";
@@ -61,8 +60,7 @@ const COUNTRY_COORDS: Record<string, { center: [number, number]; zoom: number }>
 const DEFAULT_CENTER: [number, number] = [20, -30];
 const DEFAULT_ZOOM = 3;
 
-const GOLD = "#F5C000";
-const BRAND_RED = "#E31C23";
+const GOLD = "#F3BF2C";
 
 const goldIcon = L.divIcon({
   className: "",
@@ -90,7 +88,7 @@ function OrgMap({ orgs, country }: { orgs: Org[]; country: string }) {
     <MapContainer
       center={DEFAULT_CENTER}
       zoom={DEFAULT_ZOOM}
-      style={{ height: "520px", width: "100%", borderRadius: "12px" }}
+      style={{ height: "min(560px, 70dvh)", width: "100%" }}
       className="z-0"
     >
       <TileLayer
@@ -123,9 +121,10 @@ function OrgMap({ orgs, country }: { orgs: Org[]; country: string }) {
                   style={{
                     display: "inline-block",
                     padding: "4px 12px",
-                    backgroundColor: BRAND_RED,
-                    color: "#fff",
-                    borderRadius: "6px",
+                    backgroundColor: GOLD,
+                    color: "#17100F",
+                    border: "1px solid #17100F",
+                    borderRadius: "0",
                     fontSize: "12px",
                     fontWeight: 600,
                     textDecoration: "none",
@@ -142,99 +141,72 @@ function OrgMap({ orgs, country }: { orgs: Org[]; country: string }) {
   );
 }
 
-function OrgCard({ org }: { org: Org }) {
+type FollowCtl = { mode: "guest" | "supporter" | "organisation"; following: boolean; busy: boolean; onFollow: () => void };
+
+function OrgCard({ org, follow }: { org: Org; follow: FollowCtl }) {
   const [, navigate] = useLocation();
-  const progressPct = Math.min(100, (org.impactScore ?? 0));
+  const place = [org.city, org.country].filter(Boolean).join(", ");
+  const blurb = org.shortDescription?.trim() || org.description;
+  const followers = org.followerCount ?? 0;
 
   return (
-    <div
+    <article
       onClick={() => navigate(`/organisations/${org._id}`)}
-      className="bg-card border border-border rounded-xl p-5 hover:shadow-md transition-shadow cursor-pointer hover:border-primary/30 flex flex-col gap-3"
+      className="group border-t-2 border-[#17100F] pt-4 flex flex-col cursor-pointer rp-rise"
+      data-testid={`card-org-${org._id}`}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <h3 className="font-bold text-foreground text-base leading-tight truncate">
-              {org.name}
-            </h3>
-            {org.verified && (
-              <BadgeCheck
-                className="w-4 h-4 flex-shrink-0"
-                style={{ color: GOLD }}
-                aria-label="Verified"
-              />
-            )}
-          </div>
-          <p className="text-muted-foreground text-sm mt-0.5">
-            {[org.city, org.country].filter(Boolean).join(", ")}
-          </p>
-        </div>
-        <OrganisationLogo name={org.name} logo={org.logo} />
+      <div className="flex items-center justify-between gap-3 rp-label !text-[10px] text-[#17100F]/75">
+        <span className="inline-flex items-center gap-1.5 truncate"><MapPin className="w-3.5 h-3.5 shrink-0" />{place || "Location to come"}</span>
+        {org.verified && (
+          <span className="inline-flex items-center gap-1 text-[#1F6B3A] shrink-0"><BadgeCheck className="w-3.5 h-3.5" aria-hidden />Verified</span>
+        )}
       </div>
+      <div className="flex items-center gap-3 mt-4">
+        <OrganisationLogo name={org.name} logo={org.logo} />
+        <h3 className="rp-display text-[28px] sm:text-[30px] text-[#17100F]">
+          <Link href={`/organisations/${org._id}`} onClick={(e) => e.stopPropagation()} className="group-hover:text-[#CA0813] transition-colors focus:outline-none focus-visible:underline focus-visible:decoration-[#F3BF2C] focus-visible:decoration-4" data-testid={`link-org-${org._id}`}>{org.name}</Link>
+        </h3>
+      </div>
+      {org.category && (
+        <span className="mt-4 w-fit rp-label !text-[9px] bg-[#F3BF2C] text-[#17100F] px-2 py-1">{org.category}</span>
+      )}
+      <p className="mt-4 text-[14px] leading-relaxed text-[#17100F]/80 line-clamp-3 min-h-[3lh]">{blurb}</p>
 
-      <Badge
-        variant="secondary"
-        className="w-fit bg-accent/20 text-accent-foreground border-accent/30 text-xs font-semibold"
-      >
-        {org.category}
-      </Badge>
-
-      <p className="text-foreground text-sm leading-relaxed line-clamp-2">
-        {org.shortDescription?.trim() || org.description}
-      </p>
-
-      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-        <span>
-          <strong className="text-foreground">{org.followerCount ?? 0}</strong> followers
-        </span>
+      <div className="mt-auto pt-6 flex items-baseline gap-6">
+        <span className="rp-label !text-[10px] text-[#17100F]/80"><strong className="rp-cond text-[18px] font-bold text-[#17100F] tracking-normal mr-1">{followers}</strong>{followers === 1 ? "Follower" : "Followers"}</span>
         {(org.totalRaised ?? 0) > 0 && (
-          <span>
-            <strong className="text-foreground">£{org.totalRaised.toLocaleString()}</strong> raised
-          </span>
+          <span className="rp-label !text-[10px] text-[#17100F]/80"><strong className="rp-cond text-[18px] font-bold text-[#17100F] tracking-normal mr-1">£{org.totalRaised.toLocaleString()}</strong>Raised</span>
         )}
       </div>
 
-      <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
-        <div
-          className="h-full rounded-full transition-all"
-          style={{ width: `${progressPct}%`, backgroundColor: GOLD }}
-        />
-      </div>
-
-      <div className="flex gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
-        <Link href={`/donate/${org._id}`} className="flex-1">
-          <button
-            className="w-full py-1.5 rounded-md text-sm font-bold transition-opacity hover:opacity-90"
-            style={{ backgroundColor: GOLD, color: "#111" }}
-          >
-            Donate
-          </button>
+      <div className="grid grid-cols-2 gap-2 mt-4" onClick={(e) => e.stopPropagation()}>
+        <Link href={`/donate/${org._id}`} className="rp-btn rp-btn-yellow" data-testid={`button-donate-${org._id}`}>
+          Donate <ArrowRight className="w-4 h-4" />
         </Link>
-        <Link href={`/organisations/${org._id}`} className="flex-1">
-          <button className="w-full py-1.5 rounded-md text-sm font-semibold border border-border hover:border-primary/40 hover:text-primary transition-colors">
-            Follow
+        {follow.mode === "organisation" ? (
+          <Link href={`/organisations/${org._id}`} className="rp-btn rp-btn-ghost" data-testid={`button-view-${org._id}`}>View profile</Link>
+        ) : follow.following ? (
+          <span className="rp-btn rp-btn-ghost border-[#17100F]/30 cursor-default hover:bg-transparent hover:text-[#17100F]" data-testid={`status-following-${org._id}`}>
+            <Check className="w-4 h-4" /> Following
+          </span>
+        ) : (
+          <button type="button" onClick={follow.onFollow} disabled={follow.busy} className="rp-btn rp-btn-ghost" data-testid={`button-follow-${org._id}`}>
+            <Plus className="w-4 h-4" /> {follow.busy ? "Following…" : "Follow"}
           </button>
-        </Link>
+        )}
       </div>
-    </div>
+    </article>
   );
 }
 
 function OrgCardSkeleton() {
   return (
-    <div className="bg-card border border-border rounded-xl p-5 space-y-3">
-      <div className="flex items-center gap-3">
-        <Skeleton className="flex-1 h-5 rounded" />
-        <Skeleton className="w-12 h-12 rounded-full" />
-      </div>
-      <Skeleton className="h-4 w-24 rounded" />
-      <Skeleton className="h-4 w-full rounded" />
-      <Skeleton className="h-4 w-3/4 rounded" />
-      <Skeleton className="h-1.5 w-full rounded-full" />
-      <div className="flex gap-2">
-        <Skeleton className="flex-1 h-8 rounded-md" />
-        <Skeleton className="flex-1 h-8 rounded-md" />
-      </div>
+    <div className="border-t-2 border-[#17100F]/20 pt-4 space-y-4 animate-pulse">
+      <div className="h-3 w-28 bg-[#17100F]/10" />
+      <div className="flex items-center gap-3"><div className="w-12 h-12 rounded-full bg-[#17100F]/10" /><div className="h-7 flex-1 bg-[#17100F]/10" /></div>
+      <div className="h-4 w-24 bg-[#17100F]/10" />
+      <div className="h-12 w-full bg-[#17100F]/10" />
+      <div className="grid grid-cols-2 gap-2"><div className="h-11 bg-[#17100F]/10" /><div className="h-11 bg-[#17100F]/10" /></div>
     </div>
   );
 }
@@ -246,6 +218,33 @@ export default function DiscoverPage() {
   const [category, setCategory] = useState("All Causes");
   const [locationFilter, setLocationFilter] = useState("All");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [, navigateTo] = useLocation();
+  const { isAuthenticated, token, user } = useAuth();
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const isSupporter = isAuthenticated && user?.accountType === "supporter";
+  const followsQ = useQuery({
+    queryKey: ["follows", "my", token],
+    queryFn: () => api.getMyFollows(token!),
+    enabled: isSupporter,
+  });
+  const followedIds = new Set((followsQ.data ?? []).map((o) => o._id));
+  const followM = useMutation({
+    mutationFn: (orgId: string) => api.followOrg(orgId, token!),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["follows", "my", token] });
+      qc.invalidateQueries({ queryKey: ["feed", "mine", token] });
+      qc.invalidateQueries({ queryKey: ["organisations"] });
+      toast({ title: "Following", description: "Their posts will appear in your Following feed." });
+    },
+    onError: (err) => toast({ title: "Couldn't follow", description: userErrorMessage(err, "follow this organisation"), variant: "destructive" }),
+  });
+  const followFor = (orgId: string): FollowCtl => ({
+    mode: !isAuthenticated ? "guest" : isSupporter ? "supporter" : "organisation",
+    following: isSupporter && followedIds.has(orgId),
+    busy: (followM.isPending && followM.variables === orgId) || (isSupporter && followsQ.isLoading),
+    onFollow: () => (isAuthenticated ? followM.mutate(orgId) : navigateTo("/login")),
+  });
 
   const { data: orgs = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["organisations", category],
@@ -269,118 +268,76 @@ export default function DiscoverPage() {
     return matchesSearch && matchesLocation;
   });
 
+  const selectCls = "w-full bg-transparent text-[14px] font-bold text-[#17100F] appearance-none pr-6 cursor-pointer focus:outline-none";
+  const toggleCls = (on: boolean) =>
+    `h-14 sm:h-[56px] px-5 inline-flex items-center justify-center gap-2 border border-[#17100F] text-[14px] font-bold transition-colors ${
+      on ? "bg-[#F3BF2C] text-[#17100F]" : "bg-[#FBF8F2] text-[#17100F] hover:bg-[#17100F] hover:text-[#F4EFE6]"
+    }`;
+
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-extrabold text-foreground">Discover Organisations</h1>
-        <p className="text-muted-foreground mt-1">
-          Find and support verified grassroots organisations in Jamaica, the UK, and beyond.
-        </p>
+    <div className="max-w-[1180px] mx-auto px-5 sm:px-8 py-10 sm:py-14">
+      <h1 className="rp-display rp-rise text-[clamp(38px,11vw,54px)] sm:text-[96px] lg:text-[124px] text-[#17100F]">Discover<br />organisations</h1>
+      <p className="rp-label mt-6 sm:mt-8 text-[#17100F]/85 !text-[11px] sm:!text-[12px]">
+        Find and support verified grassroots organisations in Jamaica, the UK, and beyond.
+      </p>
+
+      <div className="mt-8 sm:mt-10 grid grid-cols-2 lg:grid-cols-[1.9fr_1fr_1fr_auto_auto] gap-2 mb-10 sm:mb-12">
+        <label className="col-span-2 lg:col-span-1 h-14 flex items-center gap-3 px-4 border border-[#17100F] bg-[#FBF8F2] focus-within:outline focus-within:outline-2 focus-within:outline-[#F3BF2C]">
+          <Search className="w-4 h-4 text-[#17100F] shrink-0" />
+          <span className="sr-only">Search organisations</span>
+          <input
+            type="search"
+            placeholder="Search by name or location"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="flex-1 bg-transparent text-[14px] placeholder:text-[#17100F]/55 focus:outline-none"
+            data-testid="input-search"
+          />
+        </label>
+        <label className="relative h-14 px-4 flex flex-col justify-center border border-[#17100F] bg-[#FBF8F2]">
+          <span className="rp-label !text-[9px] text-[#17100F]/70">Country</span>
+          <select value={locationFilter} onChange={(e) => setLocationFilter(e.target.value)} className={selectCls} data-testid="select-country">
+            {DISCOVER_COUNTRIES.map(({ label, value }) => <option key={value} value={value}>{label}</option>)}
+          </select>
+          <ChevronDown className="w-4 h-4 absolute right-3 bottom-3 pointer-events-none" />
+        </label>
+        <label className="relative h-14 px-4 flex flex-col justify-center border border-[#17100F] bg-[#FBF8F2]">
+          <span className="rp-label !text-[9px] text-[#17100F]/70">Cause</span>
+          <select value={category} onChange={(e) => setCategory(e.target.value)} className={selectCls} data-testid="select-cause">
+            {CATEGORIES.map((cat) => <option key={cat} value={cat}>{cat === "All Causes" ? "All causes" : cat}</option>)}
+          </select>
+          <ChevronDown className="w-4 h-4 absolute right-3 bottom-3 pointer-events-none" />
+        </label>
+        <button type="button" onClick={() => setViewMode("grid")} aria-pressed={viewMode === "grid"} className={toggleCls(viewMode === "grid")} data-testid="button-view-grid">
+          <LayoutGrid className="w-4 h-4" /> Grid
+        </button>
+        <button type="button" onClick={() => setViewMode("map")} aria-pressed={viewMode === "map"} className={toggleCls(viewMode === "map")} data-testid="button-view-map">
+          <MapPin className="w-4 h-4" /> Map
+        </button>
       </div>
 
-      <div className="relative mb-5">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          type="search"
-          placeholder="Search organisations by name or location…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-9"
-        />
-      </div>
-
-      {/* Filters + view toggle */}
-      <div className="flex flex-wrap items-center gap-3 mb-6">
-        {/* Country dropdown */}
-        <select
-          value={locationFilter}
-          onChange={(e) => setLocationFilter(e.target.value)}
-          className="h-10 px-3 text-sm cursor-pointer focus:outline-none focus:ring-1 focus:ring-ring"
-          style={{
-            background: "#fff",
-            border: "1px solid #e2e8f0",
-            color: "#0f172a",
-            borderRadius: "8px",
-            width: "180px",
-            boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-          }}
-        >
-          {DISCOVER_COUNTRIES.map(({ label, value }) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-
-        {/* Causes dropdown */}
-        <select
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          className="h-10 px-3 text-sm cursor-pointer focus:outline-none focus:ring-1 focus:ring-ring"
-          style={{
-            background: "#fff",
-            border: "1px solid #e2e8f0",
-            color: "#0f172a",
-            borderRadius: "8px",
-            width: "200px",
-            boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
-          }}
-        >
-          {CATEGORIES.map((cat) => (
-            <option key={cat} value={cat}>
-              {cat}
-            </option>
-          ))}
-        </select>
-
-        {/* View toggle */}
-        <div className="flex-shrink-0 flex items-center gap-1 border border-border rounded-lg p-0.5">
-          <button
-            onClick={() => setViewMode("grid")}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-semibold transition-all"
-            style={
-              viewMode === "grid"
-                ? { backgroundColor: GOLD, color: "#111" }
-                : { backgroundColor: "transparent", color: BRAND_RED, border: "none" }
-            }
-          >
-            <LayoutGrid className="w-4 h-4" />
-            Grid
-          </button>
-          <button
-            onClick={() => setViewMode("map")}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-semibold transition-all"
-            style={
-              viewMode === "map"
-                ? { backgroundColor: GOLD, color: "#111" }
-                : { backgroundColor: "transparent", color: BRAND_RED, border: "none" }
-            }
-          >
-            <MapPin className="w-4 h-4" />
-            Map
-          </button>
-        </div>
-      </div>
-
-      {/* Content */}
       {viewMode === "map" ? (
-        <OrgMap orgs={filtered} country={locationFilter} />
+        <div className="border border-[#17100F]"><OrgMap orgs={filtered} country={locationFilter} /></div>
       ) : isError ? (
-        <div className="text-center py-20">
-          <p className="text-destructive mb-4">Could not load organisations.</p>
-          <Button onClick={() => refetch()} variant="outline">Retry</Button>
+        <div className="border border-[#17100F] p-10 text-center" role="alert">
+          <p className="rp-display text-[28px]">Could not load organisations.</p>
+          <button type="button" onClick={() => refetch()} className="rp-btn rp-btn-yellow mt-5" data-testid="button-retry-orgs">Try again</button>
         </div>
       ) : isLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-14">
           {Array.from({ length: 6 }).map((_, i) => <OrgCardSkeleton key={i} />)}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-20 text-muted-foreground">
-          No organisations match your search.
+        <div className="border border-dashed border-[#17100F]/40 py-16 px-6 text-center">
+          <p className="rp-display text-[32px]">No organisations match</p>
+          <p className="text-sm text-[#17100F]/70 mt-2">Try a different name, country or cause.</p>
+          <button type="button" className="rp-btn rp-btn-ghost mt-5" onClick={() => { setSearch(""); setLocationFilter("All"); setCategory("All Causes"); }} data-testid="button-clear-filters">
+            Clear filters
+          </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((org) => <OrgCard key={org._id} org={org} />)}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-14">
+          {filtered.map((org) => <OrgCard key={org._id} org={org} follow={followFor(org._id)} />)}
         </div>
       )}
     </div>

@@ -56,7 +56,7 @@ test("all imported sections render through the shared campaign component in publ
   const require = createRequire(new URL("package.json", root));
   const result = await build({
     entryPoints: [new URL("src/components/campaign/campaign-page-view.tsx", root).pathname],
-    bundle: true, write: false, platform: "node", format: "cjs", packages: "external", jsx: "automatic",
+    bundle: true, write: false, platform: "node", format: "cjs", packages: "external", jsx: "automatic", loader: { ".css": "empty" },
   });
   const mod = { exports: {} as any };
   new Function("require", "module", "exports", result.outputFiles[0]!.text)(require, mod, mod.exports);

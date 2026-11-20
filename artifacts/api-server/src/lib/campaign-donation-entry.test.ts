@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { createRequire } from "node:module";
+import { readFile } from "node:fs/promises";
 import { build } from "esbuild";
 
 // Bundle the real web controls with the web React instance. No network calls or
@@ -18,7 +19,7 @@ async function loadComponent(path: string) {
   const result = await build({
     entryPoints: [new URL(path, webRoot).pathname],
     bundle: true, write: false, format: "cjs", platform: "node",
-    packages: "external", jsx: "automatic",
+    packages: "external", jsx: "automatic", loader: { ".css": "empty" },
     alias: { "@": new URL("src/", webRoot).pathname },
   });
   const mod = { exports: {} as any };
@@ -48,6 +49,8 @@ test("Drum Life renders 50 drums from money in public and preview; other campaig
     assert.match(html, /Drum build: 2 of 50 drums funded/);
     assert.match(html, /Drum 1, the reclaimed-wood centre drum, funded/);
     assert.match(html, /Drum 3, waiting for funding/);
+    assert.match(html, /fill="var\(--rc-accent\)"/);
+    assert.equal((html.match(/aria-pressed="true"(?=[^>]*data-testid="button-drum-\d+")/g) ?? []).length, 1);
     assert.match(html, /Humanity Ova Vanity/);
     assert.doesNotMatch(html, /99 supporters|data-testid="text-supporter-count"|marker-your-hand/);
     assert.match(html, /select-drum/);
@@ -96,7 +99,7 @@ test("Lifeyard's centred Story and purpose-led budget preserve saved copy withou
   for (const layout of ["phone", "desktop", "responsive"]) {
     const html = render(campaign, organisation, layout);
     assert.match(html, /data-testid="block-lifeyard-story"/);
-    assert.match(html, /text-center/);
+    assert.match(html, /rc-story-centered/);
     assert.match(html, /Our saved opening paragraph/);
     assert.match(html, /Our saved second paragraph/);
     assert.match(html, /aria-label="Programme costs"/);
@@ -130,9 +133,11 @@ test("Who's running it sits centred above Lifeyard's details without changing ot
     })));
   for (const layout of ["phone", "desktop", "responsive"]) {
     const html = render("LTMwjXVEgxNideK0XtIQudxZXjc2", layout);
-    assert.match(html, /class="mx-auto grid max-w-3xl grid-cols-1 gap-7 text-center" data-testid="block-organisation"><h2[^>]*>Who&#x27;s running it<\/h2><div class="min-w-0"><div class="flex items-center gap-3 justify-center"/);
-    assert.doesNotMatch(render("another-organisation", layout), /max-w-3xl grid-cols-1 gap-7 text-center/);
+    assert.match(html, /rc-organiser-centered" data-testid="block-organisation">[\s\S]*?<h2[^>]*>Who&#x27;s running it<\/h2>[\s\S]*?class="rc-bento/);
+    assert.doesNotMatch(render("another-organisation", layout), /rc-organiser-centered/);
   }
+  const css = await readFile(new URL("src/components/campaign/campaign-redesign.css", webRoot), "utf8");
+  assert.match(css, /\.rc-organiser-centered > \.rc-h2 \{ text-align: center; \}/);
 });
 
 test("Lifeyard budget purpose labels use real descriptions, not row positions or invented claims", async () => {
@@ -149,6 +154,24 @@ test("Lifeyard budget purpose labels use real descriptions, not row positions or
     ["50 drums", "Drumming tuition", "Workshop spaces", "Transport & refreshments", "On-site wellbeing support", "Contingency"]);
   assert.equal(drumBudgetPurpose("An organisation's new custom purpose."), null);
   assert.doesNotMatch(DRUM_LIFE_COPY.budgetIntro, /18,?000|16,?000|2,?000|not itemised/);
+});
+
+test("legacy built-in campaign units render their artwork instead of generic circles", async () => {
+  const { CampaignPageView } = await loadComponent("src/components/campaign/campaign-page-view.tsx");
+  const render = (singular: string, imageUrl: string | null = null) =>
+    renderToStaticMarkup(createElement(Router, { hook: () => ["/", () => {}] },
+      createElement(CampaignPageView, {
+        campaign: { _id: "camp", name: "A real campaign", type: "fundraising", goal: 100,
+          amountRaised: 3, status: "active", supporterCount: 1,
+          theme: { unit: { singular, plural: `${singular}s`, imageUrl } },
+          recentSupporters: [{ displayName: "Consenting supporter", createdAt: "2026-01-01" }] },
+        organisation: { _id: "org", name: "Community organisation" }, layout: "phone",
+      })));
+  for (const unit of ["hand", "brick", "seedling", "drop"]) {
+    assert.ok(render(unit).includes(`src="/campaign-units/${unit}.svg"`), unit);
+  }
+  assert.ok(render("hand", "https://example.test/custom.svg").includes('src="https://example.test/custom.svg"'));
+  assert.doesNotMatch(render("custom unit"), /src="\/campaign-units\//);
 });
 
 test("Lifeyard budget formats dollar labels without changing values and honours forced phone previews", async () => {
@@ -317,7 +340,7 @@ test("organisation Donate stays unassigned to a campaign", async () => {
   });
 });
 
-test("amended hero shows inline default gift, canonical fee disclosure and active gold button", async () => {
+test("redesigned hero preserves inline gifts, canonical disclosures and an active donate action", async () => {
   const { CampaignPageView } = await loadComponent("src/components/campaign/campaign-page-view.tsx");
   const props = {
     campaign: { _id: "camp", name: "Out of Many Hands", type: "fundraising", goal: 30000,
@@ -331,14 +354,14 @@ test("amended hero shows inline default gift, canonical fee disclosure and activ
   const html = render();
   assert.match(html, /Support the training/);
   assert.match(html, /For January cohort/);
-  assert.match(html, /Dancing Script/);
-  assert.doesNotMatch(html, /Instrument Serif|Playfair Display|Choose your amount at the next step/);
-  assert.match(html, /grid-cols-4/);
+  assert.match(html, /rc-display/);
+  assert.doesNotMatch(html, /Dancing Script|Instrument Serif|Playfair Display|Choose your amount at the next step/);
+  assert.match(html, /rc-amounts/);
   assert.match(html, /Root ProjX platform fee \(5%\)/);
   assert.match(html, /Card processing \(estimated\)/);
   assert.match(html, /data-testid="text-org-receives">£9\.50/);
   assert.match(html, /data-testid="text-total-charged">£10\.35/);
-  assert.match(html, /background-color:#F5B800;color:#1F1410[^>]*data-testid="button-donate-campaign">Donate £10/);
+  assert.match(html, /class="rc-give-btn" data-testid="button-donate-campaign">Donate £10/);
   assert.doesNotMatch(html, /marker-your-hand|panel-donate-thanks/);
   const preview = render({ preview: true });
   assert.match(preview, /disabled=""[^>]*data-testid="button-donate-campaign"/);

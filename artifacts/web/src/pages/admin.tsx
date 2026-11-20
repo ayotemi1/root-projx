@@ -1,7 +1,7 @@
 import { appFetch as fetch, userErrorMessage, responseError } from "@/lib/error-feedback";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation } from "wouter";
-import { CheckCircle2, XCircle, Clock, Users, FileText, LogOut, RefreshCw, Building2, CreditCard, Pencil, X, Wallet } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, Users, FileText, LogOut, RefreshCw, Building2, CreditCard, Pencil, X, Wallet, Wrench, MoreHorizontal, ImageOff } from "lucide-react";
 import { AdminPayouts } from "@/components/admin-payouts";
 import { BankTransferApprovals } from "@/components/bank-transfer-approvals";
 import { useQueryClient } from "@tanstack/react-query";
@@ -9,10 +9,30 @@ import { adminPayoutsKey } from "@/lib/payouts-api";
 import { AdminDeleteOrganisation } from "@/components/admin-delete-organisation";
 import { AdminBankDetailsReview } from "@/components/admin-bank-details-review";
 import { AdminTestEmail } from "@/components/admin-test-email";
+import "@/components/dashboard/operations.css";
+import { uploadMedia } from "@/lib/api";
 
-const RED_DEEP = "#7A0000";
-const RED = "#B50000";
-const GOLD = "#F5B800";
+const ADMIN_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+const ADMIN_IMAGE_MAX = 20 * 1024 * 1024;
+
+/** Uploads via a scoped organisation bearer from POST /admin/organisations/:id/access.
+ *  The shared admin token is only sent to that access endpoint, never to uploads. */
+async function uploadOrgImageAsAdmin(orgId: string, file: File, adminToken: string): Promise<string> {
+  if (!ADMIN_IMAGE_TYPES.includes(file.type)) throw new Error("This image format isn\u2019t supported. Choose JPEG, PNG, WebP or GIF.");
+  if (!file.size) throw new Error("This image file is empty. Choose another file.");
+  if (file.size > ADMIN_IMAGE_MAX) throw new Error("This image is too large. Choose an image of 20 MB or smaller.");
+  const res = await fetch(`/api/admin/organisations/${encodeURIComponent(orgId)}/access`, { method: "POST", headers: { "x-admin-token": adminToken } });
+  if (res.status === 401) throw Object.assign(new Error("Your admin session has expired. Sign in again."), { status: 401 });
+  const access = await res.json().catch(() => ({})) as { token?: string; error?: string };
+  if (!res.ok || !access.token) throw new Error(userErrorMessage({ message: access.error, status: res.status }, "open upload access for this organisation"));
+  const [url] = await uploadMedia([file], access.token);
+  if (!url) throw new Error("The upload finished without returning an image. Try again.");
+  return url;
+}
+
+const RED_DEEP = "#17100F";
+const RED = "#CA0813";
+const GOLD = "#F3BF2C";
 
 interface OrgApplication {
   _id: string;
@@ -64,11 +84,11 @@ function PayoutCell({ org, onManage }: { org: Organisation; onManage: () => void
   if (m === "bank_transfer" && org.payoutManualRequested) {
     return (
       <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-start" }}>
-        <span style={{ fontSize: 12, fontWeight: 700, color: org.payoutManualApproved ? "#166534" : "#92400E", background: org.payoutManualApproved ? "#DCFCE7" : "#FEF9C3", borderRadius: 6, padding: "2px 8px" }}>
+        <span style={{ fontSize: 12, fontWeight: 700, color: org.payoutManualApproved ? "#166534" : "#92400E", background: org.payoutManualApproved ? "#DCFCE7" : "#FEF9C3", padding: "2px 8px", fontFamily: "'JetBrains Mono', monospace", textTransform: "uppercase", letterSpacing: ".04em" }}>
           Bank transfer · {org.payoutManualApproved ? "Approved" : "Requested"}
         </span>
         {org.payoutManualLabel && <span style={{ fontSize: 12, color: "#666" }}>{org.payoutManualLabel}</span>}
-        <button data-testid={`button-manual-payout-${org._id}`} onClick={onManage} style={{ padding: "5px 9px", border: "1px solid #d8d0c5", borderRadius: 7, background: "#fff", color: RED_DEEP, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+        <button data-testid={`button-manual-payout-${org._id}`} onClick={onManage} className="ops-btn ops-btn--sm">
           {org.payoutManualApproved ? "Review bank details" : "Review & approve"}
         </button>
       </div>
@@ -84,6 +104,14 @@ type OrganisationForm = {
   email: string; phone: string; website: string;
   instagram: string; facebook: string; twitter: string; linkedin: string; youtube: string; tiktok: string;
 };
+
+const ORG_FORM_GROUPS: Array<{ title: string; fields: Array<readonly [keyof OrganisationForm, string, "text" | "url" | "image" | "long"]> }> = [
+  { title: "Identity", fields: [["name", "Organisation name", "text"], ["category", "Category", "text"], ["description", "Description", "long"], ["mission", "Mission", "long"]] },
+  { title: "Location", fields: [["city", "City", "text"], ["country", "Country", "text"]] },
+  { title: "Images", fields: [["logo", "Logo image URL", "image"], ["coverImage", "Banner image URL", "image"]] },
+  { title: "Public contact", fields: [["email", "Public email", "text"], ["phone", "Public phone", "text"], ["website", "Website URL", "url"]] },
+  { title: "Social links", fields: [["instagram", "Instagram URL", "url"], ["facebook", "Facebook URL", "url"], ["twitter", "X / Twitter URL", "url"], ["linkedin", "LinkedIn URL", "url"], ["youtube", "YouTube URL", "url"], ["tiktok", "TikTok URL", "url"]] },
+];
 
 function formFromOrganisation(org: Organisation): OrganisationForm {
   return {
@@ -125,7 +153,7 @@ function StatusBadge({ status }: { status: "pending" | "approved" | "declined" }
   };
   const s = map[status];
   return (
-    <span style={{ background: s.bg, color: s.color, borderRadius: 6, padding: "3px 10px", fontSize: 12, fontWeight: 700 }}>
+    <span className="ops-chip" style={{ background: s.bg, color: s.color }}>
       {s.label}
     </span>
   );
@@ -150,13 +178,13 @@ function Avatar({ name, size = 44 }: { name?: string; size?: number }) {
   );
 }
 
-const TH: React.CSSProperties = { padding: "12px 20px", textAlign: "left", fontSize: 12, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.05em" };
-const TD: React.CSSProperties = { padding: "14px 20px", borderTop: "1px solid #f0ece4" };
+const TH: React.CSSProperties = { padding: "10px 12px", textAlign: "left", fontFamily: "'JetBrains Mono', monospace", fontSize: 10.5, fontWeight: 700, color: "#6B5F5A", textTransform: "uppercase", letterSpacing: "0.08em", borderBottom: "1.5px solid #17100F", whiteSpace: "nowrap" };
+const TD: React.CSSProperties = { padding: "10px 12px", borderTop: "1px solid #DDD5CC", verticalAlign: "top" };
 
 export default function AdminPage() {
   const queryClient = useQueryClient();
   const [, setLocation] = useLocation();
-  const [tab, setTab] = useState<"applications" | "supporters" | "organisations" | "donations" | "payouts">("applications");
+  const [tab, setTab] = useState<"applications" | "supporters" | "organisations" | "donations" | "payouts" | "tools">("applications");
 
   const [applications, setApplications]   = useState<OrgApplication[]>([]);
   const [supporters,   setSupporters]     = useState<Supporter[]>([]);
@@ -172,9 +200,34 @@ export default function AdminPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "approved" | "declined">("pending");
-  const [editingOrg, setEditingOrg] = useState<Organisation | null>(null);
+  const [editingOrg, setEditingOrgState] = useState<Organisation | null>(null);
+  const imageRequest = useRef(0);
+  const setEditingOrg = (org: Organisation | null) => {
+    imageRequest.current += 1;
+    setEditingOrgState(org);
+    setImageUpload(null);
+  };
   const [orgForm, setOrgForm] = useState<OrganisationForm | null>(null);
   const [savingOrg, setSavingOrg] = useState(false);
+  const [imageUpload, setImageUpload] = useState<{ key: "logo" | "coverImage"; busy: boolean; error: string } | null>(null);
+
+  async function handleOrgImage(key: "logo" | "coverImage", file: File | undefined) {
+    if (!file || !editingOrg) return;
+    const orgId = editingOrg._id;
+    const request = ++imageRequest.current;
+    setImageUpload({ key, busy: true, error: "" });
+    try {
+      const url = await uploadOrgImageAsAdmin(orgId, file, token);
+      if (request !== imageRequest.current) return;
+      // Kept in editor state only; persisted when the admin presses Save profile.
+      setOrgForm((current) => current ? { ...current, [key]: url } : current);
+      setImageUpload(null);
+    } catch (err) {
+      if (request !== imageRequest.current) return;
+      if ((err as { status?: number }).status === 401) { logout(); return; }
+      setImageUpload({ key, busy: false, error: userErrorMessage(err, "upload this image") });
+    }
+  }
   const [payoutOrg, setPayoutOrg] = useState<Organisation | null>(null);
   const [payoutBusy, setPayoutBusy] = useState(false);
   const [payoutNotice, setPayoutNotice] = useState("");
@@ -360,43 +413,34 @@ export default function AdminPage() {
   });
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f2ede4" }}>
+    <div className="ops">
 
-      {/* ── Top bar ──────────────────────────────────────────────────── */}
-      <div style={{ background: RED_DEEP, padding: "0 24px" }}>
-        <div style={{ maxWidth: 1100, margin: "0 auto", display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", flex: "1 1 640px", minWidth: 0, flexWrap: "wrap", alignItems: "center", gap: 16 }}>
-            <img src="/logo-stylised.png" alt="Root ProjX" style={{ height: 36, objectFit: "contain", padding: "12px 0" }} />
-            <div style={{ display: "flex", flexWrap: "wrap", minWidth: 0 }}>
-              <button style={tabStyle(tab === "applications")} onClick={() => setTab("applications")}>
-                <FileText size={14} />Applications
-              </button>
-              <button style={tabStyle(tab === "organisations")} onClick={() => setTab("organisations")}>
-                <Building2 size={14} />Organisations
-              </button>
-              <button style={tabStyle(tab === "supporters")} onClick={() => setTab("supporters")}>
-                <Users size={14} />Supporters
-              </button>
-              <button style={tabStyle(tab === "donations")} onClick={() => setTab("donations")}>
-                <CreditCard size={14} />Donations
-              </button>
-              <button style={tabStyle(tab === "payouts")} onClick={() => setTab("payouts")} data-testid="tab-payouts">
-                <Wallet size={14} />Payouts
-              </button>
-            </div>
-          </div>
-          <button
-            onClick={logout}
-            style={{ background: "none", border: "none", color: "rgba(255,255,255,0.6)", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontSize: 13 }}
-          >
-            <LogOut size={14} /> Sign out
-          </button>
+      <div className="ops-adminbar">
+        <div className="ops-adminbar-inner">
+          <img src="/logo-stylised.png" alt="Root ProjX" style={{ height: 30, objectFit: "contain", padding: "10px 0" }} />
+          <span className="ops-label" style={{ color: GOLD }}>Admin</span>
+          <nav className="ops-admintabs" role="tablist" aria-label="Admin sections">
+              <button type="button" role="tab" aria-selected={tab === "applications"} className="ops-admintab" onClick={() => setTab("applications")}><FileText size={14} />Applications</button>
+              <button type="button" role="tab" aria-selected={tab === "organisations"} className="ops-admintab" onClick={() => setTab("organisations")}><Building2 size={14} />Organisations</button>
+              <button type="button" role="tab" aria-selected={tab === "supporters"} className="ops-admintab" onClick={() => setTab("supporters")}><Users size={14} />Supporters</button>
+              <button type="button" role="tab" aria-selected={tab === "donations"} className="ops-admintab" onClick={() => setTab("donations")}><CreditCard size={14} />Donations</button>
+              <button type="button" role="tab" aria-selected={tab === "payouts"} className="ops-admintab" onClick={() => setTab("payouts")} data-testid="tab-payouts"><Wallet size={14} />Payouts</button>
+              <button type="button" role="tab" aria-selected={tab === "tools"} className="ops-admintab" onClick={() => setTab("tools")} data-testid="tab-tools"><Wrench size={14} />Tools</button>
+          </nav>
+          <button type="button" onClick={logout} className="ops-admintab" style={{ marginLeft: "auto" }} data-testid="button-admin-logout"><LogOut size={14} /> Sign out</button>
         </div>
       </div>
 
-      <div style={{ maxWidth: 1100, margin: "0 auto", padding: "32px 24px" }}>
+      <div className="ops-adminmain">
 
-        <AdminTestEmail token={token} onUnauthorized={logout} />
+        {tab === "tools" && (
+          <>
+            <div className="ops-adminhead"><div><h1>Tools</h1><p>Operational checks for administrators. Nothing here changes organisations or money.</p></div></div>
+            <section aria-label="Send test email" style={{ background: "#FBF8F2", borderTop: "1.5px solid #17100F", padding: "4px 0" }}>
+              <AdminTestEmail token={token} onUnauthorized={logout} />
+            </section>
+          </>
+        )}
         {error && <p style={{ color: RED, marginBottom: 16 }}>{error}</p>}
 
         {payoutNotice && <p role="status" style={{ color: RED_DEEP, marginBottom: 16 }}>{payoutNotice}</p>}
@@ -414,16 +458,16 @@ export default function AdminPage() {
         {/* ── Applications tab ──────────────────────────────────────── */}
         {tab === "applications" && (
           <>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+            <div className="ops-adminhead">
               <div>
-                <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: "#1a1a1a" }}>Organisation Applications</h1>
-                <p style={{ margin: "4px 0 0", fontSize: 14, color: "#888" }}>Review and approve or decline incoming applications</p>
+                <h1>Organisation Applications</h1>
+                <p>Review and approve or decline incoming applications</p>
               </div>
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
-                  style={{ padding: "8px 12px", border: "1.5px solid #e0d8cc", borderRadius: 8, fontSize: 13, background: "#fff", cursor: "pointer" }}
+                  style={{ minHeight: 32, padding: "0 10px", fontSize: 13 }} aria-label="Filter applications by status"
                 >
                   <option value="pending">Pending</option>
                   <option value="approved">Approved</option>
@@ -432,7 +476,7 @@ export default function AdminPage() {
                 </select>
                 <button
                   onClick={fetchApplications}
-                  style={{ padding: "8px 12px", border: "1.5px solid #e0d8cc", borderRadius: 8, background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#555" }}
+                  className="ops-btn ops-btn--sm"
                 >
                   <RefreshCw size={13} /> Refresh
                 </button>
@@ -440,16 +484,16 @@ export default function AdminPage() {
             </div>
 
             {loadingApps ? (
-              <div style={{ textAlign: "center", padding: "60px 0", color: "#888" }}>Loading…</div>
+              <div className="ops-empty" role="status">Loading…</div>
             ) : applications.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "60px 0", background: "#fff", borderRadius: 12 }}>
+              <div className="ops-empty">
                 <Clock size={40} color="#ccc" style={{ margin: "0 auto 12px" }} />
                 <p style={{ color: "#888", fontSize: 15 }}>No {statusFilter === "all" ? "" : statusFilter} applications</p>
               </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div className="ops-list">
                 {applications.map((app) => (
-                  <div key={app._id} style={{ background: "#fff", borderRadius: 12, padding: "20px 24px", boxShadow: "0 1px 4px rgba(0,0,0,0.06)", display: "flex", alignItems: "flex-start", gap: 16 }}>
+                  <div key={app._id} className="ops-row" data-testid={`row-application-${app._id}`}>
                     <Avatar name={app.orgName} />
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4, flexWrap: "wrap" }}>
@@ -470,11 +514,11 @@ export default function AdminPage() {
                       <p style={{ margin: 0, fontSize: 12, color: "#bbb" }}>Applied {formatDate(app.createdAt)}</p>
                     </div>
                     {app.status === "pending" && (
-                      <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                      <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap" }}>
                         <button
                           onClick={() => handleApprove(app._id)}
                           disabled={actionLoading !== null}
-                          style={{ display: "flex", alignItems: "center", gap: 6, background: "#16a34a", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 700, cursor: actionLoading !== null ? "not-allowed" : "pointer", opacity: actionLoading !== null ? 0.6 : 1 }}
+                          className="ops-btn ops-btn--sm ops-btn--ok"
                         >
                           <CheckCircle2 size={14} />
                           {actionLoading === app._id + "_approve" ? "Approving…" : "Approve"}
@@ -482,7 +526,7 @@ export default function AdminPage() {
                         <button
                           onClick={() => handleDecline(app._id, app.orgName)}
                           disabled={actionLoading !== null}
-                          style={{ display: "flex", alignItems: "center", gap: 6, background: "#fff", color: RED, border: `1.5px solid ${RED}`, borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 700, cursor: actionLoading !== null ? "not-allowed" : "pointer", opacity: actionLoading !== null ? 0.6 : 1 }}
+                          className="ops-btn ops-btn--sm" style={{ color: RED, borderColor: RED }}
                         >
                           <XCircle size={14} />
                           {actionLoading === app._id + "_decline" ? "Declining…" : "Decline"}
@@ -499,16 +543,16 @@ export default function AdminPage() {
         {/* ── Organisations tab ─────────────────────────────────────── */}
         {tab === "organisations" && (
           <>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+            <div className="ops-adminhead">
               <div>
-                <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: "#1a1a1a" }}>Organisations</h1>
-                <p style={{ margin: "4px 0 0", fontSize: 14, color: "#888" }}>
+                <h1>Organisations</h1>
+                <p>
                   {organisations.length > 0 ? `${organisations.length} active organisations` : "All approved organisations on the platform"}
                 </p>
               </div>
               <button
                 onClick={fetchOrganisations}
-                style={{ padding: "8px 12px", border: "1.5px solid #e0d8cc", borderRadius: 8, background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#555" }}
+                className="ops-btn ops-btn--sm"
               >
                 <RefreshCw size={13} /> Refresh
               </button>
@@ -516,21 +560,20 @@ export default function AdminPage() {
 
             {orgsError && <p role="alert" style={{ color: RED }}>{orgsError}</p>}
             {loadingOrgs ? (
-              <div style={{ textAlign: "center", padding: "60px 0", color: "#888" }}>Loading…</div>
+              <div className="ops-empty" role="status">Loading…</div>
             ) : organisations.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "60px 0", background: "#fff", borderRadius: 12 }}>
+              <div className="ops-empty">
                 <Building2 size={40} color="#ccc" style={{ margin: "0 auto 12px" }} />
                 <p style={{ color: "#888", fontSize: 15 }}>No organisations yet</p>
               </div>
             ) : (
-              <div style={{ background: "#fff", borderRadius: 12, overflowX: "auto", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <div className="ops-table-wrap">
+                <table className="ops-table">
                   <thead>
-                    <tr style={{ background: "#f9f6f0" }}>
+                    <tr>
                       <th style={TH}>Organisation</th>
                       <th style={TH}>Category</th>
                       <th style={TH}>Country</th>
-                      <th style={TH}>City</th>
                       <th style={TH}>Payout</th>
                       <th style={TH}>Contact</th>
                       <th style={TH}>Followers</th>
@@ -547,8 +590,9 @@ export default function AdminPage() {
                             <Avatar name={org.name} size={32} />
                             <div>
                               <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: "#1a1a1a" }}>{org.name || "Unnamed organisation"}</p>
+                              <p data-testid={`text-org-city-${org._id}`} style={{ margin: "2px 0 0", fontSize: 12, color: org.city ? "#6B5F5A" : "#B5ABA3" }}>{org.city || "City not set"}</p>
                               {org.verified && (
-                                <span style={{ fontSize: 10, color: "#059669", fontWeight: 700 }}>✓ Verified</span>
+                                <span className="ops-chip" style={{ color: "#1D6B3A", marginTop: 4 }}>Verified</span>
                               )}
                             </div>
                           </div>
@@ -557,8 +601,7 @@ export default function AdminPage() {
                         <td style={{ ...TD, fontSize: 13, color: "#555" }}>
                           {org.country ? org.country : <span style={{ color: "#bbb" }}>Not set</span>}
                         </td>
-                        <td style={{ ...TD, fontSize: 13, color: "#555" }}>{org.city || "—"}</td>
-                        <td style={TD}><PayoutCell org={org} onManage={() => openPayout(org)} /></td>
+                                                <td style={TD}><PayoutCell org={org} onManage={() => openPayout(org)} /></td>
                         <td style={TD}>
                           {org.contact?.email
                             ? <a href={`mailto:${org.contact.email}`} style={{ color: RED, fontSize: 13, textDecoration: "none" }}>{org.contact.email}</a>
@@ -569,18 +612,26 @@ export default function AdminPage() {
                           {(org.followerCount ?? 0).toLocaleString()}
                         </td>
                         <td style={{ ...TD, fontSize: 13, fontWeight: 600, color: RED }}>
-                          £{(org.totalRaised ?? 0).toLocaleString()}
+                          <span className="ops-num">£{(org.totalRaised ?? 0).toLocaleString()}</span>
                         </td>
                         <td style={{ ...TD, fontSize: 13, color: "#888" }}>{formatDate(org.createdAt)}</td>
                          <td style={TD}>
-                           <a href={`${import.meta.env.BASE_URL}admin/organisations/${org._id}/manage?tab=overview`} className="block mb-2 font-bold underline" style={{ color: RED_DEEP }}>Open dashboard</a>
-                           <button onClick={() => openOrgEditor(org)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 10px", border: "1px solid #d8d0c5", borderRadius: 7, background: "#fff", color: RED_DEEP, fontWeight: 700, cursor: "pointer" }}>
-                             <Pencil size={13} /> Edit profile
-                           </button>
-                           <AdminDeleteOrganisation org={org} token={token} onUnauthorized={logout} onDeleted={(id) => {
-                             setOrganisations((current) => current.filter((item) => item._id !== id));
-                             queryClient.invalidateQueries();
-                           }} />
+                           <div style={{ display: "flex", gap: 6, alignItems: "flex-start", flexWrap: "nowrap" }}>
+                             <a href={`${import.meta.env.BASE_URL}admin/organisations/${org._id}/manage?tab=overview`} className="ops-btn ops-btn--sm ops-btn--ink" style={{ textDecoration: "none", whiteSpace: "nowrap" }} data-testid={`link-open-dashboard-${org._id}`}>Open dashboard</a>
+                             <button type="button" onClick={() => openOrgEditor(org)} className="ops-btn ops-btn--sm" style={{ whiteSpace: "nowrap" }} data-testid={`button-edit-org-${org._id}`}>
+                               <Pencil size={13} /> Edit
+                             </button>
+                             <details className="ops-overflow" data-testid={`menu-org-overflow-${org._id}`}>
+                               <summary className="ops-btn ops-btn--sm" aria-label={`More actions for ${org.name || "organisation"}`}><MoreHorizontal size={16} /></summary>
+                               <div className="ops-overflow-menu">
+                                 <p className="ops-label" style={{ margin: "0 0 4px", color: "#6B5F5A" }}>Danger zone</p>
+                                 <AdminDeleteOrganisation org={org} token={token} onUnauthorized={logout} onDeleted={(id) => {
+                                   setOrganisations((current) => current.filter((item) => item._id !== id));
+                                   queryClient.invalidateQueries();
+                                 }} />
+                               </div>
+                             </details>
+                           </div>
                          </td>
                       </tr>
                     ))}
@@ -592,48 +643,70 @@ export default function AdminPage() {
         )}
 
         {editingOrg && orgForm && (
-          <div role="dialog" aria-modal="true" aria-labelledby="org-editor-title" style={{ position: "fixed", inset: 0, background: "rgba(20,10,5,0.55)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-            <div style={{ width: "min(760px, 100%)", maxHeight: "90vh", overflowY: "auto", background: "#fff", borderRadius: 14, boxShadow: "0 20px 60px rgba(0,0,0,.25)" }}>
-              <div style={{ position: "sticky", top: 0, background: "#fff", zIndex: 1, padding: "20px 24px", borderBottom: "1px solid #eee7dd", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div><h2 id="org-editor-title" style={{ margin: 0, fontSize: 20 }}>Edit organisation profile</h2><p style={{ margin: "4px 0 0", color: "#777", fontSize: 13 }}>{editingOrg.name}</p></div>
-                <button aria-label="Close editor" onClick={() => setEditingOrg(null)} style={{ border: 0, background: "transparent", cursor: "pointer", padding: 6 }}><X size={20} /></button>
+          <div className="ops-dialog-back" role="dialog" aria-modal="true" aria-labelledby="org-editor-title">
+            <form className="ops-dialog" onSubmit={(e) => { e.preventDefault(); void saveOrganisation(); }}>
+              <div className="ops-dialog-head">
+                <div><p className="ops-label" style={{ margin: 0, color: "#6B5F5A" }}>Edit organisation profile</p><h2 id="org-editor-title" style={{ margin: "4px 0 0", fontSize: 28, lineHeight: 1, textTransform: "uppercase" }}>{editingOrg.name || "Unnamed organisation"}</h2></div>
+                <button type="button" aria-label="Close editor" disabled={savingOrg} onClick={() => setEditingOrg(null)} className="ops-btn ops-btn--sm"><X size={18} /></button>
               </div>
-              <div style={{ padding: 24, display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 16 }}>
-                {([
-                  ["name", "Organisation name", true], ["category", "Category", true],
-                  ["country", "Country", false], ["city", "City", false],
-                  ["email", "Public email", false], ["phone", "Public phone", false],
-                  ["website", "Website URL", false], ["logo", "Logo image URL", false],
-                  ["coverImage", "Banner image URL", false], ["instagram", "Instagram URL", false],
-                  ["facebook", "Facebook URL", false], ["twitter", "X / Twitter URL", false],
-                  ["linkedin", "LinkedIn URL", false], ["youtube", "YouTube URL", false],
-                  ["tiktok", "TikTok URL", false],
-                ] as const).map(([key, label, required]) => (
-                  <label key={key} style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13, fontWeight: 700, color: "#444" }}>
-                    {label}{required ? " *" : ""}
-                    <input required={required} value={orgForm[key]} onChange={(e) => setOrgForm({ ...orgForm, [key]: e.target.value })} style={{ padding: "10px 12px", border: "1.5px solid #ddd5ca", borderRadius: 8, fontSize: 14 }} />
-                  </label>
+              <div className="ops-dialog-body">
+                {ORG_FORM_GROUPS.map((group) => (
+                  <fieldset key={group.title} className="ops-fieldset">
+                    <legend className="ops-label">{group.title}</legend>
+                    {group.fields.map(([key, label, kind]) => (
+                      <label key={key} className="ops-field" style={kind === "long" ? { gridColumn: "1 / -1" } : undefined}>
+                        <span>{label}{key === "name" || key === "category" ? " *" : ""}</span>
+                        {kind === "long" ? (
+                          <textarea rows={key === "description" ? 5 : 3} value={orgForm[key]} onChange={(e) => setOrgForm({ ...orgForm, [key]: e.target.value })} style={{ resize: "vertical" }} data-testid={`input-org-${key}`} />
+                        ) : (
+                          <input required={key === "name" || key === "category"} type={kind === "url" || kind === "image" ? "url" : key === "email" ? "email" : "text"} value={orgForm[key]} onChange={(e) => setOrgForm({ ...orgForm, [key]: e.target.value })} data-testid={`input-org-${key}`} />
+                        )}
+                        {kind === "image" && (
+                          <span
+                            className="ops-imgprev ops-image-dropzone"
+                            role="group"
+                            aria-label={`${label}: drop an image here or use Upload`}
+                            onDragOver={(event) => {
+                              event.preventDefault();
+                              event.dataTransfer.dropEffect = imageUpload?.busy || savingOrg ? "none" : "copy";
+                            }}
+                            onDrop={(event) => {
+                              event.preventDefault();
+                              if (!imageUpload?.busy && !savingOrg) void handleOrgImage(key as "logo" | "coverImage", event.dataTransfer.files[0]);
+                            }}
+                          >
+                            {orgForm[key] ? <img src={orgForm[key]} alt={`${label} preview`} data-testid={`img-org-${key}-preview`} /> : <span style={{ width: 72, height: 48, display: "inline-flex", alignItems: "center", justifyContent: "center", border: "1px dashed #B5ABA3", color: "#B5ABA3" }}><ImageOff size={16} /></span>}
+                            <span className="ops-btn ops-btn--sm" style={{ position: "relative", overflow: "hidden", opacity: imageUpload?.busy ? .55 : 1 }}>
+                              {imageUpload?.busy && imageUpload.key === key ? "Uploading…" : orgForm[key] ? "Replace" : "Upload"}
+                              <input type="file" accept={ADMIN_IMAGE_TYPES.join(",")} disabled={!!imageUpload?.busy || savingOrg} aria-label={`Upload ${label}`}
+                                onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; void handleOrgImage(key as "logo" | "coverImage", f); }}
+                                style={{ position: "absolute", inset: 0, opacity: 0, cursor: "pointer" }} data-testid={`input-upload-org-${key}`} />
+                            </span>
+                            {orgForm[key] && <button type="button" className="ops-btn ops-btn--sm" disabled={!!imageUpload?.busy} onClick={() => setOrgForm({ ...orgForm, [key]: "" })} data-testid={`button-remove-org-${key}`}>Remove</button>}
+                          </span>
+                        )}
+                        {kind === "image" && imageUpload?.key === key && imageUpload.error && (
+                          <span role="alert" style={{ color: RED, fontWeight: 400, fontSize: 12 }} data-testid={`error-upload-org-${key}`}>{imageUpload.error}</span>
+                        )}
+                      </label>
+                    ))}
+                  </fieldset>
                 ))}
-                {([["description", "Description"], ["mission", "Mission"]] as const).map(([key, label]) => (
-                  <label key={key} style={{ gridColumn: "1 / -1", display: "flex", flexDirection: "column", gap: 6, fontSize: 13, fontWeight: 700, color: "#444" }}>
-                    {label}
-                    <textarea rows={key === "description" ? 5 : 3} value={orgForm[key]} onChange={(e) => setOrgForm({ ...orgForm, [key]: e.target.value })} style={{ padding: "10px 12px", border: "1.5px solid #ddd5ca", borderRadius: 8, fontSize: 14, resize: "vertical" }} />
-                  </label>
-                ))}
+                <p style={{ fontSize: 12, color: "#6B5F5A", margin: "12px 0 0" }}>Drop an image into its preview area or use Upload. Uploaded or removed images take effect only when you press Save profile. JPEG, PNG, WebP or GIF, up to 20 MB.</p>
               </div>
-              <div style={{ position: "sticky", bottom: 0, background: "#fff", borderTop: "1px solid #eee7dd", padding: "16px 24px", display: "flex", justifyContent: "flex-end", gap: 10 }}>
-                <button onClick={() => setEditingOrg(null)} disabled={savingOrg} style={{ padding: "10px 16px", border: "1px solid #d8d0c5", borderRadius: 8, background: "#fff", cursor: "pointer" }}>Cancel</button>
-                <button onClick={saveOrganisation} disabled={savingOrg || !orgForm.name.trim() || !orgForm.category.trim()} style={{ padding: "10px 18px", border: 0, borderRadius: 8, background: RED_DEEP, color: "#fff", fontWeight: 800, cursor: savingOrg ? "wait" : "pointer", opacity: savingOrg ? .65 : 1 }}>
+              <div className="ops-dialog-foot">
+                <button type="button" onClick={() => setEditingOrg(null)} disabled={savingOrg} className="ops-btn">Cancel</button>
+                <button type="submit" disabled={savingOrg || !!imageUpload?.busy || !orgForm.name.trim() || !orgForm.category.trim()} className="ops-btn ops-btn--ink" data-testid="button-save-org-profile">
                   {savingOrg ? "Saving…" : "Save profile"}
                 </button>
               </div>
-            </div>
+            </form>
           </div>
         )}
 
         {payoutOrg && (
-          <div role="dialog" aria-modal="true" aria-labelledby="payout-editor-title" style={{ position: "fixed", inset: 0, background: "rgba(20,10,5,0.55)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-            <div style={{ width: "min(480px, 100%)", maxHeight: "90vh", overflowY: "auto", background: "#fff", borderRadius: 14, boxShadow: "0 20px 60px rgba(0,0,0,.25)" }}>
+          <div className="ops-dialog-back" role="dialog" aria-modal="true" aria-labelledby="payout-editor-title">
+            <div className="ops-dialog" style={{ width: "min(520px, 100%)", overflowY: "auto" }}>
               <div style={{ padding: "20px 24px", borderBottom: "1px solid #eee7dd", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div><h2 id="payout-editor-title" style={{ margin: 0, fontSize: 20 }}>Bank transfer payout</h2><p style={{ margin: "4px 0 0", color: "#777", fontSize: 13 }}>{payoutOrg.name}</p></div>
                 <button aria-label="Close" disabled={payoutBusy} onClick={() => setPayoutOrg(null)} style={{ border: 0, background: "transparent", cursor: "pointer", padding: 6 }}><X size={20} /></button>
@@ -652,10 +725,10 @@ export default function AdminPage() {
         {/* ── Donations tab ─────────────────────────────────────────── */}
         {tab === "donations" && (
           <>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+            <div className="ops-adminhead">
               <div>
-                <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: "#1a1a1a" }}>Donations</h1>
-                <p style={{ margin: "4px 0 0", fontSize: 14, color: "#888" }}>
+                <h1>Donations</h1>
+                <p>
                   {donations.length > 0 ? `${donations.length} donations (most recent 200)` : "All recorded donations"}
                 </p>
                 <p style={{ margin: "4px 0 0", fontSize: 12, color: "#888" }}>
@@ -664,24 +737,24 @@ export default function AdminPage() {
               </div>
               <button
                 onClick={fetchDonations}
-                style={{ padding: "8px 12px", border: "1.5px solid #e0d8cc", borderRadius: 8, background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#555" }}
+                className="ops-btn ops-btn--sm"
               >
                 <RefreshCw size={13} /> Refresh
               </button>
             </div>
 
             {loadingDons ? (
-              <div style={{ textAlign: "center", padding: "60px 0", color: "#888" }}>Loading…</div>
+              <div className="ops-empty" role="status">Loading…</div>
             ) : donations.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "60px 0", background: "#fff", borderRadius: 12 }}>
+              <div className="ops-empty">
                 <CreditCard size={40} color="#ccc" style={{ margin: "0 auto 12px" }} />
                 <p style={{ color: "#888", fontSize: 15 }}>No donations yet</p>
               </div>
             ) : (
-              <div style={{ background: "#fff", borderRadius: 12, overflowX: "auto", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <div className="ops-table-wrap">
+                <table className="ops-table">
                   <thead>
-                    <tr style={{ background: "#f9f6f0" }}>
+                    <tr>
                       <th style={TH}>Organisation</th>
                       <th style={TH}>Donor</th>
                       <th style={TH}>Intended</th>
@@ -728,7 +801,7 @@ export default function AdminPage() {
                           <td style={{ ...TD, textAlign: "center" as const }}>
                             {d.feeCovered ? (
                               <span style={{ background: "#dcfce7", color: "#166534", borderRadius: 6, padding: "2px 8px", fontSize: 11, fontWeight: 700 }}>
-                                ✓ +£{(d.feeAmountGbp ?? 0).toFixed(2)}
+                                +£{(d.feeAmountGbp ?? 0).toFixed(2)}
                               </span>
                             ) : (
                               <span style={{ color: "#bbb", fontSize: 12 }}>—</span>
@@ -751,33 +824,33 @@ export default function AdminPage() {
         {/* ── Supporters tab ────────────────────────────────────────── */}
         {tab === "supporters" && (
           <>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+            <div className="ops-adminhead">
               <div>
-                <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: "#1a1a1a" }}>Supporters</h1>
-                <p style={{ margin: "4px 0 0", fontSize: 14, color: "#888" }}>
+                <h1>Supporters</h1>
+                <p>
                   {supporters.length > 0 ? `${supporters.length} supporters registered` : "All registered supporters"}
                 </p>
               </div>
               <button
                 onClick={fetchSupporters}
-                style={{ padding: "8px 12px", border: "1.5px solid #e0d8cc", borderRadius: 8, background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "#555" }}
+                className="ops-btn ops-btn--sm"
               >
                 <RefreshCw size={13} /> Refresh
               </button>
             </div>
 
             {loadingSups ? (
-              <div style={{ textAlign: "center", padding: "60px 0", color: "#888" }}>Loading…</div>
+              <div className="ops-empty" role="status">Loading…</div>
             ) : supporters.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "60px 0", background: "#fff", borderRadius: 12 }}>
+              <div className="ops-empty">
                 <Users size={40} color="#ccc" style={{ margin: "0 auto 12px" }} />
                 <p style={{ color: "#888", fontSize: 15 }}>No supporters yet</p>
               </div>
             ) : (
-              <div style={{ background: "#fff", borderRadius: 12, overflow: "hidden", boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <div className="ops-table-wrap">
+                <table className="ops-table">
                   <thead>
-                    <tr style={{ background: "#f9f6f0" }}>
+                    <tr>
                       <th style={TH}>Name</th>
                       <th style={TH}>Email</th>
                       <th style={TH}>Phone</th>

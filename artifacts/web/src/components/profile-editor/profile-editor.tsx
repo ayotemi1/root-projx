@@ -96,17 +96,17 @@ export function ProfileEditor({ org, userId, token }: { org: Org; userId: string
     <div className="space-y-5" data-tour-id="profile-editor">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
-          <h2 className="text-xl font-extrabold text-foreground">Build your profile</h2>
+          <h2 className="ops-display uppercase text-[34px] sm:text-[44px] leading-[.92] text-foreground">Edit profile</h2>
           <p className="text-sm text-muted-foreground">Each section saves on its own when you move on. Edits are kept on this device until saved.</p>
         </div>
         <ProfilePreviewButton orgId={orgId} />
       </div>
 
-      <nav aria-label="Profile sections" className="-mx-4 px-4 overflow-x-auto sticky top-0 z-10 bg-background/95 backdrop-blur py-2">
+      <nav aria-label="Profile sections" className="-mx-4 px-4 overflow-x-auto sticky top-0 z-10 bg-[color:var(--ops-cream,hsl(var(--background)))] border-b border-[color:var(--ops-ink,transparent)] py-2">
         <ul className="flex gap-1.5 w-max">
           {NAV.map(([id, label]) => (
             <li key={id}>
-              <a href={`#edit-${id}`} className="block text-xs font-bold px-3 py-2 rounded-full bg-secondary text-foreground/80 hover:bg-primary/10 hover:text-primary" data-tour-id={`profile-nav-${id}`}>
+              <a href={`#edit-${id}`} className="block text-xs font-bold px-3 py-2 border border-[color:var(--ops-line,transparent)] bg-[#FFFDF9] font-mono uppercase tracking-wider text-foreground/80 hover:border-[color:var(--ops-ink,currentColor)]" data-tour-id={`profile-nav-${id}`}>
                 {label}
               </a>
             </li>
@@ -114,8 +114,8 @@ export function ProfileEditor({ org, userId, token }: { org: Org; userId: string
         </ul>
       </nav>
 
-      <div className="grid lg:grid-cols-[1fr_300px] gap-5 items-start">
-        <div className="space-y-5 order-2 lg:order-1">
+      <div className="grid lg:grid-cols-[minmax(0,1fr)_280px] gap-8 items-start">
+        <div className="space-y-0 order-2 lg:order-1 min-w-0">
           <IdentitySection {...ctx} />
           <StorySection {...ctx} />
           <SectorsSection {...ctx} />
@@ -124,7 +124,7 @@ export function ProfileEditor({ org, userId, token }: { org: Org; userId: string
           <ContactSection {...ctx} />
           <TeamSection {...ctx} />
         </div>
-        <div className="order-1 lg:order-2 lg:sticky lg:top-16">
+        <div className="order-1 lg:order-2 lg:sticky lg:top-16 ops-block">
           <CompletenessMeter org={org} />
         </div>
       </div>

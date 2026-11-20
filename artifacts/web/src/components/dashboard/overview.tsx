@@ -13,9 +13,9 @@ const daysSince = (iso: string | null | undefined) => (iso ? Math.floor((Date.no
 
 function Block({ label, children, action, testId }: { label: string; children: React.ReactNode; action?: React.ReactNode; testId: string }) {
   return (
-    <section className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-sm" data-testid={testId}>
+    <section className="ops-block" data-testid={testId}>
       <div className="flex items-center justify-between gap-3 mb-3">
-        <h2 className="text-[11px] font-extrabold tracking-[0.12em] uppercase text-primary">{label}</h2>
+        <h2 className="font-mono text-[11px] font-bold tracking-[0.08em] uppercase text-foreground" style={{ fontFamily: "'JetBrains Mono', monospace" }}>{label}</h2>
         {action}
       </div>
       {children}
@@ -55,9 +55,9 @@ export function DashboardOverview({ orgId, token, org, campaigns }: { orgId: str
   const metricsStale = s?.impactMetricsStale ?? (oldestMetric != null && oldestMetric > 30);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-0">
       {(q.isError || unavailable.length > 0) && (
-        <div role="status" className="rounded-xl border border-border bg-card px-4 py-3 text-sm flex flex-wrap items-center gap-3">
+        <div role="status" className="ops-block mb-3 text-sm flex flex-wrap items-center gap-3">
           <span className="flex-1 min-w-[180px] text-muted-foreground">Some figures are temporarily unavailable. You can still manage your profile, posts and campaigns.</span>
           <Button size="sm" variant="outline" disabled={q.isFetching} onClick={() => q.refetch()} data-testid="button-retry-summary"><RefreshCw className={`w-3.5 h-3.5 mr-1 ${q.isFetching ? "animate-spin" : ""}`} />{q.isFetching ? "Refreshing…" : "Refresh"}</Button>
         </div>
@@ -67,11 +67,11 @@ export function DashboardOverview({ orgId, token, org, campaigns }: { orgId: str
         <div className="grid grid-cols-2 gap-4">
           <div>
             <p className="text-xs text-muted-foreground font-semibold">Raised, all time</p>
-            <p className="text-2xl font-extrabold tabular-nums" data-testid="text-raised">{raised == null ? "—" : gbp(raised)}</p>
+            <p className="ops-display text-2xl tabular-nums" data-testid="text-raised">{raised == null ? "—" : gbp(raised)}</p>
           </div>
           <div>
             <p className="text-xs text-muted-foreground font-semibold">Owed to you now</p>
-            <p className={`tabular-nums font-extrabold ${s?.owedGbp == null ? "text-base text-muted-foreground pt-1.5" : "text-2xl"}`} data-testid="text-owed">
+            <p className={`tabular-nums font-extrabold ${s?.owedGbp == null ? "text-base text-muted-foreground pt-1.5" : "ops-display text-[34px] leading-none"}`} data-testid="text-owed">
               {s?.owedGbp == null ? "—" : gbp(s.owedGbp)}
             </p>
           </div>
@@ -110,7 +110,7 @@ export function DashboardOverview({ orgId, token, org, campaigns }: { orgId: str
           <ul className="divide-y divide-border">
             {s.recentSupporters.slice(0, 6).map((p, i) => (
               <li key={`${p.displayName}-${p.createdAt}-${i}`} className="flex items-center gap-3 py-2">
-                <span className="w-8 h-8 rounded-full bg-accent/25 text-foreground flex items-center justify-center text-xs font-extrabold">
+                <span className="w-8 h-8 ops-round rounded-full bg-[#17100F] text-[#F3BF2C] flex items-center justify-center text-xs font-extrabold">
                   {p.displayName.split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase()}
                 </span>
                 <span className="flex-1 text-sm font-semibold truncate">{p.displayName}</span>
@@ -133,11 +133,11 @@ export function DashboardOverview({ orgId, token, org, campaigns }: { orgId: str
                 <li key={c._id}>
                   <div className="flex items-center justify-between gap-2 text-sm">
                     <span className="font-bold truncate">{c.name || "Untitled draft"}</span>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${c.enabled ? "bg-green-50 text-green-700" : "bg-secondary text-muted-foreground"}`}>{c.enabled ? "Live" : "Draft"}</span>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${c.enabled ? "text-green-800 border border-current" : "text-muted-foreground border border-current"}`}>{c.enabled ? "Live" : "Draft"}</span>
                   </div>
                   {c.type === "fundraising" && c.goal > 0 && (
                     <>
-                      <div className="h-2 rounded-full bg-secondary mt-1.5 overflow-hidden"><div className="h-full bg-primary rounded-full" style={{ width: `${pct}%` }} /></div>
+                      <div className="h-2 bg-[#EDE4D6] mt-1.5 overflow-hidden"><div className="h-full bg-[#F3BF2C]" style={{ width: `${pct}%` }} /></div>
                       <p className="text-xs text-muted-foreground mt-1 tabular-nums">{formatWhole(raised, c.currency)} of {formatWhole(c.goal, c.currency)}</p>
                     </>
                   )}
@@ -170,12 +170,12 @@ export function DashboardOverview({ orgId, token, org, campaigns }: { orgId: str
       <Block label="Impact" testId="block-overview-impact" action={<Link href="/dashboard?tab=build#edit-impact" className="text-xs font-bold text-primary hover:underline">Edit</Link>}>
         <div className="grid grid-cols-2 gap-3">
           {metrics.map(({ k, m }) => (
-            <div key={k} className="rounded-xl bg-secondary/50 p-3">
+            <div key={k} className="border border-[#DDD5CC] p-3">
               <p className="text-xl font-extrabold tabular-nums">{m ? m.value.toLocaleString("en-GB") : "—"}</p>
               <p className="text-xs text-muted-foreground font-semibold truncate">{m?.label ?? "Not set"}</p>
             </div>
           ))}
-          <div className="rounded-xl bg-primary/5 p-3">
+          <div className="border border-[#DDD5CC] p-3">
             {goalCampaign ? (
               <>
                 <p className="text-xl font-extrabold tabular-nums">{Math.floor(Math.min(100, (raisedFor(goalCampaign._id, goalCampaign.amountRaised ?? 0) / goalCampaign.goal) * 100))}%</p>

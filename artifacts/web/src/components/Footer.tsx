@@ -1,5 +1,7 @@
 import { userErrorMessage } from "@/lib/error-feedback";
 import { useState } from "react";
+import { Link } from "wouter";
+import { ArrowRight, Check } from "lucide-react";
 import * as api from "@/lib/api";
 
 export default function Footer() {
@@ -21,93 +23,87 @@ export default function Footer() {
     }
   }
 
+  const linkCls = "text-[#F4EFE6]/75 hover:text-[#F3BF2C] transition-colors";
+
   return (
-    <footer className="border-t border-border bg-card mt-16">
-      {/* Newsletter band */}
-      <div className="bg-primary text-primary-foreground">
-        <div className="max-w-5xl mx-auto px-6 py-12 text-center">
-          <h2 className="text-2xl font-bold mb-2">Stay connected to the cause</h2>
-          <p className="text-primary-foreground/80 mb-6 text-sm">
+    <footer className="bg-[#17100F] text-[#F4EFE6] mt-20">
+      <div className="max-w-[1180px] mx-auto px-5 sm:px-8 py-14 grid md:grid-cols-[1.1fr_1fr] gap-8 items-end border-b border-[#F4EFE6]/15">
+        <div>
+          <p className="rp-label text-[#F3BF2C] mb-3">Newsletter</p>
+          <h2 className="rp-display text-[44px] sm:text-[56px]">Stay connected<br />to the cause</h2>
+          <p className="mt-4 text-sm text-[#F4EFE6]/70 max-w-md">
             Get impact updates, new organisations, and community news — straight to your inbox.
           </p>
-
+        </div>
+        <div>
           {status === "success" ? (
-            <div className="inline-flex items-center gap-2 bg-green-100 text-green-800 px-6 py-3 rounded-full font-semibold text-sm">
-              <span>✓</span> You're subscribed! Thank you.
-            </div>
+            <p className="inline-flex items-center gap-2 border border-[#F3BF2C] text-[#F3BF2C] px-4 py-3 text-sm font-bold" role="status" data-testid="status-newsletter-success">
+              <Check className="w-4 h-4" /> You're subscribed. Thank you.
+            </p>
           ) : (
-            <form onSubmit={handleSubscribe} className="flex flex-col sm:flex-row gap-3 justify-center max-w-md mx-auto">
+            <form onSubmit={handleSubscribe} className="flex flex-col sm:flex-row gap-0">
+              <label htmlFor="footer-email" className="sr-only">Email address</label>
               <input
+                id="footer-email"
                 type="email"
                 value={email}
                 onChange={(e) => { setEmail(e.target.value); setStatus("idle"); }}
-                placeholder="Your email address"
+                placeholder="Email address"
                 required
-                className="flex-1 px-4 py-3 rounded-lg border border-white/20 bg-white/10 text-primary-foreground placeholder:text-primary-foreground/50 focus:outline-none focus:ring-2 focus:ring-white/40 text-sm"
+                className="flex-1 h-12 px-4 bg-transparent border border-[#F4EFE6]/40 text-[#F4EFE6] placeholder:text-[#F4EFE6]/45 focus:outline-none focus:border-[#F3BF2C] text-sm"
+                data-testid="input-newsletter-email"
               />
               <button
                 type="submit"
                 disabled={status === "loading" || !email}
-                className="px-6 py-3 bg-accent text-accent-foreground font-bold rounded-lg text-sm hover:opacity-90 transition-opacity disabled:opacity-50 whitespace-nowrap"
+                className="rp-btn rp-btn-yellow h-12 border-[#F3BF2C] whitespace-nowrap"
+                data-testid="button-newsletter-subscribe"
               >
-                {status === "loading" ? "Subscribing…" : "Subscribe →"}
+                {status === "loading" ? "Subscribing…" : <>Subscribe <ArrowRight className="w-4 h-4" /></>}
               </button>
             </form>
           )}
-
-          {status === "error" && (
-            <p className="mt-3 text-sm text-red-200">{errorMsg}</p>
-          )}
+          {status === "error" && <p className="mt-3 text-sm text-[#F3BF2C]" role="alert">{errorMsg}</p>}
         </div>
       </div>
 
-      {/* Footer links */}
-      <div className="max-w-5xl mx-auto px-6 py-10">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-8">
-          {/* Brand */}
-          <div>
-            <p className="font-extrabold text-lg text-primary mb-2">Root ProjX</p>
-            <p className="text-muted-foreground text-sm leading-relaxed">
-              Connecting the diaspora to verified grassroots organisations in Jamaica, the UK, and beyond.
-            </p>
-          </div>
-
-          {/* Platform */}
-          <div>
-            <p className="font-bold text-sm text-foreground mb-3 uppercase tracking-wide">Platform</p>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><a href="/discover" className="hover:text-primary transition-colors">Discover Organisations</a></li>
-              <li><a href="/" className="hover:text-primary transition-colors">Home Feed</a></li>
-              <li><a href="/about" className="hover:text-primary transition-colors">About Root ProjX</a></li>
-              <li><a href="/help" className="hover:text-primary transition-colors">Get Help Directory</a></li>
-            </ul>
-          </div>
-
-          {/* Account */}
-          <div>
-            <p className="font-bold text-sm text-foreground mb-3 uppercase tracking-wide">Account</p>
-            <ul className="space-y-2 text-sm text-muted-foreground">
-              <li><a href="/register" className="hover:text-primary transition-colors" data-testid="footer-link-join">Join as Supporter</a></li>
-              <li><a href="/onboarding" className="hover:text-primary transition-colors" data-testid="footer-link-apply">Apply as Organisation</a></li>
-              <li><a href="/login" className="hover:text-primary transition-colors" data-testid="footer-link-login">Sign In</a></li>
-              <li><a href="/account" className="hover:text-primary transition-colors">My Account</a></li>
-            </ul>
-          </div>
+      <div className="max-w-[1180px] mx-auto px-5 sm:px-8 py-10 grid grid-cols-2 sm:grid-cols-[1.4fr_1fr_1fr] gap-8 text-sm">
+        <div className="col-span-2 sm:col-span-1">
+          <img src="/logo-gold-v2.png" alt="Root ProjX" className="h-12 w-auto mb-3" />
+          <p className="text-[#F4EFE6]/65 max-w-xs leading-relaxed">
+            Connecting the diaspora to verified grassroots organisations in Jamaica, the UK, and beyond.
+          </p>
         </div>
-
-        <div className="border-t border-border mt-10 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
-          <span>
-            &copy; {new Date().getFullYear()} Root ProjX Ltd. All rights reserved.
-            &nbsp;·&nbsp; Secured by Stripe &nbsp;·&nbsp; Powered by Firebase
-            &nbsp;·&nbsp; <span className="opacity-70">ICO Registered: ZC152619</span>
-          </span>
-          <span className="flex items-center gap-4">
-            <a href="/privacy" className="hover:text-primary transition-colors">Privacy Policy</a>
-            <a href="/terms" className="hover:text-primary transition-colors">Fundraising Terms</a>
-            <a href="/support" className="hover:text-primary transition-colors">Support</a>
-            <a href="mailto:info@rootprojx.com" className="hover:text-primary transition-colors">Contact</a>
-          </span>
+        <div>
+          <p className="rp-label text-[#F3BF2C] mb-3">Platform</p>
+          <ul className="space-y-2">
+            <li><Link href="/discover" className={linkCls}>Discover organisations</Link></li>
+            <li><Link href="/feed" className={linkCls}>Live feed</Link></li>
+            <li><Link href="/about" className={linkCls}>About Root ProjX</Link></li>
+            <li><Link href="/help" className={linkCls}>Get help directory</Link></li>
+          </ul>
         </div>
+        <div>
+          <p className="rp-label text-[#F3BF2C] mb-3">Account</p>
+          <ul className="space-y-2">
+            <li><Link href="/register" className={linkCls} data-testid="footer-link-join">Join as supporter</Link></li>
+            <li><Link href="/onboarding" className={linkCls} data-testid="footer-link-apply">Apply as organisation</Link></li>
+            <li><Link href="/login" className={linkCls} data-testid="footer-link-login">Sign in</Link></li>
+            <li><Link href="/account" className={linkCls}>My account</Link></li>
+          </ul>
+        </div>
+      </div>
+
+      <div className="max-w-[1180px] mx-auto px-5 sm:px-8 py-6 border-t border-[#F4EFE6]/15 flex flex-col sm:flex-row justify-between gap-3 rp-label !text-[10px] text-[#F4EFE6]/55">
+        <span>
+          &copy; {new Date().getFullYear()} Root ProjX Ltd · Secured by Stripe · ICO registered ZC152619
+        </span>
+        <span className="flex flex-wrap gap-4">
+          <Link href="/privacy" className="hover:text-[#F3BF2C]">Privacy</Link>
+          <Link href="/terms" className="hover:text-[#F3BF2C]">Fundraising terms</Link>
+          <Link href="/support" className="hover:text-[#F3BF2C]">Support</Link>
+          <a href="mailto:info@rootprojx.com" className="hover:text-[#F3BF2C]">Contact</a>
+        </span>
       </div>
     </footer>
   );

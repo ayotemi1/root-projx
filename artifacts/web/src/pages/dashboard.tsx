@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearch, useLocation } from "wouter";
 import {
-  CheckCircle, Image as ImageIcon, X, AlertCircle, Video, Compass, Circle,
+  CheckCircle, Image as ImageIcon, X, AlertCircle, Video, Compass, Circle, PlusSquare, MapPin, Landmark, PenLine,
 } from "lucide-react";
 import { DashboardOverview } from "@/components/dashboard/overview";
+import "@/components/dashboard/operations.css";
 import { useWalkthrough } from "@/components/tour/use-walkthrough";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
@@ -16,6 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/context/AuthContext";
 import * as api from "@/lib/api";
 import { PayoutSetup } from "@/components/payout-setup";
@@ -60,6 +62,7 @@ export default function DashboardPage() {
   const [uploadedUrls, setUploadedUrls] = useState<string[]>([]);
   const [recoverable, setRecoverable] = useState<PendingPost | null>(null);
   const [postFilter, setPostFilter] = useState<"published" | "archived">("published");
+  const [viewPost, setViewPost] = useState<FeedUpdate | null>(null);
   const [postAction, setPostAction] = useState<{ post: FeedUpdate; status: "archived" | "deleted" } | null>(null);
 
   // Campaign form state
@@ -241,81 +244,202 @@ export default function DashboardPage() {
     uploadProgress === "uploading" ? "Uploading media…" :
     uploadProgress === "done" ? "Publishing…" : "Publish post";
 
+  const initials = (org?.name ?? user?.name ?? "").split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "RP";
+  const publishedPosts = (updatesQ.data ?? []).filter((post) => post.status !== "archived");
+
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
-      {/* Hero */}
-      <div className="bg-primary rounded-2xl p-6 text-white shadow-sm">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-full bg-accent text-accent-foreground flex items-center justify-center text-xl font-extrabold flex-shrink-0 shadow-sm border-2 border-white/20">
-            {(org?.name ?? user?.name ?? "").split(" ").map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "??"}
+    <div className="ops">
+      {deciding ? (
+        <div className="ops-main mx-auto space-y-4"><Skeleton className="h-11" /><Skeleton className="h-64" /></div>
+      ) : (
+      <Tabs value={tab} onValueChange={setTab} orientation="vertical" className="ops-shell">
+        <aside className="ops-side" aria-label="Dashboard">
+          <div className="px-3 pb-4 mb-2 ops-hair">
+            <img src={`${import.meta.env.BASE_URL}logo-stylised.png`} alt="Root ProjX" className="h-8 object-contain" />
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-extrabold text-white">{org?.name ?? user?.name ?? "Your Organisation"}</h1>
-              {org?.verified && (
-                <span className="inline-flex items-center gap-1 text-xs font-bold text-accent border border-accent/30 px-2 py-0.5 rounded-full bg-accent/10 shadow-sm">
-                  <CheckCircle className="w-3 h-3" /> Verified
-                </span>
+          <TabsList aria-label="Dashboard sections">
+            <TabsTrigger value="overview" className="ops-navitem" data-testid="tab-overview"><span className="ops-monogram" aria-hidden="true">{initials}</span><span className="ops-navtext">Profile</span></TabsTrigger>
+            <TabsTrigger value="posts" className="ops-navitem" data-testid="tab-posts"><PlusSquare aria-hidden="true" /><span className="ops-navtext">Create</span></TabsTrigger>
+            <TabsTrigger value="campaigns" className="ops-navitem" data-testid="tab-campaigns"><MapPin aria-hidden="true" /><span className="ops-navtext">Campaigns</span></TabsTrigger>
+            <TabsTrigger value="profile" className="ops-navitem" data-testid="tab-payouts"><Landmark aria-hidden="true" /><span className="ops-navtext">Payouts</span></TabsTrigger>
+            <TabsTrigger value="build" className="ops-navitem" data-testid="tab-build-profile" data-tour-id="dashboard-tab-build-profile"><PenLine aria-hidden="true" /><span className="ops-navtext"><span className="sm:hidden">Edit</span><span className="hidden sm:inline">Edit profile</span></span></TabsTrigger>
+          </TabsList>
+          <div className="ops-side-foot">
+            {tour.allDone && !tour.active && tour.unfinished && (
+              <button type="button" className="ops-btn ops-btn--sm" onClick={tour.resume} data-testid="button-resume-walkthrough-compact">
+                <Compass className="w-3.5 h-3.5" /> Resume walkthrough
+              </button>
+            )}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button type="button" className="ops-btn ops-btn--sm" data-testid="button-replay-menu"><Compass className="w-3.5 h-3.5" /> Show me around</button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onSelect={() => tour.replay("profile")} data-testid="menu-replay-profile">Profile walkthrough</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => tour.replay("campaign")} data-testid="menu-replay-campaign">Campaign walkthrough</DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            {adminAccess && <p className="ops-label" style={{ color: "var(--ops-site)" }}>Admin access</p>}
+          </div>
+        </aside>
+
+        <div className="ops-main">
+          <header className={tab === "overview" ? "mb-4" : "ops-rule pb-5 mb-6"}>
+            <p className="ops-label text-[color:var(--ops-muted)]">{adminAccess ? "Managing as administrator" : "Organisation dashboard"}</p>
+            {tab !== "overview" && (
+            <div className="flex flex-wrap items-end justify-between gap-3 mt-1">
+              <div className="min-w-0">
+                <h1 className="text-[40px] sm:text-[56px] leading-[.92] uppercase break-words" data-testid="text-dashboard-org-name">
+                  {org?.name ?? user?.name ?? "Your organisation"}
+                </h1>
+                <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                  {org && <span>{[org.city, org.country].filter(Boolean).join(", ")}{org.category ? ` \u00b7 ${org.category}` : ""}</span>}
+                  {org?.verified && <span className="ops-chip" style={{ color: "var(--ops-ok)" }}><CheckCircle className="w-3 h-3" /> Verified</span>}
+                </div>
+              </div>
+              {orgId && (
+                <div className="[&_[role=alert]]:font-semibold">
+                  <ProfilePreviewButton orgId={orgId} tourId="dashboard-profile-preview" testId="link-dashboard-profile-preview"
+                    className="ops-btn ops-btn--sm disabled:opacity-60" />
+                </div>
               )}
             </div>
-            {org && (
-              <p className="text-white/80 text-sm font-medium">
-                {[org.city, org.country].filter(Boolean).join(", ")} &middot; {org.category}
-              </p>
             )}
-            {orgId && (
-              <div className="mt-1.5 [&_[role=alert]]:text-white [&_[role=alert]]:font-semibold">
-                <ProfilePreviewButton orgId={orgId} tourId="dashboard-profile-preview" testId="link-dashboard-profile-preview"
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-accent hover:underline underline-offset-2 disabled:opacity-60" />
-              </div>
-            )}
+            <div className="ops-mobilehead flex-wrap gap-2 mt-3">
+              {tour.allDone && !tour.active && tour.unfinished && (
+                <button type="button" className="ops-btn ops-btn--sm" onClick={tour.resume} data-testid="button-resume-walkthrough-mobile"><Compass className="w-3.5 h-3.5" /> Resume walkthrough</button>
+              )}
+              <button type="button" className="ops-btn ops-btn--sm" onClick={() => tour.replay("profile")} data-testid="button-replay-profile-mobile">Profile walkthrough</button>
+              <button type="button" className="ops-btn ops-btn--sm" onClick={() => tour.replay("campaign")} data-testid="button-replay-campaign-mobile">Campaign walkthrough</button>
+            </div>
+          </header>
+
+          {tour.syncError && (
+            <p role="alert" className="text-xs text-destructive border border-destructive px-3 py-2 mb-4" data-testid="text-tour-sync-error">{tour.syncError}</p>
+          )}
+
+        <TabsContent value="overview" className="mt-0">
+          <div className="grid lg:grid-cols-[minmax(0,1fr)_300px] gap-8 items-start">
+            <div className="min-w-0">
+              <section aria-labelledby="profile-identity-heading" data-testid="section-profile-identity" className="flex flex-col sm:flex-row gap-5 sm:gap-7 items-start">
+                <div className="ops-round w-24 h-24 sm:w-32 sm:h-32 shrink-0 rounded-full p-1 border-[3px] border-[color:var(--ops-site)]">
+                  {org?.logo
+                    ? <img src={org.logo} alt="" className="ops-round w-full h-full rounded-full object-cover" />
+                    : <span className="ops-round w-full h-full rounded-full bg-[color:var(--ops-ink)] text-[color:var(--ops-yellow)] flex items-center justify-center ops-display text-3xl sm:text-4xl">{initials}</span>}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h1 id="profile-identity-heading" className="text-[34px] sm:text-[46px] leading-[.92] uppercase break-words" data-testid="text-dashboard-org-name">{org?.name ?? user?.name ?? "Your organisation"}</h1>
+                    {org?.verified && <CheckCircle className="w-5 h-5 text-[color:var(--ops-ok)]" aria-label="Verified" />}
+                  </div>
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    <button type="button" className="ops-btn ops-btn--sm" onClick={() => setTab("build")} data-testid="button-identity-edit-profile">Edit profile</button>
+                    {orgId && <ProfilePreviewButton orgId={orgId} tourId="dashboard-profile-preview" testId="link-dashboard-profile-preview" className="ops-btn ops-btn--sm disabled:opacity-60" />}
+                    <button type="button" className="ops-btn ops-btn--sm" style={{ background: "var(--ops-yellow)" }} onClick={() => setTab("posts")} data-testid="button-identity-create"><PlusSquare className="w-4 h-4" /> Create</button>
+                  </div>
+                  <dl className="flex flex-wrap gap-x-5 gap-y-1 mt-4" data-testid="list-identity-stats">
+                    {([
+                      [publishedPosts.length, publishedPosts.length === 1 ? "post" : "posts"],
+                      [campaigns.length, campaigns.length === 1 ? "campaign" : "campaigns"],
+                      [org ? `£${(org.totalRaised ?? 0).toLocaleString("en-GB")}` : "—", "raised"],
+                      [org ? (org.followerCount ?? 0).toLocaleString("en-GB") : "—", "followers"],
+                    ] as const).map(([v, l]) => (
+                      <div key={l} className="flex items-baseline gap-1.5"><dt className="sr-only">{l}</dt><dd className="ops-display text-xl">{v}</dd><span className="ops-label text-[color:var(--ops-muted)]" aria-hidden="true">{l}</span></div>
+                    ))}
+                  </dl>
+                  {org && <p className="ops-label mt-4 text-[color:var(--ops-muted)]">{[org.city, org.country, org.category].filter(Boolean).join(" \u00b7 ")}</p>}
+                  {org && (org.shortDescription || org.description) && <p className="mt-1.5 text-[15px] max-w-prose line-clamp-3">{org.shortDescription || org.description}</p>}
+                  {org?.contact?.website && <a href={org.contact.website} target="_blank" rel="noreferrer" className="mt-1.5 inline-block font-bold underline text-sm break-all">{org.contact.website.replace(/^https?:\/\//, "")}</a>}
+                </div>
+              </section>
+
+              <section className="mt-10" aria-labelledby="profile-posts-heading" data-testid="section-profile-posts">
+                <div className="border-t-[1.5px] border-[color:var(--ops-ink)] pt-6">
+                  <h2 id="profile-posts-heading" className="text-[40px] leading-none uppercase">Posts</h2>
+                  <p className="ops-label mt-1 text-[color:var(--ops-muted)]">Your work, in your words. Shown on your profile and in the Live Feed.</p>
+                  <div className="flex gap-2 mt-4 mb-4" role="group" aria-label="Post status">
+                    <button type="button" aria-pressed={postFilter === "published"} className={`ops-btn ops-btn--sm ${postFilter === "published" ? "ops-btn--ink" : ""}`} onClick={() => setPostFilter("published")} data-testid="button-grid-published">Published · {publishedPosts.length}</button>
+                    <button type="button" aria-pressed={postFilter === "archived"} className={`ops-btn ops-btn--sm ${postFilter === "archived" ? "ops-btn--ink" : ""}`} onClick={() => setPostFilter("archived")} data-testid="button-grid-archived">Archived · {(updatesQ.data ?? []).length - publishedPosts.length}</button>
+                  </div>
+                </div>
+                {updatesQ.isLoading ? (
+                  <div className="ops-grid">{[0, 1, 2].map((i) => <Skeleton key={i} className="aspect-square" />)}</div>
+                ) : updatesQ.isError ? (
+                  <div role="alert" className="text-sm space-y-2"><p>{userErrorMessage(updatesQ.error, "load your posts")}</p><button type="button" className="ops-btn ops-btn--sm" onClick={() => updatesQ.refetch()}>Try again</button></div>
+                ) : (
+                  <div className="ops-grid">
+                    {postFilter === "published" && (
+                      <button type="button" className="ops-tile ops-tile--new" onClick={() => setTab("posts")} data-testid="button-profile-new-post">
+                        <span className="ops-round w-11 h-11 rounded-full border-[1.5px] border-[color:var(--ops-ink)] flex items-center justify-center"><PlusSquare className="w-5 h-5" /></span>
+                        <span className="font-bold text-sm">New post</span>
+                        <span className="text-xs text-[color:var(--ops-muted)] hidden sm:block">Photos, videos or a story from your work</span>
+                      </button>
+                    )}
+                    {updates.map((post) => {
+                      const media = post.mediaUrls?.[0] ?? post.imageUrl ?? null;
+                      const kind = media ? mediaKind(media) : null;
+                      return (
+                        <button type="button" key={post._id} className={`ops-tile text-left ${media ? "" : "ops-tile--text"}`} onClick={() => setViewPost(post)} data-testid={`tile-post-${post._id}`} aria-label={`View post: ${post.title || "Untitled post"}`}>
+                          {media && kind === "image" ? <img src={media} alt="" loading="lazy" />
+                            : media && kind === "video" ? <video src={media} muted playsInline preload="metadata" />
+                            : null}
+                          {kind === "video" && <Video className="w-4 h-4 absolute top-2 right-2 text-[color:var(--ops-cream)]" aria-hidden="true" />}
+                          <span className="ops-tile-text">
+                            <span className="min-w-0"><span className="ops-display uppercase text-[15px] sm:text-lg leading-none line-clamp-2 block">{post.title || (media ? "Photo / video post" : post.content || "Post")}</span>
+                            <span className="ops-label block mt-1 opacity-80">{timeAgo(post.createdAt)}</span></span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                    {updates.length === 0 && postFilter === "archived" && (
+                      <div className="ops-empty col-span-3 text-sm">No archived posts. Archived posts are hidden from your public profile and the Live Feed.</div>
+                    )}
+                  </div>
+                )}
+              </section>
+            </div>
+            <aside className="min-w-0 lg:sticky lg:top-6" aria-label="Money, supporters and campaigns">
+              {orgId && token ? <DashboardOverview orgId={orgId} token={token} org={org} campaigns={campaigns} /> : null}
+            </aside>
           </div>
-        </div>
 
-      </div>
-
-      {tour.syncError && (
-        <p role="alert" className="text-xs text-destructive bg-destructive/10 rounded-lg px-3 py-2" data-testid="text-tour-sync-error">{tour.syncError}</p>
-      )}
-
-      <div className="flex flex-wrap justify-end gap-2 pb-2">
-        {tour.allDone && !tour.active && tour.unfinished && (
-          <Button variant="outline" size="sm" className="h-8 text-xs font-bold" onClick={tour.resume} data-testid="button-resume-walkthrough-compact">
-            <Compass className="w-3.5 h-3.5 mr-1" /> Resume walkthrough
-          </Button>
-        )}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 text-xs font-bold text-muted-foreground" data-testid="button-replay-menu">
-              <Compass className="w-3.5 h-3.5 mr-1" /> Show me around
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onSelect={() => tour.replay("profile")} data-testid="menu-replay-profile">Profile walkthrough</DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => tour.replay("campaign")} data-testid="menu-replay-campaign">Campaign walkthrough</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      {deciding ? (
-        <div className="space-y-4"><Skeleton className="h-11 rounded-lg" /><Skeleton className="h-64 rounded-2xl" /></div>
-      ) : (
-      <Tabs value={tab} onValueChange={setTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5 h-11 p-1 bg-secondary rounded-lg">
-          <TabsTrigger value="overview" className="rounded-md font-bold text-xs sm:text-sm" data-testid="tab-overview">Overview</TabsTrigger>
-          <TabsTrigger value="posts" className="rounded-md font-bold text-xs sm:text-sm" data-testid="tab-posts">Posts</TabsTrigger>
-          <TabsTrigger value="profile" className="rounded-md font-bold text-xs sm:text-sm">Payouts</TabsTrigger>
-          <TabsTrigger value="build" className="rounded-md font-bold text-xs sm:text-sm" data-testid="tab-build-profile" data-tour-id="dashboard-tab-build-profile"><span className="sm:hidden">Profile</span><span className="hidden sm:inline">Build profile</span></TabsTrigger>
-          <TabsTrigger value="campaigns" className="rounded-md font-bold text-xs sm:text-sm">Campaigns</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="overview" className="mt-6">
-          {orgId && token ? <DashboardOverview orgId={orgId} token={token} org={org} campaigns={campaigns} /> : null}
+          <Dialog open={!!viewPost} onOpenChange={(open) => { if (!open) setViewPost(null); }}>
+            <DialogContent className="ops ops-portal max-w-2xl max-h-[90dvh] overflow-y-auto border-[1.5px] border-[color:var(--ops-ink)] p-0" data-testid="dialog-view-post">
+              {viewPost && (
+                <div>
+                  {(viewPost.mediaUrls?.length ? viewPost.mediaUrls : viewPost.imageUrl ? [viewPost.imageUrl] : []).map((url) => (
+                    mediaKind(url) === "video"
+                      ? <video key={url} src={url} controls playsInline className="w-full max-h-[60dvh] bg-[color:var(--ops-ink)]" />
+                      : <img key={url} src={url} alt="" className="w-full max-h-[60dvh] object-contain bg-[color:var(--ops-ink)]" />
+                  ))}
+                  <div className="p-5 space-y-2">
+                    <p className="ops-label text-[color:var(--ops-muted)]">{viewPost.status === "archived" ? "Archived" : "Published"} · {timeAgo(viewPost.createdAt)}</p>
+                    <DialogTitle className="ops-display uppercase text-2xl leading-none">{viewPost.title || "Untitled post"}</DialogTitle>
+                    <DialogDescription className="whitespace-pre-line text-[15px] text-[color:var(--ops-ink)]">{viewPost.content || "No caption."}</DialogDescription>
+                    {viewPost.externalUrl && <a href={viewPost.externalUrl} target="_blank" rel="noreferrer" className="block font-bold underline text-sm break-all">{viewPost.externalUrl}</a>}
+                    <div className="flex flex-wrap gap-2 pt-3">
+                      <button type="button" className="ops-btn ops-btn--sm ops-btn--ink" onClick={() => { setViewPost(null); setTab("posts"); }} data-testid="button-view-post-manage">Archive or delete in Create</button>
+                      <button type="button" className="ops-btn ops-btn--sm" onClick={() => setViewPost(null)} data-testid="button-view-post-close">Close</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </DialogContent>
+          </Dialog>
         </TabsContent>
 
-        <TabsContent value="profile" className="space-y-6 mt-6 animate-in fade-in slide-in-from-bottom-2">
+        <TabsContent value="profile" className="space-y-6 mt-0">
 
+          <h2 className="text-3xl uppercase ops-rule pb-3">Payouts</h2>
           <PendingPayout key={`pending-${orgId}`} orgId={orgId} token={token!} />
+          <section aria-labelledby="payout-policy-heading" data-testid="section-payout-policy">
+            <h3 id="payout-policy-heading" className="ops-label pb-3 ops-rule">When money reaches you</h3>
+            <ol className="text-sm">
+              <li className="flex gap-3 py-3 ops-hair"><b className="ops-num text-xs">01</b>Each gift is held for 7 days before it can be included in a payout.</li>
+              <li className="flex gap-3 py-3 ops-hair"><b className="ops-num text-xs">02</b>A payout is due once eligible gifts reach £250, or when the oldest eligible gift is more than 30 days old.</li>
+              <li className="flex gap-3 py-3 ops-hair"><b className="ops-num text-xs">03</b>Payouts go to the method you set up below. Bank transfer details must be approved by Root ProjX before any money is sent.</li>
+            </ol>
+          </section>
 
           <div data-tour-id="payout-setup">
           {adminAccess ? <p className="text-sm text-muted-foreground">Manage payout approvals and settlement from Admin → Organisations and Payouts.</p> :
@@ -323,9 +447,10 @@ export default function DashboardPage() {
           </div>
 
         </TabsContent>
-        <TabsContent value="posts" className="space-y-6 mt-6">
+        <TabsContent value="posts" className="space-y-6 mt-0">
+          <h2 className="text-3xl uppercase ops-rule pb-3">Create</h2>
           {/* General organisation posts, not restricted to progress updates. */}
-          <div className="grid lg:grid-cols-[1fr_300px] gap-6 items-start pt-6">
+          <div className="grid lg:grid-cols-[1fr_320px] gap-6 items-start">
             <Card className="border-border shadow-sm">
               <CardHeader className="pb-3 border-b border-border/50">
                 <CardTitle className="text-base">Create a post</CardTitle>
@@ -465,7 +590,7 @@ export default function DashboardPage() {
 
         </TabsContent>
 
-        <TabsContent value="build" className="mt-6">
+        <TabsContent value="build" className="mt-0">
           {orgQ.isLoading ? (
             <div className="space-y-4">
               <Skeleton className="h-40 rounded-2xl" />
@@ -482,39 +607,40 @@ export default function DashboardPage() {
           )}
         </TabsContent>
 
-        <TabsContent value="campaigns" className="space-y-6 mt-6 animate-in fade-in slide-in-from-bottom-2">
+        <TabsContent value="campaigns" className="space-y-6 mt-0">
+          <h2 className="text-3xl uppercase ops-rule pb-3">Campaigns</h2>
           {orgId && token && user ? (
             <CampaignsManager orgId={orgId} userId={user.id} token={token} org={orgQ.data} />
           ) : null}
         </TabsContent>
+      {/* Setup checklist sits below the main content so Money stays first. */}
+    {!tour.allDone && org && (
+      <section className="mt-10 border-t-[1.5px] border-[color:var(--ops-ink)] pt-4" id="setup-checklist" data-testid="block-setup-checklist">
+        <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+          <h2 className="font-extrabold text-sm"><span className="text-primary">{doneCount} of 5 done</span> · Getting donor-ready</h2>
+          {!tour.active && (
+            <Button size="sm" className="h-8 font-bold" onClick={tour.resume} data-testid="button-resume-walkthrough">
+              <Compass className="w-3.5 h-3.5 mr-1" /> {tour.started ? "Resume walkthrough" : "Start walkthrough"}
+            </Button>
+          )}
+        </div>
+        <div className="h-1.5 bg-[color:var(--ops-line)] overflow-hidden mb-3"><div className="h-full bg-[color:var(--ops-site)]" style={{ width: `${doneCount * 20}%` }} /></div>
+        <ul className="grid sm:grid-cols-2 gap-x-4 gap-y-1.5">
+          {tour.items.map((i) => (
+            <li key={i.id}>
+              <button type="button" onClick={() => setLocation(i.href)} className={`flex items-center gap-2 text-sm text-left ${i.done ? "text-muted-foreground line-through" : "font-semibold hover:text-primary"}`} data-testid={`checklist-${i.id}`}>
+                {i.done ? <CheckCircle className="w-4 h-4 text-green-600 shrink-0" /> : <Circle className="w-4 h-4 text-muted-foreground shrink-0" />}
+                {i.label}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
+
+        </div>
       </Tabs>
       )}
-
-      {/* Setup checklist sits below the main content so Money stays first. */}
-      {!tour.allDone && org && (
-        <section className="rounded-2xl border border-border bg-card p-4 shadow-sm" id="setup-checklist" data-testid="block-setup-checklist">
-          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-            <h2 className="font-extrabold text-sm"><span className="text-primary">{doneCount} of 5 done</span> · Getting donor-ready</h2>
-            {!tour.active && (
-              <Button size="sm" className="h-8 font-bold" onClick={tour.resume} data-testid="button-resume-walkthrough">
-                <Compass className="w-3.5 h-3.5 mr-1" /> {tour.started ? "Resume walkthrough" : "Start walkthrough"}
-              </Button>
-            )}
-          </div>
-          <div className="h-1.5 rounded-full bg-secondary overflow-hidden mb-3"><div className="h-full bg-primary rounded-full" style={{ width: `${doneCount * 20}%` }} /></div>
-          <ul className="grid sm:grid-cols-2 gap-x-4 gap-y-1.5">
-            {tour.items.map((i) => (
-              <li key={i.id}>
-                <button type="button" onClick={() => setLocation(i.href)} className={`flex items-center gap-2 text-sm text-left ${i.done ? "text-muted-foreground line-through" : "font-semibold hover:text-primary"}`} data-testid={`checklist-${i.id}`}>
-                  {i.done ? <CheckCircle className="w-4 h-4 text-green-600 shrink-0" /> : <Circle className="w-4 h-4 text-muted-foreground shrink-0" />}
-                  {i.label}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
     </div>
   );
 

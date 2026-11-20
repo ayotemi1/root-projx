@@ -60,85 +60,84 @@
   --font-serif: var(--app-font-serif);
   --font-mono: var(--app-font-mono);
 
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
 
-  --color-gold: #F5C000;
-  --color-deep-red: #7A0000;
+  --font-display: "Archivo", "Arial Narrow", sans-serif;
+
+  --color-gold: #F3BF2C;
+  --color-deep-red: #8E050D;
+  --color-site-red: #CA0813;
+  --color-ink: #17100F;
+  --color-cream: #F4EFE6;
 }
 
-/* ROOT PROJX COLOUR SYSTEM — from official logo
-   --red:         #E31C23  → hsl(358 78% 50%)  candy red logo background
-   --red-deep:    #C1181E  → hsl(358 78% 43%)  15% darker — nav/headers
-   --red-mid:     #D11A20  → hsl(358 78% 46%)  8%  darker — hover states
-   --gold:        #F5C200  → hsl(48 100% 48%)  logo script gold
-   --white:       #FFFFFF
-*/
+/* ROOT PROJX — Preview Pack palette (user-approved redesign)
+   site red #CA0813 · yellow #F3BF2C · ink #17100F · cream #F4EFE6 */
 
 :root {
-  --button-outline: rgba(0,0,0,.10);
-  --badge-outline: rgba(0,0,0,.05);
+  --rp-red: #CA0813;
+  --rp-yellow: #F3BF2C;
+  --rp-ink: #17100F;
+  --rp-cream: #F4EFE6;
+  --rp-paper: #FBF8F2;
+  --rp-line: rgba(23,16,15,.16);
+
+  --button-outline: rgba(23,16,15,.14);
+  --badge-outline: rgba(23,16,15,.08);
   --opaque-button-border-intensity: -8;
-  --elevate-1: rgba(0,0,0,.03);
-  --elevate-2: rgba(0,0,0,.08);
+  --elevate-1: rgba(23,16,15,.04);
+  --elevate-2: rgba(23,16,15,.09);
 
-  /* Surfaces */
-  --background:         0 0% 100%;
-  --foreground:         0 0% 10%;
+  --background:         38 37% 93%;
+  --foreground:         6 21% 7%;
+  --card:               40 45% 97%;
+  --card-foreground:    6 21% 7%;
+  --card-border:        6 21% 7% / .16;
+  --popover:            40 45% 97%;
+  --popover-foreground: 6 21% 7%;
+  --popover-border:     30 15% 78%;
 
-  --card:               30 38% 96%;
-  --card-foreground:    0 0% 10%;
-  --card-border:        36 19% 84%;
+  /* Semantic primary = site red (links, labels, emphasis: 6.4:1 on cream).
+     Primary ACTIONS are yellow/ink via Button default variant (accent) and .rp-btn-yellow. */
+  --primary:            356 92% 41%;
+  --primary-foreground: 40 45% 97%;
+  --secondary:          36 30% 88%;
+  --secondary-foreground: 6 21% 7%;
+  --muted:              36 30% 88%;
+  --muted-foreground:   10 8% 34%;
+  --accent:             44 89% 56%;
+  --accent-foreground:  6 21% 7%;
 
-  --popover:            0 0% 100%;
-  --popover-foreground: 0 0% 10%;
-  --popover-border:     36 19% 84%;
+  /* Destructive stays site red, white label (5.9:1) */
+  --destructive:        356 92% 41%;
+  --destructive-foreground: 40 45% 97%;
 
-  /* Root ProjX Red — primary actions (#E31C23) */
-  --primary:            358 78% 50%;
-  --primary-foreground: 0 0% 100%;
+  --border:  30 15% 78%;
+  --input:   6 21% 7%;
+  --ring:    356 92% 41%;
 
-  /* Warm off-white — secondary surfaces */
-  --secondary:          35 27% 92%;
-  --secondary-foreground: 0 0% 10%;
+  --chart-1: 356 92% 41%;
+  --chart-2: 44 89% 56%;
+  --chart-3: 6 21% 7%;
+  --chart-4: 150 45% 32%;
+  --chart-5: 20 60% 45%;
 
-  /* Muted */
-  --muted:              35 27% 92%;
-  --muted-foreground:   0 0% 53%;
+  --sidebar:               356 92% 41%;
+  --sidebar-foreground:    40 45% 97%;
+  --sidebar-border:        356 92% 34%;
+  --sidebar-primary:       44 89% 56%;
+  --sidebar-primary-foreground: 6 21% 7%;
+  --sidebar-accent:        356 92% 34%;
+  --sidebar-accent-foreground: 40 45% 97%;
+  --sidebar-ring:          44 89% 56%;
 
-  /* Gold — accent / CTA (#F5C200) */
-  --accent:             48 100% 48%;
-  --accent-foreground:  0 0% 10%;
-
-  --destructive:        358 78% 50%;
-  --destructive-foreground: 0 0% 100%;
-
-  --border:  36 19% 84%;
-  --input:   36 19% 84%;
-  --ring:    358 78% 50%;
-
-  --chart-1: 358 78% 50%;
-  --chart-2: 48 100% 48%;
-  --chart-3: 210 70% 50%;
-  --chart-4: 145 60% 40%;
-  --chart-5: 280 60% 50%;
-
-  /* Deep Red — sidebar / navbar (#C1181E, 15% darker than logo red) */
-  --sidebar:               358 78% 43%;
-  --sidebar-foreground:    0 0% 100%;
-  --sidebar-border:        358 78% 38%;
-  --sidebar-primary:       48 100% 48%;
-  --sidebar-primary-foreground: 0 0% 10%;
-  --sidebar-accent:        358 78% 38%;
-  --sidebar-accent-foreground: 0 0% 100%;
-  --sidebar-ring:          48 100% 48%;
-
-  --app-font-sans: 'Inter', system-ui, sans-serif;
-  --app-font-serif: Georgia, serif;
-  --app-font-mono: Menlo, monospace;
-  --radius: 0.5rem;
+  --app-font-sans: "Familjen Grotesk", system-ui, sans-serif;
+  --app-font-serif: "Archivo", "Arial Narrow", sans-serif;
+  --app-font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --radius: 0px;
 
   --shadow-2xs: 0 1px 2px 0 rgba(0,0,0,.04);
   --shadow-xs:  0 1px 3px 0 rgba(0,0,0,.06);
@@ -166,12 +165,52 @@
 @layer base {
   * { @apply border-border; }
   body { @apply font-sans antialiased bg-background text-foreground; }
+  h1, h2, h3, .rp-display {
+    font-family: var(--font-display);
+    font-stretch: 72%;
+    font-variation-settings: "wdth" 72;
+    letter-spacing: -0.01em;
+  }
+  ::selection { background: var(--rp-yellow); color: var(--rp-ink); }
 }
 
+/* ── Root ProjX public primitives ─────────────────────────── */
+.rp-display { font-weight: 900; text-transform: uppercase; line-height: .86; }
+.rp-cond { font-family: var(--font-display); font-stretch: 72%; font-variation-settings: "wdth" 72; }
+.rp-label {
+  font-family: var(--app-font-mono); font-weight: 500; font-size: 11px;
+  letter-spacing: .14em; text-transform: uppercase;
+}
+.rp-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+  min-height: 44px; padding: 0 1.25rem; font-weight: 700; font-size: 14px;
+  border: 1px solid var(--rp-ink); border-radius: 0;
+  transition: transform .18s ease, background-color .18s ease, color .18s ease;
+}
+.rp-btn:active { transform: translateY(1px); }
+.rp-btn:disabled { opacity: .55; cursor: not-allowed; }
+.rp-btn-yellow { background: var(--rp-yellow); color: var(--rp-ink); }
+.rp-btn-yellow:hover { background: #F6CB4E; }
+.rp-btn-ghost { background: transparent; color: var(--rp-ink); }
+.rp-btn-ghost:hover { background: var(--rp-ink); color: var(--rp-cream); }
+.rp-link-u {
+  font-weight: 700; text-decoration: none;
+  background: linear-gradient(var(--rp-yellow), var(--rp-yellow)) left bottom / 100% 3px no-repeat;
+  padding-bottom: 2px;
+}
+.rp-field {
+  width: 100%; height: 48px; padding: 0 14px; background: var(--rp-paper);
+  border: 1px solid var(--rp-ink); border-radius: 0; font-size: 15px; color: var(--rp-ink);
+}
+.rp-field:focus { outline: 2px solid var(--rp-yellow); outline-offset: 0; }
+@keyframes rp-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+.rp-rise { animation: rp-rise .6s cubic-bezier(.2,.7,.2,1) both; }
+@media (prefers-reduced-motion: reduce) { .rp-rise { animation: none; } }
+
 /* Gold accent utility */
-.bg-gold { background-color: #F5C200; }
-.text-gold { color: #F5C200; }
-.bg-nav { background-color: #C1181E; }
+.bg-gold { background-color: #F3BF2C; }
+.text-gold { color: #F3BF2C; }
+.bg-nav { background-color: #CA0813; }
 
 @layer utilities {
   input[type="search"]::-webkit-search-cancel-button { @apply hidden; }

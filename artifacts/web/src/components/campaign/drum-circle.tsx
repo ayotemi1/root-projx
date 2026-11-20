@@ -2,22 +2,21 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { Volume2, VolumeX, Play, BookOpen, ImageOff } from "lucide-react";
 import type { Campaign } from "@/lib/api";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { DRUM_COST_USD, DRUM_RIMS, DRUM_SPOTS, DRUM_TARGET_USD, DRUM_TOTAL, fundedDrums } from "@/lib/drum-experience";
+import { DRUM_COST_USD, DRUM_SPOTS, DRUM_TARGET_USD, DRUM_TOTAL, fundedDrums } from "@/lib/drum-experience";
 import { useDrumSound } from "./drum-sound";
 
-const INK = "#5A3A22";
-const CREAM = "#FCF1DE";
 
-function SmallDrum({ funded, rim, n }: { funded: boolean; rim: string; n: number }) {
+function SmallDrum({ funded, selected, n }: { funded: boolean; selected: boolean; n: number }) {
+  const painted = funded || selected;
   const dots = Array.from({ length: 8 }, (_, i) => {
     const a = (i / 8) * Math.PI * 2 + n;
-    return <circle key={i} cx={50 + Math.cos(a) * 41} cy={50 + Math.sin(a) * 41} r="3.2" fill={funded ? "#FFF6E4" : "#B9A487"} />;
+    return <circle key={i} cx={50 + Math.cos(a) * 41} cy={50 + Math.sin(a) * 41} r="3.2" fill={painted ? "#FFF6E4" : "#B9A487"} />;
   });
   return (
     <svg viewBox="0 0 100 100" className="w-full h-full overflow-visible" aria-hidden="true">
-      {funded ? (
+      {painted ? (
         <>
-          <circle cx="50" cy="50" r="46" fill={rim} />
+          <circle cx="50" cy="50" r="46" fill={selected ? "#17100F" : "var(--rc-accent)"} />
           {dots}
           <circle cx="50" cy="50" r="33" fill="#FBE6C4" stroke="#FFF6E4" strokeWidth="3" />
         </>
@@ -77,6 +76,7 @@ export function DrumCircle({ campaign, orgName, compact = false }: { campaign: C
 
   const strike = (n: number) => {
     play(n, n === 1);
+    setPicked(String(n));
     setHit(n);
     if (hitTimer.current) window.clearTimeout(hitTimer.current);
     hitTimer.current = window.setTimeout(() => setHit(null), 260);
@@ -105,24 +105,26 @@ export function DrumCircle({ campaign, orgName, compact = false }: { campaign: C
   };
 
   return (
-    <div className="rounded-2xl p-4 sm:p-6 text-[#3B2614]" style={{ backgroundColor: CREAM }} data-testid="block-drum-circle">
-      <div className="flex items-end justify-between gap-3 flex-wrap">
-        <p className="leading-none" data-testid="text-drum-count" aria-live="polite">
-          <span className="text-[3rem] sm:text-[3.6rem] font-extrabold tabular-nums tracking-[-0.04em]" style={{ color: "#C9481E" }}>{funded}</span>
-          <span className="text-xl font-extrabold"> of {DRUM_TOTAL}</span>
-          <span className="block mt-1.5 text-sm font-semibold text-[#6B4F36]">drums funded, US${DRUM_COST_USD} each</span>
+    <div className="rc-drum" data-testid="block-drum-circle">
+      <div className="rc-drum-head">
+        <p className="m-0 flex items-end gap-4 flex-wrap flex-1 min-w-0" data-testid="text-drum-count" aria-live="polite">
+          <span className="rc-count">{funded}</span>
+          <span className="min-w-0">
+            <span className="rc-mono block font-bold">of {DRUM_TOTAL} drums funded</span>
+            <span className="block text-sm rc-muted">Every US${DRUM_COST_USD} completes one drum for a child.</span>
+          </span>
         </p>
         <button type="button" onClick={() => setMuted(!muted)} aria-pressed={muted}
-          className="inline-flex items-center gap-1.5 h-10 px-3 rounded-full border-2 text-sm font-bold hover:bg-white/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[#5A3A22]"
-          style={{ borderColor: INK }} data-testid="button-drum-mute">
+          className="rc-btn" style={{ minHeight: 40, padding: "0 12px", borderColor: "var(--ink)" }} data-testid="button-drum-mute">
           {muted ? <VolumeX className="w-4 h-4" aria-hidden="true" /> : <Volume2 className="w-4 h-4" aria-hidden="true" />}
           {muted ? "Sound off" : "Sound on"}
         </button>
       </div>
 
-      <div className={`relative mx-auto mt-4 aspect-square w-full ${compact ? "max-w-[300px]" : "max-w-[560px]"}`} role="group" aria-label={`Drum build: ${funded} of ${DRUM_TOTAL} drums funded`}>
+      <div className="rc-drum-stage">
+      <div className={`relative mx-auto aspect-square w-full ${compact ? "max-w-[300px]" : "max-w-[560px]"}`} role="group" aria-label={`Drum build: ${funded} of ${DRUM_TOTAL} drums funded`}>
         <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full" aria-hidden="true">
-          {[19, 31, 43.5].map((r) => <circle key={r} cx="50" cy="50" r={r} fill="none" stroke="#D9C6A6" strokeWidth="0.25" strokeDasharray="1 1.2" />)}
+          {[19, 31, 43.5].map((r) => <circle key={r} cx="50" cy="50" r={r} fill="none" stroke="#C9B89C" strokeWidth="0.25" strokeDasharray="1 1.2" />)}
         </svg>
         {DRUM_SPOTS.map((s, i) => {
           const f = s.n <= funded;
@@ -130,55 +132,52 @@ export function DrumCircle({ campaign, orgName, compact = false }: { campaign: C
           return (
             <button key={s.n} ref={(el) => { btns.current[i] = el; }} type="button"
               tabIndex={focusIdx === i ? 0 : -1} onFocus={() => setFocusIdx(i)}
-              onClick={() => strike(s.n)} onKeyDown={(e) => onKey(e, i)} aria-label={label(s.n)}
-              className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-[#1F6F8B] motion-safe:transition-transform motion-safe:duration-150 motion-safe:hover:scale-[1.07] ${hit === s.n ? "motion-safe:scale-90" : ""}`}
+              onClick={() => strike(s.n)} onKeyDown={(e) => onKey(e, i)} aria-label={label(s.n)} aria-pressed={Number(picked) === s.n}
+              className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full focus-visible:outline focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-[#17100F] motion-safe:transition-transform motion-safe:duration-150 motion-safe:hover:scale-[1.07] ${hit === s.n ? "motion-safe:scale-90" : ""}`}
               style={{ left: `${s.x}%`, top: `${s.y}%`, width: `${size}%`, height: `${size}%` }}
               data-testid={`button-drum-${s.n}`}>
-              {s.n === 1 ? <CentreDrum funded={f} /> : <SmallDrum funded={f} rim={DRUM_RIMS[(s.n - 2) % DRUM_RIMS.length]} n={s.n} />}
+              {s.n === 1 ? <CentreDrum funded={f} /> : <SmallDrum funded={f} selected={Number(picked) === s.n} n={s.n} />}
             </button>
           );
         })}
       </div>
+      </div>
 
-      <div className="mt-4 flex justify-center">
-        <span className="inline-flex items-center gap-2.5 rounded-full border-2 bg-[#FFF9EF] px-4 py-1.5" style={{ borderColor: INK }}>
-          <span className="w-7 h-7 shrink-0"><CentreDrum funded /></span>
-          <span className="leading-tight">
-            <span className="block text-[11px] font-semibold text-[#6B4F36]">Centre drum · Drum #1</span>
-            <span className="block text-sm font-extrabold">From Humanity Ova Vanity</span>
+      {/* Selection panel: larger, non-spatial alternative for small screens and assistive tech */}
+      <div className="rc-drum-sel">
+        <span className="flex items-center gap-3 min-w-0 flex-[1_1_220px]">
+          <span className="w-10 h-10 shrink-0"><CentreDrum funded /></span>
+          <span className="min-w-0 leading-tight">
+            <span className="rc-mono block text-[11px] rc-muted">Centre drum · Drum #1</span>
+            <span className="block font-bold">From Humanity Ova Vanity</span>
           </span>
         </span>
-      </div>
-      <p className="mt-3 text-[13px] leading-relaxed text-[#5A4330] text-center max-w-md mx-auto" data-testid="text-drum-explainer">
-        The centre drum is carved from reclaimed wood. It is drawn as an outline until it is paid for, and is the first drum
-        funded. Then the circle fills outward. {centreFunded ? "It is funded." : "It is still waiting."} Every US${DRUM_COST_USD} raised here completes one drum for a child, up to US${DRUM_TARGET_USD.toLocaleString("en-US")} for all {DRUM_TOTAL}.
-      </p>
-      <div className="mt-3 flex flex-wrap justify-center gap-x-5 gap-y-1 text-[13px] text-[#5A4330]">
-        <span className="inline-flex items-center gap-1.5"><span className="w-3.5 h-3.5 rounded-full border-[3px] border-[#C9481E]" aria-hidden="true" />Funded</span>
-        <span className="inline-flex items-center gap-1.5"><span className="w-3.5 h-3.5 rounded-full border-2 border-dashed border-[#A88E6D]" aria-hidden="true" />Waiting for funding</span>
-        <span className="font-bold">{unavailable ? "Sound is not available on this device" : "Tap any drum to hear it"}</span>
-      </div>
-
-      {/* Larger, non-spatial alternative for small screens and assistive tech */}
-      <div className="mt-4 flex flex-col sm:flex-row gap-2">
         <label htmlFor={selectId} className="sr-only">Choose a drum</label>
-        <select id={selectId} value={picked} onChange={(e) => setPicked(e.target.value)}
-          className="h-12 flex-1 min-w-0 rounded-xl border-2 bg-[#FFF9EF] px-3 text-sm font-semibold" style={{ borderColor: INK }} data-testid="select-drum">
+        <select id={selectId} value={picked} onChange={(e) => setPicked(e.target.value)} data-testid="select-drum">
           {DRUM_SPOTS.map((s) => (
             <option key={s.n} value={s.n}>{s.n === 1 ? "Drum 1, centre" : `Drum ${s.n}`} ({s.n <= funded ? "funded" : "waiting"})</option>
           ))}
         </select>
-        <button type="button" onClick={() => strike(Number(picked))}
-          className="h-12 px-5 rounded-xl inline-flex items-center justify-center gap-2 font-extrabold text-[#FFF6E4] hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5A3A22]"
-          style={{ backgroundColor: "#7A3A1C" }} data-testid="button-drum-play">
+        <button type="button" onClick={() => strike(Number(picked))} className="rc-btn rc-btn-ink" data-testid="button-drum-play">
           {picked === "1" ? <BookOpen className="w-4 h-4" aria-hidden="true" /> : <Play className="w-4 h-4" aria-hidden="true" />}
           {picked === "1" ? "Play and open build" : "Play drum"}
         </button>
       </div>
 
+      <div className="rc-drum-legend">
+        <span className="inline-flex items-center gap-1.5"><span className="w-3.5 h-3.5 rounded-full border-[3px]" style={{ borderColor: "var(--rc-accent, #B3121B)" }} aria-hidden="true" />Funded</span>
+        <span className="inline-flex items-center gap-1.5"><span className="w-3.5 h-3.5 rounded-full bg-[#17100F]" aria-hidden="true" />Selected</span>
+        <span className="inline-flex items-center gap-1.5"><span className="w-3.5 h-3.5 rounded-full border-2 border-dashed border-[#8A7F78]" aria-hidden="true" />Waiting for funding</span>
+        <span className="rc-mono font-bold text-[11px]">{unavailable ? "Sound is not available on this device" : "Tap any drum to hear it"}</span>
+      </div>
+      <p className="mt-3 mb-0 text-[14px] leading-relaxed" style={{ color: "var(--muted-dark)" }} data-testid="text-drum-explainer">
+        The centre drum is carved from reclaimed wood. It is drawn as an outline until it is paid for, and is the first drum
+        funded. Then the circle fills outward. {centreFunded ? "It is funded." : "It is still waiting."} Every US${DRUM_COST_USD} raised here completes one drum for a child, up to US${DRUM_TARGET_USD.toLocaleString("en-US")} for all {DRUM_TOTAL}.
+      </p>
+
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent onCloseAutoFocus={(event) => { event.preventDefault(); opener.current?.focus(); }}
-          className="max-h-[85dvh] overflow-y-auto bg-[#FCF1DE] text-[#3B2614] border-[#5A3A22] motion-reduce:animate-none" data-testid="dialog-drum-updates">
+          className="rc-drum-dialog max-h-[85dvh] overflow-y-auto motion-reduce:animate-none" data-testid="dialog-drum-updates">
           <DialogHeader>
             <DialogTitle className="text-xl font-extrabold">The centre drum build</DialogTitle>
             <DialogDescription className="text-[#5A4330]">

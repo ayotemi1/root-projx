@@ -171,13 +171,13 @@ export function CampaignWizard({ campaign, org, orgId, userId, token, onClose }:
   const meta = STEPS[step - 1];
 
   return (
-    <div ref={topRef} className="space-y-5 scroll-mt-24 min-w-0" data-tour-id="campaign-wizard">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <button type="button" onClick={close} disabled={closing} className="text-sm font-semibold text-muted-foreground hover:text-foreground inline-flex items-center gap-1" data-testid="button-close-wizard" data-tour-id="campaign-wizard-close">
+    <div ref={topRef} className="ops-wizard space-y-5 scroll-mt-24 min-w-0" data-tour-id="campaign-wizard">
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <button type="button" onClick={close} disabled={closing} className="ops-btn ops-btn--sm" data-testid="button-close-wizard" data-tour-id="campaign-wizard-close">
           <ArrowLeft className="w-4 h-4" /> All campaigns
         </button>
         <button type="button" onClick={openPreview} disabled={previewState === "saving"}
-          className="text-xs font-bold text-primary inline-flex items-center gap-1 hover:underline underline-offset-2 disabled:opacity-60" data-testid="link-preview-as-donor" data-tour-id="campaign-preview-open">
+          className="ops-btn ops-btn--sm disabled:opacity-60" data-testid="link-preview-as-donor" data-tour-id="campaign-preview-open">
           <Eye className="w-3.5 h-3.5" /> {previewState === "saving" ? "Saving…" : "Preview as donor"}
         </button>
         <SaveBadge status={draft.status} error={draft.error} onRetry={() => void draft.commit()} />
@@ -202,19 +202,21 @@ export function CampaignWizard({ campaign, org, orgId, userId, token, onClose }:
       )}
       {draft.storageWarning && <p role="alert" className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">{draft.storageWarning}</p>}
 
+      <div>
+        <p className="font-mono text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground" style={{ fontFamily: "'JetBrains Mono', monospace" }}>Campaign editor · saved as you go</p>
+        <h2 className="ops-display uppercase text-[34px] sm:text-[44px] leading-[.92] mt-1 break-words" data-testid="text-wizard-campaign-name">{d.name?.trim() || current.name || "Untitled campaign"}</h2>
+      </div>
+
       <nav aria-label="Campaign steps" data-tour-id="campaign-stepper">
-        <ol className="grid grid-cols-5 gap-1">
+        <ol className="ops-stepper">
           {STEPS.map((s) => {
             const active = s.n === step;
             const done = s.n < step;
             return (
-              <li key={s.n}>
-                <button type="button" onClick={() => go(s.n)} aria-current={active ? "step" : undefined}
-                  className="w-full group text-left" data-testid={`button-step-${s.n}`} data-tour-id={`campaign-step-${s.n}`}>
-                  <span className={`block h-1.5 rounded-full transition-colors ${active ? "bg-primary" : done ? "bg-primary/40" : "bg-secondary"}`} />
-                  <span className={`block mt-1.5 text-[11px] font-bold truncate ${active ? "text-primary" : "text-muted-foreground group-hover:text-foreground"}`}>
-                    <span className="tabular-nums">{s.n}</span><span className="hidden sm:inline"> {s.short}</span>
-                  </span>
+              <li key={s.n} className="min-w-0">
+                <button type="button" onClick={() => go(s.n)} aria-current={active ? "step" : undefined} data-done={done}
+                  aria-label={`Step ${s.n}: ${s.short}`} data-testid={`button-step-${s.n}`} data-tour-id={`campaign-step-${s.n}`}>
+                  <span className="ops-stepnum tabular-nums">{s.n}</span><span className="hidden sm:inline truncate">{s.short}</span>
                 </button>
               </li>
             );
@@ -223,8 +225,8 @@ export function CampaignWizard({ campaign, org, orgId, userId, token, onClose }:
       </nav>
 
       <div>
-        <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Step {step} of 5</p>
-        <h3 className="font-extrabold text-xl text-foreground mt-0.5" data-testid="text-step-title">{meta.title}</h3>
+        <p className="font-mono text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground" style={{ fontFamily: "'JetBrains Mono', monospace" }}>Step {step} of 5</p>
+        <h3 className="ops-display uppercase text-2xl sm:text-[28px] leading-none text-foreground mt-1" data-testid="text-step-title">{meta.title}</h3>
       </div>
 
       {notice && (
@@ -250,7 +252,7 @@ export function CampaignWizard({ campaign, org, orgId, userId, token, onClose }:
 
       <div className="flex flex-col items-start gap-1" data-testid={`block-step-preview-${step}`}>
         <button type="button" onClick={openPreview} disabled={previewState === "saving"}
-          className="text-sm font-bold text-primary inline-flex items-center gap-1.5 hover:underline underline-offset-2 disabled:opacity-60"
+          className="ops-btn ops-btn--sm disabled:opacity-60"
           data-testid={`button-preview-step-${step}`}>
           <Eye className="w-4 h-4" /> {previewState === "saving" ? "Saving your draft…" : "Preview this as a donor"}
         </button>
@@ -261,12 +263,12 @@ export function CampaignWizard({ campaign, org, orgId, userId, token, onClose }:
         )}
       </div>
 
-      <div className="flex items-center justify-between gap-2 pt-4 border-t border-border">
+      <div className="ops-wizard-foot flex items-center justify-between gap-2">
         <Button variant="outline" onClick={() => go(step - 1)} disabled={step === 1} data-testid="button-step-back" data-tour-id="campaign-step-back">
           <ArrowLeft className="w-4 h-4 mr-1" /> Back
         </Button>
         {step < 5 && (
-          <Button onClick={() => go(step + 1)} className="font-bold" data-testid="button-step-next" data-tour-id="campaign-step-next">
+          <Button onClick={() => go(step + 1)} className="font-bold bg-[#17100F] text-[#F4EFE6] hover:bg-[#17100F]/90" data-testid="button-step-next" data-tour-id="campaign-step-next">
             Save and continue <ArrowRight className="w-4 h-4 ml-1" />
           </Button>
         )}

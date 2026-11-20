@@ -91,25 +91,25 @@ export function SectionShell({
       data-tour-id={`profile-section-${section}`}
       aria-labelledby={`edit-${section}-title`}
       onBlur={onBlur}
-      className="scroll-mt-24 bg-card border border-border rounded-2xl shadow-sm overflow-hidden"
+      className="ops-psection scroll-mt-24 overflow-hidden"
     >
-      <header className="px-4 sm:px-5 pt-4 pb-3 border-b border-border/60 flex items-start gap-3">
+      <header className="pb-3 flex flex-wrap items-start gap-3">
         <div className="flex-1 min-w-0">
-          <h3 id={`edit-${section}-title`} className="font-extrabold text-base text-foreground flex items-center gap-2 flex-wrap">
+          <h3 id={`edit-${section}-title`} className="ops-display uppercase text-[26px] sm:text-[32px] leading-none text-foreground flex items-center gap-2 flex-wrap">
             {title}
             {optional && (
-              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-secondary px-1.5 py-0.5 rounded">
+              <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-muted-foreground border border-current px-1.5 py-0.5 align-middle">
                 Optional
               </span>
             )}
           </h3>
-          <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{hint}</p>
+          <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed max-w-prose">{hint}</p>
         </div>
         <button
           type="button"
           onClick={preview}
           disabled={previewState === "saving"}
-          className="flex-shrink-0 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline underline-offset-2 py-1 disabled:opacity-60"
+          className="ops-btn ops-btn--sm flex-shrink-0 disabled:opacity-60"
           data-testid={`link-public-${section}`}
           data-tour-id={`profile-view-public-${section}`}
         >
@@ -118,20 +118,20 @@ export function SectionShell({
         </button>
       </header>
       {previewState === "failed" && (
-        <p role="alert" className="mx-4 sm:mx-5 mt-3 text-xs text-destructive bg-destructive/10 rounded-lg px-3 py-2" data-testid={`error-preview-${section}`}>
+        <p role="alert" className="mt-3 text-xs text-destructive bg-destructive/10 rounded-lg px-3 py-2" data-testid={`error-preview-${section}`}>
           Your edits haven't saved yet, so a preview would be out of date. Fix the message below or retry, then preview again. Nothing was lost.
         </p>
       )}
       {wasRecovered && onDiscard && (
-        <div className="mx-4 sm:mx-5 mt-3 flex items-center gap-2 text-xs bg-accent/15 border border-accent/40 rounded-lg px-3 py-2">
+        <div className="mt-3 flex items-center gap-2 text-xs bg-accent/15 border border-accent/40 rounded-lg px-3 py-2">
           <span className="flex-1">We restored edits you hadn't saved yet. They save when you leave this section.</span>
           <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={onDiscard} disabled={status === "saving"} data-testid={`button-discard-${section}`}>
             Discard
           </Button>
         </div>
       )}
-      <div className="px-4 sm:px-5 py-4 space-y-4">{children}</div>
-      <footer className="px-4 sm:px-5 pb-4">
+      <div className="py-4 space-y-4">{children}</div>
+      <footer className="pb-4">
         <SaveIndicator status={status} error={error} onRetry={onRetry} section={section} storageWarning={storageWarning} />
       </footer>
     </section>

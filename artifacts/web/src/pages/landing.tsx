@@ -1,83 +1,66 @@
 import { Link } from "wouter";
+import { ArrowRight } from "lucide-react";
+
+function Path({ eyebrow, title, body, href, cta, testId }: {
+  eyebrow: string; title: string; body: string; href: string; cta: string; testId: string;
+}) {
+  return (
+    <div className="text-left">
+      <p className="rp-label !text-[10px] text-white/80">{eyebrow}</p>
+      <h2 className="mt-3 font-mono text-[15px] sm:text-[17px] font-medium uppercase tracking-[.1em] leading-snug text-white" style={{ fontFamily: "var(--app-font-mono)", fontStretch: "100%", fontVariationSettings: "normal" }}>
+        {title}
+      </h2>
+      <p className="mt-3 text-[14px] leading-relaxed text-white/90 max-w-[300px]">{body}</p>
+      <Link href={href} className="mt-6 inline-flex items-center gap-2 text-white text-[14px] font-bold group" data-testid={testId}>
+        <span className="rp-link-u">{cta}</span>
+        <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
+      </Link>
+    </div>
+  );
+}
 
 export default function LandingPage() {
   return (
-    <div
-      className="min-h-screen flex flex-col items-center px-6"
-      style={{ backgroundColor: "#CC0000" }}
-    >
-      <div className="flex-1 flex flex-col items-center justify-center w-full max-w-sm text-center gap-8 py-16">
-
-        {/* Logo */}
-        <img
-          src="/logo-gold-v2.png"
-          alt="Root ProjX"
-          className="h-36 sm:h-48 w-auto object-contain"
-        />
-
-        {/* Tagline */}
-        <div className="space-y-2">
-          <h1 className="text-xl sm:text-2xl font-light tracking-widest text-white uppercase">
-            Restoration. Culture. Access.
-          </h1>
-          <p className="text-sm sm:text-base" style={{ color: "rgba(255,255,255,0.65)" }}>
-            Support straight to the source.
-          </p>
-        </div>
-
-        {/* Enter */}
-        <Link href="/discover" className="w-full">
-          <button
-            className="w-full py-4 rounded-xl text-lg font-extrabold tracking-wide transition-opacity hover:opacity-90 active:scale-95"
-            style={{ backgroundColor: "#F5C000", color: "#111" }}
-            data-testid="button-enter"
-          >
-            Enter
-          </button>
+    <div className="min-h-[100dvh] bg-[#CA0813] text-white flex flex-col items-center px-6">
+      <div className="flex-1 flex flex-col items-center justify-center w-full max-w-[640px] text-center pt-16 pb-12">
+        <img src="/logo-gold-v2.png" alt="Root ProjX" className="rp-rise h-32 sm:h-40 w-auto object-contain" />
+        <h1 className="rp-rise rp-display mt-14 text-[48px] sm:text-[72px] leading-[.92]" style={{ animationDelay: ".08s" }}>
+          Restoration.<br />Culture. Access.
+        </h1>
+        <p className="rp-rise mt-4 text-[15px] text-white/90" style={{ animationDelay: ".14s" }}>Support straight to the source.</p>
+        <Link
+          href="/feed"
+          className="rp-rise rp-btn rp-btn-yellow mt-10 w-full max-w-[300px] h-[46px] border-[#F3BF2C]"
+          style={{ animationDelay: ".2s" }}
+          data-testid="button-enter"
+        >
+          Enter <ArrowRight className="w-4 h-4" />
         </Link>
-
       </div>
 
-      {/* Bottom join links */}
-      <div className="pb-14 w-full max-w-sm flex flex-col items-stretch gap-4">
-        <div className="bg-white/10 rounded-2xl p-5 border border-white/20 text-left">
-          <h3 className="text-white font-bold mb-1">For Supporters</h3>
-          <p className="text-white/70 text-sm mb-4">Create an account to discover, follow, and fund grassroots work immediately.</p>
-          <Link href="/register" className="w-full">
-            <button
-              className="w-full py-2.5 rounded-lg text-sm font-bold tracking-wide transition-all hover:bg-white hover:text-black border border-white text-white"
-              data-testid="link-register-supporter"
-            >
-              Join as a supporter
-            </button>
-          </Link>
-        </div>
-
-        <div className="bg-black/20 rounded-2xl p-5 border border-black/10 text-left">
-          <h3 className="text-white font-bold mb-1">For Organisations</h3>
-          <p className="text-white/70 text-sm mb-4">Apply to list your organisation, receive funds, and share your impact.</p>
-          <Link href="/onboarding" className="w-full">
-            <button
-              className="w-full py-2.5 rounded-lg text-sm font-bold tracking-wide transition-all bg-black/40 hover:bg-black/60 text-white"
-              data-testid="link-apply-organisation"
-            >
-              Submit an application
-            </button>
-          </Link>
-        </div>
-
-        <div className="mt-4 text-center">
-          <Link href="/login">
-            <span
-              className="text-sm cursor-pointer transition-colors"
-              style={{ color: "rgba(255,255,255,0.7)" }}
-              data-testid="link-login"
-            >
-              Already have an account? <span className="text-white font-semibold underline underline-offset-2 hover:text-[#F5C000]">Sign in</span>
-            </span>
-          </Link>
-        </div>
+      <div className="w-full max-w-[640px] grid sm:grid-cols-2 gap-10 sm:gap-16 pb-16">
+        <Path
+          eyebrow="For supporters"
+          title="Discover, follow and fund grassroots work."
+          body="Create an account and give straight to verified organisations, starting in Jamaica."
+          href="/register"
+          cta="Join as a supporter"
+          testId="link-register-supporter"
+        />
+        <Path
+          eyebrow="For organisations"
+          title="Receive funds and share your impact."
+          body="Apply to list your organisation. Once verified, you can run campaigns and post updates."
+          href="/onboarding"
+          cta="Submit an application"
+          testId="link-apply-organisation"
+        />
       </div>
+
+      <p className="pb-10 text-[13px] text-white/90">
+        Already have an account?{" "}
+        <Link href="/login" className="font-bold underline underline-offset-2 hover:text-[#F3BF2C]" data-testid="link-login">Sign in</Link>
+      </p>
     </div>
   );
 }
