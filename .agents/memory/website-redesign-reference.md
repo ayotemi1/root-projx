@@ -25,3 +25,9 @@ For supporter registration, the user supplied `attached_assets/signup-join_17951
 **Why:** The user explicitly prioritised preserving every existing field, required/optional status, validation and account-creation behaviour over reproducing the mockup's three-field form.
 
 **How to apply:** Treat this as a presentation-only registration reference. Do not remove optional phone or simplify the supporter registration contract merely to match the picture.
+
+For supporter Home and navigation, the newer references are `attached_assets/supporter-home-first-visit-phone_1795193019651.png` and `attached_assets/supporter-home-first-visit-desktop_1795193019652.png`.
+
+**Why:** On 2026-11-20 the user introduced a distinct supporter dashboard direction: desktop sidebar/central feed/following panel, and compact phone header/organisation strip/bottom navigation. This supersedes the earlier standalone Live Feed layout for the supporter experience.
+
+**How to apply:** Use these screen-specific references for supporter layout work while retaining Root ProjX branding and real existing functionality. Reference stories, counts and conversations are not evidence that those features or records exist.

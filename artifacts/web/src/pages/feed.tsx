@@ -9,16 +9,15 @@ import { ContentDialog } from "@/components/org-content/content-gallery";
 import { summarise } from "@/lib/content-media";
 import { useToast } from "@/hooks/use-toast";
 import { userErrorMessage } from "@/lib/error-feedback";
+import { SupporterHomeIntro } from "@/components/supporter/SupporterHomeIntro";
+import { OrganisationLogo } from "@/components/organisation-logo";
 
-function initials(name: string) {
-  return name.split(/\s+/).filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase() || "RP";
-}
 function dateLabel(iso: string) {
   return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
 
-function PostCard({ item, onOpen, following, onFollow, followBusy }: {
-  item: FeedUpdate; onOpen: () => void; following: boolean | null; onFollow: () => void; followBusy: boolean;
+function PostCard({ item, logo, onOpen, following, onFollow, followBusy }: {
+  item: FeedUpdate; logo: string | null; onOpen: () => void; following: boolean | null; onFollow: () => void; followBusy: boolean;
 }) {
   const { toast } = useToast();
   const s = summarise(item);
@@ -43,8 +42,8 @@ function PostCard({ item, onOpen, following, onFollow, followBusy }: {
   return (
     <article className="rp-rise" data-testid={`card-content-${item._id}`}>
       <header className="flex items-center gap-3 mb-3">
-        <Link href={`/organisations/${item.orgId}`} className="w-12 h-12 border border-[#17100F]/25 bg-[#FBF8F2] flex items-center justify-center text-[14px] font-bold shrink-0">
-          {initials(orgName)}
+        <Link href={`/organisations/${item.orgId}`} className="shrink-0" aria-label={`Visit ${orgName}`}>
+          <OrganisationLogo name={orgName} logo={logo} />
         </Link>
         <div className="min-w-0 flex-1">
           <Link href={`/organisations/${item.orgId}`} className="text-[18px] font-bold leading-tight hover:underline truncate block">{orgName}</Link>
@@ -141,6 +140,7 @@ export default function FeedPage() {
   const [mode, setMode] = useState<"public" | "mine">("public");
   const [open, setOpen] = useState<FeedUpdate | null>(null);
   const [, navigate] = useLocation();
+  const supporterView = user?.accountType !== "organisation";
 
   const publicQ = useQuery({
     queryKey: ["feed", "public"],
@@ -189,13 +189,16 @@ export default function FeedPage() {
   };
 
   return (
-    <div className="rp-page-shell py-10 sm:py-14 grid lg:grid-cols-[280px_minmax(0,1fr)] gap-10 lg:gap-16" data-testid="page-live-feed">
-      <aside className="lg:sticky lg:top-28 self-start">
+    <div className={supporterView ? "rps-feed" : "rp-page-shell py-10 sm:py-14 grid lg:grid-cols-[280px_minmax(0,1fr)] gap-10 lg:gap-16"} data-testid="page-live-feed">
+      {supporterView && <SupporterHomeIntro />}
+      <aside className={supporterView ? "mb-7" : "lg:sticky lg:top-28 self-start"}>
+        {!supporterView && <>
         <h1 className="rp-display text-[72px] sm:text-[104px] text-[#17100F] rp-rise">Live<br />Feed</h1>
         <p className="rp-label mt-6 text-[#17100F]/85 leading-relaxed max-w-[280px]">
           Photos, videos, campaigns and everyday moments from organisations.
         </p>
-        <div className="mt-8 flex gap-6 border-b border-[#17100F]/15" role="tablist">
+        </>}
+        <div className={`${supporterView ? "" : "mt-8 "}flex gap-6 border-b border-[#17100F]/15`} role="tablist" aria-label="Feed">
           {(["public", "mine"] as const).map((m) => {
             const disabled = m === "mine" && !isAuthenticated;
             const on = mode === m;
@@ -217,7 +220,7 @@ export default function FeedPage() {
             );
           })}
         </div>
-        <p className="mt-4 text-[16px] text-[#17100F]/75 leading-relaxed max-w-[280px]">
+        <p className={`mt-4 text-[16px] text-[#17100F]/75 leading-relaxed${supporterView ? "" : " max-w-[280px]"}`}>
           {mode === "public"
             ? "Every published post from organisations on Root ProjX, newest first."
             : "Posts from the organisations you follow, newest first."}
@@ -250,6 +253,7 @@ export default function FeedPage() {
               <PostCard
                 key={u._id}
                 item={u}
+                logo={followsQ.data?.find(org => org._id === u.orgId)?.logo ?? null}
                 onOpen={() => setOpen(u)}
                 following={followState(u.orgId)}
                 onFollow={() => onFollow(u.orgId)}

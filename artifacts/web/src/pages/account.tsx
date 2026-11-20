@@ -253,7 +253,11 @@ function PublicProfileCard({ profile, token }: { profile: api.ApiUser, token: st
   );
 }
 
-export default function AccountPage() {
+export function GivingHistoryPage() {
+  return <AccountPage view="giving" />;
+}
+
+export default function AccountPage({ view = "all" }: { view?: "all" | "giving" }) {
   const { user, token, isAuthenticated, logout } = useAuth();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -319,7 +323,9 @@ export default function AccountPage() {
     return (
       <div className="max-w-md mx-auto px-4 py-20 text-center">
         <User className="w-14 h-14 text-muted-foreground/40 mx-auto mb-4" />
-        <h1 className="text-xl font-bold text-foreground mb-2">Sign in to your account</h1>
+        <h1 className="text-xl font-bold text-foreground mb-2">
+          {view === "giving" ? "Sign in to see your giving history" : "Sign in to your account"}
+        </h1>
         <p className="text-muted-foreground text-sm mb-6">
           Follow organisations, track donations, and manage your profile.
         </p>
@@ -339,6 +345,14 @@ export default function AccountPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
+      {view === "giving" && (
+        <header>
+          <h1 className="rp-display text-[44px] sm:text-[64px]">Giving History</h1>
+          <p className="mt-4 text-muted-foreground">Your donations and monthly giving, in one place.</p>
+          <Link href="/profile" className="inline-flex min-h-11 items-center font-semibold underline underline-offset-4">Back to your profile</Link>
+        </header>
+      )}
+      {view !== "giving" && <>
       {/* Profile header */}
       <Card className="border-border shadow-sm">
         <CardContent className="pt-6">
@@ -414,6 +428,7 @@ export default function AccountPage() {
           )}
         </CardContent>
       </Card>
+      </>}
 
       {/* Donation history */}
       {profile?.accountType !== "organisation" && (
@@ -530,6 +545,7 @@ export default function AccountPage() {
         </Card>
       )}
 
+      {view !== "giving" && <>
       {/* Supporter wall */}
       {profile?.accountType !== "organisation" && (
         <Card className="border-border shadow-sm">
@@ -612,6 +628,7 @@ export default function AccountPage() {
           }}
         />
       )}
+      </>}
     </div>
   );
 }

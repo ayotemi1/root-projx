@@ -130,7 +130,7 @@ test("public organisation profile uses the redesign with real data and preserves
 
 test("public-page sizing keeps the wide feed, readable captions and model-sized sign-in form", async () => {
   const html = await page("src/pages/feed.tsx");
-  assert.match(html, /rp-page-shell/);
+  assert.match(html, /rps-feed/);
   assert.match(html, /max-w-\[860px\]/);
   assert.doesNotMatch(html, /max-w-\[560px\]/);
   const feed = await readFile(new URL("src/pages/feed.tsx", webRoot), "utf8");
@@ -139,5 +139,7 @@ test("public-page sizing keeps the wide feed, readable captions and model-sized 
   assert.match(login, /max-w-\[460px\]/);
   const css = await readFile(new URL("src/index.css", webRoot), "utf8");
   assert.match(css, /\.rp-page-shell\s*\{[^}]*max-width: 1440px/s);
+  const supporterCss = await readFile(new URL("src/components/supporter/supporter.css", webRoot), "utf8");
+  assert.match(supporterCss, /\.rps-main\s*\{[^}]*max-width:\s*860px/s);
   assert.doesNotMatch(css, /\bzoom\s*:/); // Resize the layout, never override the visitor's browser zoom.
 });

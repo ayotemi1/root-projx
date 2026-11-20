@@ -1,4 +1,5 @@
-import { Switch, Route, Router as WouterRouter, Redirect } from "wouter";
+import { Switch, Route, Router as WouterRouter, Redirect, useLocation } from "wouter";
+import type { ReactNode } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,7 +13,10 @@ import LandingPage from "@/pages/landing";
 import FeedPage from "@/pages/feed";
 import DiscoverPage from "@/pages/discover";
 import HelpPage from "@/pages/help";
-import AccountPage from "@/pages/account";
+import AccountPage, { GivingHistoryPage } from "@/pages/account";
+import SupporterLayout from "@/components/supporter/SupporterLayout";
+import SupporterPlaceholder from "@/pages/supporter-placeholder";
+import { shouldUseSupporterLayout } from "@/lib/supporter-navigation";
 import OrgProfilePage from "@/pages/org-profile";
 import OrgCampaignsPage from "@/pages/org-campaigns";
 import OrgUpdatesPage from "@/pages/org-updates";
@@ -84,6 +88,21 @@ function AuthRoute({ component: Component }: { component: React.ComponentType })
   return <Component />;
 }
 
+function SitePageLayout({ children }: { children: ReactNode }) {
+  const [location] = useLocation();
+  const { user } = useAuth();
+  if (shouldUseSupporterLayout(location, user?.accountType)) {
+    return <SupporterLayout>{children}</SupporterLayout>;
+  }
+  return (
+    <div className="min-h-screen flex flex-col bg-background">
+      <Navbar />
+      <main className="flex-1">{children}</main>
+      <Footer />
+    </div>
+  );
+}
+
 function AppRoutes() {
   const { isLoading } = useAuth();
 
@@ -110,14 +129,18 @@ function AppRoutes() {
       <Route path="/admin/login" component={AdminLoginPage} />
       <Route path="/admin" component={AdminPage} />
 
-      {/* All other pages — wrapped in navbar + footer */}
+      {/* Supporter destinations use their own shell; other pages retain the public navigation. */}
       <Route>
-        <div className="min-h-screen flex flex-col bg-background">
-          <Navbar />
-          <main className="flex-1">
+        <SitePageLayout>
             <Switch>
               <Route path="/feed" component={FeedPage} />
               <Route path="/discover" component={DiscoverPage} />
+              <Route path="/create">{() => <SupporterPlaceholder section="create" />}</Route>
+              <Route path="/inbox">{() => <SupporterPlaceholder section="inbox" />}</Route>
+              <Route path="/notifications">{() => <SupporterPlaceholder section="notifications" />}</Route>
+              <Route path="/saved">{() => <SupporterPlaceholder section="saved" />}</Route>
+              <Route path="/profile">{() => <AccountPage />}</Route>
+              <Route path="/giving-history" component={GivingHistoryPage} />
               <Route path="/shop/success" component={ShopSuccessPage} />
               <Route path="/shop/cancel" component={ShopCancelPage} />
               <Route path="/shop" component={ShopPage} />
@@ -153,9 +176,7 @@ function AppRoutes() {
               </Route>
               <Route component={NotFound} />
             </Switch>
-          </main>
-          <Footer />
-        </div>
+        </SitePageLayout>
       </Route>
     </Switch>
   );
