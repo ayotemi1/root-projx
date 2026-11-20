@@ -24,3 +24,4 @@
 - [OpenAPI body naming](openapi-inline-body-names.md) — named request schemas prevent Orval validator/type export collisions.
 - [Organisation deletion](organisation-deletion.md) — remove public presence and owner access while retaining financial history and settlement capability.
 - [Drum Life campaign](drum-life-campaign.md) — Lifeyard-only bespoke theme; 50 drums at US$150 each, including the HOV centre drum. First-cohort themes are commissioned per campaign.
+- [Website redesign reference](website-redesign-reference.md) — supplied nine-page HTML preview pack guides appearance; prototypes must not replace live data, auth or financial rules.
