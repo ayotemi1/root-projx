@@ -13,7 +13,7 @@ const { renderToStaticMarkup } = webRequire("react-dom/server");
 const { Router } = webRequire("wouter");
 const { QueryClient, QueryClientProvider } = webRequire("@tanstack/react-query");
 
-async function page(path: string) {
+async function page(path: string, options: { route?: string; seeds?: Array<[unknown[], unknown]> } = {}) {
   const result = await build({
     entryPoints: [new URL(path, webRoot).pathname],
     bundle: true, write: false, format: "cjs", platform: "node",
@@ -33,10 +33,17 @@ async function page(path: string) {
   const mod = { exports: {} as { default: any } };
   new Function("require", "module", "exports", result.outputFiles[0]!.text)(webRequire, mod, mod.exports);
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  for (const [key, data] of options.seeds ?? []) client.setQueryData(key, data);
+  const priorWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  Object.defineProperty(globalThis, "window", { configurable: true, value: { location: { search: "", hash: "" } } });
   try {
     return renderToStaticMarkup(createElement(QueryClientProvider, { client },
-      createElement(Router, { hook: () => ["/", () => {}] }, createElement(mod.exports.default))));
-  } finally { client.clear(); }
+      createElement(Router, { hook: () => [options.route ?? "/", () => {}] }, createElement(mod.exports.default))));
+  } finally {
+    client.clear();
+    if (priorWindow) Object.defineProperty(globalThis, "window", priorWindow);
+    else Reflect.deleteProperty(globalThis, "window");
+  }
 }
 
 test("redesigned welcome uses real supporter, organisation and feed destinations", async () => {
@@ -82,4 +89,55 @@ test("website loads the supplied typography and preserves accessible viewport zo
   const html = await readFile(new URL("index.html", webRoot), "utf8");
   for (const font of ["Archivo", "Familjen", "JetBrains"]) assert.ok(html.includes(font), `missing ${font}`);
   assert.doesNotMatch(html, /maximum-scale=1|user-scalable=no/);
+});
+
+test("public organisation profile uses the redesign with real data and preserves its public features", async () => {
+  const id = "profile-regression-org";
+  const html = await page("src/pages/org-profile.tsx", {
+    route: `/organisations/${id}`,
+    seeds: [
+      [["org", id], {
+        _id: id, name: "Profile Regression Organisation", category: "Education", country: "Jamaica",
+        verified: true, description: "Local people building a library.", shortDescription: "A library for everyone.",
+        logo: "/test-logo.png", coverImage: "/test-cover.png", followerCount: 42, totalRaised: 125,
+      }],
+      [["org-feed", id], [{
+        _id: "profile-test-post", orgId: id, orgName: "Profile Regression Organisation",
+        title: "Opening the library", content: "The first shelves are ready.",
+        createdAt: "2026-11-01T12:00:00Z", imageUrls: ["/library-photo.png"], videoUrls: [],
+      }]],
+      [["campaigns", id], [{
+        _id: "library-campaign", publicId: "cp_library", sharePath: "/campaign/library/books",
+        name: "Books for everyone", description: "Help fill the shelves.", type: "fundraising",
+        goal: 1000, amountRaised: 125, currency: "gbp", status: "active", enabled: true,
+      }]],
+      [["volunteerRoles", id], []], [["org-reviews", id], []], [["org-supporters", id], []],
+    ],
+  });
+  assert.match(html, /rp-orgp rp-page-shell/);
+  assert.match(html, /data-testid="text-org-name">Profile Regression Organisation/);
+  assert.match(html, /A library for everyone\./);
+  assert.match(html, /src="\/test-logo\.png"/);
+  assert.match(html, /src="\/test-cover\.png"/);
+  assert.match(html, /data-testid="card-content-profile-test-post"/);
+  assert.match(html, /Opening the library/);
+  for (const tab of ["Posts", "Campaigns", "Volunteer", "About"]) assert.ok(html.includes(tab), `missing ${tab}`);
+  assert.match(html, /href="\/campaign\/library\/books"/);
+  assert.match(html, /Donate to this campaign/);
+  assert.match(html, /data-testid="button-donate-org"/);
+  assert.doesNotMatch(html, /totalOwedGbp|bank.details|payout reference/i);
+});
+
+test("public-page sizing keeps the wide feed, readable captions and model-sized sign-in form", async () => {
+  const html = await page("src/pages/feed.tsx");
+  assert.match(html, /rp-page-shell/);
+  assert.match(html, /max-w-\[860px\]/);
+  assert.doesNotMatch(html, /max-w-\[560px\]/);
+  const feed = await readFile(new URL("src/pages/feed.tsx", webRoot), "utf8");
+  assert.match(feed, /text-\[18px\] leading-relaxed/);
+  const login = await page("src/pages/login.tsx");
+  assert.match(login, /max-w-\[460px\]/);
+  const css = await readFile(new URL("src/index.css", webRoot), "utf8");
+  assert.match(css, /\.rp-page-shell\s*\{[^}]*max-width: 1440px/s);
+  assert.doesNotMatch(css, /\bzoom\s*:/); // Resize the layout, never override the visitor's browser zoom.
 });

@@ -1,0 +1,93 @@
+@import url("https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Familjen+Grotesk:wght@400..700&family=JetBrains+Mono:wght@500;700&display=swap");
+
+@theme inline {
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
+  --font-sans: var(--app-font-sans);
+  --font-serif: var(--app-font-serif);
+  --font-mono: var(--app-font-mono);
+  --font-display: "Archivo", "Arial Narrow", sans-serif;
+  --color-gold: #F3BF2C;
+  --color-deep-red: #8E050D;
+  --color-site-red: #CA0813;
+  --color-ink: #17100F;
+  --color-cream: #F4EFE6;
+}
+
+:root {
+  --rp-red: #CA0813;
+  --rp-yellow: #F3BF2C;
+  --rp-ink: #17100F;
+  --rp-cream: #F4EFE6;
+  --rp-paper: #FBF8F2;
+  --rp-line: rgba(23,16,15,.16);
+  --button-outline: rgba(23,16,15,.14);
+  --badge-outline: rgba(23,16,15,.08);
+  --opaque-button-border-intensity: -8;
+  --elevate-1: rgba(23,16,15,.04);
+  --elevate-2: rgba(23,16,15,.09);
+  --background: 38 37% 93%;
+  --foreground: 6 21% 7%;
+  --card: 40 45% 97%;
+  --card-foreground: 6 21% 7%;
+  --card-border: 6 21% 7% / .16;
+  --popover: 40 45% 97%;
+  --popover-foreground: 6 21% 7%;
+  --popover-border: 30 15% 78%;
+  --primary: 356 92% 41%;
+  --primary-foreground: 40 45% 97%;
+  --secondary: 36 30% 88%;
+  --secondary-foreground: 6 21% 7%;
+  --muted: 36 30% 88%;
+  --muted-foreground: 10 8% 34%;
+  --accent: 44 89% 56%;
+  --accent-foreground: 6 21% 7%;
+  --destructive: 356 92% 41%;
+  --destructive-foreground: 40 45% 97%;
+  --border: 30 15% 78%;
+  --input: 6 21% 7%;
+  --ring: 356 92% 41%;
+  --chart-1: 356 92% 41%;
+  --chart-2: 44 89% 56%;
+  --chart-3: 6 21% 7%;
+  --chart-4: 150 45% 32%;
+  --chart-5: 20 60% 45%;
+  --sidebar: 356 92% 41%;
+  --sidebar-foreground: 40 45% 97%;
+  --sidebar-border: 356 92% 34%;
+  --sidebar-primary: 44 89% 56%;
+  --sidebar-primary-foreground: 6 21% 7%;
+  --sidebar-accent: 356 92% 34%;
+  --sidebar-accent-foreground: 40 45% 97%;
+  --sidebar-ring: 44 89% 56%;
+  --app-font-sans: "Familjen Grotesk", system-ui, sans-serif;
+  --app-font-serif: "Archivo", "Arial Narrow", sans-serif;
+  --app-font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --radius: 0px;
+  --shadow-2xs: 0 1px 2px 0 rgba(0,0,0,.04);
+  --shadow-xs: 0 1px 3px 0 rgba(0,0,0,.06);
+  --shadow-sm: 0 2px 4px 0 rgba(0,0,0,.06);
+  --shadow: 0 2px 8px 0 rgba(0,0,0,.08);
+  --shadow-md: 0 4px 12px 0 rgba(0,0,0,.10);
+  --shadow-lg: 0 8px 24px 0 rgba(0,0,0,.12);
+  --shadow-xl: 0 16px 32px 0 rgba(0,0,0,.14);
+  --shadow-2xl: 0 24px 48px 0 rgba(0,0,0,.16);
+  --tracking-normal: 0em;
+  --spacing: 0.25rem;
+  --primary-border: hsl(from hsl(var(--primary)) h s calc(l + var(--opaque-button-border-intensity)));
+  --secondary-border: hsl(from hsl(var(--secondary)) h s calc(l + var(--opaque-button-border-intensity)));
+  --muted-border: hsl(from hsl(var(--muted)) h s calc(l + var(--opaque-button-border-intensity)));
+  --accent-border: hsl(from hsl(var(--accent)) h s calc(l + var(--opaque-button-border-intensity)));
+  --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)));
+  --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)));
+  --sidebar-accent-border: hsl(from hsl(var(--sidebar-accent)) h s calc(l + var(--opaque-button-border-intensity)));
+}
+
+h1, h2, h3 {
+  font-family: var(--font-display);
+  font-stretch: 72%;
+  font-variation-settings: "wdth" 72;
+  letter-spacing: -0.01em;
+}

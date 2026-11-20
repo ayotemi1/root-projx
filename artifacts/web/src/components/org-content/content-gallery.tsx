@@ -63,7 +63,7 @@ export function ContentDialog({ item, onClose }: { item: FeedUpdate | null; onCl
         {item && s && (
           <>
             <div className="pr-8">
-              <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: RED }}>
+              <p className="text-[12px] font-bold uppercase tracking-wider" style={{ color: RED }}>
                 <Link href={`/organisations/${item.orgId}`} className="hover:underline">{item.orgName || "Organisation"}</Link> · {dateLabel(item.createdAt)}
               </p>
               <DialogTitle className="text-lg font-extrabold leading-snug mt-1">{item.title || `${item.orgName || "Organisation"}'s post`}</DialogTitle>
@@ -80,7 +80,7 @@ export function ContentDialog({ item, onClose }: { item: FeedUpdate | null; onCl
                 <img key={img} src={img} alt={`${item.title}, photo ${i + 1} of ${s.images.length}`} className="w-full rounded-xl object-contain bg-secondary max-h-[70dvh]" loading="lazy" />
               ))}
             </div>
-            <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap break-words" data-testid="text-content-caption">{item.content}</p>
+            <p className="text-base text-foreground/80 leading-relaxed whitespace-pre-wrap break-words" data-testid="text-content-caption">{item.content}</p>
             {s.link && (
               <div className="rounded-xl border border-border p-3 flex flex-col sm:flex-row sm:items-center gap-3">
                 <p className="text-xs text-muted-foreground flex-1">

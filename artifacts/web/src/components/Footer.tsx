@@ -27,11 +27,11 @@ export default function Footer() {
 
   return (
     <footer className="bg-[#17100F] text-[#F4EFE6] mt-20">
-      <div className="max-w-[1180px] mx-auto px-5 sm:px-8 py-14 grid md:grid-cols-[1.1fr_1fr] gap-8 items-end border-b border-[#F4EFE6]/15">
+      <div className="rp-page-shell py-14 grid md:grid-cols-[1.1fr_1fr] gap-8 items-end border-b border-[#F4EFE6]/15">
         <div>
           <p className="rp-label text-[#F3BF2C] mb-3">Newsletter</p>
           <h2 className="rp-display text-[44px] sm:text-[56px]">Stay connected<br />to the cause</h2>
-          <p className="mt-4 text-sm text-[#F4EFE6]/70 max-w-md">
+          <p className="mt-4 text-base text-[#F4EFE6]/70 max-w-md">
             Get impact updates, new organisations, and community news — straight to your inbox.
           </p>
         </div>
@@ -67,7 +67,7 @@ export default function Footer() {
         </div>
       </div>
 
-      <div className="max-w-[1180px] mx-auto px-5 sm:px-8 py-10 grid grid-cols-2 sm:grid-cols-[1.4fr_1fr_1fr] gap-8 text-sm">
+      <div className="rp-page-shell py-10 grid grid-cols-2 sm:grid-cols-[1.4fr_1fr_1fr] gap-8 text-base">
         <div className="col-span-2 sm:col-span-1">
           <img src="/logo-gold-v2.png" alt="Root ProjX" className="h-12 w-auto mb-3" />
           <p className="text-[#F4EFE6]/65 max-w-xs leading-relaxed">
@@ -94,7 +94,7 @@ export default function Footer() {
         </div>
       </div>
 
-      <div className="max-w-[1180px] mx-auto px-5 sm:px-8 py-6 border-t border-[#F4EFE6]/15 flex flex-col sm:flex-row justify-between gap-3 rp-label !text-[10px] text-[#F4EFE6]/55">
+      <div className="rp-page-shell py-6 border-t border-[#F4EFE6]/15 flex flex-col sm:flex-row justify-between gap-3 rp-label !text-[12px] text-[#F4EFE6]/55">
         <span>
           &copy; {new Date().getFullYear()} Root ProjX Ltd · Secured by Stripe · ICO registered ZC152619
         </span>

@@ -42,12 +42,12 @@ export default function Navbar() {
 
   return (
     <header className="bg-[#CA0813] text-white sticky top-0 z-50 border-b-2 border-[#17100F]">
-      <nav className="max-w-[1180px] mx-auto px-4 sm:px-8 flex items-center h-16 gap-6">
+      <nav className="rp-page-shell flex items-center h-[72px] gap-6">
         <Link href="/" className="flex-shrink-0" data-testid="nav-link-logo">
-          <img src="/logo-gold-v2.png" alt="Root ProjX" className="h-10 w-auto object-contain" />
+          <img src="/logo-gold-v2.png" alt="Root ProjX" className="h-12 w-auto object-contain" />
         </Link>
 
-        <div className="hidden md:flex items-stretch gap-1 flex-1 h-full py-3">
+        <div className="hidden lg:flex items-stretch gap-1 flex-1 h-full py-3">
           {NAV_LINKS.map(({ href, label }) => {
             const active = isActive(href);
             return (
@@ -56,7 +56,7 @@ export default function Navbar() {
                 href={href}
                 aria-current={active ? "page" : undefined}
                 data-testid={`nav-link-${label.toLowerCase().replace(/\s+/g, "-")}`}
-                className={`rp-label !text-[12px] flex items-center px-2.5 transition-colors ${
+                className={`rp-label !text-[14px] flex items-center px-2.5 transition-colors ${
                   active ? "bg-[#F3BF2C] text-[#17100F]" : "text-white hover:bg-white/10"
                 }`}
               >
@@ -66,7 +66,7 @@ export default function Navbar() {
           })}
         </div>
 
-        <div className="hidden md:flex items-center gap-3 ml-auto">
+        <div className="hidden lg:flex items-center gap-3 ml-auto">
           <CartLink />
           {isAuthenticated && user ? (
             <DropdownMenu>
@@ -102,20 +102,20 @@ export default function Navbar() {
             </DropdownMenu>
           ) : (
             <>
-              <Link href="/onboarding" className="text-[13px] text-white hover:underline underline-offset-4 whitespace-nowrap mr-1" data-testid="nav-link-apply">
+              <Link href="/onboarding" className="text-[14px] text-white hover:underline underline-offset-4 whitespace-nowrap mr-1" data-testid="nav-link-apply">
                 Apply as an organisation
               </Link>
-              <Link href="/login" className="h-10 px-4 inline-flex items-center border-2 border-white text-white text-sm font-bold hover:bg-white hover:text-[#CA0813] transition-colors" data-testid="nav-link-login">
+              <Link href="/login" className="h-11 px-4 inline-flex items-center border-2 border-white text-white text-base font-bold hover:bg-white hover:text-[#CA0813] transition-colors" data-testid="nav-link-login">
                 Sign in
               </Link>
-              <Link href="/register" className="h-10 px-5 inline-flex items-center border-2 border-[#17100F] bg-[#F3BF2C] text-[#17100F] text-sm font-bold hover:bg-[#F6CB4E] transition-colors" data-testid="nav-link-join">
+              <Link href="/register" className="h-11 px-5 inline-flex items-center border-2 border-[#17100F] bg-[#F3BF2C] text-[#17100F] text-base font-bold hover:bg-[#F6CB4E] transition-colors" data-testid="nav-link-join">
                 Join
               </Link>
             </>
           )}
         </div>
 
-        <div className="md:hidden ml-auto flex items-center gap-1">
+        <div className="lg:hidden ml-auto flex items-center gap-1">
           <CartLink />
           <button
             className="text-white p-2"
@@ -130,7 +130,7 @@ export default function Navbar() {
       </nav>
 
       {mobileOpen && (
-        <div className="md:hidden border-t border-white/20 px-4 pb-5 pt-2 flex flex-col">
+        <div className="lg:hidden border-t border-white/20 px-4 pb-5 pt-2 flex flex-col">
           {NAV_LINKS.map(({ href, label }) => {
             const active = isActive(href);
             return (

@@ -3,6 +3,12 @@ type ModuleMap = Record<string, () => Promise<Record<string, unknown>>>;
 export const modules: ModuleMap = {
   "./components/mockups/lifeyard-sections/Current.tsx": () => import("../components/mockups/lifeyard-sections/Current.tsx"),
   "./components/mockups/lifeyard-sections/Revised.tsx": () => import("../components/mockups/lifeyard-sections/Revised.tsx"),
+  "./components/mockups/profile-correction/CurrentProfile.tsx": () => import("../components/mockups/profile-correction/CurrentProfile.tsx"),
+  "./components/mockups/profile-correction/ProfileCampaignCardLink.tsx": () => import("../components/mockups/profile-correction/ProfileCampaignCardLink.tsx"),
+  "./components/mockups/profile-correction/ProfileCampaignDonateButton.tsx": () => import("../components/mockups/profile-correction/ProfileCampaignDonateButton.tsx"),
+  "./components/mockups/profile-correction/ProfileContentGallery.tsx": () => import("../components/mockups/profile-correction/ProfileContentGallery.tsx"),
+  "./components/mockups/profile-correction/ProfileGuestDonateSheet.tsx": () => import("../components/mockups/profile-correction/ProfileGuestDonateSheet.tsx"),
+  "./components/mockups/profile-correction/ProfileMarkdown.tsx": () => import("../components/mockups/profile-correction/ProfileMarkdown.tsx"),
   "./components/mockups/screenshots/Screenshot1.tsx": () => import("../components/mockups/screenshots/Screenshot1.tsx"),
   "./components/mockups/screenshots/Screenshot2.tsx": () => import("../components/mockups/screenshots/Screenshot2.tsx"),
   "./components/mockups/screenshots/Screenshot3.tsx": () => import("../components/mockups/screenshots/Screenshot3.tsx"),

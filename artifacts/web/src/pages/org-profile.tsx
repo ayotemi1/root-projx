@@ -18,6 +18,7 @@ import { CampaignDonateButton } from "@/components/campaign-donate-button";
 import { CampaignCardLink } from "@/components/campaign-card-link";
 import ReactMarkdown from "react-markdown";
 import { PROFILE_ANCHORS, orgSectors } from "@/lib/sectors";
+import "@/components/org-content/org-profile.css";
 
 const ABOUT_ANCHORS: string[] = [PROFILE_ANCHORS.story, PROFILE_ANCHORS.funds, PROFILE_ANCHORS.contact, PROFILE_ANCHORS.team];
 
@@ -81,8 +82,9 @@ function isStale(iso: string): boolean {
   return Date.now() - new Date(iso).getTime() > 180 * 864e5;
 }
 
-const RED = "#B50000";
-const GOLD = "#F5B800";
+const RED = "#CA0813";
+const GOLD = "#F3BF2C";
+const PRIMARY_ACTION_STYLE = { backgroundColor: GOLD, color: "#17100F", minHeight: 48, border: "1px solid #17100F" };
 
 // ── Campaign card (visitor view) ──────────────────────────────────────────────
 
@@ -225,13 +227,13 @@ function CampaignCard({ campaign, orgId, onDonate }: { campaign: Campaign; orgId
         {campaign.type === "volunteer" ? <a className="relative z-10 block" href={`/donate/${orgId}`}>
           <button
             className="w-full py-2 text-sm font-bold text-white rounded-lg transition-opacity hover:opacity-90"
-            style={{ backgroundColor: RED }}
+            style={PRIMARY_ACTION_STYLE}
           >
             Get Involved
           </button>
         </a> : <CampaignDonateButton campaign={campaign} onDonate={onDonate}
           className="relative z-10 w-full py-2 text-sm font-bold text-white rounded-lg transition-opacity hover:opacity-90"
-          style={{ backgroundColor: RED }}>Donate to this campaign</CampaignDonateButton>}
+          style={PRIMARY_ACTION_STYLE}>Donate to this campaign</CampaignDonateButton>}
       </div>
     </CampaignCardLink>
   );
@@ -371,7 +373,7 @@ export default function OrgProfilePage() {
 
   if (orgQ.isLoading) {
     return (
-      <div className="max-w-6xl mx-auto px-4 py-8 space-y-4">
+      <div className="rp-orgp rp-page-shell space-y-4">
         <Skeleton className="h-6 w-32" />
         <div className="grid lg:grid-cols-[1fr_360px] gap-6">
           <div className="space-y-4">
@@ -390,8 +392,10 @@ export default function OrgProfilePage() {
 
   if (!org) {
     return (
-      <div className="text-center py-24 text-muted-foreground">
-        Organisation not found.
+      <div className="rp-orgp rp-page-shell orgp-notfound">
+        <p className="rp-label">Error 404</p>
+        <h1 className="orgp-name">Organisation not found.</h1>
+        <Link href="/discover" className="rp-btn rp-btn-yellow mt-6">Back to Discover</Link>
       </div>
     );
   }
@@ -444,7 +448,7 @@ export default function OrgProfilePage() {
   ] as const;
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6">
+    <div className="rp-orgp rp-page-shell">
       {isOwnerPreview && previewRecordFailed && (
         <div role="alert" className="mb-4 rounded-xl bg-destructive/10 text-sm px-4 py-2 flex items-center gap-3" data-testid="alert-profile-preview-record-failed">
           <span className="flex-1">We couldn't record this preview, so the walkthrough can't tick it off yet.</span>
@@ -464,189 +468,104 @@ export default function OrgProfilePage() {
       />
 
       {/* Back nav */}
-      <Link href="/discover">
-        <button className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground text-sm mb-5 transition-colors">
-          <ArrowLeft className="w-4 h-4" /> Back to Discover
-        </button>
+      <Link href="/discover" className="orgp-back rp-label" data-testid="link-back-discover">
+        <ArrowLeft className="w-4 h-4" /> Back to Discover
       </Link>
 
       {/* Two-column grid */}
-      <div className="grid lg:grid-cols-[1fr_360px] gap-6 items-start">
+      <div className="orgp-grid">
 
         {/* ── LEFT COLUMN ── */}
         <div className="space-y-5">
 
-          {/* Hero card */}
-          <div id={PROFILE_ANCHORS.identity} className="scroll-mt-20 bg-white border border-border rounded-2xl overflow-hidden">
-
-            {/* Banner */}
-            <div className="relative">
+          {/* Hero — pack identity block */}
+          <header id={PROFILE_ANCHORS.identity} className="scroll-mt-20 orgp-hero rp-rise">
+            <div className="orgp-cover">
               {org.coverImage ? (
-                <img
-                  src={org.coverImage}
-                  alt={org.name}
-                  className="w-full h-52 object-cover"
-                />
+                <img src={org.coverImage} alt={org.name} data-testid="img-org-cover" />
               ) : (
-                <div
-                  className="w-full h-52"
-                  style={{
-                    background:
-                      "linear-gradient(135deg, #B50000 0%, #7A0000 60%, #4a0000 100%)",
-                  }}
-                />
+                <div className="orgp-cover-fallback" aria-hidden><span>{initials}</span></div>
               )}
-
-              {/* Avatar straddles banner/content boundary */}
-              <div className="absolute -bottom-10 left-6">
+              <span className="orgp-cover-tag rp-label">{org.category}</span>
+            </div>
+            <div className="orgp-id">
+              <div className="orgp-logo">
                 {org.logo ? (
-                  <img
-                    src={org.logo}
-                    alt={org.name}
-                    className="w-20 h-20 rounded-full object-cover border-4 border-white shadow-md"
-                  />
+                  <img src={org.logo} alt={org.name} data-testid="img-org-logo" />
                 ) : (
-                  <div
-                    className="w-20 h-20 rounded-full border-4 border-white shadow-md flex items-center justify-center text-xl font-extrabold"
-                    style={{ backgroundColor: GOLD, color: "#111" }}
-                  >
-                    {initials}
-                  </div>
+                  <span>{initials}</span>
                 )}
               </div>
-            </div>
-
-            {/* Identity */}
-            <div className="pt-14 px-6 pb-5">
-              <div className="flex items-start gap-3 flex-wrap">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h1 className="text-2xl font-extrabold text-foreground leading-tight">
-                      {org.name}
-                    </h1>
-                    {org.verified && (
-                      <span
-                        className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full border"
-                        style={{
-                          backgroundColor: "#ECFDF5",
-                          color: "#059669",
-                          borderColor: "#A7F3D0",
-                        }}
-                      >
-                        <CheckCircle className="w-3 h-3" /> Verified
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-4 mt-1.5 text-sm text-muted-foreground flex-wrap">
-                    {(org.city || org.country) && (
-                      <span className="flex items-center gap-1">
-                        <MapPin className="w-3.5 h-3.5" />
-                        {[org.city, org.country].filter(Boolean).join(", ")}
-                      </span>
-                    )}
-                    <span className="flex items-center gap-1">
-                      <Tag className="w-3.5 h-3.5" />
-                      {org.category}
-                    </span>
-                    {/* Last-active pill — always visible when data is available */}
-                    {derivedLastPostAt ? (
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3.5 h-3.5" />
-                        {lastActiveLabel(derivedLastPostAt)}
-                      </span>
-                    ) : !updatesQ.isLoading && (
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3.5 h-3.5" />
-                        No posts yet
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-3 text-sm text-foreground/80 leading-relaxed" data-testid="text-org-short-description">
-                    {org.shortDescription?.trim() || org.description}
-                  </p>
-                  {sectors.length > 0 && (
-                    <ul id={PROFILE_ANCHORS.sectors} className="scroll-mt-20 mt-3 flex flex-wrap gap-1.5" aria-label="Sectors">
-                      {sectors.map((sec) => (
-                        <li key={sec} className="text-[11px] font-bold px-2.5 py-1 rounded-full" style={{ backgroundColor: "#FFF7E6", color: "#B45309" }}>
-                          {sec}
-                        </li>
-                      ))}
-                    </ul>
+              <div className="orgp-id-main">
+                <p className="rp-label orgp-kicker">Grassroots organisation{org.verified ? " · Verified" : ""}</p>
+                <h1 className="orgp-name" data-testid="text-org-name">{org.name}</h1>
+                {org.verified && (
+                  <span className="orgp-verified"><CheckCircle className="w-4 h-4" /> Verified by Root ProjX</span>
+                )}
+                <div className="orgp-meta">
+                  {(org.city || org.country) && (
+                    <span><MapPin className="w-4 h-4" />{[org.city, org.country].filter(Boolean).join(", ")}</span>
                   )}
-
-                  {/* Staleness notice — shown only when last post was 6+ months ago */}
-                  {derivedLastPostAt && isStale(derivedLastPostAt) && (
-                    <div className="mt-3 flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2.5">
-                      <Clock className="w-3.5 h-3.5 text-amber-600 mt-0.5 flex-shrink-0" />
-                      <p className="text-xs text-amber-700 leading-snug">
-                        This org hasn't shared a post in over 6 months
-                      </p>
-                    </div>
+                  <span><Tag className="w-4 h-4" />{org.category}</span>
+                  {derivedLastPostAt ? (
+                    <span><Clock className="w-4 h-4" />{lastActiveLabel(derivedLastPostAt)}</span>
+                  ) : !updatesQ.isLoading && (
+                    <span><Clock className="w-4 h-4" />No posts yet</span>
                   )}
                 </div>
-              </div>
-
-              {/* Action buttons */}
-              <div className="flex gap-3 mt-5">
-                {isAuthenticated ? (
-                  <Button
-                    variant="outline"
-                    className="flex-1 gap-2 font-semibold border-2 h-10"
-                    style={
-                      followed
-                        ? { borderColor: RED, backgroundColor: RED, color: "#fff" }
-                        : { borderColor: RED, color: RED }
-                    }
-                    onClick={() => followMut.mutate()}
-                    disabled={followMut.isPending}
-                  >
-                    {followMut.isPending ? (
-                      "…"
-                    ) : followed ? (
-                      <><HeartOff className="w-4 h-4" /> Following</>
-                    ) : (
-                      <><Heart className="w-4 h-4" /> Follow</>
-                    )}
-                  </Button>
-                ) : (
-                  <Button
-                    variant="outline"
-                    className="flex-1 gap-2 font-semibold border-2 h-10"
-                    style={{ borderColor: RED, color: RED }}
-                    onClick={openOrgDonateSheet}
-                  >
-                    <Heart className="w-4 h-4" /> Follow
-                  </Button>
+                <p className="orgp-lede" data-testid="text-org-short-description">
+                  {org.shortDescription?.trim() || org.description}
+                </p>
+                {sectors.length > 0 && (
+                  <ul id={PROFILE_ANCHORS.sectors} className="scroll-mt-20 orgp-sectors" aria-label="Sectors">
+                    {sectors.map((sec) => <li key={sec}>{sec}</li>)}
+                  </ul>
                 )}
-                <Button
-                  className="flex-1 gap-2 font-bold h-10 text-white"
-                  style={{ backgroundColor: RED }}
-                  onClick={handleDonateClick}
-                >
-                  <Heart className="w-4 h-4" /> Donate
-                </Button>
+                {derivedLastPostAt && isStale(derivedLastPostAt) && (
+                  <div className="orgp-stale">
+                    <Clock className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                    <p>This org hasn't shared a post in over 6 months</p>
+                  </div>
+                )}
+                <div className="orgp-actions">
+                  {isAuthenticated ? (
+                    <button
+                      type="button"
+                      className={`rp-btn ${followed ? "orgp-btn-ink" : "rp-btn-ghost"}`}
+                      onClick={() => followMut.mutate()}
+                      disabled={followMut.isPending}
+                      data-testid="button-follow-org"
+                    >
+                      {followMut.isPending ? "Saving" : followed ? (<><HeartOff className="w-4 h-4" /> Following</>) : (<><Heart className="w-4 h-4" /> Follow</>)}
+                    </button>
+                  ) : (
+                    <button type="button" className="rp-btn rp-btn-ghost" onClick={openOrgDonateSheet} data-testid="button-follow-org">
+                      <Heart className="w-4 h-4" /> Follow
+                    </button>
+                  )}
+                  <button type="button" className="rp-btn rp-btn-yellow orgp-donate" onClick={handleDonateClick} data-testid="button-donate-org">
+                    <Heart className="w-4 h-4" /> Donate
+                  </button>
+                </div>
               </div>
             </div>
-
-            {/* Stats row */}
-            <div className="grid grid-cols-4 border-t border-border">
+            <dl className="orgp-stats">
               {[
                 { Icon: Users,      label: "Followers", value: (org.followerCount ?? 0).toLocaleString() },
                 { Icon: Zap,        label: "Posts",   value: allUpdates.length.toString() },
                 { Icon: TrendingUp, label: "Impact",    value: (org.impactScore ?? 0).toString() },
                 { Icon: DollarSign, label: "Raised",    value: `£${(org.totalRaised ?? 0).toLocaleString()}` },
               ].map(({ Icon, label, value }) => (
-                <div key={label} className="flex flex-col items-center py-4 border-r border-border last:border-0">
-                  <Icon className="w-5 h-5 mb-1" style={{ color: RED }} />
-                  <span className="text-lg font-extrabold text-foreground">{value}</span>
-                  <span className="text-xs text-muted-foreground mt-0.5">{label}</span>
+                <div key={label} data-testid={`stat-${label.toLowerCase()}`}>
+                  <dt className="rp-label"><Icon className="w-3.5 h-3.5" />{label}</dt>
+                  <dd>{value}</dd>
                 </div>
               ))}
-            </div>
-          </div>
+            </dl>
+          </header>
 
           {(metrics.length > 0 || goalCampaign) && (
-            <section id={PROFILE_ANCHORS.impact} aria-labelledby="impact-title" className="scroll-mt-20 bg-white border border-border rounded-2xl p-5">
+            <section id={PROFILE_ANCHORS.impact} aria-labelledby="impact-title" className="scroll-mt-20 orgp-panel orgp-impact">
               <h2 id="impact-title" className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-4">Impact</h2>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                 {metrics.map(({ key, m }) => (
@@ -674,35 +593,26 @@ export default function OrgProfilePage() {
           )}
 
           {/* Tabs */}
-          <div className="bg-white border border-border rounded-2xl overflow-hidden">
+          <div className="orgp-panel">
             {/* Tab bar */}
-            <div className="flex border-b border-border">
+            <div className="orgp-tabs" role="tablist" aria-label="Profile sections">
               {TABS.map(({ key, label, count }) => (
                 <button
                   key={key}
+                  role="tab"
+                  aria-selected={tab === key}
                   onClick={() => setTab(key)}
-                  className="flex-1 py-3.5 text-sm font-semibold transition-colors relative"
-                  style={
-                    tab === key
-                      ? { color: RED, borderBottom: `2px solid ${RED}` }
-                      : { color: "#888" }
-                  }
+                  className="orgp-tab"
+                  data-testid={`tab-${key}`}
                 >
                   {label}
-                  {count !== null && count > 0 && (
-                    <span
-                      className="ml-1.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full"
-                      style={{ backgroundColor: tab === key ? RED : "#e5e7eb", color: tab === key ? "#fff" : "#666" }}
-                    >
-                      {count}
-                    </span>
-                  )}
+                  {count !== null && count > 0 && <span className="orgp-tab-count">{count}</span>}
                 </button>
               ))}
             </div>
 
             {/* Tab content */}
-            <div className="p-5">
+            <div className="orgp-tabbody">
 
               {/* ── Updates ── */}
               {tab === "updates" && (
@@ -805,7 +715,7 @@ export default function OrgProfilePage() {
                   )}
                   <button
                     className="w-full mt-5 py-3 rounded-xl font-bold text-white text-sm transition-opacity hover:opacity-90"
-                    style={{ backgroundColor: RED }}
+                    style={PRIMARY_ACTION_STYLE}
                     onClick={handleDonateClick}
                   >
                     Apply to Volunteer
@@ -978,7 +888,7 @@ export default function OrgProfilePage() {
 
           {/* The Campaigns tab already shows the full list; don't repeat it in the sidebar. */}
           {tab !== "campaigns" && (
-          <div className="bg-white border border-border rounded-2xl overflow-hidden">
+          <div className="orgp-panel">
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
               <h3 className="font-bold text-foreground text-base">Active Campaigns</h3>
               <button
@@ -1010,7 +920,7 @@ export default function OrgProfilePage() {
               <Link
                 href={`/organisations/${id}/campaigns`}
                 className="block w-full py-2.5 rounded-xl font-bold text-white text-sm text-center hover:opacity-90 transition-opacity"
-                style={{ backgroundColor: RED }}
+                style={PRIMARY_ACTION_STYLE}
               >
                 See All Campaigns
               </Link>
@@ -1019,7 +929,7 @@ export default function OrgProfilePage() {
           )}
 
           {/* Ways to Volunteer card */}
-          <div className="bg-white border border-border rounded-2xl overflow-hidden">
+          <div className="orgp-panel">
             <div className="flex items-center justify-between px-5 pt-5 pb-3">
               <h3 className="font-bold text-foreground text-base">Ways to Volunteer</h3>
               <button
@@ -1081,7 +991,7 @@ export default function OrgProfilePage() {
             <div className="px-5 pb-5">
               <button
                 className="w-full py-2.5 rounded-xl font-bold text-white text-sm hover:opacity-90 transition-opacity"
-                style={{ backgroundColor: RED }}
+                style={PRIMARY_ACTION_STYLE}
                 onClick={handleDonateClick}
               >
                 Apply to Volunteer
@@ -1091,7 +1001,7 @@ export default function OrgProfilePage() {
 
           {/* Reviews sidebar snippet */}
           {(reviewsQ.data ?? []).length > 0 && (
-            <div className="bg-white border border-border rounded-2xl overflow-hidden">
+            <div className="orgp-panel">
               <div className="px-5 pt-5 pb-3">
                 <h3 className="font-bold text-foreground text-base">Reviews</h3>
               </div>
@@ -1111,7 +1021,7 @@ export default function OrgProfilePage() {
             const shown = supporters.slice(0, 10);
             const extra = totalCount - shown.length;
             return (
-              <div className="bg-white border border-border rounded-2xl overflow-hidden">
+              <div className="orgp-panel">
                 <div className="px-5 pt-5 pb-2">
                   <h3 className="font-bold text-foreground text-base flex items-center gap-2">
                     <Heart className="w-4 h-4" style={{ color: RED }} />

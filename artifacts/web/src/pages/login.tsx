@@ -36,10 +36,10 @@ export default function LoginPage() {
     <div className="min-h-[calc(100dvh-4rem)] flex flex-col items-center px-5 py-14 sm:py-16">
       <div className="text-center rp-rise">
         <img src="/logo-stylised.png" alt="Root ProjX" className="h-20 sm:h-24 w-auto object-contain mx-auto" />
-        <p className="rp-label !text-[10px] sm:!text-[11px] mt-5 text-[#17100F]/80">Connecting diaspora with grassroots change.</p>
+        <p className="rp-label mt-5 text-[#17100F]/80">Connecting diaspora with grassroots change.</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="w-full max-w-[328px] mt-10 rp-rise" style={{ animationDelay: ".08s" }} noValidate>
+      <form onSubmit={handleSubmit} className="w-full max-w-[460px] mt-10 rp-rise" style={{ animationDelay: ".08s" }} noValidate>
         <h1 className="rp-display text-[52px] sm:text-[60px] text-[#17100F]">Sign in</h1>
 
         {error && (
@@ -62,7 +62,7 @@ export default function LoginPage() {
 
         <div className="flex items-center justify-between mt-5 mb-2">
           <label htmlFor="password" className="rp-label text-[#17100F]">Password</label>
-          <Link href="/forgot-password" className="text-[11px] font-bold text-[#CA0813] underline underline-offset-2" data-testid="link-forgot-password">
+          <Link href="/forgot-password" className="text-[14px] font-bold text-[#CA0813] underline underline-offset-2" data-testid="link-forgot-password">
             Forgot password?
           </Link>
         </div>
@@ -79,7 +79,7 @@ export default function LoginPage() {
           <button
             type="button"
             onClick={() => setShowPassword((v) => !v)}
-            className="absolute right-0 top-0 h-12 w-12 flex items-center justify-center text-[#17100F]/75 hover:text-[#17100F]"
+            className="absolute right-0 top-0 h-full w-12 flex items-center justify-center text-[#17100F]/75 hover:text-[#17100F]"
             aria-label={showPassword ? "Hide password" : "Show password"}
             aria-pressed={showPassword}
             data-testid="button-toggle-password"
@@ -92,7 +92,7 @@ export default function LoginPage() {
           {loading ? "Signing in…" : <>Sign in <ArrowRight className="w-4 h-4" /></>}
         </button>
 
-        <p className="text-center text-[13px] mt-8 text-[#17100F]/80">
+        <p className="text-center text-[16px] mt-8 text-[#17100F]/80">
           Don't have an account?{" "}
           <Link href="/register" className="rp-link-u text-[#17100F]" data-testid="link-register">Create one</Link>
         </p>

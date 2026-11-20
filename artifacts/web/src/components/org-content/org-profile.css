@@ -1,0 +1,95 @@
+/* Public organisation profile — scoped to .rp-orgp only. Preview Pack system. */
+.rp-orgp {
+  --o-ink: var(--rp-ink, #17100F);
+  --o-red: var(--rp-red, #CA0813);
+  --o-yellow: var(--rp-yellow, #F3BF2C);
+  --o-cream: var(--rp-cream, #F4EFE6);
+  --o-paper: var(--rp-paper, #FBF8F2);
+  max-width: 1440px; margin: 0 auto;
+  padding: 20px clamp(16px, 4vw, 56px) 72px;
+  color: var(--o-ink); font-size: 17px; overflow-x: clip;
+}
+.rp-orgp .orgp-back { display: inline-flex; align-items: center; gap: 8px; color: var(--o-ink); margin-bottom: 18px; font-size: 12px; }
+.rp-orgp .orgp-back:hover { color: var(--o-red); }
+
+/* Hero */
+.rp-orgp .orgp-hero { background: var(--o-paper); border: 1px solid var(--o-ink); }
+.rp-orgp .orgp-cover { position: relative; aspect-ratio: 21 / 8; min-height: 200px; max-height: 440px; width: 100%; overflow: hidden; background: var(--o-red); border-bottom: 1px solid var(--o-ink); }
+.rp-orgp .orgp-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.rp-orgp .orgp-cover-fallback { width: 100%; height: 100%; display: flex; align-items: flex-end; justify-content: flex-end; padding: 0 24px; background: linear-gradient(135deg, var(--o-red) 0%, #8E050D 100%); }
+.rp-orgp .orgp-cover-fallback span { font-family: var(--font-display); font-stretch: 72%; font-variation-settings: "wdth" 72; font-weight: 900; font-size: clamp(120px, 22vw, 320px); line-height: .8; color: rgba(244,239,230,.14); }
+.rp-orgp .orgp-cover-tag { position: absolute; left: 0; top: 0; background: var(--o-yellow); color: var(--o-ink); padding: 8px 14px; border-right: 1px solid var(--o-ink); border-bottom: 1px solid var(--o-ink); }
+.rp-orgp .orgp-id { display: grid; grid-template-columns: auto 1fr; gap: 28px; padding: 0 clamp(18px, 3vw, 40px) 28px; }
+.rp-orgp .orgp-logo { width: clamp(96px, 12vw, 148px); aspect-ratio: 1; margin-top: calc(clamp(96px, 12vw, 148px) / -2); background: var(--o-yellow); border: 1px solid var(--o-ink); box-shadow: 6px 6px 0 var(--o-ink); overflow: hidden; position: relative; display: flex; align-items: center; justify-content: center; }
+.rp-orgp .orgp-logo img { width: 100%; height: 100%; object-fit: cover; }
+.rp-orgp .orgp-logo span { font-family: var(--font-display); font-weight: 900; font-size: 44px; }
+.rp-orgp .orgp-id-main { padding-top: 24px; min-width: 0; }
+.rp-orgp .orgp-kicker { color: var(--o-red); }
+.rp-orgp .orgp-name { font-family: var(--font-display); font-weight: 900; text-transform: uppercase; line-height: .88; font-size: clamp(44px, 6.4vw, 96px); margin-top: 10px; overflow-wrap: anywhere; }
+.rp-orgp .orgp-verified { display: inline-flex; align-items: center; gap: 6px; margin-top: 14px; font-size: 14px; font-weight: 700; padding: 4px 10px; border: 1px solid var(--o-ink); background: var(--o-cream); }
+.rp-orgp .orgp-meta { display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 16px; font-size: 16px; color: rgba(23,16,15,.75); }
+.rp-orgp .orgp-meta span { display: inline-flex; align-items: center; gap: 6px; }
+.rp-orgp .orgp-lede { margin-top: 18px; font-size: clamp(18px, 1.6vw, 22px); line-height: 1.5; max-width: 62ch; }
+.rp-orgp .orgp-sectors { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+.rp-orgp .orgp-sectors li { font-family: var(--app-font-mono); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; padding: 6px 10px; border: 1px solid var(--o-ink); background: var(--o-cream); }
+.rp-orgp .orgp-stale { display: flex; gap: 8px; margin-top: 16px; padding: 10px 14px; border-left: 4px solid var(--o-yellow); background: #FCF1D2; font-size: 15px; }
+.rp-orgp .orgp-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 24px; }
+.rp-orgp .orgp-actions .rp-btn { min-height: 52px; font-size: 16px; padding: 0 28px; }
+.rp-orgp .orgp-donate { box-shadow: 4px 4px 0 var(--o-ink); }
+.rp-orgp .orgp-btn-ink { background: var(--o-ink); color: var(--o-cream); }
+.rp-orgp .orgp-stats { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--o-ink); }
+.rp-orgp .orgp-stats > div { padding: 18px clamp(14px, 2vw, 28px); border-right: 1px solid var(--rp-line); }
+.rp-orgp .orgp-stats > div:last-child { border-right: 0; }
+.rp-orgp .orgp-stats dt { display: flex; align-items: center; gap: 6px; color: var(--o-red); }
+.rp-orgp .orgp-stats dd { font-family: var(--font-display); font-stretch: 72%; font-variation-settings: "wdth" 72; font-weight: 900; font-size: clamp(30px, 3vw, 44px); line-height: 1; margin-top: 6px; }
+
+/* Layout */
+.rp-orgp .orgp-grid { display: grid; gap: 28px; margin-top: 28px; align-items: start; }
+@media (min-width: 1024px) { .rp-orgp .orgp-grid { grid-template-columns: minmax(0, 1fr) 380px; } }
+.rp-orgp .orgp-grid > div { min-width: 0; display: flex; flex-direction: column; gap: 28px; }
+.rp-orgp .orgp-grid > div > * + * { margin-top: 0 !important; }
+.rp-orgp .orgp-panel { background: var(--o-paper); border: 1px solid var(--o-ink); overflow: hidden; }
+.rp-orgp .orgp-impact { padding: 24px; }
+.rp-orgp .orgp-impact h2 { font-family: var(--app-font-mono); font-size: 12px; letter-spacing: .14em; color: var(--o-red); }
+.rp-orgp .orgp-impact .text-2xl { font-family: var(--font-display); font-weight: 900; font-size: 40px; }
+
+/* Tabs */
+.rp-orgp .orgp-tabs { display: flex; overflow-x: auto; border-bottom: 1px solid var(--o-ink); background: var(--o-cream); scrollbar-width: none; }
+.rp-orgp .orgp-tab { flex: 1 0 auto; min-height: 58px; padding: 0 22px; font-family: var(--font-display); font-stretch: 72%; font-variation-settings: "wdth" 72; font-weight: 800; font-size: 20px; text-transform: uppercase; letter-spacing: .01em; color: rgba(23,16,15,.6); border-right: 1px solid var(--rp-line); display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: background-color .18s, color .18s; }
+.rp-orgp .orgp-tab:hover { color: var(--o-ink); }
+.rp-orgp .orgp-tab[aria-selected="true"] { background: var(--o-ink); color: var(--o-cream); }
+.rp-orgp .orgp-tab-count { font-family: var(--app-font-mono); font-size: 12px; padding: 2px 7px; background: var(--o-yellow); color: var(--o-ink); }
+.rp-orgp .orgp-tabbody { padding: clamp(18px, 2.5vw, 32px); }
+
+/* Readability: lift tiny legacy utility sizes inside this page only */
+.rp-orgp .orgp-panel .text-sm { font-size: 16px; line-height: 1.55; }
+.rp-orgp .orgp-panel .text-xs { font-size: 14px; line-height: 1.5; }
+.rp-orgp .orgp-panel .text-base { font-size: 19px; }
+.rp-orgp .orgp-panel .text-\[10px\] { font-size: 12px; }
+.rp-orgp .orgp-panel h3 { font-family: var(--font-display); font-weight: 900; text-transform: uppercase; font-size: 24px; line-height: 1; }
+.rp-orgp .orgp-panel h3.text-xs { font-family: var(--app-font-mono); font-size: 12px; font-weight: 500; letter-spacing: .14em; color: var(--o-red); }
+.rp-orgp .orgp-panel h5 { font-size: 18px; }
+/* Square the legacy rounded shapes, pack style */
+.rp-orgp .orgp-panel [class*="rounded"] { border-radius: 0; }
+.rp-orgp .orgp-panel .rounded-full.w-12, .rp-orgp .orgp-panel .rounded-full.w-9, .rp-orgp .orgp-panel .rounded-full.w-10 { border-radius: 0; border: 1px solid var(--o-ink); }
+/* Posts grid via shared gallery: larger, tighter grid, ink filters */
+.rp-orgp [data-testid="posts-grid"] { gap: 6px; }
+.rp-orgp [data-testid^="filter-content-"] { font-size: 14px; padding: 8px 14px; border-color: var(--o-ink); }
+.rp-orgp [data-testid^="card-content-"] { border-color: transparent; }
+
+.rp-orgp .orgp-notfound { text-align: center; padding-top: 96px; padding-bottom: 96px; }
+
+@media (max-width: 767px) {
+  .rp-orgp .orgp-cover { aspect-ratio: 21 / 8; min-height: 0; }
+  .rp-orgp .orgp-id { grid-template-columns: 1fr; gap: 0; }
+  .rp-orgp .orgp-logo { width: 96px; margin-top: -48px; box-shadow: 4px 4px 0 var(--o-ink); }
+  .rp-orgp .orgp-id-main { padding-top: 16px; }
+  .rp-orgp .orgp-actions .rp-btn { flex: 1 1 140px; }
+  .rp-orgp .orgp-stats { grid-template-columns: repeat(2, 1fr); }
+  .rp-orgp .orgp-stats > div:nth-child(2) { border-right: 0; }
+  .rp-orgp .orgp-stats > div:nth-child(-n+2) { border-bottom: 1px solid var(--rp-line); }
+  .rp-orgp .orgp-tab { font-size: 17px; padding: 0 16px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rp-orgp *, .rp-orgp *::before, .rp-orgp *::after { animation: none !important; transition: none !important; }
+}

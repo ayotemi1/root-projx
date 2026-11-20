@@ -43,26 +43,26 @@ function PostCard({ item, onOpen, following, onFollow, followBusy }: {
   return (
     <article className="rp-rise" data-testid={`card-content-${item._id}`}>
       <header className="flex items-center gap-3 mb-3">
-        <Link href={`/organisations/${item.orgId}`} className="w-9 h-9 border border-[#17100F]/25 bg-[#FBF8F2] flex items-center justify-center text-[11px] font-bold shrink-0">
+        <Link href={`/organisations/${item.orgId}`} className="w-12 h-12 border border-[#17100F]/25 bg-[#FBF8F2] flex items-center justify-center text-[14px] font-bold shrink-0">
           {initials(orgName)}
         </Link>
         <div className="min-w-0 flex-1">
-          <Link href={`/organisations/${item.orgId}`} className="text-[14px] font-bold leading-tight hover:underline truncate block">{orgName}</Link>
-          <p className="rp-label !text-[10px] text-[#17100F]/60">{dateLabel(item.createdAt)}</p>
+          <Link href={`/organisations/${item.orgId}`} className="text-[18px] font-bold leading-tight hover:underline truncate block">{orgName}</Link>
+          <p className="rp-label !text-[12px] text-[#17100F]/60">{dateLabel(item.createdAt)}</p>
         </div>
         {following !== true && (
           <button
             type="button"
             onClick={onFollow}
             disabled={followBusy}
-            className="text-[13px] font-bold text-[#CA0813] hover:underline underline-offset-2 disabled:opacity-50 inline-flex items-center gap-1"
+            className="min-h-11 text-[16px] font-bold text-[#CA0813] hover:underline underline-offset-2 disabled:opacity-50 inline-flex items-center gap-1"
             data-testid={`button-follow-${item._id}`}
           >
             <Plus className="w-3.5 h-3.5" /> Follow
           </button>
         )}
         {following === true && (
-          <span className="text-[12px] text-[#17100F]/60 inline-flex items-center gap-1"><Check className="w-3.5 h-3.5" /> Following</span>
+          <span className="text-[14px] text-[#17100F]/60 inline-flex items-center gap-1"><Check className="w-3.5 h-3.5" /> Following</span>
         )}
       </header>
 
@@ -82,9 +82,9 @@ function PostCard({ item, onOpen, following, onFollow, followBusy }: {
             <p className="rp-display text-[#17100F] text-[30px] sm:text-[40px] line-clamp-4">{item.title || item.content}</p>
           </div>
         )}
-        <span className="absolute top-3 left-3 rp-label !text-[9px] bg-[#17100F] text-white px-2 py-1">{kind}</span>
+        <span className="absolute top-3 left-3 rp-label !text-[12px] bg-[#17100F] text-white px-2 py-1">{kind}</span>
         {count > 1 && (
-          <span className="absolute top-3 right-3 rp-label !text-[9px] bg-[#17100F]/80 text-white px-2 py-1 inline-flex items-center gap-1"><Images className="w-3 h-3" />{count}</span>
+          <span className="absolute top-3 right-3 rp-label !text-[12px] bg-[#17100F]/80 text-white px-2 py-1 inline-flex items-center gap-1"><Images className="w-3 h-3" />{count}</span>
         )}
         {hasVideo && (
           <span className="absolute inset-0 flex items-center justify-center">
@@ -97,21 +97,21 @@ function PostCard({ item, onOpen, following, onFollow, followBusy }: {
 
       {(item.title || item.content) && (
         <div className="mt-4">
-          {item.title && <h2 className="rp-display text-[26px] sm:text-[30px] text-[#17100F]">{item.title}</h2>}
+          {item.title && <h2 className="rp-display text-[30px] sm:text-[40px] text-[#17100F]">{item.title}</h2>}
           {item.content && (
-            <p className="mt-2 text-[14px] leading-relaxed text-[#17100F]/85 line-clamp-3">
+            <p className="mt-2 text-[18px] leading-relaxed text-[#17100F]/85 line-clamp-3">
               {item.content}{" "}
             </p>
           )}
-          <button type="button" onClick={onOpen} className="text-[13px] font-bold underline underline-offset-2 mt-1" data-testid={`button-more-${item._id}`}>More</button>
+          <button type="button" onClick={onOpen} className="min-h-11 text-[16px] font-bold underline underline-offset-2 mt-1" data-testid={`button-more-${item._id}`}>More</button>
         </div>
       )}
 
       <footer className="mt-4 flex items-center justify-between gap-3">
-        <button type="button" onClick={share} className="p-2 -ml-2 text-[#17100F]/80 hover:text-[#17100F]" aria-label="Share" data-testid={`button-share-${item._id}`}>
+        <button type="button" onClick={share} className="p-3.5 -ml-3.5 text-[#17100F]/80 hover:text-[#17100F]" aria-label="Share" data-testid={`button-share-${item._id}`}>
           <Share2 className="w-4 h-4" />
         </button>
-        <Link href={`/donate/${item.orgId}`} className="text-[13px] inline-flex items-center gap-1.5 group" data-testid={`link-donate-${item._id}`}>
+        <Link href={`/donate/${item.orgId}`} className="min-h-11 text-[16px] inline-flex items-center gap-1.5 group" data-testid={`link-donate-${item._id}`}>
           <span className="rp-link-u">Donate to {orgName}</span>
           <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
         </Link>
@@ -189,9 +189,9 @@ export default function FeedPage() {
   };
 
   return (
-    <div className="max-w-[1180px] mx-auto px-5 sm:px-8 py-10 sm:py-14 grid lg:grid-cols-[300px_1fr] gap-10 lg:gap-20">
+    <div className="rp-page-shell py-10 sm:py-14 grid lg:grid-cols-[280px_minmax(0,1fr)] gap-10 lg:gap-16" data-testid="page-live-feed">
       <aside className="lg:sticky lg:top-28 self-start">
-        <h1 className="rp-display text-[64px] sm:text-[84px] text-[#17100F] rp-rise">Live<br />Feed</h1>
+        <h1 className="rp-display text-[72px] sm:text-[104px] text-[#17100F] rp-rise">Live<br />Feed</h1>
         <p className="rp-label mt-6 text-[#17100F]/85 leading-relaxed max-w-[280px]">
           Photos, videos, campaigns and everyday moments from organisations.
         </p>
@@ -207,7 +207,7 @@ export default function FeedPage() {
                 aria-selected={on}
                 disabled={disabled}
                 onClick={() => !disabled && setMode(m)}
-                className={`rp-label !text-[11px] !tracking-[.04em] !normal-case pb-2 -mb-px border-b-2 transition-colors ${
+                className={`rp-label !text-[14px] !tracking-[.04em] !normal-case min-h-11 pb-2 -mb-px border-b-2 transition-colors ${
                   on ? "border-[#CA0813] text-[#17100F]" : disabled ? "border-transparent text-[#17100F]/35 cursor-not-allowed" : "border-transparent text-[#17100F]/60 hover:text-[#17100F]"
                 }`}
                 data-testid={`tab-feed-${m}`}
@@ -217,7 +217,7 @@ export default function FeedPage() {
             );
           })}
         </div>
-        <p className="mt-4 text-[13px] text-[#17100F]/75 leading-relaxed max-w-[280px]">
+        <p className="mt-4 text-[16px] text-[#17100F]/75 leading-relaxed max-w-[280px]">
           {mode === "public"
             ? "Every published post from organisations on Root ProjX, newest first."
             : "Posts from the organisations you follow, newest first."}
@@ -227,7 +227,7 @@ export default function FeedPage() {
         </p>
       </aside>
 
-      <section className="max-w-[560px] w-full">
+      <section className="max-w-[860px] w-full min-w-0" aria-label="Organisation posts">
         {active.isLoading ? (
           <FeedSkeleton />
         ) : active.isError ? (
@@ -256,7 +256,7 @@ export default function FeedPage() {
                 followBusy={follow.isPending && follow.variables === u.orgId}
               />
             ))}
-            <p className="rp-label !text-[10px] text-center text-[#17100F]/55 pt-4">You're all caught up</p>
+            <p className="rp-label !text-[12px] text-center text-[#17100F]/55 pt-4">You're all caught up</p>
           </div>
         )}
       </section>

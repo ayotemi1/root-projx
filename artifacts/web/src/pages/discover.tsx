@@ -155,7 +155,7 @@ function OrgCard({ org, follow }: { org: Org; follow: FollowCtl }) {
       className="group border-t-2 border-[#17100F] pt-4 flex flex-col cursor-pointer rp-rise"
       data-testid={`card-org-${org._id}`}
     >
-      <div className="flex items-center justify-between gap-3 rp-label !text-[10px] text-[#17100F]/75">
+      <div className="flex items-center justify-between gap-3 rp-label !text-[12px] text-[#17100F]/75">
         <span className="inline-flex items-center gap-1.5 truncate"><MapPin className="w-3.5 h-3.5 shrink-0" />{place || "Location to come"}</span>
         {org.verified && (
           <span className="inline-flex items-center gap-1 text-[#1F6B3A] shrink-0"><BadgeCheck className="w-3.5 h-3.5" aria-hidden />Verified</span>
@@ -168,14 +168,14 @@ function OrgCard({ org, follow }: { org: Org; follow: FollowCtl }) {
         </h3>
       </div>
       {org.category && (
-        <span className="mt-4 w-fit rp-label !text-[9px] bg-[#F3BF2C] text-[#17100F] px-2 py-1">{org.category}</span>
+        <span className="mt-4 w-fit rp-label !text-[12px] bg-[#F3BF2C] text-[#17100F] px-2 py-1">{org.category}</span>
       )}
-      <p className="mt-4 text-[14px] leading-relaxed text-[#17100F]/80 line-clamp-3 min-h-[3lh]">{blurb}</p>
+      <p className="mt-4 text-[17px] leading-relaxed text-[#17100F]/80 line-clamp-3 min-h-[3lh]">{blurb}</p>
 
       <div className="mt-auto pt-6 flex items-baseline gap-6">
-        <span className="rp-label !text-[10px] text-[#17100F]/80"><strong className="rp-cond text-[18px] font-bold text-[#17100F] tracking-normal mr-1">{followers}</strong>{followers === 1 ? "Follower" : "Followers"}</span>
+        <span className="rp-label !text-[12px] text-[#17100F]/80"><strong className="rp-cond text-[22px] font-bold text-[#17100F] tracking-normal mr-1">{followers}</strong>{followers === 1 ? "Follower" : "Followers"}</span>
         {(org.totalRaised ?? 0) > 0 && (
-          <span className="rp-label !text-[10px] text-[#17100F]/80"><strong className="rp-cond text-[18px] font-bold text-[#17100F] tracking-normal mr-1">£{org.totalRaised.toLocaleString()}</strong>Raised</span>
+          <span className="rp-label !text-[12px] text-[#17100F]/80"><strong className="rp-cond text-[22px] font-bold text-[#17100F] tracking-normal mr-1">£{org.totalRaised.toLocaleString()}</strong>Raised</span>
         )}
       </div>
 
@@ -268,16 +268,16 @@ export default function DiscoverPage() {
     return matchesSearch && matchesLocation;
   });
 
-  const selectCls = "w-full bg-transparent text-[14px] font-bold text-[#17100F] appearance-none pr-6 cursor-pointer focus:outline-none";
+  const selectCls = "w-full bg-transparent text-[16px] font-bold text-[#17100F] appearance-none pr-6 cursor-pointer focus:outline-none";
   const toggleCls = (on: boolean) =>
     `h-14 sm:h-[56px] px-5 inline-flex items-center justify-center gap-2 border border-[#17100F] text-[14px] font-bold transition-colors ${
       on ? "bg-[#F3BF2C] text-[#17100F]" : "bg-[#FBF8F2] text-[#17100F] hover:bg-[#17100F] hover:text-[#F4EFE6]"
     }`;
 
   return (
-    <div className="max-w-[1180px] mx-auto px-5 sm:px-8 py-10 sm:py-14">
+    <div className="rp-page-shell py-10 sm:py-14">
       <h1 className="rp-display rp-rise text-[clamp(38px,11vw,54px)] sm:text-[96px] lg:text-[124px] text-[#17100F]">Discover<br />organisations</h1>
-      <p className="rp-label mt-6 sm:mt-8 text-[#17100F]/85 !text-[11px] sm:!text-[12px]">
+      <p className="rp-label mt-6 sm:mt-8 text-[#17100F]/85">
         Find and support verified grassroots organisations in Jamaica, the UK, and beyond.
       </p>
 
@@ -290,19 +290,19 @@ export default function DiscoverPage() {
             placeholder="Search by name or location"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="flex-1 bg-transparent text-[14px] placeholder:text-[#17100F]/55 focus:outline-none"
+            className="min-w-0 flex-1 bg-transparent text-[16px] placeholder:text-[#17100F]/55 focus:outline-none"
             data-testid="input-search"
           />
         </label>
         <label className="relative h-14 px-4 flex flex-col justify-center border border-[#17100F] bg-[#FBF8F2]">
-          <span className="rp-label !text-[9px] text-[#17100F]/70">Country</span>
+          <span className="rp-label !text-[12px] text-[#17100F]/70">Country</span>
           <select value={locationFilter} onChange={(e) => setLocationFilter(e.target.value)} className={selectCls} data-testid="select-country">
             {DISCOVER_COUNTRIES.map(({ label, value }) => <option key={value} value={value}>{label}</option>)}
           </select>
           <ChevronDown className="w-4 h-4 absolute right-3 bottom-3 pointer-events-none" />
         </label>
         <label className="relative h-14 px-4 flex flex-col justify-center border border-[#17100F] bg-[#FBF8F2]">
-          <span className="rp-label !text-[9px] text-[#17100F]/70">Cause</span>
+          <span className="rp-label !text-[12px] text-[#17100F]/70">Cause</span>
           <select value={category} onChange={(e) => setCategory(e.target.value)} className={selectCls} data-testid="select-cause">
             {CATEGORIES.map((cat) => <option key={cat} value={cat}>{cat === "All Causes" ? "All causes" : cat}</option>)}
           </select>
