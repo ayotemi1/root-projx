@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { PASSWORD_RESET_MESSAGE, passwordResetEmail } from "../lib/password-reset.js";
+import { signInDiagnosticCode } from "../lib/sign-in-diagnostics.js";
 import type { Request, Response, NextFunction } from "express";
 import {
   firebaseSignUp,
@@ -269,6 +270,7 @@ router.post("/auth/login", authRateLimit, async (req, res) => {
       idToken = result.idToken;
       uid = result.uid;
     } catch (err: unknown) {
+      req.log.warn({ firebaseCode: signInDiagnosticCode(err) }, "Firebase sign-in rejected");
       const code = (err as { firebaseCode?: string }).firebaseCode ?? "";
       if (
         code.includes("INVALID_LOGIN_CREDENTIALS") ||
