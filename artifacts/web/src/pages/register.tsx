@@ -1,12 +1,9 @@
 import { userErrorMessage } from "@/lib/error-feedback";
 import { useState } from "react";
 import { Link, useLocation, useSearch } from "wouter";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useAuth } from "@/context/AuthContext";
 import { ArrowRight } from "lucide-react";
+import "./register.css";
 
 export default function RegisterPage() {
   const { register } = useAuth();
@@ -55,72 +52,60 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-background px-4 py-16">
-      <div className="text-center mb-8">
-        <img
-          src="/logo-stylised.png"
-          alt="Root ProjX"
-          className="mx-auto mb-2"
-          style={{ height: "120px", width: "auto", objectFit: "contain" }}
-        />
+    <div className="rpr-page">
+      <div className="rpr-wrap rp-rise">
+        <div className="rpr-brand">
+          <img src="/logo-stylised.png" alt="Root ProjX" className="rpr-logo" />
+          <p className="rpr-tag">CONNECTING DIASPORA WITH GRASSROOTS CHANGE.</p>
+        </div>
+
+        <h1 className="rpr-title"><span>JOIN THE</span><span>MOVEMENT</span></h1>
+        <p className="rpr-intro">
+          Become a supporter. Follow grassroots organisations, read their updates and see your impact in real time.
+        </p>
+
+        <form onSubmit={handleSubmit} className="rpr-form">
+          {error && (
+            <div className="rpr-error" data-testid="error-message">
+              {error}
+            </div>
+          )}
+
+          <div>
+            <label htmlFor="name" className="rpr-label">YOUR NAME</label>
+            <input id="name" className="rpr-input" placeholder="Ava Morgan" value={name} onChange={(e) => setName(e.target.value)} data-testid="input-name" />
+          </div>
+          <div>
+            <label htmlFor="email" className="rpr-label">EMAIL</label>
+            <input id="email" className="rpr-input" type="email" autoComplete="email" placeholder="ava@example.com" value={email} onChange={(e) => setEmail(e.target.value)} data-testid="input-email" />
+          </div>
+          <div>
+            <label htmlFor="phone" className="rpr-label">PHONE <em>(OPTIONAL)</em></label>
+            <input id="phone" className="rpr-input" type="tel" placeholder="+44 7700 000000" value={phone} onChange={(e) => setPhone(e.target.value)} data-testid="input-phone" />
+          </div>
+          <div>
+            <label htmlFor="password" className="rpr-label">PASSWORD</label>
+            <input id="password" className="rpr-input" type="password" autoComplete="new-password" placeholder="Min. 6 characters" value={password} onChange={(e) => setPassword(e.target.value)} data-testid="input-password" />
+          </div>
+
+          <button type="submit" className="rpr-submit" disabled={loading} data-testid="button-submit-register">
+            {loading ? "Creating account…" : "Create account"}
+            {!loading && <ArrowRight className="w-4 h-4" aria-hidden="true" />}
+          </button>
+        </form>
+
+        <p className="rpr-foot">
+          Already have an account?{" "}
+          <Link href="/login" data-testid="link-login">Sign in</Link>
+        </p>
+
+        <div className="rpr-org">
+          <p>Representing an organisation?</p>
+          <Link href="/onboarding" data-testid="link-onboarding">
+            Apply to join <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
       </div>
-
-      <Card className="w-full max-w-sm shadow-md border-border">
-        <CardHeader className="pb-4 text-center">
-          <CardTitle className="text-2xl font-extrabold text-foreground">Become a Supporter</CardTitle>
-          <CardDescription className="text-base text-muted-foreground mt-2">
-            Create an account to instantly discover, follow, and fund verified grassroots organisations.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <div className="bg-destructive/10 border border-destructive/20 text-destructive rounded-md px-3 py-2 text-sm" data-testid="error-message">
-                {error}
-              </div>
-            )}
-
-            <div className="space-y-1.5 text-left">
-              <Label htmlFor="name">Full name</Label>
-              <Input id="name" placeholder="Marcus Garvey" value={name} onChange={(e) => setName(e.target.value)} data-testid="input-name" />
-            </div>
-            <div className="space-y-1.5 text-left">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" autoComplete="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} data-testid="input-email" />
-            </div>
-            <div className="space-y-1.5 text-left">
-              <Label htmlFor="phone">Phone <span className="text-muted-foreground font-normal">(optional)</span></Label>
-              <Input id="phone" type="tel" placeholder="+44 7700 000000" value={phone} onChange={(e) => setPhone(e.target.value)} data-testid="input-phone" />
-            </div>
-            <div className="space-y-1.5 text-left">
-              <Label htmlFor="password">Password</Label>
-              <Input id="password" type="password" autoComplete="new-password" placeholder="Min. 6 characters" value={password} onChange={(e) => setPassword(e.target.value)} data-testid="input-password" />
-            </div>
-
-            <Button type="submit" className="w-full font-bold text-base mt-2" disabled={loading} data-testid="button-submit-register">
-              {loading ? "Creating account…" : "Create account"}
-            </Button>
-
-            <div className="pt-4 text-center space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Already have an account?{" "}
-                <Link href="/login" className="text-primary font-bold hover:underline" data-testid="link-login">
-                  Sign in
-                </Link>
-              </p>
-
-              <div className="h-px bg-border my-2" />
-
-              <p className="text-sm text-muted-foreground">
-                Representing an organisation?
-              </p>
-              <Link href="/onboarding" className="inline-flex items-center gap-1 text-sm font-bold text-[#B50000] hover:text-[#7A0000] transition-colors" data-testid="link-onboarding">
-                Apply to join <ArrowRight className="w-4 h-4" />
-              </Link>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
     </div>
   );
 }

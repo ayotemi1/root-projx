@@ -19,3 +19,9 @@ The pack mixes visual requirements with potential behavioural changes. Its hando
 **Why:** Silently copying prototype wording or interaction code could misstate financial behaviour or change verified payment and payout rules.
 
 **How to apply:** Preserve canonical accounting and existing financial/security behaviour during visual changes. Obtain an explicit policy decision before changing payout rules, and distinguish genuine new functional work from restyling rather than showing unsupported controls or claims.
+
+For supporter registration, the user supplied `attached_assets/signup-join_1795191250295.png` as the desktop/mobile visual reference on 2026-11-20. Retain the optional phone field even though that mockup only shows three fields.
+
+**Why:** The user explicitly prioritised preserving every existing field, required/optional status, validation and account-creation behaviour over reproducing the mockup's three-field form.
+
+**How to apply:** Treat this as a presentation-only registration reference. Do not remove optional phone or simplify the supporter registration contract merely to match the picture.
