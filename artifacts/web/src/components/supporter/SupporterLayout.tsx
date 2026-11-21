@@ -10,6 +10,7 @@ import {
   type SupporterNavigationId,
 } from "@/lib/supporter-navigation";
 import { useSupporterFollowing } from "./use-supporter-following";
+import { SupporterCreateMenu } from "./SupporterCreateMenu";
 import "./supporter.css";
 
 const icons: Record<SupporterNavigationId, typeof Home> = {
@@ -182,11 +183,17 @@ export default function SupporterLayout({ children }: { children: ReactNode }) {
               const active = isSupporterNavigationActive(item, location);
               return (
                 <li key={item.id}>
-                  <Link href={item.href} className={`rps-nav-item${item.id === "create" ? " is-create" : ""}`}
+                  {item.id === "create" ? (
+                    <SupporterCreateMenu className="rps-nav-item is-create" testId="link-nav-create">
+                      <Icon size={20} aria-hidden />{item.label}
+                    </SupporterCreateMenu>
+                  ) : (
+                  <Link href={item.href} className="rps-nav-item"
                     aria-current={active ? "page" : undefined} data-testid={`link-nav-${item.id}`}>
                     {item.id === "profile" && user ? <span className="rps-avatar sm" aria-hidden>{user.avatarInitials}</span> : <Icon size={20} aria-hidden />}
                     {item.label}
                   </Link>
+                  )}
                 </li>
               );
             })}
@@ -205,12 +212,18 @@ export default function SupporterLayout({ children }: { children: ReactNode }) {
             const Icon = icons[item.id];
             return (
               <li key={item.id}>
+                {item.id === "create" ? (
+                  <SupporterCreateMenu className="rps-tab" testId="link-tab-create" variant="sheet">
+                    <Icon size={20} aria-hidden /><span>{item.label}</span>
+                  </SupporterCreateMenu>
+                ) : (
                 <Link href={item.href} className="rps-tab"
                   aria-current={isSupporterNavigationActive(item, location) ? "page" : undefined}
                   data-testid={`link-tab-${item.id}`}>
                   {item.id === "profile" && user ? <span className="rps-avatar sm" aria-hidden>{user.avatarInitials}</span> : <Icon size={20} aria-hidden />}
                   <span>{item.id === "profile" ? "Me" : item.label}</span>
                 </Link>
+                )}
               </li>
             );
           })}

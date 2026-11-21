@@ -21,7 +21,7 @@ const supporter = {
 
 async function render(path: string, options: {
   signedIn?: boolean; route?: string; props?: Record<string, unknown>; exportName?: string;
-  seeds?: Array<[unknown[], unknown]>;
+  seeds?: Array<[unknown[], unknown]>; search?: string;
 } = {}) {
   const auth = {
     user: options.signedIn ? supporter : null,
@@ -44,7 +44,10 @@ async function render(path: string, options: {
     }],
   });
   const mod = { exports: {} as Record<string, any> };
-  new Function("require", "module", "exports", result.outputFiles[0]!.text)(webRequire, mod, mod.exports);
+  const requireMock = (name: string) => name === "wouter"
+    ? { ...webRequire(name), useSearch: () => options.search ?? "" }
+    : webRequire(name);
+  new Function("require", "module", "exports", result.outputFiles[0]!.text)(requireMock, mod, mod.exports);
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   for (const [key, value] of options.seeds ?? []) client.setQueryData(key, value);
   const priorWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
@@ -117,6 +120,36 @@ test("followed-organisations panel uses authenticated follows and their actual l
   assert.match(html, /href="\/organisations\/followed-fixture"/);
   assert.match(html, /src="\/fixture-logo\.png"/);
   assert.match(html, /Sign out/);
+});
+
+test("signed-in supporter Create triggers open a chooser instead of navigating away", async () => {
+  const shell = await render("src/components/supporter/SupporterLayout.tsx", { signedIn: true });
+  assert.match(shell, /<button[^>]*aria-haspopup="dialog"[^>]*data-testid="link-nav-create"/);
+  assert.match(shell, /<button[^>]*aria-haspopup="dialog"[^>]*data-testid="link-tab-create"/);
+  assert.doesNotMatch(shell, /href="\/create"/);
+  const intro = await render("src/components/supporter/SupporterHomeIntro.tsx", {
+    signedIn: true, exportName: "SupporterHomeIntro",
+  });
+  assert.match(intro, /<button[^>]*aria-haspopup="dialog"[^>]*data-testid="link-composer-create"/);
+});
+
+test("each missing supporter composer is explicitly flagged without a fake publishing form", async () => {
+  for (const type of ["post", "story", "text"]) {
+    const html = await render("src/pages/supporter-placeholder.tsx", {
+      signedIn: true, props: { section: "create" }, search: `type=${type}`,
+    });
+    assert.match(html, /Not built yet/);
+    assert.match(html, /Publishing unavailable/);
+    assert.match(html, new RegExp(`page-supporter-create-${type}`));
+    assert.doesNotMatch(html, /<form|<textarea|type="file"/);
+    assert.match(html, /href="\/feed"/);
+  }
+  for (const type of ["unknown", "__proto__", "constructor"]) {
+    const html = await render("src/pages/supporter-placeholder.tsx", {
+      props: { section: "create" }, search: `type=${type}`,
+    });
+    assert.match(html, /Coming in a later stage/);
+  }
 });
 
 test("unfinished destinations are honest placeholders with working onward navigation", async () => {

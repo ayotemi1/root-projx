@@ -3,6 +3,7 @@ import { Pencil, Compass } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { OrganisationLogo } from "@/components/organisation-logo";
 import { useSupporterFollowing } from "./use-supporter-following";
+import { SupporterCreateMenu } from "./SupporterCreateMenu";
 import "./supporter.css";
 
 export function SupporterHomeIntro() {
@@ -53,11 +54,11 @@ export function SupporterHomeIntro() {
         </ul>
       )}
 
-      <Link href="/create" className="rps-composer" data-testid="link-composer-create">
+      <SupporterCreateMenu className="rps-composer" testId="link-composer-create">
         {user && <span className="rps-avatar" aria-hidden>{user.avatarInitials}</span>}
         <span className="rps-composer-q">What's caught your attention?</span>
         <span className="rps-composer-btn"><Pencil size={15} aria-hidden /> Create</span>
-      </Link>
+      </SupporterCreateMenu>
     </section>
   );
 }
