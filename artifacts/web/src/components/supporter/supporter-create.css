@@ -34,3 +34,7 @@ button.rps-tab { border: 0; font-family: var(--app-font-mono); font-size: 10px; 
 @keyframes rpc-up { from { transform: translateY(100%); } }
 @media (min-width: 1024px) { .rpc-overlay, .rpc-sheet { display: none; } }
 @media (prefers-reduced-motion: reduce) { .rpc-menu, .rpc-overlay, .rpc-sheet { animation: none; } }
+button.rpc-sheet-item { width: 100%; background: none; border: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.rpc-sheet-item.is-unavailable { cursor: not-allowed; opacity: .6; }
+.rpc-sheet-item.is-unavailable:active { background: none; }
+.rpc-badge { margin-left: 6px; font-family: var(--app-font-mono); font-size: 10px; font-weight: 500; letter-spacing: .1em; text-transform: uppercase; border: 1px solid currentColor; padding: 1px 5px; vertical-align: 2px; }

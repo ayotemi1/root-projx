@@ -17,3 +17,15 @@ URL and a usable recovery action survive.
 flows. Keep recovery scoped to the owning organisation and clear it only after
 the intended attachment is confirmed; never display a pending preview as proof
 that public content was saved.
+
+Supporter media selection is intentionally a local draft until a supporter-owned
+upload and publishing path is built. Do not relax organisation-only upload
+permissions to make the supporter picker upload files.
+
+**Why:** The existing upload paths assign ownership to an organisation. Reusing
+those permissions for supporters would attach content to the wrong ownership
+model; choosing files must not silently publish or upload them.
+
+**How to apply:** Reuse storage and validation patterns, not organisation access
+guards. Keep local-only draft status explicit, and add supporter-scoped
+authorisation before introducing persistent uploads or publishing.

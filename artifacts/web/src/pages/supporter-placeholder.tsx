@@ -1,4 +1,6 @@
 import { Link, useSearch } from "wouter";
+import { useAuth } from "@/context/AuthContext";
+import { useSupporterPostDraft } from "@/components/supporter/SupporterPostDraftProvider";
 import { ArrowRight, Bell, Bookmark, Camera, Copy, Inbox, Pencil, SquarePlus } from "lucide-react";
 
 const composers = {
@@ -37,8 +39,23 @@ const sections = {
 export type SupporterPlaceholderSection = keyof typeof sections;
 
 export default function SupporterPlaceholder({ section }: { section: SupporterPlaceholderSection }) {
+  const { isAuthenticated, user } = useAuth();
   const search = useSearch();
   const type = new URLSearchParams(search).get("type");
+  const draft = useSupporterPostDraft();
+  if (section === "create" && type === "post" && draft && isAuthenticated && user?.accountType === "supporter") {
+    return (
+      <section className="py-2 sm:py-4" data-testid="page-supporter-create-post-entry">
+        <h1 className="rp-display text-[40px] sm:text-[56px]">New post</h1>
+        <div className="mt-8 border border-[#17100F]/30 bg-[#FBF8F2] p-6 sm:p-8">
+          <Copy aria-hidden="true" className="h-8 w-8 mb-6" strokeWidth={1.5} />
+          <p className="text-base leading-relaxed max-w-lg text-[#17100F]/75">Pick up to 5 photos or videos to preview a draft. Everything stays on this device; publishing isn't available yet.</p>
+          <button type="button" className="rp-btn rp-btn-yellow mt-7" onClick={e => draft.openPicker(e.currentTarget)} data-testid="button-choose-media">Choose media</button>
+        </div>
+        <Link href="/feed" className="inline-flex items-center min-h-11 mt-5 font-semibold underline underline-offset-4" data-testid="link-composer-back">Back to Home</Link>
+      </section>
+    );
+  }
   if (section === "create" && type && Object.hasOwn(composers, type)) {
     const c = composers[type as keyof typeof composers];
     const CIcon = c.icon;
