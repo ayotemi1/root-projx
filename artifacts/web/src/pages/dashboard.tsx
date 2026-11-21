@@ -259,7 +259,7 @@ export default function DashboardPage() {
           </div>
           <TabsList aria-label="Dashboard sections">
             <TabsTrigger value="overview" className="ops-navitem" data-testid="tab-overview"><span className="ops-monogram" aria-hidden="true">{initials}</span><span className="ops-navtext">Profile</span></TabsTrigger>
-            <TabsTrigger value="posts" className="ops-navitem" data-testid="tab-posts"><PlusSquare aria-hidden="true" /><span className="ops-navtext">Create</span></TabsTrigger>
+            <TabsTrigger value="posts" className="ops-navitem" data-nav-action="create" data-testid="tab-posts"><PlusSquare aria-hidden="true" /><span className="ops-navtext">Create</span></TabsTrigger>
             <TabsTrigger value="campaigns" className="ops-navitem" data-testid="tab-campaigns"><MapPin aria-hidden="true" /><span className="ops-navtext">Campaigns</span></TabsTrigger>
             <TabsTrigger value="profile" className="ops-navitem" data-testid="tab-payouts"><Landmark aria-hidden="true" /><span className="ops-navtext">Payouts</span></TabsTrigger>
             <TabsTrigger value="build" className="ops-navitem" data-testid="tab-build-profile" data-tour-id="dashboard-tab-build-profile"><PenLine aria-hidden="true" /><span className="ops-navtext"><span className="sm:hidden">Edit</span><span className="hidden sm:inline">Edit profile</span></span></TabsTrigger>

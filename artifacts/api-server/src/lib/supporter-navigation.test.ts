@@ -87,9 +87,22 @@ test("supporter layout is scoped to its routes and never replaces organisation, 
 
 test("navigation highlights one destination, including the existing account alias and browser-back paths", () => {
   for (const item of supporterNavigation) {
-    assert.deepEqual(supporterNavigation.filter(nav => isSupporterNavigationActive(nav, `${item.href}?test=1`)), [item]);
+    assert.deepEqual(supporterNavigation.filter(nav => isSupporterNavigationActive(nav, `${item.href}?test=1`)), item.id === "create" ? [] : [item]);
   }
   assert.equal(supporterNavigation.filter(nav => isSupporterNavigationActive(nav, "/account#profile"))[0]?.id, "profile");
+});
+
+test("Create is an unhighlighted action in both supporter and organisation navigation", async () => {
+  const shell = await render("src/components/supporter/SupporterLayout.tsx", { signedIn: true, route: "/create" });
+  assert.doesNotMatch(shell, /is-create|aria-current="page"/);
+  assert.match(shell, /class="rps-nav-item"[^>]*data-testid="link-nav-create"/);
+  assert.match(shell, /class="rps-tab"[^>]*data-testid="link-tab-create"/);
+  const styles = await readFile(new URL("src/components/supporter/supporter-create.css", webRoot), "utf8");
+  assert.doesNotMatch(styles, /is-create|aria-expanded="true"/);
+  const orgStyles = await readFile(new URL("src/components/dashboard/operations.css", webRoot), "utf8");
+  assert.ok(orgStyles.includes('.ops-navitem:not([data-nav-action="create"])[data-state="active"]'));
+  const dashboard = await readFile(new URL("src/pages/dashboard.tsx", webRoot), "utf8");
+  assert.match(dashboard, /value="posts" className="ops-navitem" data-nav-action="create"/);
 });
 
 test("real supporter shell links every destination and never invents guest notifications or follows", async () => {

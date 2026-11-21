@@ -31,6 +31,7 @@ export function shouldUseSupporterLayout(location: string, accountType?: string 
 }
 
 export function isSupporterNavigationActive(item: SupporterNavigationItem, location: string) {
+  if (item.id === "create") return false;
   const path = pathname(location);
   return item.href === path || (item.id === "profile" && path === "/account");
 }

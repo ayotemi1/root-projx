@@ -27,7 +27,6 @@
   border: 1px solid transparent; transition: background-color .15s; }
 .rps-nav-item:hover { background: rgba(23,16,15,.05); }
 .rps-nav-item[aria-current="page"] { border-color: var(--rp-ink); background: var(--rp-paper); font-weight: 700; }
-.rps-nav-item.is-create { background: var(--rp-yellow); border-color: var(--rp-ink); font-weight: 700; }
 .rps-sub { display: flex; align-items: center; gap: 10px; min-height: 36px; font-size: 14px; background: none; border: 0; padding: 0 4px; color: var(--rp-ink); cursor: pointer; text-align: left; }
 .rps-sub:hover { text-decoration: underline; }
 .rps-error { color: var(--rp-red); font-size: 13px; padding: 4px; }

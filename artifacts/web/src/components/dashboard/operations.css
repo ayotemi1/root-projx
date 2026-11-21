@@ -61,7 +61,7 @@
   box-shadow: none !important; width: 100%;
 }
 .ops-navitem:hover { background: rgba(23,16,15,.05) !important; }
-.ops-navitem[data-state="active"] { background: #FFFDF9 !important; border-color: var(--ops-ink) !important; font-weight: 700; }
+.ops-navitem:not([data-nav-action="create"])[data-state="active"] { background: #FFFDF9 !important; border-color: var(--ops-ink) !important; font-weight: 700; }
 .ops-navitem svg { width: 22px; height: 22px; flex: none; }
 .ops-monogram {
   width: 24px; height: 24px; flex: none; border-radius: 50% !important; background: var(--ops-ink); color: var(--ops-yellow);

@@ -40,3 +40,13 @@ bar on both screen sizes while keeping the navigation Create menus and actions.
 
 **How to apply:** Do not reintroduce the feed composer when extending supporter
 posting; retain the organisation strip and let the feed follow it naturally.
+
+Create is an action, not a selected navigation page. It must look like the
+other inactive sidebar items and phone tabs, with no permanent yellow fill,
+border, bold weight or open-menu selection decoration, for either account type.
+
+**Why:** On 2026-11-21 the user explicitly requested that only the current page
+receive the existing active style and that Create never be highlighted.
+
+**How to apply:** Keep Create's click actions intact when extending either
+navigation system; do not restore special prominence or route-active styling.

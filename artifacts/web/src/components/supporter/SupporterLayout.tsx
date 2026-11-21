@@ -186,7 +186,7 @@ export default function SupporterLayout({ children }: { children: ReactNode }) {
               return (
                 <li key={item.id}>
                   {item.id === "create" ? (
-                    <SupporterCreateMenu className="rps-nav-item is-create" testId="link-nav-create">
+                    <SupporterCreateMenu className="rps-nav-item" testId="link-nav-create">
                       <Icon size={20} aria-hidden />{item.label}
                     </SupporterCreateMenu>
                   ) : (
