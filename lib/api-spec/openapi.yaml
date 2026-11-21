@@ -1125,6 +1125,148 @@ paths:
               schema:
                 $ref: "#/components/schemas/PublicUser"
 
+  /supporter-posts:
+    get:
+      operationId: listSupporterPosts
+      tags: [supporter-posts]
+      parameters:
+        - { name: feed, in: query, schema: { type: string, enum: [mine, following, for-you], default: for-you } }
+        - { name: publicId, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: Posts visible to this viewer, newest first
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/SupporterPostRecord" } }
+    post:
+      operationId: publishSupporterPost
+      tags: [supporter-posts]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupporterPostInput" }
+      responses:
+        "201":
+          description: Published or safely retried post
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupporterPostRecord" }
+  /supporter-posts/uploads/request:
+    post:
+      operationId: requestSupporterPostUpload
+      tags: [supporter-posts]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupporterMediaUploadInput" }
+      responses:
+        "200":
+          description: Direct-to-storage upload destination
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [uploadUrl, objectPath]
+                properties: { uploadUrl: { type: string }, objectPath: { type: string } }
+  /supporter-posts/uploads/complete:
+    post:
+      operationId: completeSupporterPostUpload
+      tags: [supporter-posts]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupporterMediaCompletionInput" }
+      responses:
+        "200":
+          description: Verified image or video and thumbnail; not published yet
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupporterPostMedia" }
+        "202":
+          description: Media is being processed; poll this same completion endpoint
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [processing]
+                properties: { processing: { type: boolean } }
+  /supporter-posts/media-session:
+    delete:
+      operationId: clearSupporterMediaSession
+      tags: [supporter-posts]
+      responses:
+        "204": { description: Private media cookie cleared on sign-out }
+  /supporter-posts/media/{id}:
+    get:
+      operationId: getSupporterPostMedia
+      tags: [supporter-posts]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Authorised image or video stream }
+        "206": { description: Authorised video byte range }
+        "404": { description: Missing media or viewer not permitted }
+  /supporter-posts/media/{id}/thumbnail:
+    get:
+      operationId: getSupporterPostThumbnail
+      tags: [supporter-posts]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Authorised video thumbnail }
+        "404": { description: Missing thumbnail or viewer not permitted }
+  /supporter-posts/follows/{publicId}:
+    get:
+      operationId: getSupporterFollowState
+      tags: [supporter-posts]
+      parameters:
+        - { name: publicId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Whether the current viewer follows this public supporter
+          content:
+            application/json:
+              schema: { type: object, required: [following], properties: { following: { type: boolean } } }
+    post:
+      operationId: followSupporter
+      tags: [supporter-posts]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: publicId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Following saved
+          content:
+            application/json:
+              schema: { type: object, required: [following], properties: { following: { type: boolean } } }
+    delete:
+      operationId: unfollowSupporter
+      tags: [supporter-posts]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: publicId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Following removed
+          content:
+            application/json:
+              schema: { type: object, required: [following], properties: { following: { type: boolean } } }
+  /supporter-posts/{id}:
+    delete:
+      operationId: removeSupporterPost
+      tags: [supporter-posts]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { description: Owner removed the post }
+
 components:
   securitySchemes:
     adminSecret:
@@ -1141,6 +1283,90 @@ components:
       bearerFormat: JWT
 
   schemas:
+    SupporterMediaUploadInput:
+      type: object
+      required: [name, size, contentType]
+      properties:
+        name: { type: string, maxLength: 255 }
+        size: { type: integer, minimum: 1, maximum: 524288000 }
+        contentType: { type: string, enum: [image/jpeg, image/png, image/heic, image/heif, video/mp4, video/quicktime] }
+    SupporterMediaCompletionInput:
+      type: object
+      required: [objectPath]
+      properties:
+        objectPath: { type: string }
+    SupporterMediaCrop:
+      type: object
+      required: [aspect, zoom, x, y]
+      properties:
+        aspect: { type: string, enum: [original, "1:1", "4:5", "16:9"] }
+        zoom: { type: number, minimum: 1, maximum: 3 }
+        x: { type: number, minimum: -50, maximum: 50 }
+        y: { type: number, minimum: -50, maximum: 50 }
+    SupporterMediaAdjustments:
+      type: object
+      required: [brightness, contrast, saturation]
+      properties:
+        brightness: { type: number, minimum: 0.5, maximum: 1.5 }
+        contrast: { type: number, minimum: 0.5, maximum: 1.5 }
+        saturation: { type: number, minimum: 0, maximum: 2 }
+    SupporterPostMediaInput:
+      type: object
+      required: [id, order, crop, filter, adjustments]
+      properties:
+        id: { type: string }
+        order: { type: integer, minimum: 0, maximum: 4 }
+        crop: { $ref: "#/components/schemas/SupporterMediaCrop" }
+        filter: { type: string, enum: [original, warm, cool, mono] }
+        adjustments: { $ref: "#/components/schemas/SupporterMediaAdjustments" }
+    SupporterPostMedia:
+      allOf:
+        - { $ref: "#/components/schemas/SupporterPostMediaInput" }
+        - type: object
+          required: [url, type, width, height]
+          properties:
+            post_id: { type: [string, "null"] }
+            url: { type: string }
+            type: { type: string, enum: [photo, video] }
+            width: { type: number }
+            height: { type: number }
+            duration: { type: [number, "null"] }
+            video_thumbnail_url: { type: [string, "null"] }
+    SupporterPostInput:
+      type: object
+      required: [id, type, caption, media]
+      properties:
+        id: { type: string, description: Stable UUID idempotency key retained for retries }
+        type: { type: string, enum: [photo, video, text] }
+        caption: { type: string, maxLength: 5000 }
+        community_tag: { type: [string, "null"], maxLength: 80 }
+        organisation_id: { type: [string, "null"] }
+        campaign_id: { type: [string, "null"] }
+        media: { type: array, maxItems: 5, items: { $ref: "#/components/schemas/SupporterPostMediaInput" } }
+    SupporterPostRecord:
+      type: object
+      required: [id, type, caption, author, created_at, edited_at, removed, media, visibility]
+      properties:
+        id: { type: string }
+        type: { type: string, enum: [photo, video, text] }
+        caption: { type: string }
+        community_tag: { type: [string, "null"] }
+        organisation_id: { type: [string, "null"] }
+        campaign_id: { type: [string, "null"] }
+        created_at: { type: string }
+        edited_at: { type: [string, "null"] }
+        removed: { type: boolean }
+        visibility: { type: string, enum: [public, private] }
+        media: { type: array, items: { $ref: "#/components/schemas/SupporterPostMedia" } }
+        author:
+          type: object
+          required: [name, initials, publicId, isOwner, following]
+          properties:
+            name: { type: string }
+            initials: { type: string }
+            publicId: { type: [string, "null"] }
+            isOwner: { type: boolean }
+            following: { type: boolean }
     SupporterInterests:
       type: object
       additionalProperties: false

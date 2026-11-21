@@ -5,6 +5,196 @@
  * Root ProjX API — community giving platform
  * OpenAPI spec version: 0.1.0
  */
+export type SupporterMediaUploadInputContentType =
+  (typeof SupporterMediaUploadInputContentType)[keyof typeof SupporterMediaUploadInputContentType];
+
+export const SupporterMediaUploadInputContentType = {
+  "image/jpeg": "image/jpeg",
+  "image/png": "image/png",
+  "image/heic": "image/heic",
+  "image/heif": "image/heif",
+  "video/mp4": "video/mp4",
+  "video/quicktime": "video/quicktime",
+} as const;
+
+export interface SupporterMediaUploadInput {
+  /** @maxLength 255 */
+  name: string;
+  /**
+   * @minimum 1
+   * @maximum 524288000
+   */
+  size: number;
+  contentType: SupporterMediaUploadInputContentType;
+}
+
+export interface SupporterMediaCompletionInput {
+  objectPath: string;
+}
+
+export type SupporterMediaCropAspect =
+  (typeof SupporterMediaCropAspect)[keyof typeof SupporterMediaCropAspect];
+
+export const SupporterMediaCropAspect = {
+  original: "original",
+  "1:1": "1:1",
+  "4:5": "4:5",
+  "16:9": "16:9",
+} as const;
+
+export interface SupporterMediaCrop {
+  aspect: SupporterMediaCropAspect;
+  /**
+   * @minimum 1
+   * @maximum 3
+   */
+  zoom: number;
+  /**
+   * @minimum -50
+   * @maximum 50
+   */
+  x: number;
+  /**
+   * @minimum -50
+   * @maximum 50
+   */
+  y: number;
+}
+
+export interface SupporterMediaAdjustments {
+  /**
+   * @minimum 0.5
+   * @maximum 1.5
+   */
+  brightness: number;
+  /**
+   * @minimum 0.5
+   * @maximum 1.5
+   */
+  contrast: number;
+  /**
+   * @minimum 0
+   * @maximum 2
+   */
+  saturation: number;
+}
+
+export type SupporterPostMediaInputFilter =
+  (typeof SupporterPostMediaInputFilter)[keyof typeof SupporterPostMediaInputFilter];
+
+export const SupporterPostMediaInputFilter = {
+  original: "original",
+  warm: "warm",
+  cool: "cool",
+  mono: "mono",
+} as const;
+
+export interface SupporterPostMediaInput {
+  id: string;
+  /**
+   * @minimum 0
+   * @maximum 4
+   */
+  order: number;
+  crop: SupporterMediaCrop;
+  filter: SupporterPostMediaInputFilter;
+  adjustments: SupporterMediaAdjustments;
+}
+
+export type SupporterPostMediaType =
+  (typeof SupporterPostMediaType)[keyof typeof SupporterPostMediaType];
+
+export const SupporterPostMediaType = {
+  photo: "photo",
+  video: "video",
+} as const;
+
+export type SupporterPostMedia = SupporterPostMediaInput & {
+  /** @nullable */
+  post_id?: string | null;
+  url: string;
+  type: SupporterPostMediaType;
+  width: number;
+  height: number;
+  /** @nullable */
+  duration?: number | null;
+  /** @nullable */
+  video_thumbnail_url?: string | null;
+};
+
+export type SupporterPostInputType =
+  (typeof SupporterPostInputType)[keyof typeof SupporterPostInputType];
+
+export const SupporterPostInputType = {
+  photo: "photo",
+  video: "video",
+  text: "text",
+} as const;
+
+export interface SupporterPostInput {
+  /** Stable UUID idempotency key retained for retries */
+  id: string;
+  type: SupporterPostInputType;
+  /** @maxLength 5000 */
+  caption: string;
+  /**
+   * @maxLength 80
+   * @nullable
+   */
+  community_tag?: string | null;
+  /** @nullable */
+  organisation_id?: string | null;
+  /** @nullable */
+  campaign_id?: string | null;
+  /** @maxItems 5 */
+  media: SupporterPostMediaInput[];
+}
+
+export type SupporterPostRecordType =
+  (typeof SupporterPostRecordType)[keyof typeof SupporterPostRecordType];
+
+export const SupporterPostRecordType = {
+  photo: "photo",
+  video: "video",
+  text: "text",
+} as const;
+
+export type SupporterPostRecordVisibility =
+  (typeof SupporterPostRecordVisibility)[keyof typeof SupporterPostRecordVisibility];
+
+export const SupporterPostRecordVisibility = {
+  public: "public",
+  private: "private",
+} as const;
+
+export type SupporterPostRecordAuthor = {
+  name: string;
+  initials: string;
+  /** @nullable */
+  publicId: string | null;
+  isOwner: boolean;
+  following: boolean;
+};
+
+export interface SupporterPostRecord {
+  id: string;
+  type: SupporterPostRecordType;
+  caption: string;
+  /** @nullable */
+  community_tag?: string | null;
+  /** @nullable */
+  organisation_id?: string | null;
+  /** @nullable */
+  campaign_id?: string | null;
+  created_at: string;
+  /** @nullable */
+  edited_at: string | null;
+  removed: boolean;
+  visibility: SupporterPostRecordVisibility;
+  media: SupporterPostMedia[];
+  author: SupporterPostRecordAuthor;
+}
+
 export type SupporterInterestsInterestsItem =
   (typeof SupporterInterestsInterestsItem)[keyof typeof SupporterInterestsInterestsItem];
 
@@ -1087,4 +1277,39 @@ export type ListOrganisationsParams = {
 export type GetHelpOrgsParams = {
   need?: string;
   country?: string;
+};
+
+export type ListSupporterPostsParams = {
+  feed?: ListSupporterPostsFeed;
+  publicId?: string;
+};
+
+export type ListSupporterPostsFeed =
+  (typeof ListSupporterPostsFeed)[keyof typeof ListSupporterPostsFeed];
+
+export const ListSupporterPostsFeed = {
+  mine: "mine",
+  following: "following",
+  "for-you": "for-you",
+} as const;
+
+export type RequestSupporterPostUpload200 = {
+  uploadUrl: string;
+  objectPath: string;
+};
+
+export type CompleteSupporterPostUpload202 = {
+  processing: boolean;
+};
+
+export type GetSupporterFollowState200 = {
+  following: boolean;
+};
+
+export type FollowSupporter200 = {
+  following: boolean;
+};
+
+export type UnfollowSupporter200 = {
+  following: boolean;
 };

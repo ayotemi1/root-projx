@@ -1,3 +1,4 @@
+import { clearMediaSession } from "@/lib/supporter-publishing";
 import React, {
   createContext,
   useCallback,
@@ -77,6 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const logout = useCallback(async () => {
+    clearMediaSession(token);
     if (token) {
       try { await api.logout(token); } catch { /* ignore */ }
     }

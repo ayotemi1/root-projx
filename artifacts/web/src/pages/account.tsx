@@ -2,7 +2,7 @@ import { userErrorMessage } from "@/lib/error-feedback";
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "wouter";
-import { User, LayoutDashboard, LogOut, Edit2, Heart, RefreshCw, ExternalLink, Users, Copy, Check, Globe } from "lucide-react";
+import { User, LayoutDashboard, LogOut, Edit2, Heart, RefreshCw, ExternalLink, Users, Copy, Check, Globe, Lock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,6 +27,44 @@ import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/context/AuthContext";
 import * as api from "@/lib/api";
 import { formatMoney } from "@/lib/currency";
+import { SupporterPostCard } from "@/components/supporter/SupporterPostCard";
+import { useSupporterPostDraft } from "@/components/supporter/SupporterPostDraftProvider";
+import { SP_KEY, listPosts, spKey } from "@/lib/supporter-publishing";
+import { profileIsPublic } from "@/lib/supporter-post-media";
+
+function MyPostsSection({ token, isPublic }: { token: string; isPublic: boolean }) {
+  const draft = useSupporterPostDraft();
+  const q = useQuery({ queryKey: spKey({ feed: "mine" }, token), queryFn: () => listPosts({ feed: "mine" }, token), staleTime: 0 });
+  const posts = (q.data ?? []).filter(p => !p.removed);
+  return (
+    <section className="space-y-6" aria-label="Your posts" data-testid="section-my-posts">
+      <div className="flex items-end justify-between gap-3 border-b border-[#17100F]/15 pb-3">
+        <div>
+          <h2 className="rp-display text-[36px]">Your posts</h2>
+          <p className="text-sm text-muted-foreground mt-1 flex items-center gap-1.5" data-testid="status-posts-visibility">
+            {isPublic ? <><Globe className="w-3.5 h-3.5" /> Shown on your public profile</> : <><Lock className="w-3.5 h-3.5" /> Private: only you can see these while your profile is hidden</>}
+          </p>
+        </div>
+        {draft && <button type="button" className="rp-btn rp-btn-yellow !min-h-11" onClick={e => draft.openPicker(e.currentTarget)} data-testid="button-new-post">New post</button>}
+      </div>
+      {q.isLoading ? (
+        <div className="space-y-3 animate-pulse" data-testid="status-posts-loading"><div className="h-6 w-48 bg-[#17100F]/10" /><div className="aspect-[4/5] max-h-[420px] bg-[#17100F]/10" /></div>
+      ) : q.isError ? (
+        <div className="border border-[#17100F] p-6 text-center" role="alert">
+          <p className="font-bold">We couldn’t load your posts.</p>
+          <Button className="mt-3" onClick={() => q.refetch()} data-testid="button-retry-posts">Try again</Button>
+        </div>
+      ) : posts.length === 0 ? (
+        <div className="border border-dashed border-[#17100F]/40 p-8 text-center" data-testid="status-posts-empty">
+          <p className="rp-display text-[26px]">Nothing posted yet</p>
+          <p className="text-sm text-muted-foreground mt-2">Share a photo or video from an event, a visit, or a cause you back.</p>
+        </div>
+      ) : (
+        <div className="space-y-14">{posts.map(p => <SupporterPostCard key={p.id} post={p} />)}</div>
+      )}
+    </section>
+  );
+}
 
 function EditProfileDialog({
   open,
@@ -140,6 +178,7 @@ function PublicProfileCard({ profile, token }: { profile: api.ApiUser, token: st
           publicProfileSettings: updated,
         };
       });
+      void queryClient.invalidateQueries({ queryKey: [SP_KEY] });
 
       toast({ title: "Public profile updated" });
     } catch (e: unknown) {
@@ -395,6 +434,10 @@ export default function AccountPage({ view = "all" }: { view?: "all" | "giving" 
       {/* Public Profile Settings */}
       {profile && profile.accountType !== "organisation" && token && (
         <PublicProfileCard profile={profile} token={token} />
+      )}
+
+      {profile && profile.accountType === "supporter" && token && (
+        <MyPostsSection token={token} isPublic={profileIsPublic(profile as Parameters<typeof profileIsPublic>[0])} />
       )}
 
       {/* Stats */}

@@ -14,7 +14,7 @@ const sections = {
     title: "Create",
     icon: SquarePlus,
     description: "A space to share what's caught your attention.",
-    detail: "Supporter posts and stories will be built in a later stage. Nothing can be published from this page yet.",
+    detail: "Share photos and videos as a post. Stories aren’t available yet.",
   },
   inbox: {
     title: "Inbox",
@@ -49,7 +49,7 @@ export default function SupporterPlaceholder({ section }: { section: SupporterPl
         <h1 className="rp-display text-[40px] sm:text-[56px]">New post</h1>
         <div className="mt-8 border border-[#17100F]/30 bg-[#FBF8F2] p-6 sm:p-8">
           <Copy aria-hidden="true" className="h-8 w-8 mb-6" strokeWidth={1.5} />
-          <p className="text-base leading-relaxed max-w-lg text-[#17100F]/75">Pick up to 5 photos or videos to preview a draft. Everything stays on this device; publishing isn't available yet.</p>
+          <p className="text-base leading-relaxed max-w-lg text-[#17100F]/75">Choose up to 5 photos or videos, crop and edit them, then add a caption and share.</p>
           <button type="button" className="rp-btn rp-btn-yellow mt-7" onClick={e => draft.openPicker(e.currentTarget)} data-testid="button-choose-media">Choose media</button>
         </div>
         <Link href="/feed" className="inline-flex items-center min-h-11 mt-5 font-semibold underline underline-offset-4" data-testid="link-composer-back">Back to Home</Link>

@@ -4209,3 +4209,321 @@ export const UpdateProfileResponse = zod.object({
   avatarInitials: zod.string().nullish(),
   createdAt: zod.string(),
 });
+
+export const listSupporterPostsQueryFeedDefault = `for-you`;
+
+export const ListSupporterPostsQueryParams = zod.object({
+  feed: zod
+    .enum(["mine", "following", "for-you"])
+    .default(listSupporterPostsQueryFeedDefault),
+  publicId: zod.coerce.string().optional(),
+});
+
+export const listSupporterPostsResponseMediaItemOneOrderMin = 0;
+export const listSupporterPostsResponseMediaItemOneOrderMax = 4;
+
+export const listSupporterPostsResponseMediaItemOneCropZoomMax = 3;
+
+export const listSupporterPostsResponseMediaItemOneCropXMin = -50;
+export const listSupporterPostsResponseMediaItemOneCropXMax = 50;
+
+export const listSupporterPostsResponseMediaItemOneCropYMin = -50;
+export const listSupporterPostsResponseMediaItemOneCropYMax = 50;
+
+export const listSupporterPostsResponseMediaItemOneAdjustmentsBrightnessMin = 0.5;
+export const listSupporterPostsResponseMediaItemOneAdjustmentsBrightnessMax = 1.5;
+
+export const listSupporterPostsResponseMediaItemOneAdjustmentsContrastMin = 0.5;
+export const listSupporterPostsResponseMediaItemOneAdjustmentsContrastMax = 1.5;
+
+export const listSupporterPostsResponseMediaItemOneAdjustmentsSaturationMin = 0;
+export const listSupporterPostsResponseMediaItemOneAdjustmentsSaturationMax = 2;
+
+export const ListSupporterPostsResponseItem = zod.object({
+  id: zod.string(),
+  type: zod.enum(["photo", "video", "text"]),
+  caption: zod.string(),
+  community_tag: zod.string().nullish(),
+  organisation_id: zod.string().nullish(),
+  campaign_id: zod.string().nullish(),
+  created_at: zod.string(),
+  edited_at: zod.string().nullable(),
+  removed: zod.boolean(),
+  visibility: zod.enum(["public", "private"]),
+  media: zod.array(
+    zod
+      .object({
+        id: zod.string(),
+        order: zod
+          .number()
+          .min(listSupporterPostsResponseMediaItemOneOrderMin)
+          .max(listSupporterPostsResponseMediaItemOneOrderMax),
+        crop: zod.object({
+          aspect: zod.enum(["original", "1:1", "4:5", "16:9"]),
+          zoom: zod
+            .number()
+            .min(1)
+            .max(listSupporterPostsResponseMediaItemOneCropZoomMax),
+          x: zod
+            .number()
+            .min(listSupporterPostsResponseMediaItemOneCropXMin)
+            .max(listSupporterPostsResponseMediaItemOneCropXMax),
+          y: zod
+            .number()
+            .min(listSupporterPostsResponseMediaItemOneCropYMin)
+            .max(listSupporterPostsResponseMediaItemOneCropYMax),
+        }),
+        filter: zod.enum(["original", "warm", "cool", "mono"]),
+        adjustments: zod.object({
+          brightness: zod
+            .number()
+            .min(listSupporterPostsResponseMediaItemOneAdjustmentsBrightnessMin)
+            .max(
+              listSupporterPostsResponseMediaItemOneAdjustmentsBrightnessMax,
+            ),
+          contrast: zod
+            .number()
+            .min(listSupporterPostsResponseMediaItemOneAdjustmentsContrastMin)
+            .max(listSupporterPostsResponseMediaItemOneAdjustmentsContrastMax),
+          saturation: zod
+            .number()
+            .min(listSupporterPostsResponseMediaItemOneAdjustmentsSaturationMin)
+            .max(
+              listSupporterPostsResponseMediaItemOneAdjustmentsSaturationMax,
+            ),
+        }),
+      })
+      .and(
+        zod.object({
+          post_id: zod.string().nullish(),
+          url: zod.string(),
+          type: zod.enum(["photo", "video"]),
+          width: zod.number(),
+          height: zod.number(),
+          duration: zod.number().nullish(),
+          video_thumbnail_url: zod.string().nullish(),
+        }),
+      ),
+  ),
+  author: zod.object({
+    name: zod.string(),
+    initials: zod.string(),
+    publicId: zod.string().nullable(),
+    isOwner: zod.boolean(),
+    following: zod.boolean(),
+  }),
+});
+export const ListSupporterPostsResponse = zod.array(
+  ListSupporterPostsResponseItem,
+);
+
+export const publishSupporterPostBodyCaptionMax = 5000;
+
+export const publishSupporterPostBodyCommunityTagMax = 80;
+
+export const publishSupporterPostBodyMediaItemOrderMin = 0;
+export const publishSupporterPostBodyMediaItemOrderMax = 4;
+
+export const publishSupporterPostBodyMediaItemCropZoomMax = 3;
+
+export const publishSupporterPostBodyMediaItemCropXMin = -50;
+export const publishSupporterPostBodyMediaItemCropXMax = 50;
+
+export const publishSupporterPostBodyMediaItemCropYMin = -50;
+export const publishSupporterPostBodyMediaItemCropYMax = 50;
+
+export const publishSupporterPostBodyMediaItemAdjustmentsBrightnessMin = 0.5;
+export const publishSupporterPostBodyMediaItemAdjustmentsBrightnessMax = 1.5;
+
+export const publishSupporterPostBodyMediaItemAdjustmentsContrastMin = 0.5;
+export const publishSupporterPostBodyMediaItemAdjustmentsContrastMax = 1.5;
+
+export const publishSupporterPostBodyMediaItemAdjustmentsSaturationMin = 0;
+export const publishSupporterPostBodyMediaItemAdjustmentsSaturationMax = 2;
+
+export const publishSupporterPostBodyMediaMax = 5;
+
+export const PublishSupporterPostBody = zod.object({
+  id: zod.string().describe("Stable UUID idempotency key retained for retries"),
+  type: zod.enum(["photo", "video", "text"]),
+  caption: zod.string().max(publishSupporterPostBodyCaptionMax),
+  community_tag: zod
+    .string()
+    .max(publishSupporterPostBodyCommunityTagMax)
+    .nullish(),
+  organisation_id: zod.string().nullish(),
+  campaign_id: zod.string().nullish(),
+  media: zod
+    .array(
+      zod.object({
+        id: zod.string(),
+        order: zod
+          .number()
+          .min(publishSupporterPostBodyMediaItemOrderMin)
+          .max(publishSupporterPostBodyMediaItemOrderMax),
+        crop: zod.object({
+          aspect: zod.enum(["original", "1:1", "4:5", "16:9"]),
+          zoom: zod
+            .number()
+            .min(1)
+            .max(publishSupporterPostBodyMediaItemCropZoomMax),
+          x: zod
+            .number()
+            .min(publishSupporterPostBodyMediaItemCropXMin)
+            .max(publishSupporterPostBodyMediaItemCropXMax),
+          y: zod
+            .number()
+            .min(publishSupporterPostBodyMediaItemCropYMin)
+            .max(publishSupporterPostBodyMediaItemCropYMax),
+        }),
+        filter: zod.enum(["original", "warm", "cool", "mono"]),
+        adjustments: zod.object({
+          brightness: zod
+            .number()
+            .min(publishSupporterPostBodyMediaItemAdjustmentsBrightnessMin)
+            .max(publishSupporterPostBodyMediaItemAdjustmentsBrightnessMax),
+          contrast: zod
+            .number()
+            .min(publishSupporterPostBodyMediaItemAdjustmentsContrastMin)
+            .max(publishSupporterPostBodyMediaItemAdjustmentsContrastMax),
+          saturation: zod
+            .number()
+            .min(publishSupporterPostBodyMediaItemAdjustmentsSaturationMin)
+            .max(publishSupporterPostBodyMediaItemAdjustmentsSaturationMax),
+        }),
+      }),
+    )
+    .max(publishSupporterPostBodyMediaMax),
+});
+
+export const requestSupporterPostUploadBodyNameMax = 255;
+
+export const requestSupporterPostUploadBodySizeMax = 524288000;
+
+export const RequestSupporterPostUploadBody = zod.object({
+  name: zod.string().max(requestSupporterPostUploadBodyNameMax),
+  size: zod.number().min(1).max(requestSupporterPostUploadBodySizeMax),
+  contentType: zod.enum([
+    "image/jpeg",
+    "image/png",
+    "image/heic",
+    "image/heif",
+    "video/mp4",
+    "video/quicktime",
+  ]),
+});
+
+export const RequestSupporterPostUploadResponse = zod.object({
+  uploadUrl: zod.string(),
+  objectPath: zod.string(),
+});
+
+export const CompleteSupporterPostUploadBody = zod.object({
+  objectPath: zod.string(),
+});
+
+export const completeSupporterPostUploadResponseOneOrderMin = 0;
+export const completeSupporterPostUploadResponseOneOrderMax = 4;
+
+export const completeSupporterPostUploadResponseOneCropZoomMax = 3;
+
+export const completeSupporterPostUploadResponseOneCropXMin = -50;
+export const completeSupporterPostUploadResponseOneCropXMax = 50;
+
+export const completeSupporterPostUploadResponseOneCropYMin = -50;
+export const completeSupporterPostUploadResponseOneCropYMax = 50;
+
+export const completeSupporterPostUploadResponseOneAdjustmentsBrightnessMin = 0.5;
+export const completeSupporterPostUploadResponseOneAdjustmentsBrightnessMax = 1.5;
+
+export const completeSupporterPostUploadResponseOneAdjustmentsContrastMin = 0.5;
+export const completeSupporterPostUploadResponseOneAdjustmentsContrastMax = 1.5;
+
+export const completeSupporterPostUploadResponseOneAdjustmentsSaturationMin = 0;
+export const completeSupporterPostUploadResponseOneAdjustmentsSaturationMax = 2;
+
+export const CompleteSupporterPostUploadResponse = zod
+  .object({
+    id: zod.string(),
+    order: zod
+      .number()
+      .min(completeSupporterPostUploadResponseOneOrderMin)
+      .max(completeSupporterPostUploadResponseOneOrderMax),
+    crop: zod.object({
+      aspect: zod.enum(["original", "1:1", "4:5", "16:9"]),
+      zoom: zod
+        .number()
+        .min(1)
+        .max(completeSupporterPostUploadResponseOneCropZoomMax),
+      x: zod
+        .number()
+        .min(completeSupporterPostUploadResponseOneCropXMin)
+        .max(completeSupporterPostUploadResponseOneCropXMax),
+      y: zod
+        .number()
+        .min(completeSupporterPostUploadResponseOneCropYMin)
+        .max(completeSupporterPostUploadResponseOneCropYMax),
+    }),
+    filter: zod.enum(["original", "warm", "cool", "mono"]),
+    adjustments: zod.object({
+      brightness: zod
+        .number()
+        .min(completeSupporterPostUploadResponseOneAdjustmentsBrightnessMin)
+        .max(completeSupporterPostUploadResponseOneAdjustmentsBrightnessMax),
+      contrast: zod
+        .number()
+        .min(completeSupporterPostUploadResponseOneAdjustmentsContrastMin)
+        .max(completeSupporterPostUploadResponseOneAdjustmentsContrastMax),
+      saturation: zod
+        .number()
+        .min(completeSupporterPostUploadResponseOneAdjustmentsSaturationMin)
+        .max(completeSupporterPostUploadResponseOneAdjustmentsSaturationMax),
+    }),
+  })
+  .and(
+    zod.object({
+      post_id: zod.string().nullish(),
+      url: zod.string(),
+      type: zod.enum(["photo", "video"]),
+      width: zod.number(),
+      height: zod.number(),
+      duration: zod.number().nullish(),
+      video_thumbnail_url: zod.string().nullish(),
+    }),
+  );
+
+export const GetSupporterPostMediaParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetSupporterPostThumbnailParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetSupporterFollowStateParams = zod.object({
+  publicId: zod.coerce.string(),
+});
+
+export const GetSupporterFollowStateResponse = zod.object({
+  following: zod.boolean(),
+});
+
+export const FollowSupporterParams = zod.object({
+  publicId: zod.coerce.string(),
+});
+
+export const FollowSupporterResponse = zod.object({
+  following: zod.boolean(),
+});
+
+export const UnfollowSupporterParams = zod.object({
+  publicId: zod.coerce.string(),
+});
+
+export const UnfollowSupporterResponse = zod.object({
+  following: zod.boolean(),
+});
+
+export const RemoveSupporterPostParams = zod.object({
+  id: zod.coerce.string(),
+});

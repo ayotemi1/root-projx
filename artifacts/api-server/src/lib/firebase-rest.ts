@@ -486,6 +486,67 @@ export async function fsIncrement(
   }
 }
 
+/** Supporter publication is one atomic commit: a post cannot become visible
+ * before all its owned, verified media are attached, nor can concurrent posts
+ * claim the same upload. Preconditions protect against cross-process races. */
+export async function fsCompleteSupporterMedia(
+  id: string, ready: Record<string, unknown>, token: string,
+): Promise<Record<string, unknown>> {
+  const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+  const url = `${FIRESTORE}/supporter_post_media/${id}`;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const read = await fetch(url, { headers });
+    if (!read.ok) throw new Error("Supporter upload is unavailable");
+    const doc = await read.json() as { fields: Record<string, FsValue>; updateTime: string };
+    const current = fromFsDoc(doc.fields);
+    if (current.author_id !== ready.author_id || current.objectPath !== ready.objectPath)
+      throw new Error("Supporter upload owner mismatch");
+    if (current.state === "ready") return current;
+    const fields = Object.fromEntries(Object.entries(ready).map(([k, v]) => [k, toFsVal(v)]));
+    const write = await fetch(`${url}?currentDocument.updateTime=${encodeURIComponent(doc.updateTime)}`, {
+      method: "PATCH", headers, body: JSON.stringify({ fields }),
+    });
+    if (write.ok) return ready;
+    if (![409, 412].includes(write.status)) throw new Error("Could not verify supporter media");
+  }
+  throw new Error("Supporter upload changed during completion");
+}
+
+export async function fsPublishSupporterPost(
+  post: Record<string, unknown>,
+  edits: Array<Record<string, unknown>>,
+  token: string,
+): Promise<void> {
+  const id = String(post.id);
+  const author = String(post.author_id);
+  const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+  const base = `projects/${PROJECT_ID}/databases/(default)/documents`;
+  const fields = (data: Record<string, unknown>) =>
+    Object.fromEntries(Object.entries(data).map(([k, v]) => [k, toFsVal(v)]));
+  const writes: Record<string, unknown>[] = [{
+    update: { name: `${base}/supporter_posts/${id}`, fields: fields(post) },
+    currentDocument: { exists: false },
+  }];
+  for (const edit of edits) {
+    const response = await fetch(`${FIRESTORE}/supporter_post_media/${edit.id}`, { headers });
+    if (!response.ok) throw new Error("Supporter media is unavailable");
+    const doc = await response.json() as { fields: Record<string, FsValue>; updateTime: string };
+    const media = fromFsDoc(doc.fields);
+    if (media.author_id !== author || media.state !== "ready" || media.post_id)
+      throw new Error("Supporter media cannot be attached");
+    const data = { post_id: id, order: edit.order, crop: edit.crop, filter: edit.filter, adjustments: edit.adjustments };
+    writes.push({
+      update: { name: `${base}/supporter_post_media/${edit.id}`, fields: fields(data) },
+      updateMask: { fieldPaths: Object.keys(data) },
+      currentDocument: { updateTime: doc.updateTime },
+    });
+  }
+  const response = await fetch(`${FIRESTORE}:commit`, {
+    method: "POST", headers, body: JSON.stringify({ writes }),
+  });
+  if (!response.ok) throw new Error(`Supporter publication commit failed ${response.status}`);
+}
+
 export async function fsCreate(
   collection: string,
   data: Record<string, unknown>,

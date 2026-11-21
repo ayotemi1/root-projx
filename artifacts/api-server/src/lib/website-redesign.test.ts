@@ -23,6 +23,9 @@ async function page(path: string, options: { route?: string; seeds?: Array<[unkn
     plugins: [{
       name: "isolated-auth",
       setup(b) {
+        b.onResolve({ filter: /^@workspace\/api-client-react$/ }, () => ({
+          path: new URL("../../../../lib/api-client-react/src/generated/api.ts", import.meta.url).pathname,
+        }));
         b.onResolve({ filter: /context\/AuthContext$/ }, () => ({ path: "auth", namespace: "isolated" }));
         b.onLoad({ filter: /.*/, namespace: "isolated" }, () => ({
           contents: "export const useAuth=()=>({user:null,token:null,isAuthenticated:false,isLoading:false,login:async()=>{throw new Error('Not called during rendering')}});",

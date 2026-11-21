@@ -11,6 +11,10 @@ import { useToast } from "@/hooks/use-toast";
 import { userErrorMessage } from "@/lib/error-feedback";
 import { SupporterHomeIntro } from "@/components/supporter/SupporterHomeIntro";
 import { OrganisationLogo } from "@/components/organisation-logo";
+import { SupporterPostCard } from "@/components/supporter/SupporterPostCard";
+import { listPosts, spKey, type SupporterPostRecord } from "@/lib/supporter-publishing";
+
+type FeedEntry = { kind: "org"; at: number; item: FeedUpdate } | { kind: "sp"; at: number; post: SupporterPostRecord };
 
 function dateLabel(iso: string) {
   return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
@@ -174,8 +178,23 @@ export default function FeedPage() {
     onError: (err) => toast({ title: "Couldn't follow", description: userErrorMessage(err, "follow this organisation"), variant: "destructive" }),
   });
 
+  const spFeed = mode === "mine" ? "following" : "for-you";
+  const spQ = useQuery({
+    queryKey: spKey({ feed: spFeed }, token),
+    queryFn: () => listPosts({ feed: spFeed }, token),
+    enabled: mode === "public" || isAuthenticated,
+    staleTime: 0,
+    refetchInterval: 30_000,
+  });
   const active = mode === "mine" && isAuthenticated ? mineQ : publicQ;
-  const items = active.data ?? [];
+  const spPosts = spQ.data ?? [];
+  const entries = useMemo<FeedEntry[]>(() => [
+    ...(active.data ?? []).map(item => ({ kind: "org" as const, at: Date.parse(item.createdAt) || 0, item })),
+    ...(spQ.data ?? []).filter(p => !p.removed).map(post => ({ kind: "sp" as const, at: Date.parse(post.created_at) || 0, post })),
+  ].sort((a, b) => b.at - a.at), [active.data, spQ.data]);
+  const loading = (active.isLoading && !spPosts.length) || (spQ.isLoading && !(active.data ?? []).length);
+  const failed = active.isError && (spQ.isError || !spPosts.length);
+  const forYou = isAuthenticated && user?.accountType === "supporter";
 
   const followState = (orgId: string): boolean | null => {
     if (!isAuthenticated) return false;
@@ -215,41 +234,41 @@ export default function FeedPage() {
                 }`}
                 data-testid={`tab-feed-${m}`}
               >
-                {m === "public" ? "All posts" : "Following"}
+                {m === "public" ? (forYou ? "For you" : "All posts") : "Following"}
               </button>
             );
           })}
         </div>
         <p className={`mt-4 text-[16px] text-[#17100F]/75 leading-relaxed${supporterView ? "" : " max-w-[280px]"}`}>
           {mode === "public"
-            ? "Every published post from organisations on Root ProjX, newest first."
-            : "Posts from the organisations you follow, newest first."}
+            ? forYou ? "Every published organisation post, plus supporter posts matched to your interests, newest first." : "Every published post from organisations on Root ProjX, newest first."
+            : forYou ? "Posts from the organisations and supporters you follow, newest first." : "Posts from the organisations you follow, newest first."}
           {!isAuthenticated && (
             <> <Link href="/login" className="font-bold underline underline-offset-2">Sign in</Link> to see your Following feed.</>
           )}
         </p>
       </aside>
 
-      <section className="max-w-[860px] w-full min-w-0" aria-label="Organisation posts">
-        {active.isLoading ? (
+      <section className="max-w-[860px] w-full min-w-0" aria-label="Posts">
+        {loading ? (
           <FeedSkeleton />
-        ) : active.isError ? (
+        ) : failed ? (
           <div className="border border-[#17100F] p-8 text-center" role="alert">
             <p className="rp-display text-[28px]">We couldn't load these posts.</p>
-            <button type="button" className="rp-btn rp-btn-yellow mt-5" onClick={() => active.refetch()} data-testid="button-retry-content">Try again</button>
+            <button type="button" className="rp-btn rp-btn-yellow mt-5" onClick={() => { void active.refetch(); void spQ.refetch(); }} data-testid="button-retry-content">Try again</button>
           </div>
-        ) : items.length === 0 ? (
+        ) : entries.length === 0 ? (
           <div className="border border-dashed border-[#17100F]/40 p-10 text-center">
             <Film className="w-6 h-6 mx-auto text-[#CA0813]" />
             <p className="rp-display text-[28px] mt-3">{mode === "mine" ? "Nothing here yet" : "No posts yet"}</p>
             <p className="text-sm text-[#17100F]/70 mt-2">
-              {mode === "mine" ? "Follow organisations to see their posts here." : "Photos, videos, stories and everyday moments will appear here once posted."}
+              {mode === "mine" ? "Follow organisations and supporters to see their posts here." : "Photos, videos, stories and everyday moments will appear here once posted."}
             </p>
             {mode === "mine" && <Link href="/discover" className="rp-btn rp-btn-yellow mt-5">Discover organisations <ArrowRight className="w-4 h-4" /></Link>}
           </div>
         ) : (
           <div className="space-y-20" data-testid="posts-grid">
-            {items.map((u) => (
+            {entries.map((e) => e.kind === "sp" ? <SupporterPostCard key={`sp-${e.post.id}`} post={e.post} /> : ((u) => (
               <PostCard
                 key={u._id}
                 item={u}
@@ -259,7 +278,7 @@ export default function FeedPage() {
                 onFollow={() => onFollow(u.orgId)}
                 followBusy={follow.isPending && follow.variables === u.orgId}
               />
-            ))}
+            ))(e.item))}
             <p className="rp-label !text-[12px] text-center text-[#17100F]/55 pt-4">You're all caught up</p>
           </div>
         )}

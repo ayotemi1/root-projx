@@ -3,7 +3,54 @@ import { useParams, Link } from "wouter";
 import * as api from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Heart, Users, MapPin, Search, CheckCircle } from "lucide-react";
+import { Heart, Users, MapPin, Search, CheckCircle, Check, Plus } from "lucide-react";
+import { useLocation } from "wouter";
+import { useAuth } from "@/context/AuthContext";
+import { SupporterPostCard, useSupporterFollow } from "@/components/supporter/SupporterPostCard";
+import { getFollowStatus, listPosts, spKey } from "@/lib/supporter-publishing";
+
+function FollowSupporterButton({ publicId }: { publicId: string }) {
+  const { isAuthenticated, token, user } = useAuth();
+  const [, navigate] = useLocation();
+  const follow = useSupporterFollow();
+  const own = user?.publicProfileSettings?.publicId === publicId;
+  const canQuery = isAuthenticated && user?.accountType === "supporter" && !own;
+  const q = useQuery({ queryKey: ["supporter-follow", publicId, token], queryFn: () => getFollowStatus(publicId, token!), enabled: canQuery });
+  if (own || (isAuthenticated && user?.accountType !== "supporter")) return null;
+  if (!isAuthenticated) {
+    return <button type="button" className="rp-btn rp-btn-yellow" onClick={() => navigate("/login")} data-testid="button-follow-supporter"><Plus className="w-4 h-4" /> Follow</button>;
+  }
+  if (q.isLoading) return <span className="inline-block h-12 w-32 bg-sidebar-foreground/20 animate-pulse" data-testid="status-follow-loading" />;
+  if (q.isError) return <button type="button" className="rp-btn rp-btn-ghost !text-sidebar-foreground !border-sidebar-foreground" onClick={() => q.refetch()} data-testid="button-follow-retry">Try again</button>;
+  const following = q.data === true;
+  return following ? (
+    <button type="button" className="rp-btn rp-btn-ghost !text-sidebar-foreground !border-sidebar-foreground" disabled={follow.isPending}
+      onClick={() => follow.mutate({ publicId, follow: false })} data-testid="button-unfollow-supporter"><Check className="w-4 h-4" /> Following</button>
+  ) : (
+    <button type="button" className="rp-btn rp-btn-yellow" disabled={follow.isPending}
+      onClick={() => follow.mutate({ publicId, follow: true })} data-testid="button-follow-supporter"><Plus className="w-4 h-4" /> Follow</button>
+  );
+}
+
+function SupporterPosts({ publicId }: { publicId: string }) {
+  const { token } = useAuth();
+  const q = useQuery({ queryKey: spKey({ publicId }, token), queryFn: () => listPosts({ publicId }, token) });
+  const posts = (q.data ?? []).filter(p => !p.removed);
+  return (
+    <section className="space-y-6" aria-label="Posts" data-testid="section-supporter-posts">
+      <h2 className="text-lg font-bold text-foreground">Posts</h2>
+      {q.isLoading ? <div className="aspect-[4/5] max-h-[420px] bg-border animate-pulse" data-testid="status-posts-loading" />
+        : q.isError ? (
+          <div className="bg-card p-6 border border-border text-center" role="alert">
+            <p className="text-sm">We couldn’t load these posts.</p>
+            <button type="button" className="rp-btn rp-btn-yellow mt-3" onClick={() => q.refetch()} data-testid="button-retry-posts">Try again</button>
+          </div>
+        ) : posts.length === 0 ? (
+          <div className="bg-card p-6 border border-border text-center"><p className="text-muted-foreground text-sm" data-testid="text-empty-posts">No posts yet.</p></div>
+        ) : <div className="space-y-14 bg-card border border-border p-5 md:p-8">{posts.map(p => <SupporterPostCard key={p.id} post={p} />)}</div>}
+    </section>
+  );
+}
 
 export default function SupporterProfilePage() {
   const params = useParams();
@@ -73,6 +120,7 @@ export default function SupporterProfilePage() {
                 )}
               </div>
             </div>
+            {params.publicId && <div className="shrink-0"><FollowSupporterButton publicId={params.publicId} /></div>}
           </div>
         </div>
       </div>
@@ -88,6 +136,8 @@ export default function SupporterProfilePage() {
             </CardContent>
           </Card>
         )}
+
+        {params.publicId && <SupporterPosts publicId={params.publicId} />}
 
         <div className="grid md:grid-cols-2 gap-8">
           {/* Supported Orgs */}

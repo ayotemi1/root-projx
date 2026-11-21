@@ -25,6 +25,7 @@ import type {
   CampaignAssistRequest,
   CampaignEditorRequest,
   CampaignLandingView,
+  CompleteSupporterPostUpload202,
   ContactEventRequest,
   CreateDonationRequest,
   CreateOrganisationRequest,
@@ -36,13 +37,16 @@ import type {
   EditorCampaign,
   ErrorResponse,
   FollowRequest,
+  FollowSupporter200,
   GetCampaignAssistStatus200,
   GetHelpOrgsParams,
+  GetSupporterFollowState200,
   GetWiseDisbursements200,
   GetWiseDisbursementsParams,
   HealthStatus,
   HelpReview,
   ListOrganisationsParams,
+  ListSupporterPostsParams,
   LoginRequest,
   ManagedPost,
   MessageResponse,
@@ -64,12 +68,19 @@ import type {
   RegisterRequest,
   RequestCampaignWritingSuggestion200,
   RequestPasswordReset200,
+  RequestSupporterPostUpload200,
   ReviewBankDetails200,
   SaveCampaignDraft400,
   SaveOrganisationWalkthrough200,
   SendAdminTestEmail200,
   SubmitHelpReviewRequest,
   SupporterInterests,
+  SupporterMediaCompletionInput,
+  SupporterMediaUploadInput,
+  SupporterPostInput,
+  SupporterPostMedia,
+  SupporterPostRecord,
+  UnfollowSupporter200,
   Update,
   UpdateOrganisationRequest,
   UpdateProfileRequest,
@@ -4903,4 +4914,902 @@ export const useUpdateProfile = <
   TContext
 > => {
   return useMutation(getUpdateProfileMutationOptions(options));
+};
+
+export const getListSupporterPostsUrl = (params?: ListSupporterPostsParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/supporter-posts?${stringifiedParams}`
+    : `/api/supporter-posts`;
+};
+
+export const listSupporterPosts = async (
+  params?: ListSupporterPostsParams,
+  options?: RequestInit,
+): Promise<SupporterPostRecord[]> => {
+  return customFetch<SupporterPostRecord[]>(getListSupporterPostsUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListSupporterPostsQueryKey = (
+  params?: ListSupporterPostsParams,
+) => {
+  return [`/api/supporter-posts`, ...(params ? [params] : [])] as const;
+};
+
+export const getListSupporterPostsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listSupporterPosts>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListSupporterPostsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listSupporterPosts>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListSupporterPostsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listSupporterPosts>>
+  > = ({ signal }) => listSupporterPosts(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listSupporterPosts>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListSupporterPostsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listSupporterPosts>>
+>;
+export type ListSupporterPostsQueryError = ErrorType<unknown>;
+
+export function useListSupporterPosts<
+  TData = Awaited<ReturnType<typeof listSupporterPosts>>,
+  TError = ErrorType<unknown>,
+>(
+  params?: ListSupporterPostsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listSupporterPosts>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListSupporterPostsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getPublishSupporterPostUrl = () => {
+  return `/api/supporter-posts`;
+};
+
+export const publishSupporterPost = async (
+  supporterPostInput: SupporterPostInput,
+  options?: RequestInit,
+): Promise<SupporterPostRecord> => {
+  return customFetch<SupporterPostRecord>(getPublishSupporterPostUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(supporterPostInput),
+  });
+};
+
+export const getPublishSupporterPostMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof publishSupporterPost>>,
+    TError,
+    { data: BodyType<SupporterPostInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof publishSupporterPost>>,
+  TError,
+  { data: BodyType<SupporterPostInput> },
+  TContext
+> => {
+  const mutationKey = ["publishSupporterPost"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof publishSupporterPost>>,
+    { data: BodyType<SupporterPostInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return publishSupporterPost(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type PublishSupporterPostMutationResult = NonNullable<
+  Awaited<ReturnType<typeof publishSupporterPost>>
+>;
+export type PublishSupporterPostMutationBody = BodyType<SupporterPostInput>;
+export type PublishSupporterPostMutationError = ErrorType<unknown>;
+
+export const usePublishSupporterPost = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof publishSupporterPost>>,
+    TError,
+    { data: BodyType<SupporterPostInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof publishSupporterPost>>,
+  TError,
+  { data: BodyType<SupporterPostInput> },
+  TContext
+> => {
+  return useMutation(getPublishSupporterPostMutationOptions(options));
+};
+
+export const getRequestSupporterPostUploadUrl = () => {
+  return `/api/supporter-posts/uploads/request`;
+};
+
+export const requestSupporterPostUpload = async (
+  supporterMediaUploadInput: SupporterMediaUploadInput,
+  options?: RequestInit,
+): Promise<RequestSupporterPostUpload200> => {
+  return customFetch<RequestSupporterPostUpload200>(
+    getRequestSupporterPostUploadUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(supporterMediaUploadInput),
+    },
+  );
+};
+
+export const getRequestSupporterPostUploadMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestSupporterPostUpload>>,
+    TError,
+    { data: BodyType<SupporterMediaUploadInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof requestSupporterPostUpload>>,
+  TError,
+  { data: BodyType<SupporterMediaUploadInput> },
+  TContext
+> => {
+  const mutationKey = ["requestSupporterPostUpload"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof requestSupporterPostUpload>>,
+    { data: BodyType<SupporterMediaUploadInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return requestSupporterPostUpload(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RequestSupporterPostUploadMutationResult = NonNullable<
+  Awaited<ReturnType<typeof requestSupporterPostUpload>>
+>;
+export type RequestSupporterPostUploadMutationBody =
+  BodyType<SupporterMediaUploadInput>;
+export type RequestSupporterPostUploadMutationError = ErrorType<unknown>;
+
+export const useRequestSupporterPostUpload = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestSupporterPostUpload>>,
+    TError,
+    { data: BodyType<SupporterMediaUploadInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof requestSupporterPostUpload>>,
+  TError,
+  { data: BodyType<SupporterMediaUploadInput> },
+  TContext
+> => {
+  return useMutation(getRequestSupporterPostUploadMutationOptions(options));
+};
+
+export const getCompleteSupporterPostUploadUrl = () => {
+  return `/api/supporter-posts/uploads/complete`;
+};
+
+export const completeSupporterPostUpload = async (
+  supporterMediaCompletionInput: SupporterMediaCompletionInput,
+  options?: RequestInit,
+): Promise<SupporterPostMedia | CompleteSupporterPostUpload202> => {
+  return customFetch<SupporterPostMedia | CompleteSupporterPostUpload202>(
+    getCompleteSupporterPostUploadUrl(),
+    {
+      ...options,
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(supporterMediaCompletionInput),
+    },
+  );
+};
+
+export const getCompleteSupporterPostUploadMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof completeSupporterPostUpload>>,
+    TError,
+    { data: BodyType<SupporterMediaCompletionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof completeSupporterPostUpload>>,
+  TError,
+  { data: BodyType<SupporterMediaCompletionInput> },
+  TContext
+> => {
+  const mutationKey = ["completeSupporterPostUpload"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof completeSupporterPostUpload>>,
+    { data: BodyType<SupporterMediaCompletionInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return completeSupporterPostUpload(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CompleteSupporterPostUploadMutationResult = NonNullable<
+  Awaited<ReturnType<typeof completeSupporterPostUpload>>
+>;
+export type CompleteSupporterPostUploadMutationBody =
+  BodyType<SupporterMediaCompletionInput>;
+export type CompleteSupporterPostUploadMutationError = ErrorType<unknown>;
+
+export const useCompleteSupporterPostUpload = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof completeSupporterPostUpload>>,
+    TError,
+    { data: BodyType<SupporterMediaCompletionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof completeSupporterPostUpload>>,
+  TError,
+  { data: BodyType<SupporterMediaCompletionInput> },
+  TContext
+> => {
+  return useMutation(getCompleteSupporterPostUploadMutationOptions(options));
+};
+
+export const getClearSupporterMediaSessionUrl = () => {
+  return `/api/supporter-posts/media-session`;
+};
+
+export const clearSupporterMediaSession = async (
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getClearSupporterMediaSessionUrl(), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getClearSupporterMediaSessionMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof clearSupporterMediaSession>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof clearSupporterMediaSession>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["clearSupporterMediaSession"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof clearSupporterMediaSession>>,
+    void
+  > = () => {
+    return clearSupporterMediaSession(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ClearSupporterMediaSessionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof clearSupporterMediaSession>>
+>;
+
+export type ClearSupporterMediaSessionMutationError = ErrorType<unknown>;
+
+export const useClearSupporterMediaSession = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof clearSupporterMediaSession>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof clearSupporterMediaSession>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getClearSupporterMediaSessionMutationOptions(options));
+};
+
+export const getGetSupporterPostMediaUrl = (id: string) => {
+  return `/api/supporter-posts/media/${id}`;
+};
+
+export const getSupporterPostMedia = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getGetSupporterPostMediaUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetSupporterPostMediaQueryKey = (id: string) => {
+  return [`/api/supporter-posts/media/${id}`] as const;
+};
+
+export const getGetSupporterPostMediaQueryOptions = <
+  TData = Awaited<ReturnType<typeof getSupporterPostMedia>>,
+  TError = ErrorType<void>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getSupporterPostMedia>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetSupporterPostMediaQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getSupporterPostMedia>>
+  > = ({ signal }) => getSupporterPostMedia(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getSupporterPostMedia>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetSupporterPostMediaQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getSupporterPostMedia>>
+>;
+export type GetSupporterPostMediaQueryError = ErrorType<void>;
+
+export function useGetSupporterPostMedia<
+  TData = Awaited<ReturnType<typeof getSupporterPostMedia>>,
+  TError = ErrorType<void>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getSupporterPostMedia>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetSupporterPostMediaQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getGetSupporterPostThumbnailUrl = (id: string) => {
+  return `/api/supporter-posts/media/${id}/thumbnail`;
+};
+
+export const getSupporterPostThumbnail = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getGetSupporterPostThumbnailUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetSupporterPostThumbnailQueryKey = (id: string) => {
+  return [`/api/supporter-posts/media/${id}/thumbnail`] as const;
+};
+
+export const getGetSupporterPostThumbnailQueryOptions = <
+  TData = Awaited<ReturnType<typeof getSupporterPostThumbnail>>,
+  TError = ErrorType<void>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getSupporterPostThumbnail>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetSupporterPostThumbnailQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getSupporterPostThumbnail>>
+  > = ({ signal }) =>
+    getSupporterPostThumbnail(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getSupporterPostThumbnail>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetSupporterPostThumbnailQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getSupporterPostThumbnail>>
+>;
+export type GetSupporterPostThumbnailQueryError = ErrorType<void>;
+
+export function useGetSupporterPostThumbnail<
+  TData = Awaited<ReturnType<typeof getSupporterPostThumbnail>>,
+  TError = ErrorType<void>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getSupporterPostThumbnail>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetSupporterPostThumbnailQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getGetSupporterFollowStateUrl = (publicId: string) => {
+  return `/api/supporter-posts/follows/${publicId}`;
+};
+
+export const getSupporterFollowState = async (
+  publicId: string,
+  options?: RequestInit,
+): Promise<GetSupporterFollowState200> => {
+  return customFetch<GetSupporterFollowState200>(
+    getGetSupporterFollowStateUrl(publicId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetSupporterFollowStateQueryKey = (publicId: string) => {
+  return [`/api/supporter-posts/follows/${publicId}`] as const;
+};
+
+export const getGetSupporterFollowStateQueryOptions = <
+  TData = Awaited<ReturnType<typeof getSupporterFollowState>>,
+  TError = ErrorType<unknown>,
+>(
+  publicId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getSupporterFollowState>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetSupporterFollowStateQueryKey(publicId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getSupporterFollowState>>
+  > = ({ signal }) =>
+    getSupporterFollowState(publicId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!publicId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getSupporterFollowState>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetSupporterFollowStateQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getSupporterFollowState>>
+>;
+export type GetSupporterFollowStateQueryError = ErrorType<unknown>;
+
+export function useGetSupporterFollowState<
+  TData = Awaited<ReturnType<typeof getSupporterFollowState>>,
+  TError = ErrorType<unknown>,
+>(
+  publicId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getSupporterFollowState>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetSupporterFollowStateQueryOptions(
+    publicId,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getFollowSupporterUrl = (publicId: string) => {
+  return `/api/supporter-posts/follows/${publicId}`;
+};
+
+export const followSupporter = async (
+  publicId: string,
+  options?: RequestInit,
+): Promise<FollowSupporter200> => {
+  return customFetch<FollowSupporter200>(getFollowSupporterUrl(publicId), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getFollowSupporterMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof followSupporter>>,
+    TError,
+    { publicId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof followSupporter>>,
+  TError,
+  { publicId: string },
+  TContext
+> => {
+  const mutationKey = ["followSupporter"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof followSupporter>>,
+    { publicId: string }
+  > = (props) => {
+    const { publicId } = props ?? {};
+
+    return followSupporter(publicId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type FollowSupporterMutationResult = NonNullable<
+  Awaited<ReturnType<typeof followSupporter>>
+>;
+
+export type FollowSupporterMutationError = ErrorType<unknown>;
+
+export const useFollowSupporter = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof followSupporter>>,
+    TError,
+    { publicId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof followSupporter>>,
+  TError,
+  { publicId: string },
+  TContext
+> => {
+  return useMutation(getFollowSupporterMutationOptions(options));
+};
+
+export const getUnfollowSupporterUrl = (publicId: string) => {
+  return `/api/supporter-posts/follows/${publicId}`;
+};
+
+export const unfollowSupporter = async (
+  publicId: string,
+  options?: RequestInit,
+): Promise<UnfollowSupporter200> => {
+  return customFetch<UnfollowSupporter200>(getUnfollowSupporterUrl(publicId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getUnfollowSupporterMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof unfollowSupporter>>,
+    TError,
+    { publicId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof unfollowSupporter>>,
+  TError,
+  { publicId: string },
+  TContext
+> => {
+  const mutationKey = ["unfollowSupporter"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof unfollowSupporter>>,
+    { publicId: string }
+  > = (props) => {
+    const { publicId } = props ?? {};
+
+    return unfollowSupporter(publicId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UnfollowSupporterMutationResult = NonNullable<
+  Awaited<ReturnType<typeof unfollowSupporter>>
+>;
+
+export type UnfollowSupporterMutationError = ErrorType<unknown>;
+
+export const useUnfollowSupporter = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof unfollowSupporter>>,
+    TError,
+    { publicId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof unfollowSupporter>>,
+  TError,
+  { publicId: string },
+  TContext
+> => {
+  return useMutation(getUnfollowSupporterMutationOptions(options));
+};
+
+export const getRemoveSupporterPostUrl = (id: string) => {
+  return `/api/supporter-posts/${id}`;
+};
+
+export const removeSupporterPost = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getRemoveSupporterPostUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getRemoveSupporterPostMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof removeSupporterPost>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof removeSupporterPost>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["removeSupporterPost"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof removeSupporterPost>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return removeSupporterPost(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RemoveSupporterPostMutationResult = NonNullable<
+  Awaited<ReturnType<typeof removeSupporterPost>>
+>;
+
+export type RemoveSupporterPostMutationError = ErrorType<unknown>;
+
+export const useRemoveSupporterPost = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof removeSupporterPost>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof removeSupporterPost>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getRemoveSupporterPostMutationOptions(options));
 };

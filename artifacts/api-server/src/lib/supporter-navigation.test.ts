@@ -36,6 +36,9 @@ async function render(path: string, options: {
     plugins: [{
       name: "isolated-supporter-auth",
       setup(b) {
+        b.onResolve({ filter: /^@workspace\/api-client-react$/ }, () => ({
+          path: new URL("../../../../lib/api-client-react/src/generated/api.ts", import.meta.url).pathname,
+        }));
         b.onResolve({ filter: /context\/AuthContext$/ }, () => ({ path: "auth", namespace: "isolated" }));
         b.onLoad({ filter: /.*/, namespace: "isolated" }, () => ({
           contents: `export const useAuth=()=>({...${JSON.stringify(auth)},logout:async()=>{},refreshUser:async()=>{}});`,
