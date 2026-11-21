@@ -23,7 +23,7 @@ function pathname(location: string) {
 
 export function isSupporterPath(location: string) {
   const path = pathname(location);
-  return path === "/account" || path === "/settings" || path === "/settings/interests" || path === "/onboarding/interests" || supporterNavigation.some(item => item.href === path);
+  return path === "/account" || path === "/settings" || path === "/settings/interests" || path === "/onboarding/interests" || path === "/onboarding/follows" || supporterNavigation.some(item => item.href === path);
 }
 
 export function shouldUseSupporterLayout(location: string, accountType?: string | null) {

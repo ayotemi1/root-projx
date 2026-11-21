@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { fsGet, fsPatch, fsDelete, fsQuery } from "../lib/firebase-rest.js";
+import { fsGet, fsPatch, fsDelete, fsQuery, fsIncrement, getServerToken } from "../lib/firebase-rest.js";
 import { requireAuth } from "../lib/auth.js";
 import { withoutPrivatePayoutSetup } from "../lib/payout-setup.js";
 
@@ -17,14 +17,15 @@ router.post("/follows", requireAuth, async (req, res) => {
       return;
     }
 
-    const org = await fsGet("organisations", orgId, token);
+    const serverToken = await getServerToken();
+    const org = await fsGet("organisations", orgId, serverToken);
     if (!org) {
       res.status(404).json({ error: "Organisation not found" });
       return;
     }
 
     const followId = `${uid}_${orgId}`;
-    const existingFollow = await fsGet("follows", followId, token);
+    const existingFollow = await fsGet("follows", followId, serverToken);
     if (existingFollow) {
       res.status(409).json({ error: "Already following this organisation" });
       return;
@@ -37,9 +38,9 @@ router.post("/follows", requireAuth, async (req, res) => {
     };
     await fsPatch("follows", followId, followData, token);
 
-    // Increment followerCount (read-modify-write)
-    const currentCount = (org["followerCount"] as number) ?? 0;
-    await fsPatch("organisations", orgId, { ...org, followerCount: currentCount + 1 }, token);
+    // Organisation documents are server-only. Never write a stale whole-org
+    // snapshot here: it could overwrite campaign or accounting updates.
+    await fsIncrement("organisations", orgId, { followerCount: 1 }, serverToken);
 
     res.status(201).json({ _id: followId, ...followData });
   } catch (err) {
@@ -65,10 +66,13 @@ router.delete("/follows/:orgId", requireAuth, async (req, res) => {
     await fsDelete("follows", followId, token);
 
     // Decrement followerCount
-    const org = await fsGet("organisations", orgId, token);
+    const serverToken = await getServerToken();
+    const org = await fsGet("organisations", orgId, serverToken);
     if (org) {
       const currentCount = (org["followerCount"] as number) ?? 1;
-      await fsPatch("organisations", orgId, { ...org, followerCount: Math.max(0, currentCount - 1) }, token);
+      if (currentCount > 0) {
+        await fsIncrement("organisations", orgId, { followerCount: -1 }, serverToken);
+      }
     }
 
     res.json({ message: "Unfollowed successfully" });
@@ -87,13 +91,16 @@ router.get("/follows/my", requireAuth, async (req, res) => {
     const follows = await fsQuery("follows", [
       { field: "userId", op: "EQUAL", value: uid },
     ], token);
+    const serverToken = await getServerToken();
 
     // Fetch org profiles in parallel
     const orgs = await Promise.all(
       follows.map(async (f) => {
         const orgId = f["orgId"] as string;
-        const org = await fsGet("organisations", orgId, token);
-        return org ? { _id: orgId, ...withoutPrivatePayoutSetup(org) } : null;
+        const org = await fsGet("organisations", orgId, serverToken);
+        if (!org) return null;
+        const { campaigns: _campaigns, ...publicOrg } = org;
+        return { _id: orgId, ...withoutPrivatePayoutSetup(publicOrg) };
       }),
     );
 

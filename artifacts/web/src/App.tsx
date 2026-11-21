@@ -43,6 +43,7 @@ import AdminLoginPage from "@/pages/admin-login";
 import AdminPage from "@/pages/admin";
 import NotFound from "@/pages/not-found";
 import { OnboardingInterestsPage, SettingsInterestsPage, SettingsPage, ONBOARDING_INTERESTS_FLAG } from "@/pages/interests";
+import OnboardingFollowsPage from "@/pages/onboarding-follows";
 import SupporterProfilePage from "@/pages/supporter-profile";
 import CampaignLandingPage from "@/pages/campaign-landing";
 import CampaignPreviewPage from "@/pages/campaign-preview";
@@ -155,6 +156,9 @@ function AppRoutes() {
               <Route path="/help" component={HelpPage} />
               <Route path="/onboarding/interests">
                 {() => <ProtectedRoute component={OnboardingInterestsPage} />}
+              </Route>
+              <Route path="/onboarding/follows">
+                {() => <ProtectedRoute component={OnboardingFollowsPage} />}
               </Route>
               <Route path="/settings/interests">
                 {() => <ProtectedRoute component={SettingsInterestsPage} />}

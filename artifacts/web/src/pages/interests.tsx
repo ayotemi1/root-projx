@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Link, Redirect, useLocation } from "wouter";
 import { ArrowRight, Check, ChevronRight } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -34,6 +35,7 @@ function toggle(list: string[], s: string) {
 export function OnboardingInterestsPage() {
   const { token, isAuthenticated, user } = useAuth();
   const [, navigate] = useLocation();
+  const queryClient = useQueryClient();
   const [selected, setSelected] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -44,23 +46,25 @@ export function OnboardingInterestsPage() {
 
   const onContinue = async () => {
     setError(""); setSaving(true);
-    try { await api.saveSupporterInterests(selected, token); navigate("/feed"); }
+    try { await api.saveSupporterInterests(selected, token);
+      await queryClient.invalidateQueries({ queryKey: ["interests", token] });
+      navigate("/onboarding/follows"); }
     catch (e) { setError(userErrorMessage(e, "save your interests")); }
     finally { setSaving(false); }
   };
 
   return (
     <section className="rpi-page rp-rise" data-testid="page-onboarding-interests">
-      <p className="rpi-kicker">Optional</p>
+      <p className="rpi-kicker">Optional · Step 1 of 2</p>
       <h1 id="rpi-title" className="rpi-title">What kind of work are you interested in?</h1>
-      <p className="rpi-lede">Pick as many as you like, or skip for now. Your interests are private, and you can change them any time in Settings.</p>
+      <p className="rpi-lede">Pick as many as you like, or skip for now. Next, we will suggest a few organisations doing this work. Your interests are private, and you can change them any time in Settings.</p>
       <SectorPicker selected={selected} onToggle={s => setSelected(l => toggle(l, s))} disabled={saving} />
       {error && <p className="rpi-error" role="alert" data-testid="error-interests">{error}</p>}
       <div className="rpi-actions">
         <button type="button" className="rp-btn rp-btn-yellow rpi-btn" onClick={onContinue} disabled={saving} data-testid="button-continue-interests">
           {saving ? "Saving…" : "Continue"} {!saving && <ArrowRight size={16} aria-hidden />}
         </button>
-        <button type="button" className="rp-link-u rpi-skip" disabled={saving} onClick={() => navigate("/feed")} data-testid="link-skip-interests">Skip</button>
+        <button type="button" className="rp-link-u rpi-skip" disabled={saving} onClick={() => navigate("/onboarding/follows?interests=skipped")} data-testid="link-skip-interests">Skip</button>
       </div>
     </section>
   );

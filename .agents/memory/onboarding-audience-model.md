@@ -19,6 +19,17 @@ not a new barrier for returning supporters or a public profile attribute.
 **How to apply:** Do not force completion, expose interests publicly, or claim
 personalised suggestions before a matching feature actually uses them.
 
+Supporter onboarding is Create account → Interests → Follow a few organisations
+→ Home. Both preference steps are optional; skipping the follows step must keep
+any follows already saved. Suggestions should prefer selected profile sectors
+and fill remaining places with real public organisations, never example cards.
+
+**Why:** The user wants a low-pressure introduction using real organisations,
+not a minimum-follow gate or a reset of choices when someone skips.
+
+**How to apply:** Preserve ordinary returning-supporter sign-in and keep both
+onboarding exit actions available even with zero follows or a loading error.
+
 Approved organisations should manage their own profiles and launch campaigns
 without Root ProjX editing their content. Root ProjX's manual gates are application
 approval and confirmation of an off-platform bank-transfer payout arrangement.
