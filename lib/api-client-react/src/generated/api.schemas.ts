@@ -5,6 +5,38 @@
  * Root ProjX API — community giving platform
  * OpenAPI spec version: 0.1.0
  */
+export type SupporterNotificationType =
+  (typeof SupporterNotificationType)[keyof typeof SupporterNotificationType];
+
+export const SupporterNotificationType = {
+  organisation_post: "organisation_post",
+  story: "story",
+  comment: "comment",
+  like: "like",
+  campaign_milestone: "campaign_milestone",
+  donation: "donation",
+} as const;
+
+export interface SupporterNotification {
+  id: string;
+  type: SupporterNotificationType;
+  message: string;
+  createdAt: string;
+  read: boolean;
+  href: string;
+  name: string;
+  /** @nullable */
+  avatarUrl?: string | null;
+  /** @nullable */
+  thumbnailUrl?: string | null;
+}
+
+export interface SupporterNotificationInbox {
+  items: SupporterNotification[];
+  /** @minimum 0 */
+  unreadCount: number;
+}
+
 export type SupporterMediaUploadInputContentType =
   (typeof SupporterMediaUploadInputContentType)[keyof typeof SupporterMediaUploadInputContentType];
 

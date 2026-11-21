@@ -342,6 +342,16 @@ export default function AccountPage({ view = "all" }: { view?: "all" | "giving" 
   const donations = donationsQ.data ?? [];
   const recurring = recurringQ.data ?? [];
 
+  // Notification deep-link: /giving-history#donation-<id> scrolls to that row once loaded.
+  const donationsLoaded = donationsQ.isSuccess;
+  useEffect(() => {
+    if (!donationsLoaded) return;
+    const hash = decodeURIComponent(window.location.hash.slice(1));
+    if (!hash.startsWith("donation-")) return;
+    const el = document.getElementById(hash);
+    if (el) requestAnimationFrame(() => { el.scrollIntoView({ block: "center" }); el.focus({ preventScroll: true }); });
+  }, [donationsLoaded]);
+
   async function handleManageSubscriptions() {
     if (!token) return;
     setPortalLoading(true);
@@ -549,7 +559,7 @@ export default function AccountPage({ view = "all" }: { view?: "all" | "giving" 
                     ? formatMoney(nativeAmount, d.currency)
                     : formatMoney(d.amountGbp, "gbp");
                   return (
-                    <div key={d._id} className="flex items-center justify-between py-3 gap-3">
+                    <div key={d._id} id={`donation-${d._id}`} tabIndex={-1} className="flex items-center justify-between py-3 gap-3 scroll-mt-24 target:bg-[#F3BF2C]/25 focus:outline-none focus-visible:ring-2" data-testid={`row-donation-${d._id}`}>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold text-foreground truncate">{d.orgName}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">{date}</p>

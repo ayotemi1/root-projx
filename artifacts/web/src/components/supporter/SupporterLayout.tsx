@@ -13,6 +13,8 @@ import { useSupporterFollowing } from "./use-supporter-following";
 import { SupporterCreateMenu } from "./SupporterCreateMenu";
 import { SupporterPostDraftProvider } from "./SupporterPostDraftProvider";
 import { TextPostProvider } from "./TextPostProvider";
+import { NotificationsInbox, UnreadBadge } from "./NotificationsInbox";
+import { useSupporterNotifications } from "./use-supporter-notifications";
 import "./supporter.css";
 
 const icons: Record<SupporterNavigationId, typeof Home> = {
@@ -78,6 +80,31 @@ export default function SupporterLayout({ children }: { children: ReactNode }) {
   const { signOut, error, pending } = useSignOut();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuBtn = useRef<HTMLButtonElement>(null);
+  const notifications = useSupporterNotifications();
+  const [panelOpen, setPanelOpen] = useState(false);
+  const panelBtn = useRef<HTMLButtonElement>(null);
+  const closePanel = () => { setPanelOpen(false); panelBtn.current?.focus(); };
+  useEffect(() => { setPanelOpen(false); }, [location, notifications.token]);
+  useEffect(() => {
+    if (!panelOpen) return;
+    document.getElementById("rpn-panel-title")?.focus();
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { setPanelOpen(false); panelBtn.current?.focus(); } };
+    const onOutside = (e: PointerEvent) => {
+      const target = e.target as Node;
+      if (!document.getElementById("rpn-drawer")?.contains(target) && !panelBtn.current?.contains(target)) {
+        setPanelOpen(false);
+        if (!(target instanceof Element) || !target.closest("a,button,input,select,textarea,[tabindex],[role=button],[role=link]")) {
+          requestAnimationFrame(() => panelBtn.current?.focus());
+        }
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onOutside);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onOutside);
+    };
+  }, [panelOpen]);
 
   useEffect(() => {
     setMenuOpen(false);
@@ -148,6 +175,7 @@ export default function SupporterLayout({ children }: { children: ReactNode }) {
           <Link href={notif.href} className="rps-icon-btn" aria-label="Notifications"
             aria-current={isSupporterNavigationActive(notif, location) ? "page" : undefined} data-testid="link-notifications-mobile">
             <Bell size={22} aria-hidden />
+            <UnreadBadge testId="badge-notifications-mobile" />
           </Link>
           <button ref={menuBtn} type="button" className="rps-icon-btn" aria-expanded={menuOpen}
             aria-controls="rps-mmenu" aria-label={menuOpen ? "Close menu" : "More destinations"}
@@ -168,6 +196,7 @@ export default function SupporterLayout({ children }: { children: ReactNode }) {
                   aria-current={isSupporterNavigationActive(item, location) ? "page" : undefined}
                   onClick={() => setMenuOpen(false)} data-testid={`link-menu-${item.id}`}>
                   <Icon size={20} aria-hidden /> {item.label}
+                  {item.id === "notifications" && <UnreadBadge testId="badge-notifications-menu" />}
                 </Link>
               </li>
             );
@@ -191,6 +220,13 @@ export default function SupporterLayout({ children }: { children: ReactNode }) {
                     <SupporterCreateMenu className="rps-nav-item" testId="link-nav-create">
                       <Icon size={20} aria-hidden />{item.label}
                     </SupporterCreateMenu>
+                  ) : item.id === "notifications" && notifications.enabled ? (
+                    <button ref={panelBtn} type="button" className="rps-nav-item rpn-trigger" aria-expanded={panelOpen} aria-controls="rpn-drawer"
+                      aria-current={active ? "page" : undefined}
+                      onClick={() => setPanelOpen(o => !o)} data-testid="button-nav-notifications">
+                      <Icon size={20} aria-hidden />{item.label}
+                      <UnreadBadge testId="badge-notifications-sidebar" />
+                    </button>
                   ) : (
                   <Link href={item.href} className="rps-nav-item"
                     aria-current={active ? "page" : undefined} data-testid={`link-nav-${item.id}`}>
@@ -205,6 +241,15 @@ export default function SupporterLayout({ children }: { children: ReactNode }) {
         </nav>
         <div className="rps-side-foot">{accountBlock}</div>
       </aside>
+
+      {panelOpen && notifications.enabled && (
+        <>
+          <div className="rpn-drawer-scrim" onClick={closePanel} aria-hidden data-testid="scrim-notifications" />
+          <div id="rpn-drawer" className="rpn-drawer" role="dialog" aria-modal="false" aria-labelledby="rpn-panel-title">
+            <NotificationsInbox variant="panel" titleId="rpn-panel-title" onClose={closePanel} onNavigate={() => setPanelOpen(false)} />
+          </div>
+        </>
+      )}
 
       <main id="rps-main" className="rps-main" tabIndex={-1}>{children}</main>
 

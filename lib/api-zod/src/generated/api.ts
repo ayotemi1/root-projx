@@ -8,6 +8,76 @@
 import * as zod from "zod";
 
 /**
+ * @summary Private notifications derived from the signed-in supporter's follows and donations
+ */
+export const listSupporterNotificationsResponseUnreadCountMin = 0;
+
+export const ListSupporterNotificationsResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string(),
+      type: zod.enum([
+        "organisation_post",
+        "story",
+        "comment",
+        "like",
+        "campaign_milestone",
+        "donation",
+      ]),
+      message: zod.string(),
+      createdAt: zod.string(),
+      read: zod.boolean(),
+      href: zod.string(),
+      name: zod.string(),
+      avatarUrl: zod.string().nullish(),
+      thumbnailUrl: zod.string().nullish(),
+    }),
+  ),
+  unreadCount: zod
+    .number()
+    .min(listSupporterNotificationsResponseUnreadCountMin),
+});
+
+/**
+ * @summary Mark one of the recipient's own notifications read
+ */
+export const readSupporterNotificationPathIdRegExp = new RegExp(
+  "^n_[A-Za-z0-9_-]{32}$",
+);
+
+export const ReadSupporterNotificationParams = zod.object({
+  id: zod.coerce.string().regex(readSupporterNotificationPathIdRegExp),
+});
+
+export const readSupporterNotificationResponseUnreadCountMin = 0;
+
+export const ReadSupporterNotificationResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string(),
+      type: zod.enum([
+        "organisation_post",
+        "story",
+        "comment",
+        "like",
+        "campaign_milestone",
+        "donation",
+      ]),
+      message: zod.string(),
+      createdAt: zod.string(),
+      read: zod.boolean(),
+      href: zod.string(),
+      name: zod.string(),
+      avatarUrl: zod.string().nullish(),
+      thumbnailUrl: zod.string().nullish(),
+    }),
+  ),
+  unreadCount: zod
+    .number()
+    .min(readSupporterNotificationResponseUnreadCountMin),
+});
+
+/**
  * @summary Read the signed-in supporter's private interests
  */
 export const getSupporterInterestsResponseInterestsMax = 12;

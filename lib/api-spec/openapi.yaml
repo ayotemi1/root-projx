@@ -25,6 +25,40 @@ tags:
   - name: profile
     description: User profile
 paths:
+  /supporter-notifications:
+    get:
+      operationId: listSupporterNotifications
+      tags: [profile]
+      summary: Private notifications derived from the signed-in supporter's follows and donations
+      responses:
+        '200':
+          description: Newest first, with the recipient's persistent read state
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SupporterNotificationInbox'}
+        '401': {description: Sign-in required}
+        '403': {description: Supporter required}
+        '503': {description: Notifications unavailable}
+  /supporter-notifications/{id}/read:
+    post:
+      operationId: readSupporterNotification
+      tags: [profile]
+      summary: Mark one of the recipient's own notifications read
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: {type: string, pattern: '^n_[A-Za-z0-9_-]{32}$'}
+      responses:
+        '200':
+          description: Updated private inbox
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SupporterNotificationInbox'}
+        '401': {description: Sign-in required}
+        '403': {description: Supporter required}
+        '404': {description: Notification unavailable}
+        '503': {description: Could not mark read}
   /profile/interests:
     get:
       operationId: getSupporterInterests
@@ -1294,6 +1328,27 @@ components:
       bearerFormat: JWT
 
   schemas:
+    SupporterNotification:
+      type: object
+      required: [id, type, message, createdAt, read, href, name]
+      properties:
+        id: {type: string}
+        type: {type: string, enum: [organisation_post, story, comment, like, campaign_milestone, donation]}
+        message: {type: string}
+        createdAt: {type: string}
+        read: {type: boolean}
+        href: {type: string}
+        name: {type: string}
+        avatarUrl: {type: [string, 'null']}
+        thumbnailUrl: {type: [string, 'null']}
+    SupporterNotificationInbox:
+      type: object
+      required: [items, unreadCount]
+      properties:
+        items:
+          type: array
+          items: {$ref: '#/components/schemas/SupporterNotification'}
+        unreadCount: {type: integer, minimum: 0}
     SupporterMediaUploadInput:
       type: object
       required: [name, size, contentType]

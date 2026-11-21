@@ -77,6 +77,7 @@ import type {
   SupporterInterests,
   SupporterMediaCompletionInput,
   SupporterMediaUploadInput,
+  SupporterNotificationInbox,
   SupporterPostInput,
   SupporterPostMedia,
   SupporterPostRecord,
@@ -103,6 +104,172 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+/**
+ * @summary Private notifications derived from the signed-in supporter's follows and donations
+ */
+export const getListSupporterNotificationsUrl = () => {
+  return `/api/supporter-notifications`;
+};
+
+export const listSupporterNotifications = async (
+  options?: RequestInit,
+): Promise<SupporterNotificationInbox> => {
+  return customFetch<SupporterNotificationInbox>(
+    getListSupporterNotificationsUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListSupporterNotificationsQueryKey = () => {
+  return [`/api/supporter-notifications`] as const;
+};
+
+export const getListSupporterNotificationsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listSupporterNotifications>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listSupporterNotifications>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListSupporterNotificationsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listSupporterNotifications>>
+  > = ({ signal }) => listSupporterNotifications({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listSupporterNotifications>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListSupporterNotificationsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listSupporterNotifications>>
+>;
+export type ListSupporterNotificationsQueryError = ErrorType<void>;
+
+/**
+ * @summary Private notifications derived from the signed-in supporter's follows and donations
+ */
+
+export function useListSupporterNotifications<
+  TData = Awaited<ReturnType<typeof listSupporterNotifications>>,
+  TError = ErrorType<void>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listSupporterNotifications>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListSupporterNotificationsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Mark one of the recipient's own notifications read
+ */
+export const getReadSupporterNotificationUrl = (id: string) => {
+  return `/api/supporter-notifications/${id}/read`;
+};
+
+export const readSupporterNotification = async (
+  id: string,
+  options?: RequestInit,
+): Promise<SupporterNotificationInbox> => {
+  return customFetch<SupporterNotificationInbox>(
+    getReadSupporterNotificationUrl(id),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getReadSupporterNotificationMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof readSupporterNotification>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof readSupporterNotification>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["readSupporterNotification"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof readSupporterNotification>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return readSupporterNotification(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ReadSupporterNotificationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof readSupporterNotification>>
+>;
+
+export type ReadSupporterNotificationMutationError = ErrorType<void>;
+
+/**
+ * @summary Mark one of the recipient's own notifications read
+ */
+export const useReadSupporterNotification = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof readSupporterNotification>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof readSupporterNotification>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getReadSupporterNotificationMutationOptions(options));
+};
 
 /**
  * @summary Read the signed-in supporter's private interests

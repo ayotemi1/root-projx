@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { ArrowRight, Play, Share2, Images, Film, Check, Plus } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import * as api from "@/lib/api";
@@ -196,6 +196,25 @@ export default function FeedPage() {
   const failed = active.isError && (spQ.isError || !spPosts.length);
   const forYou = isAuthenticated && user?.accountType === "supporter";
 
+  // Notification deep-link: /feed?post=<updateId> opens that published update once, after load.
+  const search = useSearch();
+  const linkedPost = new URLSearchParams(search).get("post");
+  const handledPost = useRef<string | null>(null);
+  const [postUnavailable, setPostUnavailable] = useState(false);
+  useEffect(() => {
+    if (!linkedPost) { handledPost.current = null; return; }
+    if (handledPost.current === linkedPost) return;
+    if (mode !== "public") { setMode("public"); return; }
+    if (publicQ.isLoading) return;
+    handledPost.current = linkedPost;
+    const found = (publicQ.data ?? []).find(u => u._id === linkedPost);
+    if (found) { setOpen(found); setPostUnavailable(false); } else setPostUnavailable(true);
+  }, [linkedPost, mode, publicQ.isLoading, publicQ.data]);
+  const closeDialog = () => {
+    setOpen(null);
+    if (linkedPost) navigate("/feed", { replace: true });
+  };
+
   const followState = (orgId: string): boolean | null => {
     if (!isAuthenticated) return false;
     if (!canFollow) return true; // organisations don't follow; hide the control
@@ -283,7 +302,14 @@ export default function FeedPage() {
           </div>
         )}
       </section>
-      <ContentDialog item={open} onClose={() => setOpen(null)} />
+      {postUnavailable && linkedPost && (
+        <div role="alert" className="fixed inset-x-4 bottom-24 lg:bottom-6 lg:left-auto lg:right-6 lg:w-[360px] z-50 border border-[#17100F] bg-[#FBF8F2] p-4" data-testid="status-linked-post-unavailable">
+          <p className="font-semibold">This post is no longer available.</p>
+          <p className="text-sm text-muted-foreground mt-1">The organisation may have removed it.</p>
+          <button type="button" className="rps-chip mt-3" onClick={() => { setPostUnavailable(false); navigate("/feed", { replace: true }); }} data-testid="button-dismiss-linked-post">Dismiss</button>
+        </div>
+      )}
+      <ContentDialog item={open} onClose={closeDialog} />
     </div>
   );
 }

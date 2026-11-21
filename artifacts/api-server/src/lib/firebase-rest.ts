@@ -446,6 +446,24 @@ export async function fsDelete(
 // server-side `increment` transform. Unlike read-modify-write (fsGet + fsPatch),
 // this is safe under concurrency: two simultaneous donations both land correctly,
 // and no other fields on the document are touched or overwritten.
+// Atomic append-only set membership: two tabs opening different notifications
+// cannot overwrite each other's read state or any unrelated account fields.
+export async function fsMarkSupporterNotificationRead(uid: string, id: string, token: string): Promise<void> {
+  if (!uid || uid.includes("/") || !/^n_[A-Za-z0-9_-]{32}$/.test(id)) throw new Error("Invalid notification read");
+  const document = `projects/${PROJECT_ID}/databases/(default)/documents/users/${uid}`;
+  const response = await fetch(`${FIRESTORE}:commit`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ writes: [{
+      transform: { document, fieldTransforms: [{
+        fieldPath: "notificationReads", appendMissingElements: { values: [{ stringValue: id }] },
+      }] },
+      currentDocument: { exists: true },
+    }] }),
+  });
+  if (!response.ok) throw new Error("Could not save notification read state");
+}
+
 export async function fsIncrement(
   collection: string,
   docId: string,
