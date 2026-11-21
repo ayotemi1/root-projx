@@ -130,7 +130,8 @@ test("signed-in supporter Create triggers open a chooser instead of navigating a
   const intro = await render("src/components/supporter/SupporterHomeIntro.tsx", {
     signedIn: true, exportName: "SupporterHomeIntro",
   });
-  assert.match(intro, /<button[^>]*aria-haspopup="dialog"[^>]*data-testid="link-composer-create"/);
+  assert.doesNotMatch(intro, /link-composer-create|rps-composer|caught your attention/i);
+  assert.match(intro, /Home/);
 });
 
 test("each missing supporter composer is explicitly flagged without a fake publishing form", async () => {

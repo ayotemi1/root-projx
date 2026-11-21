@@ -12,6 +12,7 @@ import * as api from "@/lib/api";
 import type { Org } from "@/lib/api";
 import { DISCOVER_COUNTRIES } from "@/lib/countries";
 import { OrganisationLogo } from "@/components/organisation-logo";
+import SupporterDiscoverPage from "@/components/supporter/SupporterDiscoverPage";
 
 const CATEGORIES = [
   "All Causes",
@@ -214,6 +215,12 @@ function OrgCardSkeleton() {
 type ViewMode = "grid" | "map";
 
 export default function DiscoverPage() {
+  const { isAuthenticated, user } = useAuth();
+  if (isAuthenticated && user?.accountType === "supporter") return <SupporterDiscoverPage />;
+  return <LegacyDiscoverPage />;
+}
+
+function LegacyDiscoverPage() {
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All Causes");
   const [locationFilter, setLocationFilter] = useState("All");

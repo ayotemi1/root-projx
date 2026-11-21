@@ -69,10 +69,6 @@
 .rps-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; border: 1px solid var(--rp-ink);
   background: var(--rp-yellow); color: var(--rp-ink); font-weight: 700; font-size: 14px; width: fit-content; cursor: pointer; }
 .rps-chip-ghost { background: transparent; }
-.rps-composer { display: flex; align-items: center; gap: 14px; padding: 18px; border: 1px solid var(--rp-ink); background: var(--rp-paper); min-width: 0; }
-.rps-composer-q { flex: 1; min-width: 0; color: hsl(var(--muted-foreground)); font-size: 17px; }
-.rps-composer-btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px; border: 1px solid var(--rp-ink); background: var(--rp-yellow); font-weight: 700; font-size: 14px; flex-shrink: 0; transition: transform .15s; }
-.rps-composer:hover .rps-composer-btn { transform: translateY(-1px); }
 
 /* Right panel */
 .rps-mono-h { font-family: var(--app-font-mono) !important; font-stretch: normal; font-variation-settings: normal; font-size: 11px; font-weight: 500; letter-spacing: .16em; text-transform: uppercase; padding-bottom: 12px; border-bottom: 1px solid var(--rp-ink); }

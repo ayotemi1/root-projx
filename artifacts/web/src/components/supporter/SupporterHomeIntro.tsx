@@ -1,13 +1,10 @@
 import { Link } from "wouter";
-import { Pencil, Compass } from "lucide-react";
-import { useAuth } from "@/context/AuthContext";
+import { Compass } from "lucide-react";
 import { OrganisationLogo } from "@/components/organisation-logo";
 import { useSupporterFollowing } from "./use-supporter-following";
-import { SupporterCreateMenu } from "./SupporterCreateMenu";
 import "./supporter.css";
 
 export function SupporterHomeIntro() {
-  const { user } = useAuth();
   const follows = useSupporterFollowing();
   const orgs = follows.data ?? [];
 
@@ -54,11 +51,6 @@ export function SupporterHomeIntro() {
         </ul>
       )}
 
-      <SupporterCreateMenu className="rps-composer" testId="link-composer-create">
-        {user && <span className="rps-avatar" aria-hidden>{user.avatarInitials}</span>}
-        <span className="rps-composer-q">What's caught your attention?</span>
-        <span className="rps-composer-btn"><Pencil size={15} aria-hidden /> Create</span>
-      </SupporterCreateMenu>
     </section>
   );
 }

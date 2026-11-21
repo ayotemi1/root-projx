@@ -31,3 +31,12 @@ For supporter Home and navigation, the newer references are `attached_assets/sup
 **Why:** On 2026-11-20 the user introduced a distinct supporter dashboard direction: desktop sidebar/central feed/following panel, and compact phone header/organisation strip/bottom navigation. This supersedes the earlier standalone Live Feed layout for the supporter experience.
 
 **How to apply:** Use these screen-specific references for supporter layout work while retaining Root ProjX branding and real existing functionality. Reference stories, counts and conversations are not evidence that those features or records exist.
+
+Supporter creation belongs in the desktop sidebar and mobile bottom navigation,
+not in a duplicate composer bar on Home.
+
+**Why:** On 2026-11-21 the user explicitly removed the “What's caught your attention?”
+bar on both screen sizes while keeping the navigation Create menus and actions.
+
+**How to apply:** Do not reintroduce the feed composer when extending supporter
+posting; retain the organisation strip and let the feed follow it naturally.
