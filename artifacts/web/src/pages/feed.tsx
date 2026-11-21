@@ -217,7 +217,7 @@ export default function FeedPage() {
           Photos, videos, campaigns and everyday moments from organisations.
         </p>
         </>}
-        <div className={`${supporterView ? "" : "mt-8 "}flex gap-6 border-b border-[#17100F]/15`} role="tablist" aria-label="Feed">
+        <div className={forYou ? "rps-home-feed-tabs" : `${supporterView ? "" : "mt-8 "}flex gap-6 border-b border-[#17100F]/15`} role="tablist" aria-label="Feed">
           {(["public", "mine"] as const).map((m) => {
             const disabled = m === "mine" && !isAuthenticated;
             const on = mode === m;
@@ -229,7 +229,7 @@ export default function FeedPage() {
                 aria-selected={on}
                 disabled={disabled}
                 onClick={() => !disabled && setMode(m)}
-                className={`rp-label !text-[14px] !tracking-[.04em] !normal-case min-h-11 pb-2 -mb-px border-b-2 transition-colors ${
+                className={forYou ? "rps-home-feed-tab" : `rp-label !text-[14px] !tracking-[.04em] !normal-case min-h-11 pb-2 -mb-px border-b-2 transition-colors ${
                   on ? "border-[#CA0813] text-[#17100F]" : disabled ? "border-transparent text-[#17100F]/35 cursor-not-allowed" : "border-transparent text-[#17100F]/60 hover:text-[#17100F]"
                 }`}
                 data-testid={`tab-feed-${m}`}
