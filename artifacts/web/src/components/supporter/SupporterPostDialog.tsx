@@ -80,7 +80,7 @@ export function SupporterPostDialog() {
     return () => { window.removeEventListener("dragover", stop); window.removeEventListener("drop", stop); };
   }, [open]);
 
-  const profileQ = useQuery({ queryKey: ["profile"], queryFn: () => api.getProfile(token!), enabled: open && !!token, staleTime: 0 });
+  const profileQ = useQuery({ queryKey: ["profile", user?.id, token], queryFn: () => api.getProfile(token!), enabled: open && !!token, staleTime: 0 });
   if (!d) return null;
   const { stage, items, active, caption, errors, sharing } = d;
   const current = items[active];

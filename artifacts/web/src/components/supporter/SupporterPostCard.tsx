@@ -91,7 +91,7 @@ export function SupporterPostCard({ post }: { post: SupporterPostRecord }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 min-w-0">
             {name}
-            {post.community_tag && <span className="shrink-0 text-[14px] text-[#17100F]/70 truncate" data-testid={`text-sp-tag-${post.id}`}>› {post.community_tag}</span>}
+            {(post.tag?.label || post.community_tag) && <span className="shrink-0 text-[14px] text-[#17100F]/70 truncate" data-testid={`text-sp-tag-${post.id}`}>› {post.tag?.label || post.community_tag}</span>}
           </div>
           <p className="rp-label !text-[12px] text-[#17100F]/60 flex items-center gap-2">
             Supporter · {dateLabel(post.created_at)}
@@ -115,7 +115,7 @@ export function SupporterPostCard({ post }: { post: SupporterPostRecord }) {
 
       <Carousel post={post} />
 
-      {post.caption && <p className="mt-4 text-[18px] leading-relaxed text-[#17100F]/85 whitespace-pre-wrap break-words" data-testid={`text-sp-caption-${post.id}`}>{post.caption}</p>}
+      {post.caption && <p className={`${post.media.length ? "mt-4 text-[18px]" : "mt-1 border-l-4 border-[#F3BF2C] pl-4 text-[20px] sm:text-[22px] font-medium"} leading-relaxed text-[#17100F]/85 whitespace-pre-wrap break-words`} data-testid={`text-sp-caption-${post.id}`}>{post.caption}</p>}
 
       <footer className="mt-3 flex flex-wrap items-center justify-between gap-3">
         {post.organisation_id ? (

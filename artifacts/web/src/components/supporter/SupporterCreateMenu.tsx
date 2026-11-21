@@ -5,6 +5,7 @@ import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { useAuth } from "@/context/AuthContext";
 import { useSupporterPostDraft } from "./SupporterPostDraftProvider";
+import { useTextPost } from "./TextPostProvider";
 import "./supporter-create.css";
 
 type Option = { type: "post" | "story" | "text"; label: string; description?: string; icon: LucideIcon; mobileOnly?: boolean };
@@ -56,6 +57,14 @@ export function SupporterCreateMenu({ className, testId, children, variant = "au
     const el = triggerRef.current;
     requestAnimationFrame(() => setTimeout(() => { pendingPost.current = false; draft.openPicker(el); }, 0));
   };
+  const textPost = useTextPost();
+  const startText = () => {
+    if (!textPost) return;
+    pendingPost.current = true;
+    setOpen(false);
+    const el = triggerRef.current;
+    requestAnimationFrame(() => setTimeout(() => { pendingPost.current = false; textPost.openComposer(el); }, 0));
+  };
   const keepFocus = (e: Event) => { if (pendingPost.current) e.preventDefault(); };
 
   useEffect(() => { setOpen(false); }, [location, desktop]);
@@ -78,8 +87,8 @@ export function SupporterCreateMenu({ className, testId, children, variant = "au
         <DropdownMenuPrimitive.Portal>
           <DropdownMenuPrimitive.Content align="start" sideOffset={6} collisionPadding={12}
             className="rpc-menu" data-testid="menu-create" onCloseAutoFocus={keepFocus}>
-            {options.filter(o => !o.mobileOnly).map(o => o.type === "post" && draft ? (
-              <DropdownMenuPrimitive.Item key={o.type} className="rpc-menu-item" onSelect={startPost} data-testid="menu-create-post">
+            {options.filter(o => !o.mobileOnly).map(o => (o.type === "post" && draft) || (o.type === "text" && textPost) ? (
+              <DropdownMenuPrimitive.Item key={o.type} className="rpc-menu-item" onSelect={o.type === "text" ? startText : startPost} data-testid={`menu-create-${o.type}`}>
                 <span>{o.label}</span><o.icon size={17} aria-hidden />
               </DropdownMenuPrimitive.Item>
             ) : (
@@ -118,8 +127,8 @@ export function SupporterCreateMenu({ className, testId, children, variant = "au
                     </span>
                     <o.icon size={19} aria-hidden />
                   </button>
-                ) : o.type === "post" && draft ? (
-                  <button type="button" className="rpc-sheet-item" onClick={startPost} data-testid="sheet-create-post">
+                ) : (o.type === "post" && draft) || (o.type === "text" && textPost) ? (
+                  <button type="button" className="rpc-sheet-item" onClick={o.type === "text" ? startText : startPost} data-testid={`sheet-create-${o.type}`}>
                     <span className="rpc-sheet-text">
                       <span className="rpc-sheet-label">{o.label}</span>
                       {o.description && <span className="rpc-sheet-desc">{o.description}</span>}

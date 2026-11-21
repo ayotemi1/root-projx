@@ -9,6 +9,7 @@
 - [Payout data boundaries](payout-data-boundaries.md) — bank details stay private and encrypted; disclosure requires durable audit, approval requires an atomic audit.
 - [Node route-test bundling](node-route-test-bundling.md) — bundle generated workspace validators in raw Node tests; app-build module resolution does not carry over.
 - [Media attachment recovery](media-attachment-recovery.md) — an uploaded asset is not saved content until attachment succeeds; pending URLs need a usable recovery action.
+- [Supporter post privacy](supporter-post-privacy.md) — private posts are owner-only, not follower-visible; community tags are recommendations, not membership.
 - [Campaign publication safety](campaign-publication-safety.md) — keep revisions private; committed funding is not matching; default and migrate legacy funding to committed.
 - [Campaign currencies](campaign-currency.md) — dollars mean actual USD charges; keep native campaign amounts separate from GBP settlement.
 - [Workflow port ownership](workflow-port-ownership.md) — orphan servers after merges can make managed Vite silently drift away from the artifact router's assigned port.

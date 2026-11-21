@@ -150,8 +150,8 @@ test("signed-in supporter Create triggers open a chooser instead of navigating a
   assert.match(intro, /Home/);
 });
 
-test("each missing supporter composer is explicitly flagged without a fake publishing form", async () => {
-  for (const type of ["post", "story", "text"]) {
+test("unavailable supporter composers are explicitly flagged without a fake publishing form", async () => {
+  for (const type of ["post", "story"]) {
     const html = await render("src/pages/supporter-placeholder.tsx", {
       signedIn: true, props: { section: "create" }, search: `type=${type}`,
     });
@@ -161,6 +161,12 @@ test("each missing supporter composer is explicitly flagged without a fake publi
     assert.doesNotMatch(html, /<form|<textarea|type="file"/);
     assert.match(html, /href="\/feed"/);
   }
+  const text = await render("src/pages/supporter-placeholder.tsx", {
+    signedIn: true, props: { section: "create" }, search: "type=text",
+  });
+  assert.match(text, /page-supporter-create-text-entry/);
+  assert.match(text, /Write a text post/);
+  assert.doesNotMatch(text, /Not built yet|Publishing unavailable/);
   for (const type of ["unknown", "__proto__", "constructor"]) {
     const html = await render("src/pages/supporter-placeholder.tsx", {
       props: { section: "create" }, search: `type=${type}`,

@@ -8,7 +8,7 @@ import {
   type MediaEdit, type PostMediaKind,
 } from "@/lib/supporter-post-media";
 import {
-  GENERIC_SHARE_ERROR, SP_KEY, completeUpload, newPostId, publishPost, putToSignedUrl, requestUpload,
+  GENERIC_SHARE_ERROR, cachePublishedPost, completeUpload, newPostId, publishPost, putToSignedUrl, requestUpload,
   type SupporterPostMedia,
 } from "@/lib/supporter-publishing";
 import { clearDraft, loadDraft, saveDraft, type StoredDraft } from "@/lib/supporter-post-drafts";
@@ -271,7 +271,7 @@ export function SupporterPostDraftProvider({ children }: { children: ReactNode }
       }
       const list = itemsRef.current;
       const f = fieldsRef.current;
-      await publishPost({
+      const saved = await publishPost({
         id: postIdRef.current,
         type: list[0].kind === "video" ? "video" : "photo",
         caption: f.caption.trim(),
@@ -285,7 +285,7 @@ export function SupporterPostDraftProvider({ children }: { children: ReactNode }
       commit([]);
       sharingRef.current = false; setSharing(false);
       setOpen(false); clear();
-      void qc.invalidateQueries({ queryKey: [SP_KEY] });
+      await cachePublishedPost(qc, saved, token);
       navigate("/profile");
       toast({ title: "Posted" });
     } catch {

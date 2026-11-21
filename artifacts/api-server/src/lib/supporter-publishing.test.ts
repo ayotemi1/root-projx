@@ -107,6 +107,92 @@ async function fixture() {
   return { ...api, call, media, close: () => new Promise<void>((resolve, reject) => server.close((e: Error) => e ? reject(e) : resolve())) };
 }
 
+test("text publishing rejects blank, long or media-bearing input and saves a retry-safe owner-only/private or public post", async () => {
+  const f = await fixture();
+  try {
+    const input = { id: randomUUID(), type: "text", caption: "A".repeat(500), media: [], tag: null };
+    for (const caption of ["", " \n\t ", "A".repeat(501)]) {
+      assert.equal((await f.call("/supporter-posts", "alice", "POST", { ...input, caption })).status, 400);
+    }
+    assert.equal((await f.call("/supporter-posts", "alice", "POST", { ...input, media: [f.media()] })).status, 400);
+    assert.equal((await f.call("/supporter-posts", undefined, "POST", input)).status, 401);
+    assert.equal((await f.call("/supporter-posts", "org", "POST", input)).status, 403);
+    const response = await f.call("/supporter-posts", "alice", "POST", input);
+    assert.equal(response.status, 201);
+    const post = await response.json() as any;
+    assert.equal(post.caption.length, 500);
+    assert.equal(post.type, "text");
+    assert.deepEqual(post.media, []);
+    assert.equal(post.tag, null);
+    assert.equal(post.visibility, "public");
+    assert.equal((await f.call("/supporter-posts", "alice", "POST", input)).status, 201);
+    assert.equal(f.state.writes.filter((w: any) => w.c === "publication").length, 1);
+    assert.equal((await (await f.call("/supporter-posts?feed=mine", "alice")).json() as any[]).length, 1);
+    f.state.docs.set("supporter_follows/bob_alice", { follower_id: "bob", author_id: "alice" });
+    assert.equal((await (await f.call("/supporter-posts?feed=following", "bob")).json() as any[]).length, 1);
+    f.state.docs.get("users/alice").publicProfile.enabled = false;
+    assert.equal((await (await f.call("/supporter-posts?feed=following", "bob")).json() as any[]).length, 0);
+    assert.equal((await (await f.call("/supporter-posts?feed=for-you", "bob")).json() as any[]).length, 0);
+    assert.equal((await (await f.call("/supporter-posts?feed=mine", "alice")).json() as any[]).length, 1);
+    f.state.fail = true;
+    const failed = await f.call("/supporter-posts", "alice", "POST", { ...input, id: randomUUID() });
+    assert.equal(failed.status, 503);
+    assert.deepEqual(await failed.json(), { error: "Something went wrong, please try again" });
+  } finally { await f.close(); }
+});
+
+test("real tag catalogue and text For you matching use interests, followed places/organisations and prior community choices", async () => {
+  const f = await fixture();
+  try {
+    f.state.docs.set("organisations/school", { name: "Real School", country: "Jamaica", location: "Kingston", category: "Education" });
+    f.state.docs.set("organisations/other", { name: "Unfollowed Organisation", country: "United Kingdom" });
+    f.state.docs.set("organisations/deleted", { name: "Deleted", country: "Hidden Country", deletedAt: "2026-01-01" });
+    for (const id of ["alice", "bob"]) f.state.docs.set(`follows/${id}_school`, { userId: id, orgId: "school" });
+    assert.equal((await f.call("/supporter-posts/tags")).status, 401);
+    const tags = await (await f.call("/supporter-posts/tags", "alice")).json() as any[];
+    assert.equal(tags.filter(t => t.type === "community").length, 5);
+    assert.ok(tags.some(t => t.type === "cause" && t.value === "Education"));
+    assert.ok(tags.some(t => t.type === "place" && t.value === "jamaica"));
+    assert.ok(tags.some(t => t.type === "organisation" && t.value === "school"));
+    assert.ok(!tags.some(t => t.value === "other" || t.label === "Hidden Country"));
+    const publish = async (tag: unknown, caption: string, user = "alice") => {
+      const response = await f.call("/supporter-posts", user, "POST", { id: randomUUID(), type: "text", caption, tag, media: [] });
+      assert.equal(response.status, 201);
+      return await response.json() as any;
+    };
+    const school = await publish({ type: "organisation", value: "school", label: "Forged label" }, "Organisation");
+    assert.equal(school.tag.label, "Real School");
+    assert.equal(school.community_tag, "Real School");
+    assert.equal(school.organisation_id, "school");
+    assert.equal((await f.call("/supporter-posts", "alice", "POST", {
+      id: randomUUID(), type: "text", caption: "Conflicting organisation", media: [],
+      tag: { type: "organisation", value: "school" }, organisation_id: "other",
+    })).status, 400);
+    await publish({ type: "cause", value: "Education" }, "Matching cause");
+    await publish({ type: "cause", value: "Environment" }, "Wrong cause");
+    await publish({ type: "place", value: "jamaica" }, "Matching place");
+    await publish({ type: "community", value: "volunteers" }, "Community");
+    for (const tag of [
+      { type: "community", value: "invented" }, { type: "organisation", value: "other" },
+      { type: "place", value: "atlantis" }, { type: "cause", value: "invented" },
+    ]) {
+      assert.equal((await f.call("/supporter-posts", "alice", "POST", { id: randomUUID(), type: "text", caption: "Invalid tag", media: [], tag })).status, 400);
+    }
+    const feed = async () => await (await f.call("/supporter-posts?feed=for-you", "bob")).json() as any[];
+    let captions = (await feed()).map(p => p.caption);
+    assert.deepEqual(new Set(captions), new Set(["Organisation", "Matching cause", "Matching place"]));
+    f.state.docs.get("follows/bob_school").orgId = "SCHOOL";
+    assert.ok(!(await feed()).some(p => p.caption === "Organisation"), "organisation IDs must remain case-sensitive");
+    f.state.docs.get("follows/bob_school").orgId = "school";
+    const choice = await publish({ type: "community", value: "volunteers" }, "My own choice", "bob");
+    assert.ok((await feed()).some(p => p.caption === "Community"));
+    await f.call(`/supporter-posts/${choice.id}`, "bob", "DELETE");
+    assert.ok(!(await feed()).some(p => p.caption === "Community"), "removed posts must not supply a community preference");
+    f.state.docs.get("users/alice").publicProfile.enabled = false;
+    assert.deepEqual(await feed(), [], "tag relevance must never override current author privacy");
+  } finally { await f.close(); }
+});
+
 test("supporter publishing: owned ordered media, visibility, feeds, retry and direct media access", async () => {
   const f = await fixture();
   try {

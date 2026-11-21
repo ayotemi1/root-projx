@@ -5,6 +5,8 @@ import {
   type SupporterPostMedia, type SupporterPostRecord,
 } from "@workspace/api-client-react";
 import { appFetch as fetch } from "./error-feedback";
+import { SP_KEY } from "./supporter-post-cache";
+export { SP_KEY, cachePublishedPost } from "./supporter-post-cache";
 
 export type { SupporterPostRecord, SupporterPostMedia };
 export const GENERIC_SHARE_ERROR = "Something went wrong, please try again";
@@ -13,7 +15,6 @@ const auth = (token: string | null | undefined): RequestInit =>
   token ? { headers: { Authorization: `Bearer ${token}` }, credentials: "include" } : { credentials: "include" };
 
 /** Query-key root for every supporter-post list, so one invalidation refreshes feed/profile/public pages. */
-export const SP_KEY = "supporter-posts" as const;
 export const spKey = (params: ListSupporterPostsParams, token?: string | null) => [SP_KEY, params.feed ?? null, params.publicId ?? null, token ?? null] as const;
 
 export const listPosts = (params: ListSupporterPostsParams, token?: string | null) => listSupporterPosts(params, auth(token));

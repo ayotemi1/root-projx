@@ -87,6 +87,10 @@ export async function postDto(post: Doc, viewer: string | null, token: string, a
   if (media.some(m => !m || m.post_id !== post.id || m.author_id !== post.author_id)) throw new PostError(503);
   return {
     id: post.id, type: post.type, caption: post.caption, community_tag: post.community_tag ?? null,
+    tag: post.tag && typeof post.tag === "object" ? {
+      type: post.tag.type, value: post.tag.value, label: post.tag.label,
+      description: typeof post.tag.description === "string" ? post.tag.description : null,
+    } : null,
     organisation_id: post.organisation_id ?? null, campaign_id: post.campaign_id ?? null,
     created_at: post.created_at, edited_at: post.edited_at ?? null, removed: !!post.removed,
     visibility: pp.enabled === true ? "public" : "private",

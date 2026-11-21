@@ -7,6 +7,7 @@
  */
 import type { SupporterPostInputType } from "./supporterPostInputType";
 import type { SupporterPostMediaInput } from "./supporterPostMediaInput";
+import type { SupporterPostTagInput } from "./supporterPostTagInput";
 
 export interface SupporterPostInput {
   /** Stable UUID idempotency key retained for retries */
@@ -19,6 +20,7 @@ export interface SupporterPostInput {
    * @nullable
    */
   community_tag?: string | null;
+  tag?: SupporterPostTagInput | null;
   /** @nullable */
   organisation_id?: string | null;
   /** @nullable */

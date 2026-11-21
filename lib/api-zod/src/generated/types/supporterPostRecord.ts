@@ -9,6 +9,7 @@ import type { SupporterPostMedia } from "./supporterPostMedia";
 import type { SupporterPostRecordAuthor } from "./supporterPostRecordAuthor";
 import type { SupporterPostRecordType } from "./supporterPostRecordType";
 import type { SupporterPostRecordVisibility } from "./supporterPostRecordVisibility";
+import type { SupporterPostTag } from "./supporterPostTag";
 
 export interface SupporterPostRecord {
   id: string;
@@ -16,6 +17,7 @@ export interface SupporterPostRecord {
   caption: string;
   /** @nullable */
   community_tag?: string | null;
+  tag?: SupporterPostTag | null;
   /** @nullable */
   organisation_id?: string | null;
   /** @nullable */

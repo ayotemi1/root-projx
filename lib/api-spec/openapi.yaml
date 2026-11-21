@@ -1153,6 +1153,17 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/SupporterPostRecord" }
+  /supporter-posts/tags:
+    get:
+      operationId: listSupporterPostTags
+      tags: [supporter-posts]
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Communities, existing causes and places, and organisations this supporter follows
+          content:
+            application/json:
+              schema: { type: array, items: { $ref: "#/components/schemas/SupporterPostTag" } }
   /supporter-posts/uploads/request:
     post:
       operationId: requestSupporterPostUpload
@@ -1332,6 +1343,20 @@ components:
             height: { type: number }
             duration: { type: [number, "null"] }
             video_thumbnail_url: { type: [string, "null"] }
+    SupporterPostTagInput:
+      type: object
+      required: [type, value]
+      properties:
+        type: { type: string, enum: [community, cause, place, organisation] }
+        value: { type: string, minLength: 1, maxLength: 160 }
+    SupporterPostTag:
+      allOf:
+        - $ref: "#/components/schemas/SupporterPostTagInput"
+        - type: object
+          required: [label]
+          properties:
+            label: { type: string }
+            description: { type: [string, "null"] }
     SupporterPostInput:
       type: object
       required: [id, type, caption, media]
@@ -1340,6 +1365,10 @@ components:
         type: { type: string, enum: [photo, video, text] }
         caption: { type: string, maxLength: 5000 }
         community_tag: { type: [string, "null"], maxLength: 80 }
+        tag:
+          anyOf:
+            - $ref: "#/components/schemas/SupporterPostTagInput"
+            - { type: "null" }
         organisation_id: { type: [string, "null"] }
         campaign_id: { type: [string, "null"] }
         media: { type: array, maxItems: 5, items: { $ref: "#/components/schemas/SupporterPostMediaInput" } }
@@ -1351,6 +1380,10 @@ components:
         type: { type: string, enum: [photo, video, text] }
         caption: { type: string }
         community_tag: { type: [string, "null"] }
+        tag:
+          anyOf:
+            - $ref: "#/components/schemas/SupporterPostTag"
+            - { type: "null" }
         organisation_id: { type: [string, "null"] }
         campaign_id: { type: [string, "null"] }
         created_at: { type: string }

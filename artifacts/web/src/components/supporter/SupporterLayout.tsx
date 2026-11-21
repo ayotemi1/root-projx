@@ -12,6 +12,7 @@ import {
 import { useSupporterFollowing } from "./use-supporter-following";
 import { SupporterCreateMenu } from "./SupporterCreateMenu";
 import { SupporterPostDraftProvider } from "./SupporterPostDraftProvider";
+import { TextPostProvider } from "./TextPostProvider";
 import "./supporter.css";
 
 const icons: Record<SupporterNavigationId, typeof Home> = {
@@ -135,6 +136,7 @@ export default function SupporterLayout({ children }: { children: ReactNode }) {
 
   return (
     <SupporterPostDraftProvider>
+    <TextPostProvider>
     <div className="rps-shell">
       <a href="#rps-main" className="rps-skip">Skip to content</a>
 
@@ -232,6 +234,7 @@ export default function SupporterLayout({ children }: { children: ReactNode }) {
         </ul>
       </nav>
     </div>
+    </TextPostProvider>
     </SupporterPostDraftProvider>
   );
 }

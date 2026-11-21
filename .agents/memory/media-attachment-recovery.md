@@ -28,14 +28,3 @@ model; choosing files must not silently publish or upload them.
 **How to apply:** Reuse storage and validation patterns, not organisation access
 guards. Keep selection distinct from publication and enforce supporter-scoped
 ownership for persistent uploads and publishing.
-
-Private supporter posts are owner-only, **not** visible to approved followers.
-Changing a supporter profile to private must also hide its existing posts and
-protect direct photo/video requests, not merely remove cards from the feed.
-
-**Why:** The user explicitly specified that private-profile posts show only to
-their author, unlike the follower-visible private accounts on some social sites.
-
-**How to apply:** Preserve this privacy rule in profiles, Following, For you,
-thumbnails and media playback; do not treat a follow as permission to view a
-private author's content.

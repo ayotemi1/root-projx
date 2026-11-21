@@ -15,3 +15,13 @@ not mean every collection is permitted.
 Distinguish inaccessible data from confirmed empty data. Independent dashboard
 sections should retain confirmed figures; unknown financial values must not
 be converted into zero. Follow the existing manual rules-publication boundary.
+
+Do not assume the repository rules file matches the currently published rules.
+
+**Why:** The console rules contained newer banking and append-only audit
+protections that were absent from the local file. Replacing them from the
+repository would have removed those protections.
+
+**How to apply:** Obtain the current console rules before proposing a full
+replacement, preserve unrelated matches verbatim, and let the user publish
+the reviewed version manually.

@@ -4219,6 +4219,8 @@ export const ListSupporterPostsQueryParams = zod.object({
   publicId: zod.coerce.string().optional(),
 });
 
+export const listSupporterPostsResponseTagOneOneValueMax = 160;
+
 export const listSupporterPostsResponseMediaItemOneOrderMin = 0;
 export const listSupporterPostsResponseMediaItemOneOrderMax = 4;
 
@@ -4244,6 +4246,25 @@ export const ListSupporterPostsResponseItem = zod.object({
   type: zod.enum(["photo", "video", "text"]),
   caption: zod.string(),
   community_tag: zod.string().nullish(),
+  tag: zod
+    .union([
+      zod
+        .object({
+          type: zod.enum(["community", "cause", "place", "organisation"]),
+          value: zod
+            .string()
+            .min(1)
+            .max(listSupporterPostsResponseTagOneOneValueMax),
+        })
+        .and(
+          zod.object({
+            label: zod.string(),
+            description: zod.string().nullish(),
+          }),
+        ),
+      zod.null(),
+    ])
+    .optional(),
   organisation_id: zod.string().nullish(),
   campaign_id: zod.string().nullish(),
   created_at: zod.string(),
@@ -4321,6 +4342,8 @@ export const publishSupporterPostBodyCaptionMax = 5000;
 
 export const publishSupporterPostBodyCommunityTagMax = 80;
 
+export const publishSupporterPostBodyTagOneValueMax = 160;
+
 export const publishSupporterPostBodyMediaItemOrderMin = 0;
 export const publishSupporterPostBodyMediaItemOrderMax = 4;
 
@@ -4351,6 +4374,15 @@ export const PublishSupporterPostBody = zod.object({
     .string()
     .max(publishSupporterPostBodyCommunityTagMax)
     .nullish(),
+  tag: zod
+    .union([
+      zod.object({
+        type: zod.enum(["community", "cause", "place", "organisation"]),
+        value: zod.string().min(1).max(publishSupporterPostBodyTagOneValueMax),
+      }),
+      zod.null(),
+    ])
+    .optional(),
   organisation_id: zod.string().nullish(),
   campaign_id: zod.string().nullish(),
   media: zod
@@ -4395,6 +4427,23 @@ export const PublishSupporterPostBody = zod.object({
     )
     .max(publishSupporterPostBodyMediaMax),
 });
+
+export const listSupporterPostTagsResponseOneValueMax = 160;
+
+export const ListSupporterPostTagsResponseItem = zod
+  .object({
+    type: zod.enum(["community", "cause", "place", "organisation"]),
+    value: zod.string().min(1).max(listSupporterPostTagsResponseOneValueMax),
+  })
+  .and(
+    zod.object({
+      label: zod.string(),
+      description: zod.string().nullish(),
+    }),
+  );
+export const ListSupporterPostTagsResponse = zod.array(
+  ListSupporterPostTagsResponseItem,
+);
 
 export const requestSupporterPostUploadBodyNameMax = 255;
 

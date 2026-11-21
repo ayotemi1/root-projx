@@ -122,6 +122,31 @@ export type SupporterPostMedia = SupporterPostMediaInput & {
   video_thumbnail_url?: string | null;
 };
 
+export type SupporterPostTagInputType =
+  (typeof SupporterPostTagInputType)[keyof typeof SupporterPostTagInputType];
+
+export const SupporterPostTagInputType = {
+  community: "community",
+  cause: "cause",
+  place: "place",
+  organisation: "organisation",
+} as const;
+
+export interface SupporterPostTagInput {
+  type: SupporterPostTagInputType;
+  /**
+   * @minLength 1
+   * @maxLength 160
+   */
+  value: string;
+}
+
+export type SupporterPostTag = SupporterPostTagInput & {
+  label: string;
+  /** @nullable */
+  description?: string | null;
+};
+
 export type SupporterPostInputType =
   (typeof SupporterPostInputType)[keyof typeof SupporterPostInputType];
 
@@ -142,6 +167,7 @@ export interface SupporterPostInput {
    * @nullable
    */
   community_tag?: string | null;
+  tag?: SupporterPostTagInput | null;
   /** @nullable */
   organisation_id?: string | null;
   /** @nullable */
@@ -182,6 +208,7 @@ export interface SupporterPostRecord {
   caption: string;
   /** @nullable */
   community_tag?: string | null;
+  tag?: SupporterPostTag | null;
   /** @nullable */
   organisation_id?: string | null;
   /** @nullable */

@@ -1,5 +1,6 @@
 import { Link, useSearch } from "wouter";
 import { useAuth } from "@/context/AuthContext";
+import { useTextPost } from "@/components/supporter/TextPostProvider";
 import { useSupporterPostDraft } from "@/components/supporter/SupporterPostDraftProvider";
 import { ArrowRight, Bell, Bookmark, Camera, Copy, Inbox, Pencil, SquarePlus } from "lucide-react";
 
@@ -43,6 +44,24 @@ export default function SupporterPlaceholder({ section }: { section: SupporterPl
   const search = useSearch();
   const type = new URLSearchParams(search).get("type");
   const draft = useSupporterPostDraft();
+  const textPost = useTextPost();
+  if (section === "create" && type === "text") {
+    return (
+      <section className="py-2 sm:py-4" data-testid="page-supporter-create-text-entry">
+        <h1 className="rp-display text-[40px] sm:text-[56px]">Text post</h1>
+        <div className="mt-8 border border-[#17100F]/30 bg-[#FBF8F2] p-6 sm:p-8">
+          <Pencil aria-hidden="true" className="h-8 w-8 mb-6" strokeWidth={1.5} />
+          <p className="text-base leading-relaxed max-w-lg text-[#17100F]/75">Share a short update of up to 500 characters, and tag a community if you like.</p>
+          {!isAuthenticated ? (
+            <Link href="/login" className="rp-btn rp-btn-yellow mt-7">Sign in to write a text post</Link>
+          ) : user?.accountType === "supporter" ? (
+            <button type="button" className="rp-btn rp-btn-yellow mt-7" disabled={!textPost} onClick={e => textPost?.openComposer(e.currentTarget)} data-testid="button-write-text-post">Write a text post</button>
+          ) : <p className="mt-5">Text posts are available to supporter accounts.</p>}
+        </div>
+        <Link href="/feed" className="inline-flex items-center min-h-11 mt-5 font-semibold underline underline-offset-4" data-testid="link-composer-back">Back to Home</Link>
+      </section>
+    );
+  }
   if (section === "create" && type === "post" && draft && isAuthenticated && user?.accountType === "supporter") {
     return (
       <section className="py-2 sm:py-4" data-testid="page-supporter-create-post-entry">

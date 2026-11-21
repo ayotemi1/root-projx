@@ -11,6 +11,7 @@ import {
 } from "../lib/supporter-posts.js";
 import { requestPostUpload, completePostUpload, mediaObject } from "../lib/supporter-post-uploads.js";
 import { isCampaignPublished } from "../lib/campaign-publication.js";
+import { communityChoices, matchesStructuredTag, postTagOptions, resolvePostTag, type PostAudience } from "../lib/supporter-post-tags.js";
 
 const router = Router();
 const noStore = (_req: Request, res: Response, next: () => void) => {
@@ -42,6 +43,10 @@ function fail(req: Request, res: Response, error: unknown) {
 }
 
 router.delete("/supporter-posts/media-session", (req, res) => { clearMediaSession(req, res); res.sendStatus(204); });
+router.get("/supporter-posts/tags", requireAuth, supporter, async (req, res) => {
+  try { res.json(await postTagOptions(req.user!.userId, await getServerToken())); }
+  catch (error) { fail(req, res, error); }
+});
 router.post("/supporter-posts/uploads/request", requireAuth, supporter, uploadLimit, async (req, res) => {
   const body = RequestSupporterPostUploadBody.strict().safeParse(req.body);
   if (!body.success) {
@@ -90,6 +95,23 @@ router.get("/supporter-posts", optionalAuth, async (req, res) => {
     const interests = Array.isArray(me?.interests) ? me.interests.filter((v): v is string => typeof v === "string") : [];
     const authorCache = new Map<string, Record<string, any> | null>();
     const orgCache = new Map<string, Record<string, any> | null>();
+    const audience: PostAudience = { places: [], organisations: [], communities: [] };
+    if (viewer && feed === "for-you" && !authorId && rows.some(p => p.tag)) {
+      const [orgFollows, previousPosts] = await Promise.all([
+        fsQuery("follows", [{ field: "userId", op: "EQUAL", value: viewer }], token),
+        fsQuery(POSTS, [{ field: "author_id", op: "EQUAL", value: viewer }], token, { limit: 200 }),
+      ]);
+      audience.organisations = orgFollows.map(f => String(f.orgId));
+      audience.communities = communityChoices(previousPosts);
+      if (typeof me?.country === "string") audience.places.push(me.country);
+      for (const id of audience.organisations.slice(0, 100)) {
+        if (!orgCache.has(id)) orgCache.set(id, await fsGet("organisations", id, token));
+        const org = orgCache.get(id);
+        if (org) for (const value of [org.country, org.location]) {
+          if (typeof value === "string") audience.places.push(value);
+        }
+      }
+    }
     const output = [];
     for (const post of rows) {
       const uid = String(post.author_id);
@@ -100,7 +122,9 @@ router.get("/supporter-posts", optionalAuth, async (req, res) => {
       if (!authorId && feed === "for-you" && uid !== viewer) {
         const orgId = typeof post.organisation_id === "string" ? post.organisation_id : "";
         if (orgId && !orgCache.has(orgId)) orgCache.set(orgId, await fsGet("organisations", orgId, token));
-        if (!matchesPostInterests(post, interests, orgCache.get(orgId) ?? null)) continue;
+        if (post.tag
+          ? !matchesStructuredTag(post.tag, interests, audience)
+          : !matchesPostInterests(post, interests, orgCache.get(orgId) ?? null)) continue;
       }
       output.push(await postDto(post, viewer, token, author!));
     }
@@ -114,7 +138,7 @@ router.post("/supporter-posts", requireAuth, supporter, async (req, res) => {
   const input = body.data;
   if (input.media.some((m, i) => !UUID.test(m.id) || m.order !== i) ||
       new Set(input.media.map(m => m.id)).size !== input.media.length ||
-      (input.type === "text" ? !input.caption.trim() || input.media.length !== 0 : input.media.length === 0)) {
+      (input.type === "text" ? !input.caption.trim() || input.caption.length > 500 || input.media.length !== 0 : input.media.length === 0)) {
     res.status(400).json({ error: POST_ERROR }); return;
   }
   try {
@@ -127,10 +151,13 @@ router.post("/supporter-posts", requireAuth, supporter, async (req, res) => {
       if (existing.author_id !== uid || existing.removed || existing.fingerprint !== hash) throw new PostError(409);
       res.status(201).json(await postDto(existing, uid, token)); return;
     }
-    if (input.campaign_id && !input.organisation_id) throw new PostError(400);
-    if (input.organisation_id) {
-      if (input.organisation_id.includes("/")) throw new PostError(400);
-      const org = await fsGet("organisations", input.organisation_id, token);
+    const tag = await resolvePostTag(input.tag, uid, token);
+    if (tag?.type === "organisation" && input.organisation_id && input.organisation_id !== tag.value) throw new PostError(400);
+    const organisationId = tag?.type === "organisation" ? tag.value : input.organisation_id || null;
+    if (input.campaign_id && !organisationId) throw new PostError(400);
+    if (organisationId) {
+      if (organisationId.includes("/")) throw new PostError(400);
+      const org = await fsGet("organisations", organisationId, token);
       if (!org) throw new PostError(400);
       if (input.campaign_id && !(Array.isArray(org.campaigns) && org.campaigns.some((c: any) =>
         (c.id === input.campaign_id || c._id === input.campaign_id) && isCampaignPublished(c))))
@@ -141,7 +168,8 @@ router.post("/supporter-posts", requireAuth, supporter, async (req, res) => {
     if (media.length && media[0]?.type !== input.type) throw new PostError(400);
     const post = {
       id: input.id, author_id: uid, type: input.type, caption: input.caption,
-      community_tag: input.community_tag?.trim() || null, organisation_id: input.organisation_id || null,
+      community_tag: tag?.label || input.community_tag?.trim() || null, tag,
+      organisation_id: organisationId,
       campaign_id: input.campaign_id || null, created_at: new Date().toISOString(),
       edited_at: null, removed: false, media_ids: input.media.map(m => m.id), fingerprint: hash,
     };

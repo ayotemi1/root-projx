@@ -80,6 +80,7 @@ import type {
   SupporterPostInput,
   SupporterPostMedia,
   SupporterPostRecord,
+  SupporterPostTag,
   UnfollowSupporter200,
   Update,
   UpdateOrganisationRequest,
@@ -5085,6 +5086,74 @@ export const usePublishSupporterPost = <
 > => {
   return useMutation(getPublishSupporterPostMutationOptions(options));
 };
+
+export const getListSupporterPostTagsUrl = () => {
+  return `/api/supporter-posts/tags`;
+};
+
+export const listSupporterPostTags = async (
+  options?: RequestInit,
+): Promise<SupporterPostTag[]> => {
+  return customFetch<SupporterPostTag[]>(getListSupporterPostTagsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListSupporterPostTagsQueryKey = () => {
+  return [`/api/supporter-posts/tags`] as const;
+};
+
+export const getListSupporterPostTagsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listSupporterPostTags>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listSupporterPostTags>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListSupporterPostTagsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listSupporterPostTags>>
+  > = ({ signal }) => listSupporterPostTags({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listSupporterPostTags>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListSupporterPostTagsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listSupporterPostTags>>
+>;
+export type ListSupporterPostTagsQueryError = ErrorType<unknown>;
+
+export function useListSupporterPostTags<
+  TData = Awaited<ReturnType<typeof listSupporterPostTags>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listSupporterPostTags>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListSupporterPostTagsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 export const getRequestSupporterPostUploadUrl = () => {
   return `/api/supporter-posts/uploads/request`;
