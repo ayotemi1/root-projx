@@ -353,6 +353,7 @@ export default function AccountPage({ view = "all" }: { view?: "all" | "giving" 
         </header>
       )}
       {view !== "giving" && <>
+      <Link href="/settings/interests" className="inline-flex min-h-11 items-center font-semibold underline underline-offset-4" data-testid="link-account-interests">Settings: Interests</Link>
       {/* Profile header */}
       <Card className="border-border shadow-sm">
         <CardContent className="pt-6">

@@ -776,6 +776,16 @@ export const postReview = (
 
 export const getProfile = (token: string) => req<ApiUser>("/profile", {}, token);
 
+export const getSupporterInterests = (token: string) =>
+  req<{ interests: string[] }>("/profile/interests", {}, token);
+
+export const saveSupporterInterests = (interests: string[], token: string) =>
+  req<{ interests: string[] }>(
+    "/profile/interests",
+    { method: "PUT", body: JSON.stringify({ interests }) },
+    token,
+  );
+
 export const updateProfile = (
   data: { name?: string; phone?: string },
   token: string,

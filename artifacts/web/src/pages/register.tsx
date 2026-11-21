@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { useAuth } from "@/context/AuthContext";
 import { ArrowRight } from "lucide-react";
+import { ONBOARDING_INTERESTS_FLAG } from "@/pages/interests";
 import "./register.css";
 
 export default function RegisterPage() {
@@ -12,7 +13,6 @@ export default function RegisterPage() {
   const params = new URLSearchParams(search);
 
   const prefillEmail = params.get("email") ?? "";
-  const nextPath = params.get("next") ?? "/feed";
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -36,6 +36,7 @@ export default function RegisterPage() {
     }
     setLoading(true);
     try {
+      sessionStorage.setItem(ONBOARDING_INTERESTS_FLAG, "1");
       await register({
         name: name.trim(),
         email: email.trim().toLowerCase(),
@@ -43,8 +44,9 @@ export default function RegisterPage() {
         password,
         accountType: "supporter",
       });
-      navigate(nextPath);
+      navigate("/onboarding/interests");
     } catch (err: unknown) {
+      sessionStorage.removeItem(ONBOARDING_INTERESTS_FLAG);
       setError(userErrorMessage(err, "create your account"));
     } finally {
       setLoading(false);

@@ -118,7 +118,7 @@ export default function SupporterLayout({ children }: { children: ReactNode }) {
   const accountBlock = isAuthenticated ? (
     <>
       <Link href="/account" className="rps-sub" onClick={() => setMenuOpen(false)} data-testid="link-edit-profile"><Pencil size={16} aria-hidden /> Edit profile</Link>
-      <Link href="/account" className="rps-sub" onClick={() => setMenuOpen(false)} data-testid="link-settings"><Settings size={16} aria-hidden /> Settings</Link>
+      <Link href="/settings" className="rps-sub" onClick={() => setMenuOpen(false)} data-testid="link-settings"><Settings size={16} aria-hidden /> Settings</Link>
       <button type="button" className="rps-sub" onClick={signOut} disabled={pending} data-testid="button-sign-out">
         <LogOut size={16} aria-hidden /> {pending ? "Signing out…" : "Sign out"}
       </button>

@@ -2,11 +2,61 @@ import { Router } from "express";
 import { randomUUID } from "node:crypto";
 import { fsGet, fsPatch, fsQuery, getServerToken } from "../lib/firebase-rest.js";
 import { requireAuth } from "../lib/auth.js";
+import { GetSupporterInterestsResponse, SaveSupporterInterestsBody } from "@workspace/api-zod";
 
 const router = Router();
 const MAX_PUBLIC_DISPLAY_NAME = 80;
 const MAX_PUBLIC_BIO = 280;
 const PUBLIC_PROFILE_ID_PATTERN = /^sp_[a-f0-9]{32}$/;
+
+// Private account preferences. Never project these onto /supporters/:publicId.
+router.get("/profile/interests", requireAuth, async (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  if (req.user!.accountType !== "supporter") {
+    res.status(403).json({ error: "Interests are available to supporter accounts only." });
+    return;
+  }
+  try {
+    const user = await fsGet("users", req.user!.userId, req.headers.authorization!.slice(7));
+    if (!user) {
+      res.status(404).json({ error: "Profile not found" });
+      return;
+    }
+    res.json(GetSupporterInterestsResponse.parse({ interests: user.interests ?? [] }));
+  } catch {
+    req.log.error("Could not load supporter interests");
+    res.status(503).json({ error: "We couldn't load your interests. Please try again." });
+  }
+});
+
+router.put("/profile/interests", requireAuth, async (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  if (req.user!.accountType !== "supporter") {
+    res.status(403).json({ error: "Interests are available to supporter accounts only." });
+    return;
+  }
+  const parsed = SaveSupporterInterestsBody.strict().safeParse(req.body);
+  if (!parsed.success || new Set(parsed.data.interests).size !== parsed.data.interests.length) {
+    res.status(400).json({ error: "Choose interests from the available sectors, with each selected only once." });
+    return;
+  }
+  try {
+    const uid = req.user!.userId;
+    const user = await fsGet("users", uid, req.headers.authorization!.slice(7));
+    if (!user) {
+      res.status(404).json({ error: "Profile not found" });
+      return;
+    }
+    // Existing rules restrict preference writes to the server. Identity is
+    // derived from requireAuth, never a caller-supplied UID. Patch only this
+    // field so a concurrent profile edit cannot be overwritten.
+    await fsPatch("users", uid, { interests: parsed.data.interests }, await getServerToken());
+    res.json(GetSupporterInterestsResponse.parse(parsed.data));
+  } catch {
+    req.log.error("Could not save supporter interests");
+    res.status(503).json({ error: "Your interests weren't saved. Keep your selections and try again." });
+  }
+});
 
 type StoredPublicProfile = {
   enabled?: boolean;

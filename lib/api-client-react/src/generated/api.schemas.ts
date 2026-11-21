@@ -5,6 +5,29 @@
  * Root ProjX API — community giving platform
  * OpenAPI spec version: 0.1.0
  */
+export type SupporterInterestsInterestsItem =
+  (typeof SupporterInterestsInterestsItem)[keyof typeof SupporterInterestsInterestsItem];
+
+export const SupporterInterestsInterestsItem = {
+  Education: "Education",
+  "Health_&_Wellbeing": "Health & Wellbeing",
+  Environment: "Environment",
+  Community_Development: "Community Development",
+  "Arts_&_Culture": "Arts & Culture",
+  Economic_Empowerment: "Economic Empowerment",
+  Youth: "Youth",
+  "Sport_&_Recreation": "Sport & Recreation",
+  "Housing_&_Homelessness": "Housing & Homelessness",
+  Disaster_Relief: "Disaster Relief",
+  "Faith_&_Spirituality": "Faith & Spirituality",
+  Other: "Other",
+} as const;
+
+export interface SupporterInterests {
+  /** @maxItems 12 */
+  interests: SupporterInterestsInterestsItem[];
+}
+
 export type VideoUploadRequestContentType =
   (typeof VideoUploadRequestContentType)[keyof typeof VideoUploadRequestContentType];
 

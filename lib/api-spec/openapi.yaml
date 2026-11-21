@@ -25,6 +25,41 @@ tags:
   - name: profile
     description: User profile
 paths:
+  /profile/interests:
+    get:
+      operationId: getSupporterInterests
+      tags: [profile]
+      summary: Read the signed-in supporter's private interests
+      responses:
+        '200':
+          description: Saved sectors, empty for an account with no interests
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SupporterInterests'}
+        '401': {description: Sign-in required}
+        '403': {description: Supporter account required}
+        '404': {description: Profile not found}
+        '503': {description: Interests unavailable}
+    put:
+      operationId: saveSupporterInterests
+      tags: [profile]
+      summary: Replace the signed-in supporter's private interests
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/SupporterInterests'}
+      responses:
+        '200':
+          description: Saved interests
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SupporterInterests'}
+        '400': {description: Invalid sector selections}
+        '401': {description: Sign-in required}
+        '403': {description: Supporter account required}
+        '404': {description: Profile not found}
+        '503': {description: Interests could not be saved}
   /uploads/video/request:
     post:
       operationId: requestVideoUpload
@@ -1106,6 +1141,30 @@ components:
       bearerFormat: JWT
 
   schemas:
+    SupporterInterests:
+      type: object
+      additionalProperties: false
+      required: [interests]
+      properties:
+        interests:
+          type: array
+          maxItems: 12
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+              - Education
+              - Health & Wellbeing
+              - Environment
+              - Community Development
+              - Arts & Culture
+              - Economic Empowerment
+              - Youth
+              - Sport & Recreation
+              - Housing & Homelessness
+              - Disaster Relief
+              - Faith & Spirituality
+              - Other
     VideoUploadRequest:
       type: object
       required: [name, size, contentType]

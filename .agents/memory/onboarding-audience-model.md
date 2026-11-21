@@ -9,6 +9,16 @@ Supporters create an account immediately and continue into discovery and giving.
 
 **How to apply:** Route supporter acquisition to immediate registration and organisation acquisition to account creation plus review. Never generate a temporary password on approval; activate the applicant's existing account instead.
 
+Supporter interests are optional and private. Use the organisation-profile
+sector list, never preselect choices, and keep existing sign-in independent of
+onboarding. Supporters must be able to change or clear interests in Settings.
+
+**Why:** The user explicitly requested an optional post-registration step,
+not a new barrier for returning supporters or a public profile attribute.
+
+**How to apply:** Do not force completion, expose interests publicly, or claim
+personalised suggestions before a matching feature actually uses them.
+
 Approved organisations should manage their own profiles and launch campaigns
 without Root ProjX editing their content. Root ProjX's manual gates are application
 approval and confirmation of an off-platform bank-transfer payout arrangement.

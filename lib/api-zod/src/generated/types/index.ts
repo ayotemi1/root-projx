@@ -105,6 +105,8 @@ export * from "./saveOrganisationWalkthrough200";
 export * from "./sendAdminTestEmail200";
 export * from "./sendAdminTestEmail200Environment";
 export * from "./submitHelpReviewRequest";
+export * from "./supporterInterests";
+export * from "./supporterInterestsInterestsItem";
 export * from "./update";
 export * from "./updateOrganisationRequest";
 export * from "./updateProfileRequest";

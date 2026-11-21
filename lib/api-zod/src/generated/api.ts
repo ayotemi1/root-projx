@@ -8,6 +8,81 @@
 import * as zod from "zod";
 
 /**
+ * @summary Read the signed-in supporter's private interests
+ */
+export const getSupporterInterestsResponseInterestsMax = 12;
+
+export const GetSupporterInterestsResponse = zod.object({
+  interests: zod
+    .array(
+      zod.enum([
+        "Education",
+        "Health & Wellbeing",
+        "Environment",
+        "Community Development",
+        "Arts & Culture",
+        "Economic Empowerment",
+        "Youth",
+        "Sport & Recreation",
+        "Housing & Homelessness",
+        "Disaster Relief",
+        "Faith & Spirituality",
+        "Other",
+      ]),
+    )
+    .max(getSupporterInterestsResponseInterestsMax),
+});
+
+/**
+ * @summary Replace the signed-in supporter's private interests
+ */
+export const saveSupporterInterestsBodyInterestsMax = 12;
+
+export const SaveSupporterInterestsBody = zod.object({
+  interests: zod
+    .array(
+      zod.enum([
+        "Education",
+        "Health & Wellbeing",
+        "Environment",
+        "Community Development",
+        "Arts & Culture",
+        "Economic Empowerment",
+        "Youth",
+        "Sport & Recreation",
+        "Housing & Homelessness",
+        "Disaster Relief",
+        "Faith & Spirituality",
+        "Other",
+      ]),
+    )
+    .max(saveSupporterInterestsBodyInterestsMax),
+});
+
+export const saveSupporterInterestsResponseInterestsMax = 12;
+
+export const SaveSupporterInterestsResponse = zod.object({
+  interests: zod
+    .array(
+      zod.enum([
+        "Education",
+        "Health & Wellbeing",
+        "Environment",
+        "Community Development",
+        "Arts & Culture",
+        "Economic Empowerment",
+        "Youth",
+        "Sport & Recreation",
+        "Housing & Homelessness",
+        "Disaster Relief",
+        "Faith & Spirituality",
+        "Other",
+      ]),
+    )
+    .max(saveSupporterInterestsResponseInterestsMax),
+});
+
+/**
  * @summary Request a direct storage upload for an organisation video
  */
 export const requestVideoUploadBodyNameMax = 255;

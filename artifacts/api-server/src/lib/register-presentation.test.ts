@@ -56,7 +56,13 @@ async function registration(fields: Fields = {}, search = "", refuse = false) {
     return webRequire(name);
   };
   const mod = { exports: {} as { default: () => any } };
-  new Function("require", "module", "exports", await compiled)(requireMock, mod, mod.exports);
+  const storage = new Map<string, string>();
+  new Function("require", "module", "exports", "sessionStorage", await compiled)(
+    requireMock, mod, mod.exports, {
+      setItem(key: string, value: string) { storage.set(key, value); },
+      removeItem(key: string) { storage.delete(key); },
+    },
+  );
   const tree = mod.exports.default();
   function find(node: any, predicate: (node: any) => boolean): any {
     if (!node || typeof node !== "object") return undefined;
@@ -75,7 +81,7 @@ async function registration(fields: Fields = {}, search = "", refuse = false) {
     return node?.props ? text(node.props.children) : "";
   }
   return {
-    calls, navigations, updates,
+    calls, navigations, updates, storage,
     text: text(tree),
     field: (id: string) => find(tree, node => node.props?.["data-testid"] === id)?.props,
     submit: () => form.props.onSubmit({ preventDefault() {} }),
@@ -118,18 +124,19 @@ test("register keeps existing required-field and six-character password validati
   assert.ok(short.updates.some(update => update.value === "Password must be at least 6 characters."));
 });
 
-test("register preserves supporter payload normalisation, optional phone and redirect query", async () => {
+test("register preserves supporter payload and sends new accounts to optional Interests", async () => {
   const fields = { name: " Test Supporter ", email: " SUPPORTER@EXAMPLE.ORG ", password: "123456" };
   const withoutPhone = await registration(fields);
   await withoutPhone.submit();
   assert.deepEqual(withoutPhone.calls, [{
     name: "Test Supporter", email: "supporter@example.org", password: "123456", phone: undefined, accountType: "supporter",
   }]);
-  assert.deepEqual(withoutPhone.navigations, ["/feed"]);
+  assert.deepEqual(withoutPhone.navigations, ["/onboarding/interests"]);
+  assert.equal(withoutPhone.storage.get("rp_onboarding_interests"), "1");
   const withPhone = await registration({ ...fields, phone: " +440000000000 " }, "next=%2Fdiscover");
   await withPhone.submit();
   assert.equal((withPhone.calls[0] as { phone: string }).phone, "+440000000000");
-  assert.deepEqual(withPhone.navigations, ["/discover"]);
+  assert.deepEqual(withPhone.navigations, ["/onboarding/interests"]);
 });
 
 test("register failure leaves the form available and never redirects", async () => {

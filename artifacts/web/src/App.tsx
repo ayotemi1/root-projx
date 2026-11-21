@@ -42,6 +42,7 @@ import OnboardingPage from "@/pages/onboarding";
 import AdminLoginPage from "@/pages/admin-login";
 import AdminPage from "@/pages/admin";
 import NotFound from "@/pages/not-found";
+import { OnboardingInterestsPage, SettingsInterestsPage, SettingsPage, ONBOARDING_INTERESTS_FLAG } from "@/pages/interests";
 import SupporterProfilePage from "@/pages/supporter-profile";
 import CampaignLandingPage from "@/pages/campaign-landing";
 import CampaignPreviewPage from "@/pages/campaign-preview";
@@ -81,10 +82,13 @@ function ApprovedOrganisationRoute({ component: Component }: { component: React.
   return <Component />;
 }
 
-function AuthRoute({ component: Component }: { component: React.ComponentType }) {
+function AuthRoute({ component: Component, registration = false }: { component: React.ComponentType; registration?: boolean }) {
   const { isAuthenticated, isLoading } = useAuth();
   if (isLoading) return null;
-  if (isAuthenticated) return <Redirect to="/feed" />;
+  if (isAuthenticated) {
+    const onboarding = registration && sessionStorage.getItem(ONBOARDING_INTERESTS_FLAG) === "1";
+    return <Redirect to={onboarding ? "/onboarding/interests" : "/feed"} />;
+  }
   return <Component />;
 }
 
@@ -149,6 +153,15 @@ function AppRoutes() {
               <Route path="/support" component={SupportPage} />
               <Route path="/terms" component={TermsPage} />
               <Route path="/help" component={HelpPage} />
+              <Route path="/onboarding/interests">
+                {() => <ProtectedRoute component={OnboardingInterestsPage} />}
+              </Route>
+              <Route path="/settings/interests">
+                {() => <ProtectedRoute component={SettingsInterestsPage} />}
+              </Route>
+              <Route path="/settings">
+                {() => <ProtectedRoute component={SettingsPage} />}
+              </Route>
               <Route path="/account">
                 {() => <ProtectedRoute component={AccountPage} />}
               </Route>
@@ -172,7 +185,7 @@ function AppRoutes() {
               <Route path="/forgot-password" component={ForgotPasswordPage} />
               <Route path="/reset-password" component={ResetPasswordPage} />
               <Route path="/register">
-                {() => <AuthRoute component={RegisterPage} />}
+                {() => <AuthRoute component={RegisterPage} registration />}
               </Route>
               <Route component={NotFound} />
             </Switch>
