@@ -7,6 +7,270 @@
  */
 import * as zod from "zod";
 
+export const getMessagingContextResponsePersonalUnreadCountMin = 0;
+
+export const getMessagingContextResponseUnreadCountMin = 0;
+
+export const getMessagingContextResponseOrganisationsItemUnreadCountMin = 0;
+
+export const GetMessagingContextResponse = zod.object({
+  personal: zod.boolean(),
+  personalUnreadCount: zod
+    .number()
+    .min(getMessagingContextResponsePersonalUnreadCountMin),
+  unreadCount: zod.number().min(getMessagingContextResponseUnreadCountMin),
+  organisations: zod.array(
+    zod.object({
+      id: zod.string(),
+      name: zod.string(),
+      logo: zod.string().nullish(),
+      canManageTeam: zod.boolean(),
+      unreadCount: zod
+        .number()
+        .min(getMessagingContextResponseOrganisationsItemUnreadCountMin),
+    }),
+  ),
+});
+
+export const listMessageConversationsQueryOrgIdRegExp = new RegExp(
+  "^[A-Za-z0-9_-]{1,128}$",
+);
+
+export const ListMessageConversationsQueryParams = zod.object({
+  orgId: zod.coerce
+    .string()
+    .regex(listMessageConversationsQueryOrgIdRegExp)
+    .optional(),
+});
+
+export const listMessageConversationsResponseConversationsItemUnreadCountMin = 0;
+
+export const listMessageConversationsResponseUnreadCountMin = 0;
+
+export const ListMessageConversationsResponse = zod.object({
+  conversations: zod.array(
+    zod.object({
+      id: zod.string(),
+      orgId: zod.string(),
+      name: zod.string(),
+      avatarUrl: zod.string().nullish(),
+      participantLabel: zod.string(),
+      side: zod.enum(["supporter", "organisation"]),
+      lastMessage: zod.string(),
+      updatedAt: zod.string(),
+      unreadCount: zod
+        .number()
+        .min(listMessageConversationsResponseConversationsItemUnreadCountMin),
+      canSend: zod.boolean(),
+    }),
+  ),
+  unreadCount: zod.number().min(listMessageConversationsResponseUnreadCountMin),
+});
+
+export const startMessageConversationBodyOrgIdRegExp = new RegExp(
+  "^[A-Za-z0-9_-]{1,128}$",
+);
+
+export const StartMessageConversationBody = zod.object({
+  orgId: zod.string().regex(startMessageConversationBodyOrgIdRegExp),
+});
+
+export const startMessageConversationResponseUnreadCountMin = 0;
+
+export const StartMessageConversationResponse = zod.object({
+  id: zod.string(),
+  orgId: zod.string(),
+  name: zod.string(),
+  avatarUrl: zod.string().nullish(),
+  participantLabel: zod.string(),
+  side: zod.enum(["supporter", "organisation"]),
+  lastMessage: zod.string(),
+  updatedAt: zod.string(),
+  unreadCount: zod.number().min(startMessageConversationResponseUnreadCountMin),
+  canSend: zod.boolean(),
+});
+
+export const getConversationMessagesQueryConversationIdRegExp = new RegExp(
+  "^c_[A-Za-z0-9_-]{43}$",
+);
+export const getConversationMessagesQueryOrgIdRegExp = new RegExp(
+  "^[A-Za-z0-9_-]{1,128}$",
+);
+
+export const GetConversationMessagesQueryParams = zod.object({
+  conversationId: zod.coerce
+    .string()
+    .regex(getConversationMessagesQueryConversationIdRegExp),
+  orgId: zod.coerce
+    .string()
+    .regex(getConversationMessagesQueryOrgIdRegExp)
+    .optional(),
+  beforeSequence: zod.coerce.number().min(1).optional(),
+});
+
+export const getConversationMessagesResponseConversationUnreadCountMin = 0;
+
+export const getConversationMessagesResponseReadThroughMin = 0;
+
+export const GetConversationMessagesResponse = zod.object({
+  conversation: zod.object({
+    id: zod.string(),
+    orgId: zod.string(),
+    name: zod.string(),
+    avatarUrl: zod.string().nullish(),
+    participantLabel: zod.string(),
+    side: zod.enum(["supporter", "organisation"]),
+    lastMessage: zod.string(),
+    updatedAt: zod.string(),
+    unreadCount: zod
+      .number()
+      .min(getConversationMessagesResponseConversationUnreadCountMin),
+    canSend: zod.boolean(),
+  }),
+  messages: zod.array(
+    zod.object({
+      id: zod.string(),
+      text: zod.string(),
+      side: zod.enum(["supporter", "organisation"]),
+      createdAt: zod.string(),
+      sequence: zod.number().min(1),
+      incomingIndex: zod.number().min(1),
+    }),
+  ),
+  hasMore: zod.boolean(),
+  nextBeforeSequence: zod.number().nullish(),
+  readThrough: zod.number().min(getConversationMessagesResponseReadThroughMin),
+});
+
+export const sendConversationMessagePathIdRegExp = new RegExp(
+  "^c_[A-Za-z0-9_-]{43}$",
+);
+
+export const SendConversationMessageParams = zod.object({
+  id: zod.coerce.string().regex(sendConversationMessagePathIdRegExp),
+});
+
+export const sendConversationMessageBodyTextMax = 2000;
+
+export const sendConversationMessageBodyClientIdRegExp = new RegExp(
+  "^[A-Za-z0-9_-]{16,80}$",
+);
+export const sendConversationMessageBodyOrgIdRegExp = new RegExp(
+  "^[A-Za-z0-9_-]{1,128}$",
+);
+
+export const SendConversationMessageBody = zod.object({
+  text: zod.string().min(1).max(sendConversationMessageBodyTextMax),
+  clientId: zod.string().regex(sendConversationMessageBodyClientIdRegExp),
+  orgId: zod.string().regex(sendConversationMessageBodyOrgIdRegExp).optional(),
+});
+
+export const SendConversationMessageResponse = zod.object({
+  id: zod.string(),
+  text: zod.string(),
+  side: zod.enum(["supporter", "organisation"]),
+  createdAt: zod.string(),
+  sequence: zod.number().min(1),
+  incomingIndex: zod.number().min(1),
+});
+
+export const markConversationReadPathIdRegExp = new RegExp(
+  "^c_[A-Za-z0-9_-]{43}$",
+);
+
+export const MarkConversationReadParams = zod.object({
+  id: zod.coerce.string().regex(markConversationReadPathIdRegExp),
+});
+
+export const markConversationReadBodyThroughMin = 0;
+
+export const markConversationReadBodyOrgIdRegExp = new RegExp(
+  "^[A-Za-z0-9_-]{1,128}$",
+);
+
+export const MarkConversationReadBody = zod.object({
+  through: zod.number().min(markConversationReadBodyThroughMin),
+  orgId: zod.string().regex(markConversationReadBodyOrgIdRegExp).optional(),
+});
+
+export const markConversationReadResponseUnreadCountMin = 0;
+
+export const MarkConversationReadResponse = zod.object({
+  id: zod.string(),
+  orgId: zod.string(),
+  name: zod.string(),
+  avatarUrl: zod.string().nullish(),
+  participantLabel: zod.string(),
+  side: zod.enum(["supporter", "organisation"]),
+  lastMessage: zod.string(),
+  updatedAt: zod.string(),
+  unreadCount: zod.number().min(markConversationReadResponseUnreadCountMin),
+  canSend: zod.boolean(),
+});
+
+export const getMessagingTeamPathOrgIdRegExp = new RegExp(
+  "^[A-Za-z0-9_-]{1,128}$",
+);
+
+export const GetMessagingTeamParams = zod.object({
+  orgId: zod.coerce.string().regex(getMessagingTeamPathOrgIdRegExp),
+});
+
+export const GetMessagingTeamResponse = zod.object({
+  members: zod.array(
+    zod.object({
+      userId: zod.string(),
+      name: zod.string(),
+    }),
+  ),
+});
+
+export const addMessagingTeamMemberPathOrgIdRegExp = new RegExp(
+  "^[A-Za-z0-9_-]{1,128}$",
+);
+
+export const AddMessagingTeamMemberParams = zod.object({
+  orgId: zod.coerce.string().regex(addMessagingTeamMemberPathOrgIdRegExp),
+});
+
+export const addMessagingTeamMemberBodyUserIdRegExp = new RegExp(
+  "^[A-Za-z0-9_-]{1,128}$",
+);
+
+export const AddMessagingTeamMemberBody = zod.object({
+  userId: zod.string().regex(addMessagingTeamMemberBodyUserIdRegExp),
+});
+
+export const AddMessagingTeamMemberResponse = zod.object({
+  members: zod.array(
+    zod.object({
+      userId: zod.string(),
+      name: zod.string(),
+    }),
+  ),
+});
+
+export const removeMessagingTeamMemberPathOrgIdRegExp = new RegExp(
+  "^[A-Za-z0-9_-]{1,128}$",
+);
+export const removeMessagingTeamMemberPathUserIdRegExp = new RegExp(
+  "^[A-Za-z0-9_-]{1,128}$",
+);
+
+export const RemoveMessagingTeamMemberParams = zod.object({
+  orgId: zod.coerce.string().regex(removeMessagingTeamMemberPathOrgIdRegExp),
+  userId: zod.coerce.string().regex(removeMessagingTeamMemberPathUserIdRegExp),
+});
+
+export const RemoveMessagingTeamMemberResponse = zod.object({
+  members: zod.array(
+    zod.object({
+      userId: zod.string(),
+      name: zod.string(),
+    }),
+  ),
+});
+
 /**
  * @summary Private notifications derived from the signed-in supporter's follows and donations
  */

@@ -5,6 +5,121 @@
  * Root ProjX API — community giving platform
  * OpenAPI spec version: 0.1.0
  */
+export interface MessagingOrganisation {
+  id: string;
+  name: string;
+  /** @nullable */
+  logo?: string | null;
+  canManageTeam: boolean;
+  /** @minimum 0 */
+  unreadCount: number;
+}
+
+export interface MessagingContext {
+  personal: boolean;
+  /** @minimum 0 */
+  personalUnreadCount: number;
+  /** @minimum 0 */
+  unreadCount: number;
+  organisations: MessagingOrganisation[];
+}
+
+export interface MessageConversationInput {
+  /** @pattern ^[A-Za-z0-9_-]{1,128}$ */
+  orgId: string;
+}
+
+export type MessageConversationSide =
+  (typeof MessageConversationSide)[keyof typeof MessageConversationSide];
+
+export const MessageConversationSide = {
+  supporter: "supporter",
+  organisation: "organisation",
+} as const;
+
+export interface MessageConversation {
+  id: string;
+  orgId: string;
+  name: string;
+  /** @nullable */
+  avatarUrl?: string | null;
+  participantLabel: string;
+  side: MessageConversationSide;
+  lastMessage: string;
+  updatedAt: string;
+  /** @minimum 0 */
+  unreadCount: number;
+  canSend: boolean;
+}
+
+export interface MessageInbox {
+  conversations: MessageConversation[];
+  /** @minimum 0 */
+  unreadCount: number;
+}
+
+export type ConversationMessageSide =
+  (typeof ConversationMessageSide)[keyof typeof ConversationMessageSide];
+
+export const ConversationMessageSide = {
+  supporter: "supporter",
+  organisation: "organisation",
+} as const;
+
+export interface ConversationMessage {
+  id: string;
+  text: string;
+  side: ConversationMessageSide;
+  createdAt: string;
+  /** @minimum 1 */
+  sequence: number;
+  /** @minimum 1 */
+  incomingIndex: number;
+}
+
+export interface ConversationMessages {
+  conversation: MessageConversation;
+  messages: ConversationMessage[];
+  hasMore: boolean;
+  /** @nullable */
+  nextBeforeSequence?: number | null;
+  /** @minimum 0 */
+  readThrough: number;
+}
+
+export interface ConversationMessageInput {
+  /**
+   * @minLength 1
+   * @maxLength 2000
+   */
+  text: string;
+  /** @pattern ^[A-Za-z0-9_-]{16,80}$ */
+  clientId: string;
+  /** @pattern ^[A-Za-z0-9_-]{1,128}$ */
+  orgId?: string;
+}
+
+export interface ConversationReadInput {
+  /** @minimum 0 */
+  through: number;
+  /** @pattern ^[A-Za-z0-9_-]{1,128}$ */
+  orgId?: string;
+}
+
+export interface MessagingTeamInput {
+  /** @pattern ^[A-Za-z0-9_-]{1,128}$ */
+  userId: string;
+}
+
+export interface MessagingTeamMember {
+  userId: string;
+  name: string;
+}
+
+export interface MessagingTeam {
+  members: MessagingTeamMember[];
+}
+
 export type SupporterNotificationType =
   (typeof SupporterNotificationType)[keyof typeof SupporterNotificationType];
 
@@ -1259,6 +1374,28 @@ export interface UpdateProfileRequest {
   email?: string;
   phone?: string;
 }
+
+export type ListMessageConversationsParams = {
+  /**
+   * @pattern ^[A-Za-z0-9_-]{1,128}$
+   */
+  orgId?: string;
+};
+
+export type GetConversationMessagesParams = {
+  /**
+   * @pattern ^c_[A-Za-z0-9_-]{43}$
+   */
+  conversationId: string;
+  /**
+   * @pattern ^[A-Za-z0-9_-]{1,128}$
+   */
+  orgId?: string;
+  /**
+   * @minimum 1
+   */
+  beforeSequence?: number;
+};
 
 export type SendAdminTestEmail200Environment =
   (typeof SendAdminTestEmail200Environment)[keyof typeof SendAdminTestEmail200Environment];

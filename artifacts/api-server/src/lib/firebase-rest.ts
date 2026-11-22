@@ -203,6 +203,54 @@ export async function fsCreateIfAbsent(
   return true;
 }
 
+/** Bounded messaging-only compare-and-write. A message and its counters commit
+ * together; a lost response can safely be retried with the same message ID. */
+export async function fsMutateMessaging<T>(
+  collection: "conversations" | "organisation_messaging_access",
+  id: string,
+  token: string,
+  decide: (current: Record<string, unknown> | null, existingMessage: Record<string, unknown> | null) =>
+    { patch?: Record<string, unknown>; message?: Record<string, unknown>; result: T },
+  messageId?: string,
+): Promise<T> {
+  if (!/^[A-Za-z0-9_-]{1,128}$/.test(id) || messageId && !/^m_[A-Za-z0-9_-]{43}$/.test(messageId)) throw new Error("Invalid messaging record.");
+  if (collection !== "conversations" && collection !== "organisation_messaging_access") throw new Error("Invalid messaging collection.");
+  const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+  const name = `projects/${PROJECT_ID}/databases/(default)/documents/${collection}/${id}`;
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const response = await fetch(`${FIRESTORE}/${collection}/${id}`, { headers });
+    if (!response.ok && response.status !== 404) throw new Error("Could not load private messaging record.");
+    const raw = response.status === 404 ? null : await response.json() as { fields: Record<string, FsValue>; updateTime: string };
+    if (raw && typeof raw.updateTime !== "string") throw new Error("Invalid messaging record version.");
+    const existing = messageId ? await fsGet("conversation_messages", messageId, token) : null;
+    const decision = decide(raw ? fromFsDoc(raw.fields ?? {}) : null, existing);
+    const writes: Record<string, unknown>[] = [];
+    if (decision.patch && Object.keys(decision.patch).length) {
+      writes.push({
+        update: { name, fields: Object.fromEntries(Object.entries(decision.patch).map(([k, v]) => [k, toFsVal(v)])) },
+        updateMask: { fieldPaths: Object.keys(decision.patch) },
+        currentDocument: raw ? { updateTime: raw.updateTime } : { exists: false },
+      });
+    }
+    if (decision.message) {
+      if (!messageId || collection !== "conversations") throw new Error("Invalid message write.");
+      writes.push({
+        update: {
+          name: `projects/${PROJECT_ID}/databases/(default)/documents/conversation_messages/${messageId}`,
+          fields: Object.fromEntries(Object.entries(decision.message).map(([k, v]) => [k, toFsVal(v)])),
+        },
+        currentDocument: { exists: false },
+      });
+    }
+    if (!writes.length) return decision.result;
+    const saved = await fetch(`${FIRESTORE}:commit`, { method: "POST", headers, body: JSON.stringify({ writes }) });
+    if (saved.ok) return decision.result;
+    if (saved.status === 409 || saved.status === 400 && (await saved.clone().text()).includes("FAILED_PRECONDITION")) continue;
+    throw new Error("Could not save private messaging record.");
+  }
+  throw new Error("Conversation changed while saving. Please retry.");
+}
+
 // Cross-process settlement mutex. Never expires automatically: an interrupted
 // transfer must be reconciled before another run may send more money.
 export async function fsTrySettlementLock(orgId: string, batchId: string, token: string): Promise<boolean> {

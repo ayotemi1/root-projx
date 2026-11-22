@@ -17,6 +17,7 @@ import AccountPage, { GivingHistoryPage } from "@/pages/account";
 import SupporterLayout from "@/components/supporter/SupporterLayout";
 import NotificationsPage from "@/pages/notifications";
 import SupporterPlaceholder from "@/pages/supporter-placeholder";
+import InboxPage from "@/pages/inbox";
 import { shouldUseSupporterLayout } from "@/lib/supporter-navigation";
 import OrgProfilePage from "@/pages/org-profile";
 import OrgCampaignsPage from "@/pages/org-campaigns";
@@ -142,7 +143,7 @@ function AppRoutes() {
               <Route path="/feed" component={FeedPage} />
               <Route path="/discover" component={DiscoverPage} />
               <Route path="/create">{() => <SupporterPlaceholder section="create" />}</Route>
-              <Route path="/inbox">{() => <SupporterPlaceholder section="inbox" />}</Route>
+              <Route path="/inbox" component={InboxPage} />
               <Route path="/notifications" component={NotificationsPage} />
               <Route path="/saved">{() => <SupporterPlaceholder section="saved" />}</Route>
               <Route path="/profile">{() => <AccountPage />}</Route>

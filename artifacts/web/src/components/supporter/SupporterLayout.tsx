@@ -15,6 +15,7 @@ import { SupporterPostDraftProvider } from "./SupporterPostDraftProvider";
 import { TextPostProvider } from "./TextPostProvider";
 import { NotificationsInbox, UnreadBadge } from "./NotificationsInbox";
 import { useSupporterNotifications } from "./use-supporter-notifications";
+import { InboxBadge } from "@/components/inbox/InboxBadge";
 import "./supporter.css";
 
 const icons: Record<SupporterNavigationId, typeof Home> = {
@@ -144,6 +145,7 @@ export default function SupporterLayout({ children }: { children: ReactNode }) {
     .filter(Boolean);
   const overflow = supporterNavigation.filter(i => !supporterMobileNavigation.includes(i.id));
   const notif = supporterNavigation.find(i => i.id === "notifications")!;
+  const inboxNav = supporterNavigation.find(i => i.id === "inbox")!;
 
   const accountBlock = isAuthenticated ? (
     <>
@@ -177,6 +179,13 @@ export default function SupporterLayout({ children }: { children: ReactNode }) {
             <Bell size={22} aria-hidden />
             <UnreadBadge testId="badge-notifications-mobile" />
           </Link>
+          {isAuthenticated && (
+            <Link href={inboxNav.href} className="rps-icon-btn" aria-label="Inbox"
+              aria-current={isSupporterNavigationActive(inboxNav, location) ? "page" : undefined} data-testid="link-inbox-mobile">
+              <Inbox size={22} aria-hidden />
+              <InboxBadge testId="badge-inbox-mobile" />
+            </Link>
+          )}
           <button ref={menuBtn} type="button" className="rps-icon-btn" aria-expanded={menuOpen}
             aria-controls="rps-mmenu" aria-label={menuOpen ? "Close menu" : "More destinations"}
             onClick={() => setMenuOpen(o => !o)} data-testid="button-mobile-menu">
@@ -232,6 +241,7 @@ export default function SupporterLayout({ children }: { children: ReactNode }) {
                     aria-current={active ? "page" : undefined} data-testid={`link-nav-${item.id}`}>
                     {item.id === "profile" && user ? <span className="rps-avatar sm" aria-hidden>{user.avatarInitials}</span> : <Icon size={20} aria-hidden />}
                     {item.label}
+                    {item.id === "inbox" && <InboxBadge testId="badge-inbox-sidebar" />}
                   </Link>
                   )}
                 </li>
@@ -271,6 +281,7 @@ export default function SupporterLayout({ children }: { children: ReactNode }) {
                   data-testid={`link-tab-${item.id}`}>
                   {item.id === "profile" && user ? <span className="rps-avatar sm" aria-hidden>{user.avatarInitials}</span> : <Icon size={20} aria-hidden />}
                   <span>{item.id === "profile" ? "Me" : item.label}</span>
+                  {item.id === "inbox" && <InboxBadge testId="badge-inbox-tab" className="rpn-badge rpm-tab-badge" />}
                 </Link>
                 )}
               </li>

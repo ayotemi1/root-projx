@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   LayoutDashboard, Megaphone, Users, FolderOpen, BarChart2, FileText,
   User, Settings, ChevronRight, Bell, PencilLine, Plus, TrendingUp,
-  TrendingDown, ExternalLink, Heart,
+  TrendingDown, ExternalLink, Heart, Inbox,
 } from "lucide-react";
 import * as api from "@/lib/api";
 import type { Org, FeedUpdate, Campaign } from "@/lib/api";
@@ -271,6 +271,9 @@ export default function OrgDashboardPage() {
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-extrabold text-[#1A1A1A]">Dashboard</h2>
           <div className="flex items-center gap-2">
+            <Link href={`/inbox?orgId=${encodeURIComponent(orgId)}`} className="h-9 px-3 inline-flex items-center gap-1.5 text-sm font-semibold border border-[#17100F] bg-[#F9F6F0] hover:bg-[#F2EDE4]" data-testid="link-dashboard-inbox">
+              <Inbox size={15} /> Inbox
+            </Link>
             <NotificationBell orgId={orgId} token={token} />
             <div
               className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-extrabold text-white flex-shrink-0"

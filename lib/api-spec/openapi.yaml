@@ -25,6 +25,167 @@ tags:
   - name: profile
     description: User profile
 paths:
+  /messaging/context:
+    get:
+      operationId: getMessagingContext
+      tags: [profile]
+      responses:
+        '200':
+          description: Own personal and authorised organisation inboxes
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/MessagingContext'}
+        '401': {description: Sign in required}
+        '503': {description: Messaging unavailable}
+  /messaging/conversations:
+    get:
+      operationId: listMessageConversations
+      tags: [profile]
+      parameters:
+        - {in: query, name: orgId, schema: {type: string, pattern: '^[A-Za-z0-9_-]{1,128}$'}}
+      responses:
+        '200':
+          description: Only conversations in the authorised inbox
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/MessageInbox'}
+        '401': {description: Sign in required}
+        '404': {description: Inbox unavailable}
+        '503': {description: Messaging unavailable}
+    post:
+      operationId: startMessageConversation
+      tags: [profile]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/MessageConversationInput'}
+      responses:
+        '200':
+          description: Existing or new conversation for this supporter and organisation
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/MessageConversation'}
+        '400': {description: Invalid request}
+        '401': {description: Sign in required}
+        '403': {description: Supporter required}
+        '404': {description: Organisation unavailable}
+        '429': {description: Slow down and retry after a minute}
+        '503': {description: Messaging unavailable}
+  /messaging/messages:
+    get:
+      operationId: getConversationMessages
+      tags: [profile]
+      parameters:
+        - {in: query, name: conversationId, required: true, schema: {type: string, pattern: '^c_[A-Za-z0-9_-]{43}$'}}
+        - {in: query, name: orgId, schema: {type: string, pattern: '^[A-Za-z0-9_-]{1,128}$'}}
+        - {in: query, name: beforeSequence, schema: {type: integer, minimum: 1}}
+      responses:
+        '200':
+          description: Plain-text message page, oldest first; reading alone does not mark read
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ConversationMessages'}
+        '400': {description: Invalid request}
+        '401': {description: Sign in required}
+        '404': {description: Conversation unavailable}
+        '503': {description: Messaging unavailable}
+  /messaging/conversations/{id}/messages:
+    post:
+      operationId: sendConversationMessage
+      tags: [profile]
+      parameters:
+        - {in: path, name: id, required: true, schema: {type: string, pattern: '^c_[A-Za-z0-9_-]{43}$'}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ConversationMessageInput'}
+      responses:
+        '200':
+          description: Persisted message; same client ID retries never send twice
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ConversationMessage'}
+        '400': {description: Invalid message}
+        '401': {description: Sign in required}
+        '404': {description: Conversation unavailable}
+        '409': {description: Retry identifier used for different text or sender side}
+        '429': {description: Slow down and retry after a minute}
+        '503': {description: Send not confirmed; retain draft for retry}
+  /messaging/conversations/{id}/read:
+    post:
+      operationId: markConversationRead
+      tags: [profile]
+      parameters:
+        - {in: path, name: id, required: true, schema: {type: string, pattern: '^c_[A-Za-z0-9_-]{43}$'}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ConversationReadInput'}
+      responses:
+        '200':
+          description: Updated conversation with persistent monotonic read cursor
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/MessageConversation'}
+        '400': {description: Invalid request}
+        '401': {description: Sign in required}
+        '404': {description: Conversation unavailable}
+        '503': {description: Could not save read status}
+  /messaging/access/{orgId}:
+    get:
+      operationId: getMessagingTeam
+      tags: [organisations]
+      parameters:
+        - {in: path, name: orgId, required: true, schema: {type: string, pattern: '^[A-Za-z0-9_-]{1,128}$'}}
+      responses:
+        '200':
+          description: Owner-only messaging team
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/MessagingTeam'}
+        '401': {description: Sign in required}
+        '404': {description: Owner access required}
+        '503': {description: Team unavailable}
+    post:
+      operationId: addMessagingTeamMember
+      tags: [organisations]
+      parameters:
+        - {in: path, name: orgId, required: true, schema: {type: string, pattern: '^[A-Za-z0-9_-]{1,128}$'}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/MessagingTeamInput'}
+      responses:
+        '200':
+          description: Existing account granted messaging-only access
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/MessagingTeam'}
+        '400': {description: Check account ID or team size}
+        '429': {description: Slow down and retry after a minute}
+        '401': {description: Sign in required}
+        '404': {description: Owner access required}
+        '503': {description: Could not save access}
+  /messaging/access/{orgId}/{userId}:
+    delete:
+      operationId: removeMessagingTeamMember
+      tags: [organisations]
+      parameters:
+        - {in: path, name: orgId, required: true, schema: {type: string, pattern: '^[A-Za-z0-9_-]{1,128}$'}}
+        - {in: path, name: userId, required: true, schema: {type: string, pattern: '^[A-Za-z0-9_-]{1,128}$'}}
+      responses:
+        '200':
+          description: Messaging-only access revoked
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/MessagingTeam'}
+        '401': {description: Sign in required}
+        '404': {description: Owner access required}
+        '503': {description: Could not remove access}
   /supporter-notifications:
     get:
       operationId: listSupporterNotifications
@@ -1328,6 +1489,104 @@ components:
       bearerFormat: JWT
 
   schemas:
+    MessagingContext:
+      type: object
+      required: [personal, personalUnreadCount, organisations, unreadCount]
+      properties:
+        personal: {type: boolean}
+        personalUnreadCount: {type: integer, minimum: 0}
+        unreadCount: {type: integer, minimum: 0}
+        organisations:
+          type: array
+          items: {$ref: '#/components/schemas/MessagingOrganisation'}
+    MessagingOrganisation:
+      type: object
+      required: [id, name, canManageTeam, unreadCount]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        logo: {type: ['string', 'null']}
+        canManageTeam: {type: boolean}
+        unreadCount: {type: integer, minimum: 0}
+    MessageConversationInput:
+      type: object
+      required: [orgId]
+      properties:
+        orgId: {type: string, pattern: '^[A-Za-z0-9_-]{1,128}$'}
+    MessageInbox:
+      type: object
+      required: [conversations, unreadCount]
+      properties:
+        conversations:
+          type: array
+          items: {$ref: '#/components/schemas/MessageConversation'}
+        unreadCount: {type: integer, minimum: 0}
+    MessageConversation:
+      type: object
+      required: [id, orgId, name, participantLabel, side, lastMessage, updatedAt, unreadCount, canSend]
+      properties:
+        id: {type: string}
+        orgId: {type: string}
+        name: {type: string}
+        avatarUrl: {type: ['string', 'null']}
+        participantLabel: {type: string}
+        side: {type: string, enum: [supporter, organisation]}
+        lastMessage: {type: string}
+        updatedAt: {type: string}
+        unreadCount: {type: integer, minimum: 0}
+        canSend: {type: boolean}
+    ConversationMessages:
+      type: object
+      required: [conversation, messages, hasMore, readThrough]
+      properties:
+        conversation: {$ref: '#/components/schemas/MessageConversation'}
+        messages:
+          type: array
+          items: {$ref: '#/components/schemas/ConversationMessage'}
+        hasMore: {type: boolean}
+        nextBeforeSequence: {type: ['integer', 'null']}
+        readThrough: {type: integer, minimum: 0}
+    ConversationMessage:
+      type: object
+      required: [id, text, side, createdAt, sequence, incomingIndex]
+      properties:
+        id: {type: string}
+        text: {type: string}
+        side: {type: string, enum: [supporter, organisation]}
+        createdAt: {type: string}
+        sequence: {type: integer, minimum: 1}
+        incomingIndex: {type: integer, minimum: 1}
+    ConversationMessageInput:
+      type: object
+      required: [text, clientId]
+      properties:
+        text: {type: string, minLength: 1, maxLength: 2000}
+        clientId: {type: string, pattern: '^[A-Za-z0-9_-]{16,80}$'}
+        orgId: {type: string, pattern: '^[A-Za-z0-9_-]{1,128}$'}
+    ConversationReadInput:
+      type: object
+      required: [through]
+      properties:
+        through: {type: integer, minimum: 0}
+        orgId: {type: string, pattern: '^[A-Za-z0-9_-]{1,128}$'}
+    MessagingTeamInput:
+      type: object
+      required: [userId]
+      properties:
+        userId: {type: string, pattern: '^[A-Za-z0-9_-]{1,128}$'}
+    MessagingTeam:
+      type: object
+      required: [members]
+      properties:
+        members:
+          type: array
+          items: {$ref: '#/components/schemas/MessagingTeamMember'}
+    MessagingTeamMember:
+      type: object
+      required: [userId, name]
+      properties:
+        userId: {type: string}
+        name: {type: string}
     SupporterNotification:
       type: object
       required: [id, type, message, createdAt, read, href, name]

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Menu, X, LogOut, LayoutDashboard, User, ShoppingBag } from "lucide-react";
+import { Menu, X, LogOut, LayoutDashboard, User, ShoppingBag, Inbox } from "lucide-react";
+import { InboxBadge } from "@/components/inbox/InboxBadge";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -68,6 +69,12 @@ export default function Navbar() {
 
         <div className="hidden lg:flex items-center gap-3 ml-auto">
           <CartLink />
+          {isAuthenticated && (
+            <Link href="/inbox" className="relative p-2 text-white hover:text-[#F3BF2C] transition-colors" aria-label="Inbox" data-testid="nav-link-inbox">
+              <Inbox className="w-[18px] h-[18px]" strokeWidth={1.75} />
+              <InboxBadge testId="badge-nav-inbox" className="absolute top-0 right-0 min-w-4 h-4 px-1 bg-[#F3BF2C] text-[#17100F] text-[10px] font-bold flex items-center justify-center leading-none" />
+            </Link>
+          )}
           {isAuthenticated && user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -148,6 +155,7 @@ export default function Navbar() {
             {isAuthenticated ? (
               <>
                 <Link href="/account" onClick={() => setMobileOpen(false)} className="block px-3 py-2 text-sm text-white">Account</Link>
+                <Link href="/inbox" onClick={() => setMobileOpen(false)} className="flex items-center gap-2 px-3 py-2 text-sm text-white" data-testid="nav-mobile-link-inbox">Inbox <InboxBadge testId="badge-nav-mobile-inbox" className="min-w-4 h-4 px-1 bg-[#F3BF2C] text-[#17100F] text-[10px] font-bold inline-flex items-center justify-center" /></Link>
                 {user?.accountType === "organisation" && (
                   <Link href="/dashboard" onClick={() => setMobileOpen(false)} className="block px-3 py-2 text-sm text-white">Dashboard</Link>
                 )}

@@ -41,7 +41,7 @@ async function page(path: string, options: { route?: string; seeds?: Array<[unkn
   Object.defineProperty(globalThis, "window", { configurable: true, value: { location: { search: "", hash: "" } } });
   try {
     return renderToStaticMarkup(createElement(QueryClientProvider, { client },
-      createElement(Router, { hook: () => [options.route ?? "/", () => {}] }, createElement(mod.exports.default))));
+      createElement(Router, { hook: () => [options.route ?? "/", () => {}], searchHook: () => "" }, createElement(mod.exports.default))));
   } finally {
     client.clear();
     if (priorWindow) Object.defineProperty(globalThis, "window", priorWindow);
