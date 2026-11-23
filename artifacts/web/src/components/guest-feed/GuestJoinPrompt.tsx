@@ -15,7 +15,7 @@ export function GuestJoinPrompt({ action, onClose, aboveViewer = false }: { acti
             ? "Join Root ProjX to follow organisations and see your impact in real time."
             : <>Join Root ProjX to {action}, follow organisations and see your impact in real time.</>}
         </DialogDescription>
-        <Link href="/register" className="rp-btn rp-btn-yellow w-full mt-5 !min-h-[40px] !text-[14px]" data-testid="link-join-prompt-join">Join, it's free</Link>
+        <Link href="/register" className="rp-btn rp-btn-yellow w-full mt-5 !min-h-[40px] !text-[14px]" data-testid="link-join-prompt-join">Join</Link>
         <p className="mt-4 text-[14px] text-[#17100F]">Already a supporter? <Link href="/login" className="rp-link-u" data-testid="link-join-prompt-signin">Sign in</Link></p>
       </DialogContent>
     </Dialog>

@@ -38,7 +38,7 @@ function JoinBox({ className = "" }: { className?: string }) {
     <section className={`bg-[#17100F] text-[#F4EFE6] p-5 ${className}`} aria-label="Join the movement" data-testid="box-guest-join">
       <h2 className="rp-display text-[#F3BF2C] text-[30px] sm:text-[34px]">Join the movement</h2>
       <p className="mt-3 text-[15px] leading-relaxed">Become a supporter. Follow grassroots organisations, read their updates and see your impact in real time.</p>
-      <Link href="/register" className="rp-btn rp-btn-yellow w-full mt-5 !text-[15px]" data-testid="link-guest-join">Join, it's free</Link>
+      <Link href="/register" className="rp-btn rp-btn-yellow w-full mt-5 !text-[15px]" data-testid="link-guest-join">Join</Link>
       <p className="mt-4 text-center text-[14px]">Already a supporter? <Link href="/login" className="font-bold underline underline-offset-2" data-testid="link-guest-signin">Sign in</Link></p>
     </section>
   );
