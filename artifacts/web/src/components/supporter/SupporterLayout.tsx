@@ -87,7 +87,7 @@ export default function SupporterLayout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const search = useSearch();
   const accountPage = /^\/(settings|profile\/edit)\/?(?:[?#]|$)/.test(location);
-  const profilePage = location === "/profile" || location === "/saved" || /^\/supporters\/[^/?#]+\/?$/.test(location);
+  const profilePage = location === "/profile" || location === "/saved" || /^\/(?:supporters|organisations)\/[^/?#]+\/?$/.test(location);
   const { user, isAuthenticated } = useAuth();
   const isOrg = isApprovedOrganisation(user);
   const supporterNavigation = navigationFor(user);

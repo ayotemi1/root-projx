@@ -13,7 +13,7 @@ const { renderToStaticMarkup } = webRequire("react-dom/server");
 const { Router } = webRequire("wouter");
 const { QueryClient, QueryClientProvider } = webRequire("@tanstack/react-query");
 
-async function page(path: string, options: { route?: string; signedIn?: boolean; seeds?: Array<[unknown[], unknown]> } = {}) {
+async function page(path: string, options: { route?: string; search?: string; signedIn?: boolean; seeds?: Array<[unknown[], unknown]> } = {}) {
   const result = await build({
     entryPoints: [new URL(path, webRoot).pathname],
     bundle: true, write: false, format: "cjs", platform: "node",
@@ -38,10 +38,10 @@ async function page(path: string, options: { route?: string; signedIn?: boolean;
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   for (const [key, data] of options.seeds ?? []) client.setQueryData(key, data);
   const priorWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
-  Object.defineProperty(globalThis, "window", { configurable: true, value: { location: { search: "", hash: "" } } });
+  Object.defineProperty(globalThis, "window", { configurable: true, value: { location: { search: options.search ?? "", hash: "" } } });
   try {
     return renderToStaticMarkup(createElement(QueryClientProvider, { client },
-      createElement(Router, { hook: () => [options.route ?? "/", () => {}], searchHook: () => "" }, createElement(mod.exports.default))));
+      createElement(Router, { hook: () => [options.route ?? "/", () => {}], searchHook: () => options.search ?? "" }, createElement(mod.exports.default))));
   } finally {
     client.clear();
     if (priorWindow) Object.defineProperty(globalThis, "window", priorWindow);
@@ -139,18 +139,39 @@ test("public organisation profile uses the redesign with real data and preserves
       [["volunteerRoles", id], []], [["org-reviews", id], []], [["org-supporters", id], []],
     ],
   });
-  assert.match(html, /rp-orgp rp-page-shell/);
+  assert.match(html, /class="rp-orgp"/);
   assert.match(html, /data-testid="text-org-name">Profile Regression Organisation/);
   assert.match(html, /A library for everyone\./);
   assert.match(html, /src="\/test-logo\.png"/);
-  assert.match(html, /src="\/test-cover\.png"/);
+  assert.doesNotMatch(html, /src="\/test-cover\.png"|orgp-cover/);
   assert.match(html, /data-testid="card-content-profile-test-post"/);
   assert.match(html, /Opening the library/);
-  for (const tab of ["Posts", "Campaigns", "Volunteer", "About"]) assert.ok(html.includes(tab), `missing ${tab}`);
+  assert.match(html, /data-testid="tab-posts"/);
+  assert.match(html, /data-testid="tab-campaigns"/);
+  assert.doesNotMatch(html, /data-testid="tab-(volunteer|about|archived)"/);
   assert.match(html, /href="\/campaign\/library\/books"/);
-  assert.match(html, /Donate to this campaign/);
+  assert.match(html, /data-testid="card-live-campaign"/);
+  assert.match(html, /data-testid="stat-campaigns"/);
+  assert.match(html, /data-testid="button-share-org"/);
+  assert.doesNotMatch(html, /bar-donor-preview/);
   assert.match(html, /data-testid="button-donate-org"/);
   assert.doesNotMatch(html, /totalOwedGbp|bank.details|payout reference/i);
+});
+
+test("donor preview uses the same public profile and adds only its preview notice", async () => {
+  const id = "donor-preview-fixture";
+  const seeds: Array<[unknown[], unknown]> = [
+    [["org", id], { _id: id, name: "Donor Preview Organisation", country: "Jamaica", category: "Education", totalRaised: 0, followerCount: 0 }],
+    [["org-feed", id], []], [["campaigns", id], []],
+  ];
+  const options = { route: `/organisations/${id}`, seeds };
+  const normal = await page("src/pages/org-profile.tsx", options);
+  const preview = await page("src/pages/org-profile.tsx", { ...options, search: "?preview=1" });
+  assert.match(preview, /You&#x27;re previewing your page as a donor/);
+  assert.match(preview, /data-testid="link-back-dashboard" href="\/dashboard"/);
+  assert.equal(preview.replace(/<div class="orgp-preview"[\s\S]*?<\/div>/, ""), normal);
+  assert.match(preview, /data-testid="stat-raised"/);
+  assert.doesNotMatch(preview, /Owed to you|Archived posts|supporters.list|Edit profile|Create post/);
 });
 
 test("public-page sizing keeps the wide feed, readable captions and model-sized sign-in form", async () => {

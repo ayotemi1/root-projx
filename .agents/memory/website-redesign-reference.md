@@ -64,3 +64,15 @@ without joining; social actions explain the benefit of joining first.
 **How to apply:** Apply shared public headings, header, filters and footer only
 to visitors. Signed-out Home is organisation-only with no Following tabs. Use
 actual published data, not sample people, directory listings, counts or stories.
+
+Public organisation profiles and “Preview as a donor” must use the same
+donor-facing design from the supplied organisation donor-view reference:
+no banner or owner financial controls, and only Posts and Campaigns tabs.
+The donor preview adds a slim notice, not a separate profile design.
+
+**Why:** On 2026-11-23 the user explicitly rejected the older public banner
+page and asked for the donor profile to match the organisation profile format.
+
+**How to apply:** Keep all organisation entry links on the shared public
+profile. Reference figures are examples; use real records and preserve
+existing campaign/payment behaviour.

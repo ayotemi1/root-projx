@@ -82,10 +82,14 @@ test("supporter layout is scoped to its routes and never replaces organisation, 
     assert.equal(shouldUseSupporterLayout(item.href, "supporter"), true);
     assert.equal(shouldUseSupporterLayout(item.href, "organisation"), false);
   }
-  for (const path of ["/", "/register", "/login", "/dashboard", "/admin", "/donate/org-id", "/campaigns/test", "/organisations/test"]) {
+  for (const path of ["/", "/register", "/login", "/dashboard", "/admin", "/donate/org-id", "/campaigns/test"]) {
     assert.equal(shouldUseSupporterLayout(path, "supporter"), false, path);
   }
   assert.equal(shouldUseSupporterLayout("/feed", null), true, "public preview retains the public feed");
+  assert.equal(shouldUseSupporterLayout("/organisations/test?preview=1", "supporter"), true);
+  assert.equal(shouldUseSupporterLayout("/organisations/test", "organisation", "approved"), true);
+  assert.equal(shouldUseSupporterLayout("/organisations/test", "organisation", "pending"), false);
+  assert.equal(shouldUseSupporterLayout("/organisations/test/campaigns", "supporter"), false);
 });
 
 test("navigation highlights one destination, including the existing account alias and browser-back paths", () => {
@@ -159,6 +163,17 @@ test("organisation phone navigation labels the fifth tab Profile and preserves t
   assert.match(action, /href="\/dashboard\?tab=posts"/);
   assert.match(action, /class="rps-tab"/);
   assert.doesNotMatch(action, /aria-current/);
+});
+
+test("organisation donor profiles use the signed-in shell without Home's Following rail", async () => {
+  for (const organisation of [false, true]) {
+    const html = await render("src/components/supporter/SupporterLayout.tsx", {
+      signedIn: true, organisation, route: "/organisations/public-org",
+    });
+    assert.match(html, /rps-profile/);
+    assert.match(html, /rps-bottom/);
+    assert.doesNotMatch(html, /id="rps-following-h"/);
+  }
 });
 
 test("unavailable supporter composers are explicitly flagged without a fake publishing form", async () => {

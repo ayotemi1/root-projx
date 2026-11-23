@@ -108,7 +108,7 @@ function SitePageLayout({ children }: { children: ReactNode }) {
     return <SupporterLayout>{children}</SupporterLayout>;
   }
   return (
-    <div className={`min-h-screen flex flex-col bg-background${/^\/supporters\/[^/]+\/?$/.test(location) ? " rp-supporter-public-page" : ""}`}>
+    <div className={`min-h-screen flex flex-col bg-background${/^\/supporters\/[^/]+\/?$/.test(location) ? " rp-supporter-public-page" : ""}${/^\/organisations\/[^/?#]+\/?$/.test(location) ? " rp-org-public-page" : ""}`}>
       <Navbar visitorFeed={visitorFeed} />
       <main className="flex-1">{children}</main>
       {visitorFeed ? <VisitorFooter /> : <Footer />}

@@ -56,14 +56,19 @@ function queryOf(location: string, search?: string) {
   return new URLSearchParams(q ?? "");
 }
 
+/** Exact public organisation detail route (not its legacy sub-pages). */
+export function isOrganisationDetailPath(location: string) {
+  return /^\/organisations\/[^/]+$/.test(pathname(location));
+}
+
 export function isSupporterPath(location: string) {
   const path = pathname(location);
-  return path === "/account" || path === "/profile/edit" || path === "/settings" || path === "/settings/interests" || path === "/onboarding/interests" || path === "/onboarding/follows" || supporterNavigation.some(item => item.href === path);
+  return isOrganisationDetailPath(path) || path === "/account" || path === "/profile/edit" || path === "/settings" || path === "/settings/interests" || path === "/onboarding/interests" || path === "/onboarding/follows" || supporterNavigation.some(item => item.href === path);
 }
 
 const organisationShellPaths = ["/feed", "/discover", "/inbox", "/notifications", "/settings", "/dashboard"];
 export function isOrganisationShellPath(location: string) {
-  return organisationShellPaths.includes(pathname(location));
+  return organisationShellPaths.includes(pathname(location)) || isOrganisationDetailPath(location);
 }
 
 /** `approvalStatus` optional for backward compatibility with older callers. */
