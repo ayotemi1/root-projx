@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type TouchEvent } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "wouter";
 import { ChevronLeft, ChevronRight, X, Heart, MessageCircle, Send, Bookmark, ExternalLink } from "lucide-react";
 import type { PostViewerMedia } from "@workspace/api-client-react";
@@ -71,9 +72,9 @@ function Slide({ postRef, commentsOpen, onComments, onGuest, onSwipe, slideNavig
   const onTouchEnd = (e: TouchEvent) => {
     const s = touch.current; touch.current = null;
     const t = e.changedTouches[0];
-    if (!s || !t || commentsOpen) return;
+    if (!s || !t) return;
     const dx = t.clientX - s.x, dy = t.clientY - s.y;
-    if (Math.abs(dy) > 60 && Math.abs(dy) > Math.abs(dx) * 1.3) onSwipe(dy < 0 ? 1 : -1);
+    if (!commentsOpen && Math.abs(dy) > 60 && Math.abs(dy) > Math.abs(dx) * 1.3) onSwipe(dy < 0 ? 1 : -1);
     else if (media.length > 1 && Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) setMi(i => Math.max(0, Math.min(media.length - 1, i + (dx < 0 ? 1 : -1))));
   };
 
@@ -114,7 +115,6 @@ function Slide({ postRef, commentsOpen, onComments, onGuest, onSwipe, slideNavig
             )}
             {media.length > 1 && (
               <>
-                <div className="pv-dots" aria-hidden>{media.map((_, i) => <i key={i} className={i === mi ? "on" : ""} />)}</div>
                 <span className="pv-slide-count" data-testid="text-viewer-slide-count">{mi + 1}/{media.length}</span>
                 {mi > 0 && <button type="button" className="pv-mnav l" onClick={() => setMi(mi - 1)} aria-label={`Previous item (${mi} of ${media.length})`} data-testid="button-media-prev"><ChevronLeft size={18} /></button>}
                 {mi < media.length - 1 && <button type="button" className="pv-mnav r" onClick={() => setMi(mi + 1)} aria-label={`Next item (${mi + 2} of ${media.length})`} data-testid="button-media-next"><ChevronRight size={18} /></button>}
@@ -160,6 +160,8 @@ function Slide({ postRef, commentsOpen, onComments, onGuest, onSwipe, slideNavig
           </>
         )}
       </div>
+      {media.length > 1 && <div className="pv-dots" aria-label={`Item ${mi + 1} of ${media.length}`}>{media.map((_, i) =>
+        <i key={i} className={i === mi ? "on" : ""} aria-hidden />)}</div>}
       {commentsOpen && (
         <PostComments postRef={postRef} activity={a} loading={activity.isLoading} error={activity.isError}
           onRetry={() => activity.refetch()} onClose={() => onComments(false)} onGuest={onGuest} />
@@ -207,7 +209,7 @@ export function PostViewer({ refs, index, label, commentsOpen, onClose, onGo, on
     const onKey = (e: KeyboardEvent) => {
       // Window capture listeners run in registration order. A later menu cannot
       // stop the viewer's earlier listener: yield explicitly to the upper layer.
-      if (e.defaultPrevented || document.querySelector('[data-post-management-open], .opm-trigger[aria-expanded="true"]')) return;
+      if (e.defaultPrevented || document.fullscreenElement || document.querySelector('[data-post-management-open], .opm-trigger[aria-expanded="true"]')) return;
       const s = state.current;
       if (s.guest) return; // the join dialog owns the keyboard
       const root = rootRef.current;
@@ -242,18 +244,18 @@ export function PostViewer({ refs, index, label, commentsOpen, onClose, onGo, on
   }, []);
 
   if (!ref) return null;
-  return (
+  return createPortal(
     <div ref={rootRef} className="pv" role="dialog" aria-modal="true" aria-label={`Post ${index + 1} of ${refs.length}${name ? ` by ${name}` : ""}`} data-testid="dialog-post-viewer">
       <div className="pv-backdrop" onClick={onClose} aria-hidden />
       <p className="pv-count" data-testid="text-viewer-count">{index + 1} of {refs.length}{name ? ` · ${name}` : ""}</p>
       <button ref={closeRef} type="button" className="pv-x" onClick={onClose} aria-label="Close post" data-testid="button-close-viewer"><X size={22} /></button>
-      {hasPrev && <button type="button" className="pv-arr l" onClick={() => onGo(index - 1)} aria-label="Previous post" data-testid="button-viewer-prev"><ChevronLeft size={24} /></button>}
-      {hasNext && <button type="button" className="pv-arr r" onClick={() => onGo(index + 1)} aria-label="Next post" data-testid="button-viewer-next"><ChevronRight size={24} /></button>}
+      {hasPrev && <button type="button" className="pv-arr l" onClick={() => { if (!slideNavigation.current?.(-1)) onGo(index - 1); }} aria-label="Previous item or post" data-testid="button-viewer-prev"><ChevronLeft size={24} /></button>}
+      {hasNext && <button type="button" className="pv-arr r" onClick={() => { if (!slideNavigation.current?.(1)) onGo(index + 1); }} aria-label="Next item or post" data-testid="button-viewer-next"><ChevronRight size={24} /></button>}
       <div className={`pv-col ${commentsOpen ? "open" : ""}`}>
         <Slide key={postRefKey(ref)} postRef={ref} commentsOpen={commentsOpen} onComments={onComments} onGuest={setGuest} slideNavigation={slideNavigation} onRemoved={onClose}
           onSwipe={dir => { const n = index + dir; if (n >= 0 && n < refs.length) onGo(n); }} />
       </div>
       <GuestJoinPrompt action={guest} onClose={() => setGuest(null)} aboveViewer />
-    </div>
+    </div>, document.body
   );
 }

@@ -3,7 +3,7 @@
 import { build } from "esbuild";
 import { randomUUID } from "node:crypto";
 import { readFile, writeFile, unlink } from "node:fs/promises";
-const path = "/tmp/rootprojx-post-viewer-fixture.json";
+const path = process.argv[3] || "/tmp/rootprojx-post-viewer-fixture.json";
 const bundled = await build({ entryPoints: [new URL("../src/lib/firebase-rest.ts", import.meta.url).pathname],
   bundle: true, write: false, platform: "node", format: "esm", packages: "external" });
 const db = await import(`data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].text).toString("base64")}`);

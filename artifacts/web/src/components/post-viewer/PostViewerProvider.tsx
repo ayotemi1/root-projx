@@ -12,9 +12,10 @@ export type ViewerSession = {
   bgSearch: string;
   scrollY: number;
   returnFocus: HTMLElement | null;
+  direct?: boolean;
 };
 
-type OpenArgs = { refs: PostRef[]; index: number; label?: string; comments?: boolean; trigger?: HTMLElement | null };
+type OpenArgs = { refs: PostRef[]; index: number; label?: string; comments?: boolean; trigger?: HTMLElement | null; direct?: boolean };
 
 type Ctx = {
   session: ViewerSession | null;
@@ -95,20 +96,22 @@ export function PostViewerProvider({ children }: { children: ReactNode }) {
     const already = sessionRef.current;
     const next: ViewerSession = {
       refs: a.refs, index: a.index, label: a.label, comments: !!a.comments,
-      bgPath: already?.bgPath ?? window.location.pathname,
-      bgSearch: already?.bgSearch ?? window.location.search,
+      bgPath: already?.bgPath ?? (a.direct ? `${BASE}/feed` : window.location.pathname),
+      bgSearch: already?.bgSearch ?? (a.direct ? "" : window.location.search),
       scrollY: already?.scrollY ?? window.scrollY,
       returnFocus: already?.returnFocus ?? trigger,
+      direct: already?.direct ?? a.direct,
     };
     closed.current = null;
     setSession(next);
-    navigate(absPostPath(ref), { replace: !!already });
+    navigate(absPostPath(ref), { replace: !!already || !!a.direct });
   }, []);
 
   const close = useCallback(() => {
     const s = sessionRef.current;
     if (!s) return;
-    if (isPostPath(window.location.pathname)) history.back();
+    if (s.direct) navigate(`${s.bgPath}${s.bgSearch}`, { replace: true });
+    else if (isPostPath(window.location.pathname)) history.back();
     else { setSession(null); restore(s); }
   }, [restore]);
 

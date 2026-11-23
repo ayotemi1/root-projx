@@ -1,11 +1,9 @@
 import { useMemo, useState } from "react";
 import { Play, Image as ImageIcon, ExternalLink, Link2, Film, Images, Pin } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import type { FeedUpdate } from "@/lib/api";
-import { Link } from "wouter";
-import { summarise, matchesFilter, type FilterKey, type ExternalLink as Ext } from "@/lib/content-media";
+import { summarise, matchesFilter, type FilterKey } from "@/lib/content-media";
 import { InlineVideoPlayer } from "@/components/inline-video-player";
 import { usePostViewer } from "@/components/post-viewer/PostViewerProvider";
 
@@ -20,88 +18,6 @@ const FILTERS: { key: FilterKey; label: string }[] = [
 
 function dateLabel(iso: string) {
   return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
-}
-
-function ClickToPlayEmbed({ link, title }: { link: Ext; title: string }) {
-  const [loaded, setLoaded] = useState(false);
-  if (!link.embedUrl) return null;
-  if (!loaded) {
-    return (
-      <button
-        type="button"
-        onClick={() => setLoaded(true)}
-        className="w-full aspect-video rounded-xl bg-neutral-900 text-white flex flex-col items-center justify-center gap-2 hover:bg-neutral-800 transition-colors"
-        data-testid="button-load-embed"
-      >
-        <span className="w-14 h-14 rounded-full flex items-center justify-center" style={{ backgroundColor: RED }}>
-          <Play className="w-6 h-6 fill-white" />
-        </span>
-        <span className="text-sm font-bold">Play {link.label} video</span>
-        <span className="text-[11px] text-white/60">Loads content from {link.label}</span>
-      </button>
-    );
-  }
-  return (
-    <div className="w-full aspect-video rounded-xl overflow-hidden bg-black">
-      <iframe
-        src={`${link.embedUrl}?autoplay=1`}
-        title={`${title} (${link.label})`}
-        className="w-full h-full"
-        allow="autoplay; fullscreen; picture-in-picture; encrypted-media"
-        allowFullScreen
-        referrerPolicy="strict-origin-when-cross-origin"
-        sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
-        data-testid="iframe-embed"
-      />
-    </div>
-  );
-}
-
-export function ContentDialog({ item, onClose }: { item: FeedUpdate | null; onClose: () => void }) {
-  const s = item ? summarise(item) : null;
-  return (
-    <Dialog open={!!item} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="max-w-2xl w-[calc(100vw-1rem)] max-h-[92dvh] overflow-y-auto p-4 sm:p-6 rounded-none border-[#17100F]">
-        {item && s && (
-          <>
-            <div className="pr-8">
-              <p className="text-[12px] font-bold uppercase tracking-wider" style={{ color: RED }}>
-                <Link href={`/organisations/${item.orgId}`} className="hover:underline">{item.orgName || "Organisation"}</Link> · {dateLabel(item.createdAt)}
-              </p>
-              <DialogTitle className="text-lg font-extrabold leading-snug mt-1">{item.title || `${item.orgName || "Organisation"}'s post`}</DialogTitle>
-              <DialogDescription className="sr-only">Full post with all attachments</DialogDescription>
-            </div>
-            <div className="space-y-3">
-              {s.videos.map((v, i) => (
-                <div key={v} className="w-full aspect-video bg-black" data-testid={`video-content-${i}`}>
-                  <InlineVideoPlayer src={v} label={`${item.title || "Organisation"} video ${i + 1}`} />
-                </div>
-              ))}
-              {s.link?.embedUrl && <ClickToPlayEmbed link={s.link} title={item.title} />}
-              {s.images.map((img, i) => (
-                <img key={img} src={img} alt={`${item.title}, photo ${i + 1} of ${s.images.length}`} className="w-full rounded-xl object-contain bg-secondary max-h-[70dvh]" loading="lazy" />
-              ))}
-            </div>
-            <p className="text-base text-foreground/80 leading-relaxed whitespace-pre-wrap break-words" data-testid="text-content-caption">{item.content}</p>
-            {s.link && (
-              <div className="rounded-xl border border-border p-3 flex flex-col sm:flex-row sm:items-center gap-3">
-                <p className="text-xs text-muted-foreground flex-1">
-                  {s.link.provider === "instagram"
-                    ? "This post lives on Instagram. It opens in a new tab and may ask you to sign in."
-                    : `Also available on ${s.link.label}.`}
-                </p>
-                <Button asChild variant="outline" size="sm" className="font-bold">
-                  <a href={s.link.url} target="_blank" rel="noopener noreferrer nofollow" data-testid="link-external-content">
-                    {s.link.provider === "instagram" ? "View on Instagram" : `Open on ${s.link.label}`} <ExternalLink className="w-3.5 h-3.5 ml-1" />
-                  </a>
-                </Button>
-              </div>
-            )}
-          </>
-        )}
-      </DialogContent>
-    </Dialog>
-  );
 }
 
 function Card({ item, onOpen, feed = false }: { item: FeedUpdate; onOpen: (trigger: HTMLElement) => void; feed?: boolean }) {
@@ -154,7 +70,6 @@ export function ContentGallery({ items, isLoading, isError, onRetry, feed = fals
   items: FeedUpdate[]; isLoading: boolean; isError: boolean; onRetry: () => void; feed?: boolean;
 }) {
   const [filter, setFilter] = useState<FilterKey>("all");
-  const [open, setOpen] = useState<FeedUpdate | null>(null);
   const viewer = usePostViewer();
   const counts = useMemo(() => {
     const sums = items.map(summarise);
@@ -222,7 +137,6 @@ export function ContentGallery({ items, isLoading, isError, onRetry, feed = fals
           }} />)}
         </div>
       )}
-      <ContentDialog item={open} onClose={() => setOpen(null)} />
     </div>
   );
 }

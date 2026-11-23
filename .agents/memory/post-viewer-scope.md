@@ -8,8 +8,15 @@ card media inline: tapping its video changes playback rather than opening a
 viewer. Viewer videos intentionally autoplay with sound after an explicit open;
 feed autoplay starts muted and respects the person's speaker preference.
 
-**Why:** The user expanded the shared viewer's entry points but explicitly kept
-inline feed playback and distinguished its sound policy from a chosen viewer.
+The same viewer must cover signed-out visitors, supporters, organisations and
+admin-managed organisations on public/own profiles, donor preview, Saved, feed
+entry points, notifications and shared links. Shared links keep a real feed or
+profile behind the overlay, not a separate blank post page. Desktop/tablet stay
+around 480px wide and at most 860px high; only phones under 700px fill the viewport.
+Native full screen is an explicit control, never a side effect of opening video.
+
+**Why:** The user repeated that consistency must hold outside the organisation
+dashboard and for signed-out visitors too, while retaining inline feed playback.
 
 **How to apply:** Preserve the source page, scroll position and ordered post set.
 Archived posts still use owner-authorised management, not public visibility.
