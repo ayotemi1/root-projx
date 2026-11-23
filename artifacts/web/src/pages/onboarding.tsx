@@ -1,12 +1,8 @@
 import { appFetch as fetch, userErrorMessage } from "@/lib/error-feedback";
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { Link, useLocation } from "wouter";
 import { COUNTRIES } from "@/lib/countries";
-import { CheckCircle2, ChevronRight, ChevronLeft, Sprout, ClipboardList, Search, Rocket } from "lucide-react";
-
-const RED_DEEP = "#7A0000";
-const RED = "#B50000";
-const GOLD = "#F5B800";
+import "./onboarding.css";
 
 const SECTORS = [
   "Education",
@@ -23,116 +19,46 @@ const SECTORS = [
   "Other",
 ];
 
-// 0 = welcome, 1 = org details, 2 = sectors, 3 = socials, 4 = complete
+// 1 = org details, 2 = sectors, 3 = socials, 4 = complete
 const TOTAL_STEPS = 3;
+const STEP_NAMES = ["", "Your organisation", "Your work", "Online presence"];
 
-function ProgressBar({ step }: { step: number }) {
-  const pct = Math.round(((step - 1) / TOTAL_STEPS) * 100);
+function StepHeader({ step }: { step: number }) {
   return (
-    <div style={{ height: 4, background: "rgba(255,255,255,0.2)", borderRadius: 2 }}>
-      <div
-        style={{
-          height: "100%",
-          background: GOLD,
-          borderRadius: 2,
-          width: `${Math.max(pct, 4)}%`,
-          transition: "width 0.4s ease",
-        }}
-      />
-    </div>
-  );
-}
-
-function TopBar({ step }: { step: number }) {
-  const isEdge = step === 0 || step === 4;
-  return (
-    <div style={{ background: RED_DEEP, padding: "14px 24px", position: "sticky", top: 0, zIndex: 10 }}>
-      <div style={{ maxWidth: 680, margin: "0 auto" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: isEdge ? 0 : 10 }}>
-          <img src="/logo-stylised.png" alt="Root ProjX" style={{ height: 36, objectFit: "contain" }} />
-          {!isEdge && (
-            <span style={{ color: "rgba(255,255,255,0.7)", fontSize: 13 }}>
-              Step {step} of {TOTAL_STEPS}
-            </span>
-          )}
-        </div>
-        {!isEdge && <ProgressBar step={step} />}
+    <>
+      <div className="rpo-step" data-testid="text-step-indicator">
+        <span>Step {step} of {TOTAL_STEPS}</span>
+        <span>{STEP_NAMES[step]}</span>
       </div>
-    </div>
+      <div className="rpo-bar" aria-hidden="true">
+        <i style={{ width: `${Math.round((step / TOTAL_STEPS) * 100)}%` }} />
+      </div>
+    </>
   );
 }
 
-function Card({ children }: { children: React.ReactNode }) {
+function Field({ id, label, hint, children }: { id: string; label: string; hint?: string; children: React.ReactNode }) {
   return (
-    <div style={{ background: "#fff", borderRadius: 16, boxShadow: "0 4px 24px rgba(0,0,0,0.10)", padding: "40px 48px", width: "100%" }}>
+    <div className="rpo-field">
+      <label className="rpo-label" htmlFor={id}>{label}</label>
+      {hint && <small className="rpo-hint" id={`${id}-hint`}>{hint}</small>}
       {children}
     </div>
   );
 }
-
-function StepHeading({ children }: { children: React.ReactNode }) {
-  return (
-    <h2 style={{ fontSize: 26, fontWeight: 800, color: "#1a1a1a", marginBottom: 8, lineHeight: 1.3 }}>
-      {children}
-    </h2>
-  );
-}
-
-function StepSub({ children }: { children: React.ReactNode }) {
-  return (
-    <p style={{ fontSize: 15, color: "#666", marginBottom: 32, lineHeight: 1.6 }}>
-      {children}
-    </p>
-  );
-}
-
-function FieldGroup({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
-  return (
-    <div style={{ marginBottom: 20 }}>
-      <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#444", marginBottom: hint ? 2 : 6 }}>
-        {label}
-      </label>
-      {hint && (
-        <p style={{ margin: "0 0 6px", fontSize: 12, color: "#999" }}>{hint}</p>
-      )}
-      {children}
-    </div>
-  );
-}
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "11px 14px",
-  fontSize: 15,
-  border: "1.5px solid #e0d8cc",
-  borderRadius: 8,
-  outline: "none",
-  background: "#fafaf8",
-  boxSizing: "border-box",
-  fontFamily: "inherit",
-};
 
 function PrefixInput({
-  prefix,
-  placeholder,
-  value,
-  onChange,
-  testId,
+  id, prefix, placeholder, value, onChange, testId,
 }: {
-  prefix: string;
-  placeholder: string;
-  value: string;
-  onChange: (v: string) => void;
-  testId?: string;
+  id: string; prefix: string; placeholder: string; value: string; onChange: (v: string) => void; testId?: string;
 }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", border: "1.5px solid #e0d8cc", borderRadius: 8, background: "#fafaf8", overflow: "hidden" }}>
-      <span style={{ padding: "11px 12px 11px 14px", fontSize: 14, color: "#999", background: "#f0ece4", borderRight: "1.5px solid #e0d8cc", whiteSpace: "nowrap", userSelect: "none" }}>
-        {prefix}
-      </span>
+    <div className="rpo-pre">
+      <span aria-hidden="true">{prefix}</span>
       <input
+        id={id}
         data-testid={testId}
-        style={{ ...inputStyle, border: "none", borderRadius: 0, background: "transparent", flex: 1 }}
+        className="rpo-input"
         type="text"
         placeholder={placeholder}
         value={value}
@@ -142,65 +68,12 @@ function PrefixInput({
   );
 }
 
-function NavButtons({
-  onBack,
-  onNext,
-  nextLabel = "Continue",
-  nextDisabled = false,
-  loading = false,
-  hideBack = false,
-  nextTestId = "button-next",
-}: {
-  onBack?: () => void;
-  onNext?: () => void;
-  nextLabel?: string;
-  nextDisabled?: boolean;
-  loading?: boolean;
-  hideBack?: boolean;
-  nextTestId?: string;
-}) {
-  return (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 32 }}>
-      {!hideBack && onBack ? (
-        <button
-          data-testid="button-back"
-          onClick={onBack}
-          style={{
-            display: "flex", alignItems: "center", gap: 6,
-            background: "none", border: "1.5px solid #e0d8cc", borderRadius: 8,
-            padding: "10px 20px", fontSize: 14, color: "#666", cursor: "pointer",
-          }}
-        >
-          <ChevronLeft size={16} /> Back
-        </button>
-      ) : <span />}
-      <button
-        data-testid={nextTestId}
-        onClick={onNext}
-        disabled={nextDisabled || loading}
-        style={{
-          display: "flex", alignItems: "center", gap: 8,
-          background: nextDisabled || loading ? "#ccc" : RED,
-          border: "none", borderRadius: 8,
-          padding: "11px 28px", fontSize: 15, fontWeight: 700, color: "#fff",
-          cursor: nextDisabled || loading ? "not-allowed" : "pointer",
-          transition: "background 0.2s",
-        }}
-      >
-        {loading ? "Submitting…" : nextLabel}
-        {!loading && <ChevronRight size={16} />}
-      </button>
-    </div>
-  );
-}
-
 export default function OnboardingPage() {
   const [, setLocation] = useLocation();
-  const [step, setStep] = useState(0);
+  const [step, setStep] = useState(1);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Step 1 fields
   const [orgName, setOrgName] = useState("");
   const [country, setCountry] = useState("");
   const [contactName, setContactName] = useState("");
@@ -208,10 +81,8 @@ export default function OnboardingPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  // Step 2 fields
   const [sectors, setSectors] = useState<string[]>([]);
 
-  // Step 3 fields
   const [website, setWebsite] = useState("");
   const [instagram, setInstagram] = useState("");
   const [facebook, setFacebook] = useState("");
@@ -261,346 +132,178 @@ export default function OnboardingPage() {
     }
   }
 
+  const step1Disabled = !orgName.trim() || !country || !contactName.trim() || !email.trim() || !email.includes("@") || password.length < 6 || password !== confirmPassword;
+  const mismatch = !!confirmPassword && password !== confirmPassword;
+
   return (
-    <div style={{ minHeight: "100vh", background: "#f2ede4" }}>
-      <TopBar step={step} />
+    <div className="rpo">
+      <header className="rpo-top">
+        <img src="/logo-gold-v2.png" alt="Root ProjX" />
+      </header>
 
-      <div style={{ maxWidth: 680, margin: "0 auto", padding: "40px 24px 80px" }}>
-
-        {/* ── Step 0: Welcome ─────────────────────────────────────────── */}
-        {step === 0 && (
-          <Card>
-            <div style={{ textAlign: "center", marginBottom: 40 }}>
-              <div style={{
-                width: 72, height: 72, borderRadius: "50%", background: RED_DEEP, color: GOLD,
-                display: "flex", alignItems: "center", justifyContent: "center",
-                margin: "0 auto 20px",
-              }}>
-                <Sprout size={36} strokeWidth={2.5} />
-              </div>
-              <h1 style={{ fontSize: 30, fontWeight: 900, color: "#1a1a1a", marginBottom: 12 }}>
-                Apply to list your organisation
-              </h1>
-              <p style={{ fontSize: 16, color: "#555", lineHeight: 1.7, maxWidth: 480, margin: "0 auto 32px" }}>
-                Submit your organisation for review. Once verified, you'll gain access to the platform to connect with diaspora supporters, receive donations, and share your impact.
-              </p>
-            </div>
-
-            <div style={{ display: "grid", gap: 12, marginBottom: 36 }}>
-              {[
-                 { icon: ClipboardList, title: "Create your account and apply", sub: "Choose your login details and complete our short application" },
-                { icon: Search, title: "Undergo our review process", sub: "Our team verifies your eligibility within 5 business days" },
-                { icon: Rocket, title: "Receive platform access", sub: "Get approved, create your profile, and start receiving support" },
-              ].map(({ icon: Icon, title, sub }) => (
-                <div key={title} style={{ display: "flex", alignItems: "flex-start", gap: 16, background: "#f9f6f0", borderRadius: 10, padding: "16px 20px" }}>
-                  <Icon size={24} color={RED} style={{ marginTop: 2 }} />
-                  <div>
-                    <p style={{ margin: 0, fontWeight: 700, fontSize: 15, color: "#1a1a1a" }}>{title}</p>
-                    <p style={{ margin: "2px 0 0", fontSize: 13, color: "#888" }}>{sub}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div style={{ textAlign: "center" }}>
-              <button
-                data-testid="button-begin-application"
-                onClick={() => setStep(1)}
-                style={{
-                  background: RED, color: "#fff", border: "none", borderRadius: 10,
-                  padding: "14px 40px", fontSize: 16, fontWeight: 800, cursor: "pointer",
-                  display: "inline-flex", alignItems: "center", gap: 10,
-                }}
-              >
-                Begin application <ChevronRight size={18} />
-              </button>
-              <p style={{ marginTop: 24, fontSize: 14, color: "#666" }}>
-                Looking to support instead?{" "}
-                <a href="/register" style={{ color: RED, textDecoration: "none", fontWeight: 700 }} data-testid="link-register">
-                  Create a supporter account
-                </a>
-              </p>
-            </div>
-          </Card>
-        )}
-
-        {/* ── Step 1: Organisation details ────────────────────────────── */}
+      <main className="rpo-main">
         {step === 1 && (
-          <Card>
-            <StepHeading>Organisation details</StepHeading>
-            <StepSub>We'll use these details to review your application and communicate our decision.</StepSub>
+          <section className="rpo-box" key="s1">
+            <StepHeader step={1} />
+            <h1>Apply as an organisation</h1>
+            <p className="rpo-intro">Tell us about your organisation. We review every application and reply within 5 working days.</p>
 
-            <FieldGroup label="Organisation name">
-              <input
-                data-testid="input-org-name"
-                style={inputStyle}
-                type="text"
-                placeholder="e.g. Kingston Youth Foundation"
-                value={orgName}
-                onChange={(e) => setOrgName(e.target.value)}
-                autoFocus
-              />
-            </FieldGroup>
+            <Field id="org-name" label="Organisation name">
+              <input id="org-name" data-testid="input-org-name" className="rpo-input" type="text"
+                placeholder="e.g. Kingston Youth Foundation" value={orgName}
+                onChange={(e) => setOrgName(e.target.value)} autoFocus />
+            </Field>
 
-            <FieldGroup label="Country" hint="Where your organisation is based">
-              <select
-                data-testid="select-country"
-                style={{ ...inputStyle, cursor: "pointer" }}
-                value={country}
-                onChange={(e) => setCountry(e.target.value)}
-                required
-              >
+            <Field id="country" label="Country" hint="Where your organisation is based">
+              <select id="country" aria-describedby="country-hint" data-testid="select-country" className="rpo-input"
+                style={{ cursor: "pointer" }} value={country} onChange={(e) => setCountry(e.target.value)} required>
                 <option value="" disabled>Select a country</option>
                 {COUNTRIES.map(({ value }) => (
                   <option key={value} value={value}>{value}</option>
                 ))}
               </select>
-            </FieldGroup>
+            </Field>
 
-            <FieldGroup label="Point of contact (your name)">
-              <input
-                data-testid="input-contact-name"
-                style={inputStyle}
-                type="text"
-                placeholder="e.g. Maria Campbell"
-                value={contactName}
-                onChange={(e) => setContactName(e.target.value)}
-              />
-            </FieldGroup>
+            <Field id="contact-name" label="Your name" hint="The main point of contact">
+              <input id="contact-name" aria-describedby="contact-name-hint" data-testid="input-contact-name" className="rpo-input"
+                type="text" placeholder="e.g. Maria Campbell" value={contactName}
+                onChange={(e) => setContactName(e.target.value)} />
+            </Field>
 
-            <FieldGroup label="Email address">
-              <input
-                data-testid="input-email"
-                style={inputStyle}
-                type="email"
-                placeholder="e.g. hello@yourorg.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </FieldGroup>
+            <Field id="email" label="Email address">
+              <input id="email" data-testid="input-email" className="rpo-input" type="email"
+                placeholder="e.g. hello@yourorg.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+            </Field>
 
-            <FieldGroup label="Create a password" hint="Use at least 6 characters">
-              <input
-                data-testid="input-password"
-                style={inputStyle}
-                type="password"
-                autoComplete="new-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </FieldGroup>
+            <Field id="password" label="Create a password" hint="At least 6 characters">
+              <input id="password" aria-describedby="password-hint" data-testid="input-password" className="rpo-input"
+                type="password" autoComplete="new-password" value={password}
+                onChange={(e) => setPassword(e.target.value)} />
+            </Field>
 
-            <FieldGroup label="Confirm password">
-              <input
-                data-testid="input-confirm-password"
-                style={inputStyle}
-                type="password"
-                autoComplete="new-password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-              />
-            </FieldGroup>
+            <Field id="confirm-password" label="Confirm password">
+              <input id="confirm-password" data-testid="input-confirm-password" className="rpo-input" type="password"
+                autoComplete="new-password" value={confirmPassword} aria-invalid={mismatch || undefined}
+                onChange={(e) => setConfirmPassword(e.target.value)} />
+            </Field>
 
-            {confirmPassword && password !== confirmPassword && (
-              <p data-testid="error-password-match" style={{ color: RED, fontSize: 13, marginTop: -12, marginBottom: 16 }}>
-                Passwords do not match.
-              </p>
+            {mismatch && (
+              <p data-testid="error-password-match" className="rpo-err" role="alert">Passwords do not match.</p>
             )}
+            {error && <p data-testid="error-message" className="rpo-err" role="alert">{error}</p>}
 
-            {error && (
-              <p data-testid="error-message" style={{ color: RED, fontSize: 14, marginTop: -8, marginBottom: 8 }}>{error}</p>
-            )}
-
-            <NavButtons
-              hideBack
-              nextLabel="Next"
-              nextTestId="button-next-step1"
-              nextDisabled={!orgName.trim() || !country || !contactName.trim() || !email.trim() || !email.includes("@") || password.length < 6 || password !== confirmPassword}
-              onNext={() => { setError(""); setStep(2); }}
-            />
-          </Card>
+            <div className="rpo-acts">
+              <span className="rpo-small">
+                Already applied? <Link href="/login" data-testid="link-sign-in">Sign in</Link>
+              </span>
+              <button type="button" className="rpo-btn" data-testid="button-next-step1"
+                disabled={step1Disabled} onClick={() => { setError(""); setStep(2); }}>
+                Next
+              </button>
+            </div>
+          </section>
         )}
 
-        {/* ── Step 2: Sectors ──────────────────────────────────────────── */}
         {step === 2 && (
-          <Card>
-            <StepHeading>What sectors does your organisation work in?</StepHeading>
-            <StepSub>Select all that apply — many organisations span more than one area.</StepSub>
+          <section className="rpo-box" key="s2">
+            <StepHeader step={2} />
+            <h1>What sectors do you work in?</h1>
+            <p className="rpo-intro">Choose all that apply.</p>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 8 }}>
+            <div className="rpo-chips" role="group" aria-label="Sectors">
               {SECTORS.map((s) => {
                 const selected = sectors.includes(s);
                 return (
-                  <button
-                    key={s}
+                  <button type="button" key={s} className="rpo-chip" aria-pressed={selected}
                     data-testid={`button-sector-${s.replace(/[^a-z0-9]/gi, '').toLowerCase()}`}
-                    onClick={() => toggleSector(s)}
-                    style={{
-                      padding: "12px 16px",
-                      borderRadius: 10,
-                      border: selected ? `2px solid ${RED}` : "2px solid #e0d8cc",
-                      background: selected ? "#fff0f0" : "#fafaf8",
-                      color: selected ? RED : "#333",
-                      fontWeight: selected ? 700 : 400,
-                      fontSize: 14,
-                      cursor: "pointer",
-                      textAlign: "left",
-                      transition: "all 0.15s",
-                    }}
-                  >
-                    {selected && "✓ "}{s}
+                    onClick={() => toggleSector(s)}>
+                    {s}
                   </button>
                 );
               })}
             </div>
 
-            {sectors.length > 0 && (
-              <p style={{ fontSize: 13, color: "#888", marginTop: 8 }}>
-                {sectors.length} selected
-              </p>
-            )}
+            {error && <p data-testid="error-message" className="rpo-err" role="alert">{error}</p>}
 
-            {error && (
-              <p data-testid="error-message" style={{ color: RED, fontSize: 14, marginTop: 8 }}>{error}</p>
-            )}
-
-            <NavButtons
-              onBack={() => setStep(1)}
-              nextLabel="Next"
-              nextTestId="button-next-step2"
-              nextDisabled={sectors.length === 0}
-              onNext={() => { setError(""); setStep(3); }}
-            />
-          </Card>
-        )}
-
-        {/* ── Step 3: Socials & website ────────────────────────────────── */}
-        {step === 3 && (
-          <Card>
-            <StepHeading>Online presence</StepHeading>
-            <StepSub>
-              Share your website and social profiles so we can verify your organisation.
-              All fields are optional — add as many as you have.
-            </StepSub>
-
-            <FieldGroup label="Website" hint="Your organisation's main website, if you have one">
-              <input
-                data-testid="input-website"
-                style={inputStyle}
-                type="url"
-                placeholder="https://yourorg.com"
-                value={website}
-                onChange={(e) => setWebsite(e.target.value)}
-                autoFocus
-              />
-            </FieldGroup>
-
-            <div style={{ borderTop: "1px solid #f0ece4", margin: "24px 0 20px" }}>
-              <p style={{ fontSize: 12, fontWeight: 700, color: "#aaa", textTransform: "uppercase", letterSpacing: "0.06em", margin: "20px 0 16px" }}>
-                Social media
-              </p>
-            </div>
-
-            <FieldGroup label="Instagram">
-              <PrefixInput
-                testId="input-instagram"
-                prefix="instagram.com/"
-                placeholder="yourorghandle"
-                value={instagram}
-                onChange={setInstagram}
-              />
-            </FieldGroup>
-
-            <FieldGroup label="Facebook">
-              <PrefixInput
-                testId="input-facebook"
-                prefix="facebook.com/"
-                placeholder="YourOrgPage"
-                value={facebook}
-                onChange={setFacebook}
-              />
-            </FieldGroup>
-
-            <FieldGroup label="X / Twitter">
-              <PrefixInput
-                testId="input-twitter"
-                prefix="x.com/"
-                placeholder="yourorghandle"
-                value={twitter}
-                onChange={setTwitter}
-              />
-            </FieldGroup>
-
-            <FieldGroup label="LinkedIn">
-              <PrefixInput
-                testId="input-linkedin"
-                prefix="linkedin.com/company/"
-                placeholder="your-org-name"
-                value={linkedin}
-                onChange={setLinkedin}
-              />
-            </FieldGroup>
-
-            {error && (
-              <p data-testid="error-message" style={{ color: RED, fontSize: 14, marginTop: 8 }}>{error}</p>
-            )}
-
-            <NavButtons
-              onBack={() => setStep(2)}
-              nextLabel="Submit application"
-              nextTestId="button-submit-application"
-              loading={loading}
-              onNext={handleSubmit}
-            />
-          </Card>
-        )}
-
-        {/* ── Step 4: Confirmation ─────────────────────────────────────── */}
-        {step === 4 && (
-          <Card>
-            <div style={{ textAlign: "center" }}>
-              <CheckCircle2 size={64} color="#22c55e" style={{ margin: "0 auto 20px" }} />
-              <h2 style={{ fontSize: 26, fontWeight: 800, color: "#1a1a1a", marginBottom: 12 }}>
-                 Account created and application submitted!
-              </h2>
-              <p style={{ fontSize: 15, color: "#555", lineHeight: 1.7, maxWidth: 440, margin: "0 auto 32px" }}>
-                 Thank you, <strong>{contactName}</strong>. Your account is ready and we've sent a confirmation email to <strong>{email}</strong>.
-                Our team will review <strong>{orgName}</strong>'s application and get back to you within 5 business days.
-              </p>
-
-              <div style={{ background: "#f9f6f0", borderRadius: 12, padding: "24px 28px", marginBottom: 32, textAlign: "left" }}>
-                <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 700, color: "#888", textTransform: "uppercase", letterSpacing: "0.05em" }}>What happens next</p>
-                {[
-                  "Our team reviews your application against our eligibility criteria",
-                  "You receive an acceptance or decline email within 5 business days",
-                   "You can sign in now, but organisation tools stay locked until approval",
-                ].map((item, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 10, marginBottom: i < 2 ? 10 : 0 }}>
-                    <span style={{ width: 22, height: 22, borderRadius: "50%", background: RED_DEEP, color: GOLD, fontSize: 12, fontWeight: 800, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>{i + 1}</span>
-                    <p style={{ margin: 0, fontSize: 14, color: "#444" }}>{item}</p>
-                  </div>
-                ))}
-              </div>
-
-              <p style={{ fontSize: 13, color: "#999", marginBottom: 24 }}>
-                Questions? Email us at{" "}
-                <a href="mailto:info@rootprojx.com" style={{ color: RED }}>info@rootprojx.com</a>
-              </p>
-
-              <button
-                data-testid="button-back-to-home"
-                onClick={() => setLocation("/")}
-                style={{
-                  background: RED_DEEP, color: "#fff", border: "none", borderRadius: 10,
-                  padding: "12px 32px", fontSize: 15, fontWeight: 700, cursor: "pointer",
-                }}
-              >
-                Return to home
+            <div className="rpo-acts">
+              <button type="button" className="rpo-back" data-testid="button-back" onClick={() => setStep(1)}>Back</button>
+              <button type="button" className="rpo-btn" data-testid="button-next-step2"
+                disabled={sectors.length === 0} onClick={() => { setError(""); setStep(3); }}>
+                Next
               </button>
             </div>
-          </Card>
+          </section>
         )}
-      </div>
+
+        {step === 3 && (
+          <section className="rpo-box" key="s3">
+            <StepHeader step={3} />
+            <h1>Online presence</h1>
+            <p className="rpo-intro">Your website and social pages help us verify you. All optional.</p>
+
+            <Field id="website" label="Website" hint="Your organisation's main website, if you have one">
+              <input id="website" aria-describedby="website-hint" data-testid="input-website" className="rpo-input"
+                type="url" placeholder="https://yourorg.com" value={website}
+                onChange={(e) => setWebsite(e.target.value)} autoFocus />
+            </Field>
+
+            <Field id="instagram" label="Instagram">
+              <PrefixInput id="instagram" testId="input-instagram" prefix="instagram.com/" placeholder="yourorghandle" value={instagram} onChange={setInstagram} />
+            </Field>
+            <Field id="facebook" label="Facebook">
+              <PrefixInput id="facebook" testId="input-facebook" prefix="facebook.com/" placeholder="YourOrgPage" value={facebook} onChange={setFacebook} />
+            </Field>
+            <Field id="twitter" label="X / Twitter">
+              <PrefixInput id="twitter" testId="input-twitter" prefix="x.com/" placeholder="yourorghandle" value={twitter} onChange={setTwitter} />
+            </Field>
+            <Field id="linkedin" label="LinkedIn">
+              <PrefixInput id="linkedin" testId="input-linkedin" prefix="linkedin.com/company/" placeholder="your-org-name" value={linkedin} onChange={setLinkedin} />
+            </Field>
+
+            {error && <p data-testid="error-message" className="rpo-err" role="alert">{error}</p>}
+
+            <div className="rpo-acts">
+              <button type="button" className="rpo-back" data-testid="button-back" onClick={() => setStep(2)}>Back</button>
+              <button type="button" className="rpo-btn" data-testid="button-submit-application"
+                disabled={loading} onClick={handleSubmit}>
+                {loading ? "Submitting…" : "Submit application"}
+              </button>
+            </div>
+          </section>
+        )}
+
+        {step === 4 && (
+          <section className="rpo-box rpo-done" key="s4">
+            <div className="rpo-tk" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+            </div>
+            <h1>Application submitted</h1>
+            <p className="rpo-lead" data-testid="text-confirmation">
+              Thank you, <b>{contactName}</b>. Your account is ready and we’ve sent a confirmation email to <b>{email}</b>.
+              {" "}We’ll review <b>{orgName}</b>’s application and get back to you within 5 working days.
+            </p>
+            <div className="rpo-nx">
+              <div className="rpo-nh">What happens next</div>
+              <ol>
+                {[
+                  "Our team reviews your application against our eligibility criteria",
+                  "You receive an approval or decline email within 5 working days",
+                  "You can sign in now, but organisation tools stay locked until approval",
+                ].map((item, i) => (
+                  <li key={i}><span>{i + 1}</span>{item}</li>
+                ))}
+              </ol>
+            </div>
+            <p className="rpo-small">
+              Questions? Email us at{" "}
+              <a href="mailto:info@rootprojx.com" style={{ color: "var(--red)", fontWeight: 700 }}>info@rootprojx.com</a>
+            </p>
+            <button type="button" className="rpo-btn" data-testid="button-back-to-home" onClick={() => setLocation("/")}>
+              Return to home
+            </button>
+          </section>
+        )}
+      </main>
     </div>
   );
 }

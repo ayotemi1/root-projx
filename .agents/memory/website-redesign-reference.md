@@ -67,11 +67,14 @@ actual published data, not sample people, directory listings, counts or stories.
 
 Public organisation profiles and “Preview as a donor” must use the same
 donor-facing design from the supplied organisation donor-view reference:
-no banner or owner financial controls, and only Posts and Campaigns tabs.
+no owner financial controls, and only Posts and Campaigns tabs. The user's later
+2026-11-23 request restores the existing saved banner above both columns across
+public, donor-preview and own-profile views; do not restore the earlier no-banner rule.
 The donor preview adds a slim notice, not a separate profile design.
 
 **Why:** On 2026-11-23 the user explicitly rejected the older public banner
-page and asked for the donor profile to match the organisation profile format.
+page and asked for the donor profile to match the organisation profile format,
+then explicitly requested that its saved banner photo be brought back.
 
 **How to apply:** Keep all organisation entry links on the shared public
 profile. Reference figures are examples; use real records and preserve

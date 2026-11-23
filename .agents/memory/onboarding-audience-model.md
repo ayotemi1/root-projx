@@ -52,3 +52,15 @@ their work.
 **How to apply:** Preserve unfinished edits on failures, distinguish drafts from
 confirmed saved data, and keep optional sections optional when deciding whether
 a profile is ready.
+
+The organisation application uses
+`attached_assets/rootprojx-organisation-application_1795471394034.html` as its
+visual reference and starts directly with the organisation-details step, without
+a welcome screen.
+
+**Why:** On 2026-11-23 the user explicitly requested this reference as a
+presentation-only change, preserving every field, validation rule, submission
+contract and approval restriction.
+
+**How to apply:** Keep future application restyles within those boundaries.
+This reference is for organisation applications, not supporter registration.
