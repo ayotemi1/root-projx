@@ -1531,6 +1531,70 @@ paths:
       responses:
         "204": { description: Own manual entry removed }
 
+  /supporter/account:
+    get:
+      operationId: getSupporterAccount
+      tags: [supporterAccount]
+      responses:
+        '200':
+          description: Private supporter account controls
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SupporterAccount'}
+  /supporter/account/profile:
+    patch:
+      operationId: saveSupporterAccountProfile
+      tags: [supporterAccount]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/SupporterAccountProfileInput'}
+      responses:
+        '200':
+          description: Saved supporter profile
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SupporterAccount'}
+  /supporter/account/settings:
+    patch:
+      operationId: saveSupporterAccountSettings
+      tags: [supporterAccount]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/SupporterAccountSettingsInput'}
+      responses:
+        '200':
+          description: Saved supporter setting
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/SupporterAccount'}
+  /supporter/account/photo:
+    post:
+      operationId: uploadSupporterAccountPhoto
+      tags: [supporterAccount]
+      description: Accepts multipart/form-data with one file field named file. Only square JPG or PNG images at least 400 by 400 pixels and no larger than 20 MB are accepted. The server validates and re-encodes the image.
+      responses:
+        '200':
+          description: A private staged photo; Save attaches it to the profile
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [photoId, previewUrl]
+                properties:
+                  photoId: {type: string}
+                  previewUrl: {type: string}
+  /supporter/account/photo/{photoId}:
+    delete:
+      operationId: discardSupporterAccountPhoto
+      tags: [supporterAccount]
+      parameters:
+        - {name: photoId, in: path, required: true, schema: {type: string, format: uuid}}
+      responses:
+        '204': {description: Discarded an unattached photo owned by this account}
   /bookmarks:
     get:
       operationId: listBookmarks
@@ -1580,6 +1644,57 @@ components:
       bearerFormat: JWT
 
   schemas:
+    SupporterNotificationChannels:
+      type: object
+      required: [inApp, email]
+      properties:
+        inApp: {type: boolean}
+        email: {type: boolean}
+    SupporterNotificationPreferences:
+      type: object
+      required: [updates, comments, messages, campaigns, receipts]
+      properties:
+        updates: {$ref: '#/components/schemas/SupporterNotificationChannels'}
+        comments: {$ref: '#/components/schemas/SupporterNotificationChannels'}
+        messages: {$ref: '#/components/schemas/SupporterNotificationChannels'}
+        campaigns: {$ref: '#/components/schemas/SupporterNotificationChannels'}
+        receipts: {$ref: '#/components/schemas/SupporterNotificationChannels'}
+    SupporterAccount:
+      type: object
+      required: [displayName, location, bio, avatarUrl, avatarInitials, email, visibility, messagePolicy, notifications]
+      properties:
+        displayName: {type: string}
+        location: {type: string}
+        bio: {type: string}
+        avatarUrl: {type: ['string', 'null']}
+        avatarInitials: {type: string}
+        email: {type: string}
+        visibility: {type: string, enum: [public, private]}
+        messagePolicy: {type: string, enum: [followed, replies]}
+        notifications: {$ref: '#/components/schemas/SupporterNotificationPreferences'}
+    SupporterAccountProfileInput:
+      type: object
+      required: [displayName, location, bio]
+      properties:
+        displayName: {type: string, minLength: 1, maxLength: 80}
+        location: {type: string, maxLength: 100}
+        bio: {type: string, maxLength: 160}
+        photoId: {type: ['string', 'null'], format: uuid}
+    SupporterNotificationPreferenceInput:
+      type: object
+      required: [category, channel, enabled]
+      properties:
+        category: {type: string, enum: [updates, comments, messages, campaigns, receipts]}
+        channel: {type: string, enum: [inApp, email]}
+        enabled: {type: boolean}
+    SupporterAccountSettingsInput:
+      type: object
+      minProperties: 1
+      maxProperties: 1
+      properties:
+        visibility: {type: string, enum: [public, private]}
+        messagePolicy: {type: string, enum: [followed, replies]}
+        notification: {$ref: '#/components/schemas/SupporterNotificationPreferenceInput'}
     BookmarkInput:
       type: object
       required: [kind, targetId]
@@ -1715,7 +1830,7 @@ components:
       required: [id, type, message, createdAt, read, href, name]
       properties:
         id: {type: string}
-        type: {type: string, enum: [organisation_post, story, comment, like, campaign_milestone, donation]}
+        type: {type: string, enum: [organisation_post, story, comment, like, campaign_milestone, donation, message]}
         message: {type: string}
         createdAt: {type: string}
         read: {type: boolean}
@@ -1834,6 +1949,7 @@ components:
           properties:
             name: { type: string }
             initials: { type: string }
+            avatarUrl: { type: [string, "null"] }
             publicId: { type: [string, "null"] }
             isOwner: { type: boolean }
             following: { type: boolean }
@@ -2096,6 +2212,8 @@ components:
         avatarInitials:
           type: string
           nullable: true
+        avatarUrl:
+          type: [string, "null"]
         createdAt:
           type: string
       required:

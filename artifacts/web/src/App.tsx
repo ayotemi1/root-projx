@@ -45,7 +45,9 @@ import OnboardingPage from "@/pages/onboarding";
 import AdminLoginPage from "@/pages/admin-login";
 import AdminPage from "@/pages/admin";
 import NotFound from "@/pages/not-found";
-import { OnboardingInterestsPage, SettingsInterestsPage, SettingsPage, ONBOARDING_INTERESTS_FLAG } from "@/pages/interests";
+import { OnboardingInterestsPage, SettingsInterestsPage, ONBOARDING_INTERESTS_FLAG } from "@/pages/interests";
+import SettingsPage from "@/pages/settings";
+import ProfileEditPage from "@/pages/profile-edit";
 import OnboardingFollowsPage from "@/pages/onboarding-follows";
 import SupporterProfilePage from "@/pages/supporter-profile";
 import MyProfilePage from "@/pages/my-profile";
@@ -149,6 +151,9 @@ function AppRoutes() {
               <Route path="/inbox" component={InboxPage} />
               <Route path="/notifications" component={NotificationsPage} />
               <Route path="/saved" component={MyProfilePage} />
+              <Route path="/profile/edit">
+                {() => <ProtectedRoute component={ProfileEditPage} />}
+              </Route>
               <Route path="/profile" component={MyProfilePage} />
               <Route path="/giving-history" component={GivingHistoryPage} />
               <Route path="/shop/success" component={ShopSuccessPage} />

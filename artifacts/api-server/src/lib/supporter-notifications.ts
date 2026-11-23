@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 import { ListSupporterNotificationsResponse } from "@workspace/api-zod";
 import { fsGet, fsQuery, getServerToken } from "./firebase-rest.js";
+import { accountPreferences } from "./supporter-preferences.js";
+import { personalMessageEvents } from "./supporter-notification-events.js";
 
 type Doc = Record<string, unknown>;
 type Inbox = ReturnType<typeof ListSupporterNotificationsResponse.parse>;
@@ -40,6 +42,7 @@ export async function loadSupporterNotifications(uid: string, userToken: string)
     fsQuery("donations", [{ field: "userId", op: "EQUAL", value: uid }], userToken),
   ]);
   if (!user || user.accountType !== "supporter") throw new Error("Supporter unavailable");
+  const preferences = accountPreferences(user).notifications;
   const readIds = new Set(Array.isArray(user.notificationReads) ? user.notificationReads.filter(v => typeof v === "string") : []);
   const items: Notification[] = [];
   const token = await getServerToken();
@@ -53,7 +56,7 @@ export async function loadSupporterNotifications(uid: string, userToken: string)
   }
   // Reuse the followed feed's existing single-field queries: no new Firebase
   // collections, composite indexes or client-readable notification records.
-  const ids = [...followTimes.keys()];
+  const ids = preferences.updates.inApp ? [...followTimes.keys()] : [];
   for (let start = 0; start < ids.length; start += 8) {
     await Promise.all(ids.slice(start, start + 8).map(async orgId => {
       const org = await fsGet("organisations", orgId, token);
@@ -80,6 +83,7 @@ export async function loadSupporterNotifications(uid: string, userToken: string)
     }));
   }
   for (const donation of donations) {
+    if (!preferences.receipts.inApp) continue;
     // Defense in depth even if a future storage helper accidentally returns
     // another recipient's row. Guest-email matching is intentionally not used.
     if (donation.userId !== uid || donation.removed === true ||
@@ -94,6 +98,14 @@ export async function loadSupporterNotifications(uid: string, userToken: string)
       href: `/giving-history#donation-${encodeURIComponent(sourceId)}`,
       avatarUrl: null, thumbnailUrl: null,
     });
+  }
+  if (preferences.messages.inApp) {
+    for (const event of await personalMessageEvents(uid, token)) {
+      const id = notificationId("message", event.messageId);
+      items.push({ id, type: "message", name: event.name, message: `${event.name} sent you a message.`,
+        createdAt: event.createdAt, href: `/inbox?conversation=${encodeURIComponent(event.conversationId)}`,
+        avatarUrl: mediaUrl(event.avatarUrl), thumbnailUrl: null, read: event.read || readIds.has(id) });
+    }
   }
   const recent = [...new Map(items.map(item => [item.id, item])).values()]
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id)).slice(0, 200);

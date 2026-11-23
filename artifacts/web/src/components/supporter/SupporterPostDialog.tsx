@@ -1,3 +1,4 @@
+import { SupporterAvatar } from "./SupporterAvatar";
 import { useEffect, useRef, useState, type DragEvent, type KeyboardEvent, type PointerEvent, type TouchEvent } from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { useQuery } from "@tanstack/react-query";
@@ -251,7 +252,7 @@ export function SupporterPostDialog() {
   const captionPanel = (
     <div className="rpp-panel rpp-cap" data-testid="panel-caption">
       <div className="rpp-author">
-        <span className="rpp-av" aria-hidden>{user?.avatarInitials ?? user?.name?.slice(0, 2).toUpperCase()}</span>
+        {user?.avatarUrl ? <SupporterAvatar avatarUrl={user.avatarUrl} initials={user.avatarInitials} size={32} /> : <span className="rpp-av" aria-hidden>{user?.avatarInitials ?? user?.name?.slice(0, 2).toUpperCase()}</span>}
         <span className="rpp-author-n" data-testid="text-post-author">{prof?.publicProfileSettings?.displayName || prof?.name || user?.name}</span>
         <span className="rpp-sep" aria-hidden>›</span>
         <button type="button" className={`rpp-tagbtn${d.communityTag ? " is-set" : ""}`} aria-expanded={tagOpen} onClick={() => setTagOpen(o => !o)} disabled={sharing} data-testid="button-tag-community">

@@ -5,6 +5,109 @@
  * Root ProjX API — community giving platform
  * OpenAPI spec version: 0.1.0
  */
+export interface SupporterNotificationChannels {
+  inApp: boolean;
+  email: boolean;
+}
+
+export interface SupporterNotificationPreferences {
+  updates: SupporterNotificationChannels;
+  comments: SupporterNotificationChannels;
+  messages: SupporterNotificationChannels;
+  campaigns: SupporterNotificationChannels;
+  receipts: SupporterNotificationChannels;
+}
+
+export type SupporterAccountVisibility =
+  (typeof SupporterAccountVisibility)[keyof typeof SupporterAccountVisibility];
+
+export const SupporterAccountVisibility = {
+  public: "public",
+  private: "private",
+} as const;
+
+export type SupporterAccountMessagePolicy =
+  (typeof SupporterAccountMessagePolicy)[keyof typeof SupporterAccountMessagePolicy];
+
+export const SupporterAccountMessagePolicy = {
+  followed: "followed",
+  replies: "replies",
+} as const;
+
+export interface SupporterAccount {
+  displayName: string;
+  location: string;
+  bio: string;
+  /** @nullable */
+  avatarUrl: string | null;
+  avatarInitials: string;
+  email: string;
+  visibility: SupporterAccountVisibility;
+  messagePolicy: SupporterAccountMessagePolicy;
+  notifications: SupporterNotificationPreferences;
+}
+
+export interface SupporterAccountProfileInput {
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  displayName: string;
+  /** @maxLength 100 */
+  location: string;
+  /** @maxLength 160 */
+  bio: string;
+  /** @nullable */
+  photoId?: string | null;
+}
+
+export type SupporterNotificationPreferenceInputCategory =
+  (typeof SupporterNotificationPreferenceInputCategory)[keyof typeof SupporterNotificationPreferenceInputCategory];
+
+export const SupporterNotificationPreferenceInputCategory = {
+  updates: "updates",
+  comments: "comments",
+  messages: "messages",
+  campaigns: "campaigns",
+  receipts: "receipts",
+} as const;
+
+export type SupporterNotificationPreferenceInputChannel =
+  (typeof SupporterNotificationPreferenceInputChannel)[keyof typeof SupporterNotificationPreferenceInputChannel];
+
+export const SupporterNotificationPreferenceInputChannel = {
+  inApp: "inApp",
+  email: "email",
+} as const;
+
+export interface SupporterNotificationPreferenceInput {
+  category: SupporterNotificationPreferenceInputCategory;
+  channel: SupporterNotificationPreferenceInputChannel;
+  enabled: boolean;
+}
+
+export type SupporterAccountSettingsInputVisibility =
+  (typeof SupporterAccountSettingsInputVisibility)[keyof typeof SupporterAccountSettingsInputVisibility];
+
+export const SupporterAccountSettingsInputVisibility = {
+  public: "public",
+  private: "private",
+} as const;
+
+export type SupporterAccountSettingsInputMessagePolicy =
+  (typeof SupporterAccountSettingsInputMessagePolicy)[keyof typeof SupporterAccountSettingsInputMessagePolicy];
+
+export const SupporterAccountSettingsInputMessagePolicy = {
+  followed: "followed",
+  replies: "replies",
+} as const;
+
+export interface SupporterAccountSettingsInput {
+  visibility?: SupporterAccountSettingsInputVisibility;
+  messagePolicy?: SupporterAccountSettingsInputMessagePolicy;
+  notification?: SupporterNotificationPreferenceInput;
+}
+
 export type BookmarkInputKind =
   (typeof BookmarkInputKind)[keyof typeof BookmarkInputKind];
 
@@ -201,6 +304,7 @@ export const SupporterNotificationType = {
   like: "like",
   campaign_milestone: "campaign_milestone",
   donation: "donation",
+  message: "message",
 } as const;
 
 export interface SupporterNotification {
@@ -414,6 +518,8 @@ export const SupporterPostRecordVisibility = {
 export type SupporterPostRecordAuthor = {
   name: string;
   initials: string;
+  /** @nullable */
+  avatarUrl?: string | null;
   /** @nullable */
   publicId: string | null;
   isOwner: boolean;
@@ -775,6 +881,8 @@ export interface PublicUser {
   phone?: string | null;
   accountType: PublicUserAccountType;
   avatarInitials?: string | null;
+  /** @nullable */
+  avatarUrl?: string | null;
   createdAt: string;
 }
 
@@ -1687,4 +1795,9 @@ export type FollowSupporter200 = {
 
 export type UnfollowSupporter200 = {
   following: boolean;
+};
+
+export type UploadSupporterAccountPhoto200 = {
+  photoId: string;
+  previewUrl: string;
 };

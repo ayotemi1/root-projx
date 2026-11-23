@@ -31,11 +31,14 @@ export const fingerprint = (input: unknown) => createHash("sha256").update(JSON.
 // Separate, read-only media credential, not the Firebase token. Scoped to media
 // GETs and HttpOnly so <img>/<video> can request private byte ranges without
 // putting credentials in URLs or buffering a 500 MB video in browser memory.
-export function setMediaSession(req: Request, res: Response) {
-  if (!req.user || req.user.accountType !== "supporter") return;
+// An explicit identity is allowed only from a Firebase-verified sign-in result,
+// never a UID or role supplied by an HTTP caller.
+export function setMediaSession(req: Request, res: Response,
+  identity: { userId: string; accountType: string } | undefined = req.user) {
+  if (!identity || !["supporter", "organisation"].includes(identity.accountType)) return;
   const key = process.env.SESSION_SECRET;
   if (!key) throw new PostError(503);
-  const value = Buffer.from(JSON.stringify({ uid: req.user.userId, exp: Date.now() + 3600_000 })).toString("base64url");
+  const value = Buffer.from(JSON.stringify({ uid: identity.userId, exp: Date.now() + 3600_000 })).toString("base64url");
   const signature = createHmac("sha256", key).update(value).digest("base64url");
   res.cookie(COOKIE, `${value}.${signature}`, { ...mediaCookieOptions(req), maxAge: 3600_000 });
 }
@@ -43,7 +46,7 @@ export function clearMediaSession(req: Request, res: Response) {
   res.clearCookie(COOKIE, mediaCookieOptions(req));
 }
 export function mediaViewer(req: Request): string | null {
-  if (req.user?.accountType === "supporter") return req.user.userId;
+  if (req.user && ["supporter", "organisation"].includes(req.user.accountType)) return req.user.userId;
   const cookie = req.headers.cookie?.split(";").map(s => s.trim()).find(s => s.startsWith(`${COOKIE}=`))?.slice(COOKIE.length + 1);
   if (!cookie || cookie.length > 1500 || !process.env.SESSION_SECRET) return null;
   try {
@@ -95,6 +98,7 @@ export async function postDto(post: Doc, viewer: string | null, token: string, a
     created_at: post.created_at, edited_at: post.edited_at ?? null, removed: !!post.removed,
     visibility: pp.enabled === true ? "public" : "private",
     author: {
+      avatarUrl: typeof author?.avatarUrl === "string" ? author.avatarUrl : null,
       name, initials: String(name).split(/\s+/).slice(0, 2).map(s => s[0]).join("").toUpperCase(),
       publicId: pp.enabled === true ? pp.publicId ?? null : null,
       isOwner: post.author_id === viewer, following,

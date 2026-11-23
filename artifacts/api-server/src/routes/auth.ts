@@ -13,6 +13,7 @@ import {
   getServerToken,
 } from "../lib/firebase-rest.js";
 import { requireAuth } from "../lib/auth.js";
+import { setMediaSession } from "../lib/supporter-posts.js";
 import { brevoAddContact, brevoSendEmail, welcomeEmailHtml, internalNotificationHtml } from "../lib/brevo.js";
 
 const TEAM_EMAIL = process.env.TEAM_EMAIL ?? "info@rootprojx.com";
@@ -293,6 +294,9 @@ router.post("/auth/login", authRateLimit, async (req, res) => {
     }
     const approvalStatus = await effectiveApprovalStatus(uid, userData);
 
+    // Install the read-only media cookie before returning an avatar URL. The
+    // caller may render the sidebar immediately, before any feed/Inbox fetch.
+    setMediaSession(req, res, { userId: uid, accountType: String(userData.accountType) });
     res.json({
       token: idToken,
       user: {
@@ -302,6 +306,7 @@ router.post("/auth/login", authRateLimit, async (req, res) => {
         phone: userData.phone ?? null,
         accountType: userData.accountType,
         avatarInitials: userData.avatarInitials,
+        avatarUrl: userData.avatarUrl ?? null,
         approvalStatus,
         createdAt: userData.createdAt ?? null,
       },
@@ -330,6 +335,7 @@ router.get("/auth/me", requireAuth, async (req, res) => {
       return;
     }
     const approvalStatus = await effectiveApprovalStatus(uid, userData);
+    setMediaSession(req, res);
     const payload: Record<string, unknown> = {
       id: uid,
       name: userData.name,
@@ -337,6 +343,7 @@ router.get("/auth/me", requireAuth, async (req, res) => {
       phone: userData.phone ?? null,
       accountType: userData.accountType,
       avatarInitials: userData.avatarInitials,
+      avatarUrl: userData.avatarUrl ?? null,
       approvalStatus,
       createdAt: userData.createdAt ?? null,
     };

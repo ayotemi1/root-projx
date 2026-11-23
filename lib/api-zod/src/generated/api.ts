@@ -314,6 +314,7 @@ export const ListSupporterNotificationsResponse = zod.object({
         "like",
         "campaign_milestone",
         "donation",
+        "message",
       ]),
       message: zod.string(),
       createdAt: zod.string(),
@@ -353,6 +354,7 @@ export const ReadSupporterNotificationResponse = zod.object({
         "like",
         "campaign_milestone",
         "donation",
+        "message",
       ]),
       message: zod.string(),
       createdAt: zod.string(),
@@ -2778,6 +2780,7 @@ export const LoginResponse = zod.object({
     phone: zod.string().nullish(),
     accountType: zod.enum(["supporter", "organisation"]),
     avatarInitials: zod.string().nullish(),
+    avatarUrl: zod.string().nullish(),
     createdAt: zod.string(),
   }),
 });
@@ -2799,6 +2802,7 @@ export const GetMeResponse = zod.object({
   phone: zod.string().nullish(),
   accountType: zod.enum(["supporter", "organisation"]),
   avatarInitials: zod.string().nullish(),
+  avatarUrl: zod.string().nullish(),
   createdAt: zod.string(),
 });
 
@@ -4366,6 +4370,7 @@ export const GetProfileResponse = zod.object({
     phone: zod.string().nullish(),
     accountType: zod.enum(["supporter", "organisation"]),
     avatarInitials: zod.string().nullish(),
+    avatarUrl: zod.string().nullish(),
     createdAt: zod.string(),
   }),
   organisation: zod
@@ -4568,6 +4573,7 @@ export const UpdateProfileResponse = zod.object({
   phone: zod.string().nullish(),
   accountType: zod.enum(["supporter", "organisation"]),
   avatarInitials: zod.string().nullish(),
+  avatarUrl: zod.string().nullish(),
   createdAt: zod.string(),
 });
 
@@ -4690,6 +4696,7 @@ export const ListSupporterPostsResponseItem = zod.object({
   author: zod.object({
     name: zod.string(),
     initials: zod.string(),
+    avatarUrl: zod.string().nullish(),
     publicId: zod.string().nullable(),
     isOwner: zod.boolean(),
     following: zod.boolean(),
@@ -5089,6 +5096,7 @@ export const GetMySupporterShowcaseResponse = zod.object({
       author: zod.object({
         name: zod.string(),
         initials: zod.string(),
+        avatarUrl: zod.string().nullish(),
         publicId: zod.string().nullable(),
         isOwner: zod.boolean(),
         following: zod.boolean(),
@@ -5281,6 +5289,7 @@ export const GetVisitorSupporterShowcaseResponse = zod.object({
       author: zod.object({
         name: zod.string(),
         initials: zod.string(),
+        avatarUrl: zod.string().nullish(),
         publicId: zod.string().nullable(),
         isOwner: zod.boolean(),
         following: zod.boolean(),
@@ -5358,6 +5367,151 @@ export const AddSupporterInvolvementBody = zod.object({
 
 export const RemoveSupporterInvolvementParams = zod.object({
   id: zod.coerce.string(),
+});
+
+export const GetSupporterAccountResponse = zod.object({
+  displayName: zod.string(),
+  location: zod.string(),
+  bio: zod.string(),
+  avatarUrl: zod.string().nullable(),
+  avatarInitials: zod.string(),
+  email: zod.string(),
+  visibility: zod.enum(["public", "private"]),
+  messagePolicy: zod.enum(["followed", "replies"]),
+  notifications: zod.object({
+    updates: zod.object({
+      inApp: zod.boolean(),
+      email: zod.boolean(),
+    }),
+    comments: zod.object({
+      inApp: zod.boolean(),
+      email: zod.boolean(),
+    }),
+    messages: zod.object({
+      inApp: zod.boolean(),
+      email: zod.boolean(),
+    }),
+    campaigns: zod.object({
+      inApp: zod.boolean(),
+      email: zod.boolean(),
+    }),
+    receipts: zod.object({
+      inApp: zod.boolean(),
+      email: zod.boolean(),
+    }),
+  }),
+});
+
+export const saveSupporterAccountProfileBodyDisplayNameMax = 80;
+
+export const saveSupporterAccountProfileBodyLocationMax = 100;
+
+export const saveSupporterAccountProfileBodyBioMax = 160;
+
+export const SaveSupporterAccountProfileBody = zod.object({
+  displayName: zod
+    .string()
+    .min(1)
+    .max(saveSupporterAccountProfileBodyDisplayNameMax),
+  location: zod.string().max(saveSupporterAccountProfileBodyLocationMax),
+  bio: zod.string().max(saveSupporterAccountProfileBodyBioMax),
+  photoId: zod.string().uuid().nullish(),
+});
+
+export const SaveSupporterAccountProfileResponse = zod.object({
+  displayName: zod.string(),
+  location: zod.string(),
+  bio: zod.string(),
+  avatarUrl: zod.string().nullable(),
+  avatarInitials: zod.string(),
+  email: zod.string(),
+  visibility: zod.enum(["public", "private"]),
+  messagePolicy: zod.enum(["followed", "replies"]),
+  notifications: zod.object({
+    updates: zod.object({
+      inApp: zod.boolean(),
+      email: zod.boolean(),
+    }),
+    comments: zod.object({
+      inApp: zod.boolean(),
+      email: zod.boolean(),
+    }),
+    messages: zod.object({
+      inApp: zod.boolean(),
+      email: zod.boolean(),
+    }),
+    campaigns: zod.object({
+      inApp: zod.boolean(),
+      email: zod.boolean(),
+    }),
+    receipts: zod.object({
+      inApp: zod.boolean(),
+      email: zod.boolean(),
+    }),
+  }),
+});
+
+export const SaveSupporterAccountSettingsBody = zod.object({
+  visibility: zod.enum(["public", "private"]).optional(),
+  messagePolicy: zod.enum(["followed", "replies"]).optional(),
+  notification: zod
+    .object({
+      category: zod.enum([
+        "updates",
+        "comments",
+        "messages",
+        "campaigns",
+        "receipts",
+      ]),
+      channel: zod.enum(["inApp", "email"]),
+      enabled: zod.boolean(),
+    })
+    .optional(),
+});
+
+export const SaveSupporterAccountSettingsResponse = zod.object({
+  displayName: zod.string(),
+  location: zod.string(),
+  bio: zod.string(),
+  avatarUrl: zod.string().nullable(),
+  avatarInitials: zod.string(),
+  email: zod.string(),
+  visibility: zod.enum(["public", "private"]),
+  messagePolicy: zod.enum(["followed", "replies"]),
+  notifications: zod.object({
+    updates: zod.object({
+      inApp: zod.boolean(),
+      email: zod.boolean(),
+    }),
+    comments: zod.object({
+      inApp: zod.boolean(),
+      email: zod.boolean(),
+    }),
+    messages: zod.object({
+      inApp: zod.boolean(),
+      email: zod.boolean(),
+    }),
+    campaigns: zod.object({
+      inApp: zod.boolean(),
+      email: zod.boolean(),
+    }),
+    receipts: zod.object({
+      inApp: zod.boolean(),
+      email: zod.boolean(),
+    }),
+  }),
+});
+
+/**
+ * Accepts multipart/form-data with one file field named file. Only square JPG or PNG images at least 400 by 400 pixels and no larger than 20 MB are accepted. The server validates and re-encodes the image.
+ */
+export const UploadSupporterAccountPhotoResponse = zod.object({
+  photoId: zod.string(),
+  previewUrl: zod.string(),
+});
+
+export const DiscardSupporterAccountPhotoParams = zod.object({
+  photoId: zod.coerce.string().uuid(),
 });
 
 export const ListBookmarksResponseItem = zod.object({

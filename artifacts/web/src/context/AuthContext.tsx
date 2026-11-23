@@ -4,6 +4,7 @@ import React, {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from "react";
 
@@ -39,19 +40,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<ApiUser | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  /** Token of the signed-in subject, updated synchronously; stale async responses compare against it. */
+  const activeToken = useRef<string | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem(TOKEN_KEY);
     if (!saved) { setIsLoading(false); return; }
     api.getMe(saved)
-      .then((me) => { setToken(saved); setUser(me); })
-      .catch(() => localStorage.removeItem(TOKEN_KEY))
+      .then((me) => {
+        if (activeToken.current !== null || localStorage.getItem(TOKEN_KEY) !== saved) return;
+        activeToken.current = saved; setToken(saved); setUser(me);
+      })
+      .catch(() => {
+        if (activeToken.current === null && localStorage.getItem(TOKEN_KEY) === saved) localStorage.removeItem(TOKEN_KEY);
+      })
       .finally(() => setIsLoading(false));
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
     const res = await api.login(email, password);
     localStorage.setItem(TOKEN_KEY, res.token);
+    activeToken.current = res.token;
     setToken(res.token);
     setUser(res.user);
     return res.user;
@@ -70,6 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }) => {
       const res = await api.register(data);
       localStorage.setItem(TOKEN_KEY, res.token);
+      activeToken.current = res.token;
       setToken(res.token);
       setUser(res.user);
       return res.token;
@@ -78,10 +88,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   const logout = useCallback(async () => {
+    if (activeToken.current === token) activeToken.current = null;
     clearMediaSession(token);
     if (token) {
       try { await api.logout(token); } catch { /* ignore */ }
     }
+    // A newer login during the logout request must not be signed out.
+    if (activeToken.current !== null && activeToken.current !== token) return;
     localStorage.removeItem(TOKEN_KEY);
     setToken(null);
     setUser(null);
@@ -91,8 +104,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!token) return;
     try {
       const me = await api.getMe(token);
+      if (activeToken.current !== token) return; // stale: subject changed
       setUser(me);
     } catch {
+      if (activeToken.current !== token) return;
       await logout();
     }
   }, [token, logout]);

@@ -22,7 +22,7 @@ async function fixture() {
         `import{state}from"fixture:state";export const getServerToken=async()=>"server";
         export const fsGet=async(c,id,token)=>{if(state.fail)throw Error("PRIVATE_INTERNAL_SECRET");state.calls.push({c,id,token});return state.docs.get(c+"/"+id)||null};
         export const fsQuery=async(c,filters,token)=>{if(state.fail)throw Error("PRIVATE_INTERNAL_SECRET");state.calls.push({c,filters,token});
-          return [...state.docs.entries()].filter(([k,v])=>k.startsWith(c+"/")&&(state.mix&&c==="donations"||filters.every(f=>v[f.field]===f.value))).map(([k,v])=>({...v,_id:k.slice(c.length+1)}));};
+          return [...state.docs.entries()].filter(([k,v])=>k.startsWith(c+"/")&&(state.mix&&c==="donations"||filters.every(f=>f.op==="ARRAY_CONTAINS"?Array.isArray(v[f.field])&&v[f.field].includes(f.value):v[f.field]===f.value))).map(([k,v])=>({...v,_id:k.slice(c.length+1)}));};
         export const fsMarkSupporterNotificationRead=async(uid,id,token)=>{if(state.failMark)throw Error("PRIVATE_INTERNAL_SECRET");
           state.writes.push({uid,id,token});const user=state.docs.get("users/"+uid);user.notificationReads=[...new Set([...(user.notificationReads||[]),id])];};`
       }));
@@ -89,6 +89,37 @@ test("notifications derive real published posts and own successful gifts, never 
     assert.equal((await f.call(`/supporter-notifications/${f.notificationId("donation", "other")}/read`, "alice", "POST")).status, 404);
     f.state.docs.delete("follows/alice_school");
     assert.deepEqual((await f.call()).data.items.map((n: any) => n.type), ["donation"], "unfollowed org posts disappear");
+  } finally { await f.close(); }
+});
+
+test("notification preferences gate bell items and new personal message events are recipient-private and follow Inbox read state", async () => {
+  const f = await fixture();
+  try {
+    const user = f.state.docs.get("users/alice");
+    user.profileShowcase = { settings: { notifications: { updates: { inApp: false }, receipts: { inApp: false } } } };
+    f.state.docs.set("conversations/own", {
+      participantKeys: ["supporter:alice", "organisation:school"],
+      participants: { supporter: { kind: "supporter", id: "alice" }, organisation: { kind: "organisation", id: "school" } },
+      supporterLastIncoming: { recipientUid: "alice", messageId: "real-message", incomingIndex: 1, name: "School",
+        createdAt: "2026-11-22T10:00:00Z", avatarUrl: "/logo.png" }, supporterRead: 0,
+    });
+    f.state.docs.set("conversations/malformed", {
+      participantKeys: ["supporter:alice"],
+      participants: { supporter: { kind: "supporter", id: "bob" }, organisation: { kind: "organisation", id: "school" } },
+      supporterLastIncoming: { recipientUid: "alice", messageId: "DO_NOT_EXPOSE", name: "NOT_ALICE",
+        incomingIndex: 1, createdAt: "2026-11-22T10:00:00Z" },
+    });
+    const messages = await f.call();
+    assert.equal(messages.status, 200);
+    assert.equal(messages.data.items.length, 1);
+    assert.equal(messages.data.items[0].type, "message");
+    assert.equal(messages.data.items[0].href, "/inbox?conversation=own");
+    assert.equal(messages.data.unreadCount, 1);
+    assert.doesNotMatch(JSON.stringify(messages.data), /NOT_ALICE|DO_NOT_EXPOSE/);
+    f.state.docs.get("conversations/own").supporterRead = 1;
+    assert.equal((await f.call()).data.unreadCount, 0);
+    user.profileShowcase.settings.notifications.messages = { inApp: false };
+    assert.equal((await f.call()).data.items.length, 0);
   } finally { await f.close(); }
 });
 

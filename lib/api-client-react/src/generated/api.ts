@@ -88,6 +88,9 @@ import type {
   SaveOrganisationWalkthrough200,
   SendAdminTestEmail200,
   SubmitHelpReviewRequest,
+  SupporterAccount,
+  SupporterAccountProfileInput,
+  SupporterAccountSettingsInput,
   SupporterInterests,
   SupporterInvolvementInput,
   SupporterMediaCompletionInput,
@@ -104,6 +107,7 @@ import type {
   UpdateOrganisationRequest,
   UpdateProfileRequest,
   UpdateWithOrg,
+  UploadSupporterAccountPhoto200,
   VideoUploadCompletion,
   VideoUploadRequest,
   VideoUploadResult,
@@ -7209,6 +7213,395 @@ export const useRemoveSupporterInvolvement = <
   TContext
 > => {
   return useMutation(getRemoveSupporterInvolvementMutationOptions(options));
+};
+
+export const getGetSupporterAccountUrl = () => {
+  return `/api/supporter/account`;
+};
+
+export const getSupporterAccount = async (
+  options?: RequestInit,
+): Promise<SupporterAccount> => {
+  return customFetch<SupporterAccount>(getGetSupporterAccountUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetSupporterAccountQueryKey = () => {
+  return [`/api/supporter/account`] as const;
+};
+
+export const getGetSupporterAccountQueryOptions = <
+  TData = Awaited<ReturnType<typeof getSupporterAccount>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getSupporterAccount>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetSupporterAccountQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getSupporterAccount>>
+  > = ({ signal }) => getSupporterAccount({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getSupporterAccount>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetSupporterAccountQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getSupporterAccount>>
+>;
+export type GetSupporterAccountQueryError = ErrorType<unknown>;
+
+export function useGetSupporterAccount<
+  TData = Awaited<ReturnType<typeof getSupporterAccount>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getSupporterAccount>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetSupporterAccountQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getSaveSupporterAccountProfileUrl = () => {
+  return `/api/supporter/account/profile`;
+};
+
+export const saveSupporterAccountProfile = async (
+  supporterAccountProfileInput: SupporterAccountProfileInput,
+  options?: RequestInit,
+): Promise<SupporterAccount> => {
+  return customFetch<SupporterAccount>(getSaveSupporterAccountProfileUrl(), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(supporterAccountProfileInput),
+  });
+};
+
+export const getSaveSupporterAccountProfileMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveSupporterAccountProfile>>,
+    TError,
+    { data: BodyType<SupporterAccountProfileInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof saveSupporterAccountProfile>>,
+  TError,
+  { data: BodyType<SupporterAccountProfileInput> },
+  TContext
+> => {
+  const mutationKey = ["saveSupporterAccountProfile"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof saveSupporterAccountProfile>>,
+    { data: BodyType<SupporterAccountProfileInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return saveSupporterAccountProfile(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SaveSupporterAccountProfileMutationResult = NonNullable<
+  Awaited<ReturnType<typeof saveSupporterAccountProfile>>
+>;
+export type SaveSupporterAccountProfileMutationBody =
+  BodyType<SupporterAccountProfileInput>;
+export type SaveSupporterAccountProfileMutationError = ErrorType<unknown>;
+
+export const useSaveSupporterAccountProfile = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveSupporterAccountProfile>>,
+    TError,
+    { data: BodyType<SupporterAccountProfileInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof saveSupporterAccountProfile>>,
+  TError,
+  { data: BodyType<SupporterAccountProfileInput> },
+  TContext
+> => {
+  return useMutation(getSaveSupporterAccountProfileMutationOptions(options));
+};
+
+export const getSaveSupporterAccountSettingsUrl = () => {
+  return `/api/supporter/account/settings`;
+};
+
+export const saveSupporterAccountSettings = async (
+  supporterAccountSettingsInput: SupporterAccountSettingsInput,
+  options?: RequestInit,
+): Promise<SupporterAccount> => {
+  return customFetch<SupporterAccount>(getSaveSupporterAccountSettingsUrl(), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(supporterAccountSettingsInput),
+  });
+};
+
+export const getSaveSupporterAccountSettingsMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveSupporterAccountSettings>>,
+    TError,
+    { data: BodyType<SupporterAccountSettingsInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof saveSupporterAccountSettings>>,
+  TError,
+  { data: BodyType<SupporterAccountSettingsInput> },
+  TContext
+> => {
+  const mutationKey = ["saveSupporterAccountSettings"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof saveSupporterAccountSettings>>,
+    { data: BodyType<SupporterAccountSettingsInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return saveSupporterAccountSettings(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SaveSupporterAccountSettingsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof saveSupporterAccountSettings>>
+>;
+export type SaveSupporterAccountSettingsMutationBody =
+  BodyType<SupporterAccountSettingsInput>;
+export type SaveSupporterAccountSettingsMutationError = ErrorType<unknown>;
+
+export const useSaveSupporterAccountSettings = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveSupporterAccountSettings>>,
+    TError,
+    { data: BodyType<SupporterAccountSettingsInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof saveSupporterAccountSettings>>,
+  TError,
+  { data: BodyType<SupporterAccountSettingsInput> },
+  TContext
+> => {
+  return useMutation(getSaveSupporterAccountSettingsMutationOptions(options));
+};
+
+/**
+ * Accepts multipart/form-data with one file field named file. Only square JPG or PNG images at least 400 by 400 pixels and no larger than 20 MB are accepted. The server validates and re-encodes the image.
+ */
+export const getUploadSupporterAccountPhotoUrl = () => {
+  return `/api/supporter/account/photo`;
+};
+
+export const uploadSupporterAccountPhoto = async (
+  options?: RequestInit,
+): Promise<UploadSupporterAccountPhoto200> => {
+  return customFetch<UploadSupporterAccountPhoto200>(
+    getUploadSupporterAccountPhotoUrl(),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getUploadSupporterAccountPhotoMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadSupporterAccountPhoto>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof uploadSupporterAccountPhoto>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["uploadSupporterAccountPhoto"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof uploadSupporterAccountPhoto>>,
+    void
+  > = () => {
+    return uploadSupporterAccountPhoto(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UploadSupporterAccountPhotoMutationResult = NonNullable<
+  Awaited<ReturnType<typeof uploadSupporterAccountPhoto>>
+>;
+
+export type UploadSupporterAccountPhotoMutationError = ErrorType<unknown>;
+
+export const useUploadSupporterAccountPhoto = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadSupporterAccountPhoto>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof uploadSupporterAccountPhoto>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getUploadSupporterAccountPhotoMutationOptions(options));
+};
+
+export const getDiscardSupporterAccountPhotoUrl = (photoId: string) => {
+  return `/api/supporter/account/photo/${photoId}`;
+};
+
+export const discardSupporterAccountPhoto = async (
+  photoId: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDiscardSupporterAccountPhotoUrl(photoId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDiscardSupporterAccountPhotoMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof discardSupporterAccountPhoto>>,
+    TError,
+    { photoId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof discardSupporterAccountPhoto>>,
+  TError,
+  { photoId: string },
+  TContext
+> => {
+  const mutationKey = ["discardSupporterAccountPhoto"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof discardSupporterAccountPhoto>>,
+    { photoId: string }
+  > = (props) => {
+    const { photoId } = props ?? {};
+
+    return discardSupporterAccountPhoto(photoId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DiscardSupporterAccountPhotoMutationResult = NonNullable<
+  Awaited<ReturnType<typeof discardSupporterAccountPhoto>>
+>;
+
+export type DiscardSupporterAccountPhotoMutationError = ErrorType<unknown>;
+
+export const useDiscardSupporterAccountPhoto = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof discardSupporterAccountPhoto>>,
+    TError,
+    { photoId: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof discardSupporterAccountPhoto>>,
+  TError,
+  { photoId: string },
+  TContext
+> => {
+  return useMutation(getDiscardSupporterAccountPhotoMutationOptions(options));
 };
 
 export const getListBookmarksUrl = () => {

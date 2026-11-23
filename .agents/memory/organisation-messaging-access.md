@@ -24,3 +24,16 @@ message alignment and misidentify organisations in same-role or reversed threads
 
 **How to apply:** Keep old supporter–organisation history and request shapes
 working, and resolve sender context independently on every request.
+
+Supporter message preferences restrict organisation-initiated contact, not the
+supporter's outgoing messages or supporter-to-supporter conversations. An
+organisation may reply once the supporter has actually written in that thread;
+merely opening an empty conversation is not consent to unsolicited contact.
+
+**Why:** The Settings copy permits messaging any organisation while offering
+“Organisations I follow” and “Only replies” for incoming organisation contact.
+Blocking all existing threads would also block legitimate replies.
+
+**How to apply:** Evaluate the actual sending organisation, including delegated
+team senders, against the recipient's preferences and follow relationship.
+Retain private history when a setting prevents further unsolicited messages.

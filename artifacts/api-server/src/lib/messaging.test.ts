@@ -157,6 +157,7 @@ test("messaging: failed and ambiguous sends retain server consistency and idempo
 test("messaging: pagination retains history; read cursors never regress or clear future incoming messages", async () => {
   const h = await harness();
   try {
+    h.state.docs.set("follows/alice-org", { userId: "alice", orgId: "org" });
     const c = await h.start();
     await h.send("org", c.id, "An earlier reply", "old-reply", "org");
     await Promise.all(Array.from({ length: 55 }, (_, i) => h.send("alice", c.id, `Message ${i}`, `batch-${i}`)));
@@ -224,6 +225,7 @@ test("messaging: all participant directions, canonical pairs, explicit team cont
     assert.equal((await h.send("org", oo.body.id, "Organisation hello", "org-hello")).status, 200);
     assert.equal((await h.call("otherorg", "/context")).body.unreadCount, 1);
     assert.equal((await start("alice", "organisation", "otherorg", "org")).status, 404, "cannot spoof organisation sender");
+    h.state.docs.set("follows/alice-org", { userId: "alice", orgId: "org" });
     const op = await start("org", "supporter", aid);
     assert.equal(op.status, 200);
     assert.equal(op.body.id, (await h.start()).id, "org-initiated pair reopens legacy supporter/org ID");
@@ -245,6 +247,33 @@ test("messaging: all participant directions, canonical pairs, explicit team cont
       () => start("staff", "organisation", "otherorg", "org"),
     ]) assert.equal((await operation()).status, 404);
     assert.equal((await h.call("alice", "/conversations")).body.conversations.length, 2);
+  } finally { await h.close(); }
+});
+
+test("messaging: supporter preferences restrict new organisation contact, including team senders, but always allow replies", async () => {
+  const h = await harness();
+  try {
+    const aid = `sp_${"a".repeat(32)}`;
+    h.state.docs.get("users/alice").publicProfile = { enabled: true, publicId: aid, displayName: "Alice" };
+    const start = (who = "org", asOrgId?: string) => h.call(who, "/conversations", "POST",
+      { recipient: { kind: "supporter", id: aid }, ...(asOrgId ? { asOrgId } : {}) });
+    assert.equal((await start()).status, 404, "an unfollowed organisation cannot initiate contact");
+    h.state.docs.set("follows/alice-org", { userId: "alice", orgId: "org" });
+    const created = await start();
+    assert.equal(created.status, 200);
+    assert.equal((await h.send("org", created.body.id, "A welcome message", "welcome")).status, 200);
+    h.state.docs.get("users/alice").profileShowcase = { settings: { messagePolicy: "replies" } };
+    const history = await h.call("org", `/messages?conversationId=${created.body.id}`);
+    assert.equal(history.status, 200);
+    assert.equal(history.body.conversation.canSend, false, "history stays but further unsolicited messages are blocked");
+    assert.equal((await h.send("org", created.body.id, "Blocked follow-up", "blocked")).status, 404);
+    await h.call("org", "/access/org", "POST", { userId: "staff" });
+    assert.equal((await h.send("staff", created.body.id, "Blocked staff follow-up", "blocked-staff", "org")).status, 404);
+    assert.equal((await h.send("alice", created.body.id, "I choose to reply", "personal-reply")).status, 200);
+    assert.equal((await h.send("staff", created.body.id, "Authorised reply", "allowed-staff", "org")).status, 200);
+    h.state.docs.delete("follows/alice-org");
+    h.state.docs.get("users/alice").profileShowcase.settings.messagePolicy = "followed";
+    assert.equal((await h.send("org", created.body.id, "Still a reply", "allowed-unfollowed")).status, 200);
   } finally { await h.close(); }
 });
 

@@ -2,6 +2,8 @@ import { createHash } from "node:crypto";
 import type { AuthPayload } from "./auth.js";
 import { fsCreateIfAbsent, fsGet, fsMutateMessaging, fsQuery, getServerToken } from "./firebase-rest.js";
 import { organisationAccessDecision, type OrganisationApprovalStatus } from "./organisation-approval.js";
+import { accountPreferences } from "./supporter-preferences.js";
+import { emailSupporter } from "./supporter-notification-events.js";
 
 type Doc = Record<string, unknown>;
 export class MessagingError extends Error {
@@ -79,6 +81,39 @@ async function authorisedThread(actor: AuthPayload, conversationId: string, toke
   return { thread, side, org: await activeParticipant(parts[opposite(side)], token) };
 }
 
+async function contactAllowed(sender: Participant, recipient: Participant, thread: Doc, token: string): Promise<boolean> {
+  if (sender.kind !== "organisation" || recipient.kind !== "supporter") return true;
+  const parts = thread.participants || thread.supporterId ? participants(thread) : null;
+  const supporterSide = parts && (["supporter", "organisation"] as const).find(s => identityKey(parts[s]) === identityKey(recipient));
+  if (supporterSide && count(thread[`${supporterSide}Sent`]) > 0) return true;
+  const user = await activeParticipant(recipient, token);
+  if (!user || accountPreferences(user).messagePolicy === "replies") return false;
+  const follows = await fsQuery("follows", [{ field: "userId", op: "EQUAL", value: recipient.id }], token);
+  return follows.some(f => f.userId === recipient.id && f.orgId === sender.id);
+}
+
+/** Private photos are visible only to their owner or authorised participants
+ * in real message history; public team cards never authorise this access. */
+export async function canSeePrivateSupporterAvatar(viewer: string, supporter: string, token: string) {
+  const user = await fsGet("users", viewer, token);
+  if (!user || !["supporter", "organisation"].includes(str(user.accountType))) return false;
+  const actor = { userId: viewer, accountType: user.accountType, email: "" } as AuthPayload;
+  const [legacy, modern] = await Promise.all([
+    fsQuery("conversations", [{ field: "supporterId", op: "EQUAL", value: supporter }], token),
+    fsQuery("conversations", [{ field: "participantKeys", op: "ARRAY_CONTAINS", value: `supporter:${supporter}` }], token),
+  ]);
+  for (const thread of [...legacy, ...modern]) {
+    if (!count(thread.sequence) && !count(thread.supporterSent) && !count(thread.organisationSent)) continue;
+    let parts: Record<Side, Participant>;
+    try { parts = participants(thread); } catch { continue; }
+    const ownerSide = (["supporter", "organisation"] as const).find(s => parts[s].kind === "supporter" && parts[s].id === supporter);
+    if (!ownerSide) continue;
+    const peer = parts[opposite(ownerSide)];
+    if (peer.kind === "supporter" ? user.accountType === "supporter" && peer.id === viewer : !!await canUseOrganisation(actor, peer.id, token)) return true;
+  }
+  return false;
+}
+
 function unread(thread: Doc, side: "supporter" | "organisation") {
   return Math.max(0, count(thread[side === "supporter" ? "organisationSent" : "supporterSent"]) -
     count(thread[side === "supporter" ? "supporterRead" : "organisationRead"]));
@@ -101,7 +136,7 @@ async function conversationView(threadId: string, thread: Doc, side: "supporter"
     senderLabel: label(mine?.name, me.kind === "organisation" ? "Organisation" : "Personal"),
     lastMessage: str(thread.lastMessage),
     updatedAt: str(thread.updatedAt, str(thread.createdAt)),
-    unreadCount: unread(thread, side), canSend: !!org && !!mine,
+    unreadCount: unread(thread, side), canSend: !!org && !!mine && await contactAllowed(me, peer, thread, token),
   };
 }
 
@@ -171,6 +206,7 @@ export async function startConversation(actor: AuthPayload, input: string | { re
   const a = pair[0]!, b = pair[1]!;
   const mixed = a.kind !== b.kind;
   const conversationId = mixed ? conversationIdFor(a.id, b.id) : id("c", identityKey(a), identityKey(b));
+  if (!await fsGet("conversations", conversationId, token) && !await contactAllowed(sender, recipient, {}, token)) throw unavailable();
   const own = await activeParticipant(sender, token);
   const now = new Date().toISOString();
   await fsCreateIfAbsent("conversations", conversationId, {
@@ -206,16 +242,21 @@ export async function sendMessage(actor: AuthPayload, conversationId: string, te
   text = text.trim();
   if (!text || text.length > 2000) throw new MessagingError(400, "Write a message between 1 and 2,000 characters.");
   const token = await getServerToken();
-  const { side, org } = await authorisedThread(actor, conversationId, token, orgScope);
+  const { thread, side, org } = await authorisedThread(actor, conversationId, token, orgScope);
   if (!org) throw new MessagingError(404, "This organisation is no longer available for messaging.");
+  const parts = participants(thread);
+  if (!await contactAllowed(parts[side], parts[opposite(side)], thread, token)) throw unavailable();
+  const sender = await activeParticipant(parts[side], token);
+  const senderName = label(parts[side].kind === "organisation" ? sender?.name : (sender?.publicProfile as Doc)?.displayName, label(sender?.name, "Someone"));
+  const recipient = parts[opposite(side)];
   const messageId = id("m", conversationId, actor.userId, clientId);
-  return fsMutateMessaging("conversations", conversationId, token, (current, existing) => {
+  const sent = await fsMutateMessaging("conversations", conversationId, token, (current, existing) => {
     if (!current) throw unavailable();
     if (existing) {
       if (existing.senderId !== actor.userId || existing.conversationId !== conversationId || existing.text !== text || existing.side !== side) {
         throw new MessagingError(409, "This send attempt was already used. Keep the original message and retry it.");
       }
-      return { result: messageView(messageId, existing) };
+      return { result: { view: messageView(messageId, existing), created: false } };
     }
     const sequence = count(current.lastSequence) + 1;
     const field = side === "supporter" ? "supporterSent" : "organisationSent";
@@ -225,10 +266,20 @@ export async function sendMessage(actor: AuthPayload, conversationId: string, te
       supporterSent: side === "supporter" ? incomingIndex : count(current.supporterSent),
       organisationSent: side === "organisation" ? incomingIndex : count(current.organisationSent) };
     return {
-      patch: { lastSequence: sequence, [field]: incomingIndex, updatedAt: now, lastMessage: Array.from(text).slice(0, 180).join("") },
-      message, result: messageView(messageId, message),
+      patch: { lastSequence: sequence, [field]: incomingIndex, updatedAt: now, lastMessage: Array.from(text).slice(0, 180).join(""),
+        ...(recipient.kind === "supporter" ? { [`${opposite(side)}LastIncoming`]: {
+          recipientUid: recipient.id, messageId, incomingIndex, createdAt: now, name: senderName,
+          avatarUrl: image(parts[side].kind === "organisation" ? sender?.logo : sender?.avatarUrl),
+        } } : {}) },
+      message, result: { view: messageView(messageId, message), created: true },
     };
   }, messageId);
+  if (sent.created && recipient.kind === "supporter") {
+    try { await emailSupporter(recipient.id, "messages", "A new message on Root ProjX",
+      `${senderName} sent you a message. Open your private Inbox to read and reply.`, `/inbox?conversation=${encodeURIComponent(conversationId)}`, token); }
+    catch { console.warn("A supporter message email could not be delivered"); }
+  }
+  return sent.view;
 }
 
 export async function readConversation(actor: AuthPayload, conversationId: string, through: number, orgScope?: string) {

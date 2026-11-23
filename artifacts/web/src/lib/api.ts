@@ -12,6 +12,7 @@ export interface ApiUser {
   accountType: "supporter" | "organisation";
   approvalStatus?: "pending" | "approved" | "declined" | null;
   avatarInitials: string;
+  avatarUrl?: string | null;
   createdAt: string | null;
   publicProfileSettings?: PublicProfileSettings;
 }

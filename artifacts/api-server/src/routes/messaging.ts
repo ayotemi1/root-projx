@@ -9,6 +9,7 @@ import {
   AddMessagingTeamMemberResponse, RemoveMessagingTeamMemberParams, RemoveMessagingTeamMemberResponse,
 } from "@workspace/api-zod";
 import { requireAuth } from "../lib/auth.js";
+import { setMediaSession } from "../lib/supporter-posts.js";
 import {
   MessagingError, messagingContext, listConversations, startConversation, conversationMessages,
   sendMessage, readConversation, messagingTeam, changeMessagingTeam,
@@ -23,6 +24,7 @@ router.use("/messaging", (_req, res, next) => {
   if (!["supporter", "organisation"].includes(req.user!.accountType)) {
     res.status(403).json({ error: "Sign in with your supporter or organisation account." }); return;
   }
+  setMediaSession(req, res);
   next();
 });
 

@@ -16,7 +16,9 @@ import { TextPostProvider } from "./TextPostProvider";
 import { NotificationsInbox, UnreadBadge } from "./NotificationsInbox";
 import { useSupporterNotifications } from "./use-supporter-notifications";
 import { InboxBadge } from "@/components/inbox/InboxBadge";
+import { SupporterAvatar } from "./SupporterAvatar";
 import "./supporter.css";
+import "@/pages/account-pages.css";
 
 const icons: Record<SupporterNavigationId, typeof Home> = {
   home: Home, discover: Compass, create: PlusSquare, inbox: Inbox,
@@ -77,6 +79,7 @@ function FollowingPanel() {
 
 export default function SupporterLayout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
+  const accountPage = /^\/(settings|profile\/edit)\/?(?:[?#]|$)/.test(location);
   const profilePage = location === "/profile" || location === "/saved" || /^\/supporters\/[^/?#]+\/?$/.test(location);
   const { user, isAuthenticated } = useAuth();
   const { signOut, error, pending } = useSignOut();
@@ -150,8 +153,8 @@ export default function SupporterLayout({ children }: { children: ReactNode }) {
 
   const accountBlock = isAuthenticated ? (
     <>
-      <Link href="/account" className="rps-sub" onClick={() => setMenuOpen(false)} data-testid="link-edit-profile"><Pencil size={16} aria-hidden /> Edit profile</Link>
-      <Link href="/settings" className="rps-sub" onClick={() => setMenuOpen(false)} data-testid="link-settings"><Settings size={16} aria-hidden /> Settings</Link>
+      <Link href="/profile/edit" className="rps-sub" aria-current={location.split(/[?#]/)[0]!.replace(/\/+$/, "") === "/profile/edit" ? "page" : undefined} onClick={() => setMenuOpen(false)} data-testid="link-edit-profile"><Pencil size={16} aria-hidden /> Edit profile</Link>
+      <Link href="/settings" className="rps-sub" aria-current={/^\/settings(\/|$|[?#])/.test(location) ? "page" : undefined} onClick={() => setMenuOpen(false)} data-testid="link-settings"><Settings size={16} aria-hidden /> Settings</Link>
       <button type="button" className="rps-sub" onClick={signOut} disabled={pending} data-testid="button-sign-out">
         <LogOut size={16} aria-hidden /> {pending ? "Signing out…" : "Sign out"}
       </button>
@@ -167,7 +170,7 @@ export default function SupporterLayout({ children }: { children: ReactNode }) {
   return (
     <SupporterPostDraftProvider>
     <TextPostProvider>
-    <div className={`rps-shell${profilePage ? " rps-profile" : ""}`}>
+    <div className={`rps-shell${profilePage ? " rps-profile" : ""}${accountPage ? " rps-account" : ""}`}>
       <a href="#rps-main" className="rps-skip">Skip to content</a>
 
       <header className="rps-mhead">
@@ -240,7 +243,7 @@ export default function SupporterLayout({ children }: { children: ReactNode }) {
                   ) : (
                   <Link href={item.href} className="rps-nav-item"
                     aria-current={active ? "page" : undefined} data-testid={`link-nav-${item.id}`}>
-                    {item.id === "profile" && user ? <span className="rps-avatar sm" aria-hidden>{user.avatarInitials}</span> : <Icon size={20} aria-hidden />}
+                    {item.id === "profile" && user ? <SupporterAvatar avatarUrl={user.avatarUrl} initials={user.avatarInitials} size={22} /> : <Icon size={20} aria-hidden />}
                     {item.label}
                     {item.id === "inbox" && <InboxBadge testId="badge-inbox-sidebar" />}
                   </Link>
@@ -264,7 +267,7 @@ export default function SupporterLayout({ children }: { children: ReactNode }) {
 
       <main id="rps-main" className="rps-main" tabIndex={-1}>{children}</main>
 
-      {!profilePage && <FollowingPanel />}
+      {!profilePage && !accountPage && <FollowingPanel />}
 
       <nav className="rps-bottom" aria-label="Primary">
         <ul>
@@ -280,7 +283,7 @@ export default function SupporterLayout({ children }: { children: ReactNode }) {
                 <Link href={item.href} className="rps-tab"
                   aria-current={isSupporterNavigationActive(item, location) ? "page" : undefined}
                   data-testid={`link-tab-${item.id}`}>
-                  {item.id === "profile" && user ? <span className="rps-avatar sm" aria-hidden>{user.avatarInitials}</span> : <Icon size={20} aria-hidden />}
+                  {item.id === "profile" && user ? <SupporterAvatar avatarUrl={user.avatarUrl} initials={user.avatarInitials} size={22} /> : <Icon size={20} aria-hidden />}
                   <span>{item.id === "profile" ? "Me" : item.label}</span>
                   {item.id === "inbox" && <InboxBadge testId="badge-inbox-tab" className="rpn-badge rpm-tab-badge" />}
                 </Link>

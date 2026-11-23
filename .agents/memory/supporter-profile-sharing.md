@@ -35,3 +35,14 @@ participation must not leak through a public aggregate.
 
 **How to apply:** Count only the activity projection the current viewer may see;
 do not use private donations or follow records as a shortcut.
+
+Private profile visibility is not anonymity inside an existing private chat:
+authorised conversation participants can still see the sender's avatar.
+It must not become an anonymously readable asset.
+
+**Why:** The Inbox identifies real counterparts while the private profile and
+its posts remain hidden from public links and unrelated accounts.
+
+**How to apply:** Guard avatar bytes as well as profile JSON; allow private
+avatars only to their owner or current authorised participants in actual
+message history, not public team-card members or empty conversation shells.

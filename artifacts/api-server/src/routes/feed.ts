@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { emailOrganisationUpdate } from "../lib/supporter-notification-events.js";
 import { fsQuery, fsCreate, fsGet, fsPatch, getServerToken } from "../lib/firebase-rest.js";
 import { requireApprovedOrganisation, requireAuth, optionalAuth } from "../lib/auth.js";
 import { normaliseContentLink } from "../lib/feed-content.js";
@@ -209,6 +210,8 @@ router.post("/feed", requireAuth, requireApprovedOrganisation, async (req, res) 
     }
 
     res.status(201).json({ _id: newId, ...data });
+    void emailOrganisationUpdate(uid, orgName, newId, serverToken).catch(() =>
+      req.log.warn("Supporter update emails could not be delivered"));
   } catch (err) {
     req.log.error({ err }, "POST /feed error");
     res.status(500).json({ error: "Failed to publish update" });

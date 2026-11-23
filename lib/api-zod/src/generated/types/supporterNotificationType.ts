@@ -16,4 +16,5 @@ export const SupporterNotificationType = {
   like: "like",
   campaign_milestone: "campaign_milestone",
   donation: "donation",
+  message: "message",
 } as const;

@@ -117,7 +117,7 @@ export function SupporterShowcaseView({ showcase, mode, token, onPreview, onExit
       {editable && !showcase.isPublic && (
         <div className="mb-6 border border-[#17100F] bg-[#F3BF2C]/25 px-4 py-3 text-[14px] flex flex-wrap items-center gap-2" data-testid="status-profile-hidden">
           <Lock className="w-4 h-4" /> Your profile is hidden. Only you can see this page.
-          <Link href="/account" className="rp-link-u ml-auto" data-testid="link-make-public">Change in account</Link>
+          <Link href="/settings" className="rp-link-u ml-auto" data-testid="link-make-public">Change in account</Link>
         </div>
       )}
 
@@ -129,7 +129,7 @@ export function SupporterShowcaseView({ showcase, mode, token, onPreview, onExit
               <h1 className="rp-display text-[clamp(30px,8.5vw,40px)] sm:text-[clamp(34px,4.4vw,52px)] [overflow-wrap:break-word] [word-break:normal] hyphens-none max-w-full" data-testid="text-display-name">{showcase.displayName}</h1>
               <div className="flex flex-wrap gap-2 mt-3 min-w-0">
                 {editable && <>
-                  <Link href="/account" className="rp-btn rp-btn-ghost !min-h-10 !text-[14px] !px-4" data-testid="link-edit-profile">Edit profile</Link>
+                  <Link href="/profile/edit" className="rp-btn rp-btn-ghost !min-h-10 !text-[14px] !px-4" data-testid="link-edit-profile">Edit profile</Link>
                   <button type="button" className="rp-btn rp-btn-ghost !min-h-10 !text-[14px] !px-4" onClick={onPreview} data-testid="button-preview-profile">Preview</button>
                 </>}
                 {mode === "visitor" && showcase.publicId && !isSelf && (

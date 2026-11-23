@@ -40,7 +40,7 @@ export function HiddenProfile({ preview, onExitPreview }: { preview?: boolean; o
       <div className="flex flex-wrap justify-center gap-2 mt-7">
         {preview ? <>
           <button type="button" className="rp-btn rp-btn-ghost" onClick={onExitPreview} data-testid="button-exit-preview">Exit preview</button>
-          <Link href="/account" className="rp-btn rp-btn-yellow" data-testid="link-make-public">Open account settings</Link>
+          <Link href="/settings" className="rp-btn rp-btn-yellow" data-testid="link-make-public">Open account settings</Link>
         </> : <Link href="/discover" className="rp-btn rp-btn-yellow" data-testid="link-discover">Discover organisations</Link>}
       </div>
     </div>

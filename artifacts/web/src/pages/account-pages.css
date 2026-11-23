@@ -1,0 +1,63 @@
+.rp-sav { display: inline-grid; place-items: center; flex: none; border-radius: 999px; overflow: hidden; background: var(--rp-ink); color: var(--rp-yellow);
+  font-family: var(--app-font-serif); font-weight: 900; font-stretch: 75%; line-height: 1; }
+.rp-sav img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.rpa-page { box-sizing: border-box; max-width: calc(680px + 40px); margin: 0 auto; padding: 32px 20px 48px; color: var(--rp-ink); font-family: var(--app-font-sans); }
+.rpa-h1 { font-family: var(--app-font-serif); font-weight: 900; font-stretch: 70%; text-transform: uppercase; line-height: .9; margin: 0; font-size: 60px; }
+.rpa-sub { font-family: var(--app-font-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: #5A4F4B; margin: 10px 0 0; }
+.rpa-box { background: #fff; border: 1.5px solid var(--rp-ink); padding: 20px; margin-top: 16px; }
+.rpa-box.first { margin-top: 24px; }
+.rpa-h2 { font-family: var(--app-font-serif); font-weight: 900; font-stretch: 70%; text-transform: uppercase; line-height: .9; margin: 0; font-size: 32px; }
+.rpa-label { font-family: var(--app-font-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; font-weight: 700; margin: 0 0 14px; }
+.rpa-hint { font-size: 13px; color: #5A4F4B; margin: 6px 0 0; }
+.rpa-mut { color: #5A4F4B; margin: 10px 0 0; }
+.rpa-btn { min-height: 44px; padding: 0 18px; border: 1.5px solid var(--rp-ink); background: #fff; color: var(--rp-ink); font-weight: 700; font-size: 15px;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; text-decoration: none; white-space: nowrap; }
+.rpa-btn.sm { min-height: 36px; padding: 0 12px; font-size: 14px; }
+.rpa-btn.y { background: var(--rp-yellow); }
+.rpa-btn:disabled { opacity: .55; cursor: default; }
+.rpa-btn:focus-visible, .rpa-switch:focus-visible, .rpa-in:focus-visible { outline: 2px solid var(--rp-ink); outline-offset: 2px; }
+.rpa-radios { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
+.rpa-radio { display: flex; gap: 12px; align-items: flex-start; cursor: pointer; }
+.rpa-radio input { width: 20px; height: 20px; margin-top: 3px; accent-color: #17100F; flex: none; }
+.rpa-radio b { display: inline-flex; align-items: center; gap: 6px; }
+.rpa-radio .rpa-hint { display: block; margin: 2px 0 0; }
+.rpa-table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+.rpa-table th { font-family: var(--app-font-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; font-weight: 500; text-align: left;
+  padding: 8px 0; border-bottom: 1.5px solid var(--rp-ink); }
+.rpa-table th.c, .rpa-table td.c { text-align: center; width: 84px; }
+.rpa-table td { padding: 14px 0; border-bottom: 1px solid #DDD5CC; font-size: 15px; }
+.rpa-switch { font-family: 'JetBrains Mono', ui-monospace, monospace; font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; background: none; border: 0;
+  padding: 4px 6px; cursor: pointer; color: #A89D95; text-decoration: none; }
+.rpa-switch[aria-checked="true"] { color: #17100F; font-weight: 700; text-decoration: underline; text-decoration-color: #F3BF2C; text-decoration-thickness: 2px; text-underline-offset: 5px; }
+.rpa-switch[aria-disabled="true"] { cursor: default; }
+.rpa-saved { position: fixed; left: 50%; bottom: 88px; transform: translateX(-50%); background: var(--rp-ink); color: var(--rp-cream); font-family: var(--app-font-mono);
+  font-size: 12px; letter-spacing: .08em; text-transform: uppercase; padding: 8px 14px; z-index: 40; pointer-events: none; }
+@media (min-width: 900px) { .rpa-saved { bottom: 28px; } }
+.rpa-err { color: var(--rp-red); font-size: 14px; font-weight: 600; margin: 8px 0 0; }
+.rpa-preview { display: flex; gap: 24px; align-items: flex-end; flex-wrap: wrap; }
+.rpa-mini { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.rpa-row { display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
+.rpa-f { display: flex; flex-direction: column; gap: 6px; }
+.rpa-f > span { font-family: var(--app-font-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; font-weight: 700; }
+.rpa-f > span small { font-weight: 400; color: #5A4F4B; font-size: 12px; }
+.rpa-in { width: 100%; min-height: 48px; border: 1.5px solid var(--rp-ink); background: #fff; padding: 0 14px; font-size: 16px; color: var(--rp-ink); }
+textarea.rpa-in { padding: 12px 14px; min-height: 120px; resize: vertical; line-height: 1.5; }
+.rpa-in[aria-invalid="true"] { border-color: var(--rp-red); }
+.rpa-actions { display: flex; gap: 12px; margin-top: 24px; padding: 4px 0 40px; }
+.rpa-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.rpa-skel { background: #EDE4D6; height: 160px; margin-top: 16px; }
+.rpa-crop { border: 1.5px dashed var(--rp-ink); padding: 14px; margin-top: 14px; background: #FBF8F2; }
+@media (max-width: 767px) {
+  .rpa-page { padding: 20px 16px 32px; }
+  .rpa-h1 { font-size: 40px; }
+  .rpa-h2 { font-size: 28px; }
+  .rpa-table thead { display: none; }
+}
+
+/* Settings + Edit profile only: no Following rail, single page inset (main inset removed). */
+.rps-shell.rps-account .rps-main { padding-inline: 0; padding-top: 0; }
+@media (min-width: 1024px) {
+  .rps-shell.rps-account { grid-template-columns: var(--rps-side) minmax(0, 1fr); }
+  .rps-shell.rps-account .rps-main { max-width: none; padding-bottom: 0; }
+}

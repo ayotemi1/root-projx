@@ -1,3 +1,4 @@
+import { SupporterAvatar } from "./SupporterAvatar";
 import { useRef, useState, type TouchEvent } from "react";
 import { Link, useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -94,7 +95,7 @@ export function SupporterPostCard({ post }: { post: SupporterPostRecord }) {
   return (
     <article className="rp-rise" data-testid={`card-supporter-post-${post.id}`}>
       <header className="flex items-center gap-3 mb-3">
-        <span className="w-9 h-9 shrink-0 rounded-full bg-[#CA0813] text-[#FBF8F2] grid place-items-center text-[13px] font-extrabold" aria-hidden>{a.initials}</span>
+        {a.avatarUrl ? <SupporterAvatar avatarUrl={a.avatarUrl} initials={a.initials} size={36} /> : <span className="w-9 h-9 shrink-0 rounded-full bg-[#CA0813] text-[#FBF8F2] grid place-items-center text-[13px] font-extrabold" aria-hidden>{a.initials}</span>}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 min-w-0">
             {name}

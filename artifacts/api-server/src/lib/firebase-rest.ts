@@ -393,6 +393,40 @@ export async function fsMutateSupporterShowcase(
   throw new Error("Profile changed while saving");
 }
 
+/** Account presentation/preferences only. Compare-and-write prevents a profile
+ * save, autosaved setting and bookmark/involvement change overwriting each other.
+ * No role, approval, email or financial fields can be written through this API. */
+export async function fsMutateSupporterAccount(
+  uid: string, token: string,
+  decide: (user: Record<string, unknown>) => Record<string, unknown>,
+): Promise<void> {
+  if (!/^[A-Za-z0-9_-]{1,128}$/.test(uid)) throw new Error("Invalid account");
+  const allowed = new Set(["name", "avatarInitials", "avatarUrl", "avatarPhotoId", "publicProfile", "profileShowcase", "notificationDelivery"]);
+  const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const response = await fetch(`${FIRESTORE}/users/${uid}`, { headers });
+    if (!response.ok) throw new Error("Account could not be loaded");
+    const raw = await response.json() as { fields: Record<string, FsValue>; updateTime: string };
+    if (typeof raw.updateTime !== "string") throw new Error("Invalid account version");
+    const user = fromFsDoc(raw.fields ?? {});
+    if (user.accountType !== "supporter") throw new Error("Account is not a supporter");
+    const patch = decide(user);
+    const keys = Object.keys(patch);
+    if (!keys.length) return;
+    if (keys.some(k => !allowed.has(k))) throw new Error("Invalid account field");
+    const params = new URLSearchParams({ "currentDocument.updateTime": raw.updateTime });
+    for (const key of keys) params.append("updateMask.fieldPaths", key);
+    const saved = await fetch(`${FIRESTORE}/users/${uid}?${params}`, {
+      method: "PATCH", headers,
+      body: JSON.stringify({ fields: Object.fromEntries(keys.map(k => [k, toFsVal(patch[k])])) }),
+    });
+    if (saved.ok) return;
+    if ([409, 412].includes(saved.status)) continue;
+    throw new Error("Account could not be saved");
+  }
+  throw new Error("Account changed; retry");
+}
+
 export async function fsPatch(
   collection: string,
   docId: string,

@@ -4,6 +4,8 @@ import { build } from "esbuild";
 import { createRequire } from "node:module";
 import { signInDiagnosticCode } from "./sign-in-diagnostics.ts";
 
+process.env.SESSION_SECRET = "signin-diagnostics-unit-test-only";
+
 // Run the real auth route without Firebase, email, account writes or real credentials.
 const compiled = await build({
   stdin: {
@@ -20,7 +22,7 @@ const compiled = await build({
       b.onLoad({ filter: /.*/, namespace: "signin" }, a => ({
         loader: "js",
         contents: a.path === "state"
-          ? 'export const state = {failure: null, signIns: 0, profileReads: 0, logs: []};'
+          ? 'export const state = {failure: null, signIns: 0, profileReads: 0, logs: [], cookies: []};'
           : a.path === "firebase-rest.js" ? `
             import {state} from "signin:state";
             const forbidden = async () => {throw Error("Unexpected account write or email");};
@@ -55,6 +57,7 @@ function fixture() {
       let status = 200, data: any;
       const req = {
         body, headers: { authorization: "Bearer synthetic-private-header" },
+        secure: true, get: () => "https",
         socket: { remoteAddress: "synthetic-client" },
         log: {
           warn(...args: unknown[]) { state.logs.push({ level: "warn", args }); },
@@ -63,6 +66,10 @@ function fixture() {
       };
       const res = {
         setHeader() {},
+        cookie(name: string, value: string, options: { path: string; httpOnly: boolean }) {
+          state.cookies.push({ name, path: options.path, httpOnly: options.httpOnly,
+            hasFirebaseToken: value.includes("synthetic-private-token") }); return this;
+        },
         status(code: number) { status = code; return this; },
         json(value: unknown) { data = value; },
       };
@@ -139,6 +146,7 @@ test("successful login preserves the user and token response without diagnostic 
   assert.equal(f.state.signIns, 1);
   assert.equal(f.state.profileReads, 1);
   assert.deepEqual(f.state.logs, []);
+  assert.deepEqual(f.state.cookies, [{ name: "rp_post_media", path: "/api/supporter-posts/media", httpOnly: true, hasFirebaseToken: false }]);
 });
 
 test("missing credentials still stop before contacting Firebase or logging a rejection", async () => {

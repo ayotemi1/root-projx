@@ -13,7 +13,8 @@ const filters = [
 ] as const satisfies readonly { id: string; label: string; types: readonly SupporterNotificationType[] | null }[];
 type FilterId = typeof filters[number]["id"];
 
-const typeIcon: Record<SupporterNotificationType, typeof Heart> = {
+// Unknown/new types (e.g. "message") fall back to the message icon.
+const typeIcon: Partial<Record<string, typeof Heart>> = {
   organisation_post: Megaphone, story: Sparkles, comment: MessageCircle,
   like: Heart, campaign_milestone: TrendingUp, donation: Receipt,
 };
@@ -45,10 +46,10 @@ function group(items: SupporterNotification[]) {
 }
 
 function Mark({ n }: { n: SupporterNotification }) {
-  const Icon = typeIcon[n.type];
+  const Icon = typeIcon[n.type] ?? MessageCircle;
   const [failedSrc, setFailedSrc] = useState<string | null>(null);
   if (n.avatarUrl && failedSrc !== n.avatarUrl) return <img className="rpn-mark rpn-mark-img" src={n.avatarUrl} alt="" onError={() => setFailedSrc(n.avatarUrl ?? null)} />;
-  if (n.type === "donation" || n.type === "campaign_milestone") return <span className="rpn-mark rpn-mark-icon" aria-hidden><Icon size={16} /></span>;
+  if (n.type === "donation" || n.type === "campaign_milestone" || !typeIcon[n.type]) return <span className="rpn-mark rpn-mark-icon" aria-hidden><Icon size={16} /></span>;
   return <span className={`rpn-mark ${n.type === "like" || n.type === "comment" ? "rpn-mark-ink" : ""}`} aria-hidden>{initials(n.name)}</span>;
 }
 

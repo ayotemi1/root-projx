@@ -10,6 +10,8 @@ export type SupporterPostRecordAuthor = {
   name: string;
   initials: string;
   /** @nullable */
+  avatarUrl?: string | null;
+  /** @nullable */
   publicId: string | null;
   isOwner: boolean;
   following: boolean;

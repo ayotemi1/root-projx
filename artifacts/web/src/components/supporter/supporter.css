@@ -64,6 +64,7 @@
 .rps-nav-item[aria-current="page"] { border-color: var(--rp-ink); background: var(--rp-paper); font-weight: 700; }
 .rps-sub { display: flex; align-items: center; gap: 10px; min-height: 36px; font-size: 14px; background: none; border: 0; padding: 0 4px; color: var(--rp-ink); cursor: pointer; text-align: left; }
 .rps-sub:hover { text-decoration: underline; }
+.rps-sub[aria-current="page"] { border: 1.5px solid var(--rp-ink); background: #fff; font-weight: 700; padding: 0 10px; }
 .rps-error { color: var(--rp-red); font-size: 13px; padding: 4px; }
 .rps-guest { display: grid; gap: 8px; }
 .rps-avatar { width: 36px; height: 36px; flex-shrink: 0; border-radius: 999px; background: var(--rp-ink); color: var(--rp-yellow);

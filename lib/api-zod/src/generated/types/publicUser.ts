@@ -14,5 +14,7 @@ export interface PublicUser {
   phone?: string | null;
   accountType: PublicUserAccountType;
   avatarInitials?: string | null;
+  /** @nullable */
+  avatarUrl?: string | null;
   createdAt: string;
 }
