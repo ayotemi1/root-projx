@@ -10,3 +10,13 @@
 .rp-inline-video:fullscreen { height: 100%; }
 .rp-inline-video :focus-visible { outline: 2px solid #f3bf2c; outline-offset: -3px; }
 @media (max-width: 380px) { .rp-inline-video-controls span { display: none; } }
+
+/* Feed mode: quiet chrome, no seek bar or timer */
+.rp-inline-video--feed .rp-inline-video-media { cursor: pointer; }
+.rp-feed-sound { position: absolute; right: 10px; bottom: 10px; z-index: 3; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: rgba(23,16,15,.62); color: #F4EFE6; backdrop-filter: blur(4px); transition: background-color .15s ease; }
+.rp-feed-sound:hover { background: rgba(23,16,15,.82); }
+.rp-feed-flash { position: absolute; left: 50%; top: 50%; z-index: 3; display: grid; place-items: center; width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%; background: rgba(23,16,15,.6); color: #F4EFE6; pointer-events: none; animation: rp-feed-flash .65s ease both; }
+@keyframes rp-feed-flash { 0% { opacity: 0; transform: scale(.8); } 20% { opacity: 1; transform: scale(1); } 70% { opacity: 1; } 100% { opacity: 0; transform: scale(1.05); } }
+.rp-feed-fallback { position: absolute; left: 10px; bottom: 10px; z-index: 3; display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border-radius: 17px; background: #F3BF2C; color: #17100F; font-weight: 700; font-size: 13px; border: 1px solid #17100F; }
+.rp-inline-video--feed :focus-visible { outline: 2px solid #F3BF2C; outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .rp-feed-flash { animation: none; } }

@@ -21,6 +21,7 @@ async function fixture() {
           if(!id)return res.sendStatus(401);req.user={userId:id,accountType:id==="org"?"organisation":"supporter"};next();}
           export function requireApprovedOrganisation(req,res,next){if(state.docs.get("users/"+req.user.userId)?.approvalStatus!=="approved")return res.sendStatus(403);next();}` :
         `import{state}from"fixture:state";export const getServerToken=async()=>"server";
+        export const fsPatch=async()=>{};export const fsDelete=async()=>{};export const fsCreateIfAbsent=async()=>true;
         export const fsGet=async(c,id,token)=>{if(state.fail)throw Error("PRIVATE_INTERNAL_SECRET");state.calls.push({c,id,token});return state.docs.get(c+"/"+id)||null};
         export const fsQuery=async(c,filters,token)=>{if(state.fail)throw Error("PRIVATE_INTERNAL_SECRET");state.calls.push({c,filters,token});
           return [...state.docs.entries()].filter(([k,v])=>k.startsWith(c+"/")&&(state.mix&&c==="donations"||filters.every(f=>f.op==="ARRAY_CONTAINS"?Array.isArray(v[f.field])&&v[f.field].includes(f.value):v[f.field]===f.value))).map(([k,v])=>({...v,_id:k.slice(c.length+1)}));};

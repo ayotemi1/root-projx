@@ -90,6 +90,13 @@ export interface ContentItemSummary {
   link: ExternalLink | null;
 }
 
+/** Keep the uploader's slide order; grouping videos and photos changes a carousel. */
+export function orderedPostMedia(post: { mediaUrls?: string[] | null; imageUrl?: string | null }) {
+  const urls = [...new Set(post.mediaUrls ?? [])];
+  if (post.imageUrl && !urls.includes(post.imageUrl)) urls.unshift(post.imageUrl);
+  return urls.map(url => ({ url, type: mediaKind(url) }));
+}
+
 export function summarise(post: { mediaUrls?: string[] | null; imageUrl?: string | null; externalUrl?: string | null }): ContentItemSummary {
   const urls = [...(post.mediaUrls ?? [])];
   if (post.imageUrl && !urls.includes(post.imageUrl)) urls.unshift(post.imageUrl);

@@ -7,10 +7,10 @@ import { authInit } from "@/components/inbox/use-messaging";
 export const GENERIC_ERROR = "Something went wrong, please try again";
 export const bookmarksKey = (token: string | null) => ["bookmarks", token] as const;
 
-/** Account-backed bookmarks. Only signed-in supporter accounts can save. */
+/** Account-backed bookmarks, private to the signed-in supporter or organisation. */
 export function useBookmarks() {
   const { token, user, isAuthenticated } = useAuth();
-  const enabled = isAuthenticated && !!token && user?.accountType === "supporter";
+  const enabled = isAuthenticated && !!token && ["supporter", "organisation"].includes(user?.accountType ?? "");
   const q = useQuery<BookmarkView[]>({
     queryKey: bookmarksKey(token),
     queryFn: ({ signal }) => listBookmarks(authInit(token, signal)),

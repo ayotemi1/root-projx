@@ -111,6 +111,7 @@ function Card({ item, onOpen, feed = false }: { item: FeedUpdate; onOpen: (trigg
   const count = s.images.length + s.videos.length;
   return (
     <div
+      onClick={e => { if (!(e.target as HTMLElement).closest("button,a,input")) onOpen(e.currentTarget); }}
       className={`group text-left bg-white border border-border overflow-hidden flex flex-col hover:shadow-md transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${feed ? "rounded-xl" : "rounded-sm"}`}
       style={{ ["--tw-ring-color" as string]: RED }}
       data-testid={`card-content-${item._id}`}
@@ -216,7 +217,6 @@ export function ContentGallery({ items, isLoading, isError, onRetry, feed = fals
         <div className={feed ? "grid grid-cols-1 sm:grid-cols-2 gap-4" : "grid grid-cols-3 gap-1"} data-testid="posts-grid">
           {visible.map((u, i) => <Card key={u._id} item={u} feed={feed} onOpen={trigger => {
             // Profile grids open the shared viewer across everything in this filter, videos included.
-            if (feed) { setOpen(u); return; }
             viewer.open({ refs: visible.map(v => ({ kind: "update" as const, id: v._id })), index: i, label: u.orgName || undefined, trigger });
           }} />)}
         </div>

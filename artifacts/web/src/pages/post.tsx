@@ -6,9 +6,10 @@ import NotFound from "@/pages/not-found";
 /** Direct /posts/:id?kind=update|post link (shared or reloaded): the viewer over a quiet page. */
 export default function PostPage() {
   const params = useParams<{ id: string }>();
-  const kind = new URLSearchParams(useSearch()).get("kind");
+  const query = new URLSearchParams(useSearch());
+  const kind = query.get("kind");
   const [, navigate] = useLocation();
-  const [comments, setComments] = useState(false);
+  const [comments, setComments] = useState(query.get("comments") === "1");
   if (!params.id || (kind !== "update" && kind !== "post")) return <NotFound />;
   const close = () => { if (window.history.length > 1 && document.referrer.startsWith(window.location.origin)) window.history.back(); else navigate("/feed"); };
   return (

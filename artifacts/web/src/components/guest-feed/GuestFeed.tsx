@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation, useSearch } from "wouter";
-import { BadgeCheck, Bookmark, Heart, Images, MessageCircle, Play, Repeat2, Send } from "lucide-react";
+import { BadgeCheck, Bookmark, Repeat2 } from "lucide-react";
 import * as api from "@/lib/api";
 import { DonationAmountDialog } from "@/components/donation-amount-dialog";
 import type { FeedUpdate, Org } from "@/lib/api";
-import { ContentDialog } from "@/components/org-content/content-gallery";
-import { summarise } from "@/lib/content-media";
+import { usePostViewer } from "@/components/post-viewer/PostViewerProvider";
+import { orderedPostMedia, summarise } from "@/lib/content-media";
 import { GuestJoinPrompt } from "./GuestJoinPrompt";
 import { VisitorHeading } from "@/components/visitor/VisitorHeading";
-import { InlineVideoPlayer } from "@/components/inline-video-player";
+import { PostMediaCarousel } from "@/components/post-media/PostMediaCarousel";
+import { PostActivityRow } from "@/components/post-viewer/PostActivityRow";
 
 function ago(iso: string) {
   const s = Math.max(0, (Date.now() - Date.parse(iso)) / 1000);
@@ -48,7 +49,6 @@ function GuestPost({ item, org, onOpen, gate }: { item: FeedUpdate; org?: Org; o
   const [donateOpen, setDonateOpen] = useState(false);
   const s = summarise(item);
   const cover = s.images[0];
-  const hasVideo = s.videos.length > 0 || !!s.link?.embedUrl;
   const count = s.images.length + s.videos.length;
   const name = item.orgName || org?.name || "Organisation";
   const kind = item.type === "campaign" ? "Campaign update" : item.type === "milestone" ? "Milestone" : "Organisation update";
@@ -66,25 +66,13 @@ function GuestPost({ item, org, onOpen, gate }: { item: FeedUpdate; org?: Org; o
           <p className="rp-label !text-[10px] text-[#17100F]/60">{ago(item.createdAt)} · {kind}</p>
         </div>
       </header>
-      {(cover || s.videos[0]) && (
-        s.videos[0] ? <div className="relative w-full aspect-square border border-[#17100F] bg-[#17100F]">
-          <InlineVideoPlayer src={s.videos[0]} poster={cover} label={`${name} video`} />
-          {count > 1 && <span className="absolute top-3 right-3 rp-label !text-[11px] bg-[#17100F]/80 text-white px-2 py-1 pointer-events-none">{count} items</span>}
-        </div> : <button type="button" onClick={onOpen} className="group relative block w-full aspect-square overflow-hidden border border-[#17100F] bg-[#17100F] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#F3BF2C]" aria-label={`Open ${item.title || `${name} post`}`} data-testid={`button-open-post-${item._id}`}>
-          {cover ? <img src={cover} alt="" loading="lazy" className="w-full h-full object-cover" />
-            : <video src={`${s.videos[0]}#t=0.1`} muted playsInline preload="metadata" className="w-full h-full object-cover pointer-events-none" aria-hidden />}
-          {count > 1 && <span className="absolute top-3 right-3 rp-label !text-[11px] bg-[#17100F]/80 text-white px-2 py-1 inline-flex items-center gap-1"><Images className="w-3 h-3" />{count}</span>}
-          {hasVideo && <span className="absolute inset-0 flex items-center justify-center"><span className="w-12 h-12 rounded-full bg-[#F3BF2C] border border-[#17100F] flex items-center justify-center"><Play className="w-4 h-4 fill-[#17100F] text-[#17100F] ml-0.5" /></span></span>}
-        </button>
-      )}
+      {count > 0 && <PostMediaCarousel items={orderedPostMedia(item)} label={`${name} post`} onOpen={onOpen} />}
       {item.title && <h2 className="rp-display text-[24px] sm:text-[28px] mt-4"><button type="button" onClick={onOpen} className="text-left uppercase hover:underline">{item.title}</button></h2>}
-      {item.content && <p className="mt-2 text-[15px] leading-relaxed text-[#17100F]/85 line-clamp-3">{item.content}</p>}
+      {item.content && <button type="button" onClick={onOpen} className="block text-left mt-2 text-[15px] leading-relaxed text-[#17100F]/85 line-clamp-3">{item.content}</button>}
       {!cover && !s.videos[0] && <button type="button" onClick={onOpen} className="mt-1 min-h-11 text-[14px] font-bold underline underline-offset-2" data-testid={`button-more-${item._id}`}>Read more</button>}
       <footer className="mt-2 flex items-center gap-2 -ml-2.5">
-        <button type="button" className={btn} onClick={() => gate("like posts")} aria-label="Like" data-testid={`button-like-${item._id}`}><Heart className="w-[18px] h-[18px]" />{item.likes > 0 && <span>{item.likes}</span>}</button>
-        <button type="button" className={btn} onClick={() => gate("comment on posts")} aria-label="Comment" data-testid={`button-comment-${item._id}`}><MessageCircle className="w-[18px] h-[18px]" /></button>
+        <PostActivityRow postRef={{ kind: "update", id: item._id }} label={name} />
         <button type="button" className={btn} onClick={() => gate("repost updates")} aria-label="Repost" data-testid={`button-repost-${item._id}`}><Repeat2 className="w-[18px] h-[18px]" /></button>
-        <button type="button" className={btn} onClick={() => gate("send posts")} aria-label="Send" data-testid={`button-send-${item._id}`}><Send className="w-[18px] h-[18px]" /></button>
         <button type="button" className={`${btn} ml-auto`} onClick={() => gate("save posts")} aria-label="Save" data-testid={`button-save-${item._id}`}><Bookmark className="w-[18px] h-[18px]" /></button>
         <button type="button" onClick={() => setDonateOpen(true)} className="min-h-11 inline-flex items-center px-2 text-[14px]" data-testid={`link-donate-${item._id}`}><span className="rp-link-u">Donate</span></button>
       </footer>
@@ -93,6 +81,7 @@ function GuestPost({ item, org, onOpen, gate }: { item: FeedUpdate; org?: Org; o
 }
 
 export function GuestFeed() {
+  const viewer = usePostViewer();
   const [open, setOpen] = useState<FeedUpdate | null>(null);
   const [gateAction, setGateAction] = useState<string | null>(null);
   const [, navigate] = useLocation();
@@ -104,6 +93,13 @@ export function GuestFeed() {
     .sort((a, b) => (Date.parse(b.createdAt) || 0) - (Date.parse(a.createdAt) || 0)), [feedQ.data]);
 
   const search = useSearch();
+  useEffect(() => {
+    if (!open) return;
+    const refs = posts.map(p => ({ kind: "update" as const, id: p._id }));
+    const index = refs.findIndex(p => p.id === open._id);
+    viewer.open({ refs: index >= 0 ? refs : [{ kind: "update", id: open._id }], index: Math.max(0, index), label: open.orgName || undefined });
+    setOpen(null);
+  }, [open, posts, viewer]);
   const linked = new URLSearchParams(search).get("post");
   const handled = useRef<string | null>(null);
   useEffect(() => {
@@ -112,7 +108,6 @@ export function GuestFeed() {
     const f = (feedQ.data ?? []).find(u => u._id === linked);
     if (f) setOpen(f);
   }, [linked, feedQ.isLoading, feedQ.data]);
-  const close = () => { setOpen(null); if (linked) navigate("/feed", { replace: true }); };
 
   return (
     <div className="max-w-[1240px] mx-auto px-5 md:px-8 py-12 md:py-16 grid lg:grid-cols-[minmax(0,680px)_340px] justify-between gap-x-12" data-testid="page-guest-feed">
@@ -158,7 +153,6 @@ export function GuestFeed() {
           </section>
         </div>
       </aside>
-      <ContentDialog item={open} onClose={close} />
       <GuestJoinPrompt action={gateAction} onClose={() => setGateAction(null)} />
     </div>
   );

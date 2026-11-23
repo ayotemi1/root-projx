@@ -4,18 +4,19 @@ import { notificationId, notificationMediaUrl } from "./supporter-notifications.
 import { accountPreferences } from "./supporter-preferences.js";
 import { activeManagedOrganisation } from "./organisation-team-access.js";
 import { personalMessageEvents } from "./supporter-notification-events.js";
+import { interactionNotifications } from "./post-interaction-notifications.js";
 
 type Doc = Record<string, unknown>;
 const text = (v: unknown) => typeof v === "string" ? v.trim() : "";
 const date = (v: unknown) => typeof v === "string" && Number.isFinite(Date.parse(v)) ? new Date(v).toISOString() : null;
 /** Real recipient-owned events only. No organisation subcollection rules are
  * required, no fabricated actors/dates, and no donation email address matching. */
-export async function loadOrganisationNotifications(uid: string) {
+export async function loadOrganisationNotifications(uid: string, options: { socialOnly?: boolean } = {}) {
   const token = await getServerToken();
   const [org, user, donations, follows] = await Promise.all([
     activeManagedOrganisation(uid, token), fsGet("users", uid, token),
-    fsQuery("donations", [{ field: "orgId", op: "EQUAL", value: uid }], token),
-    fsQuery("follows", [{ field: "orgId", op: "EQUAL", value: uid }], token),
+    options.socialOnly ? [] : fsQuery("donations", [{ field: "orgId", op: "EQUAL", value: uid }], token),
+    options.socialOnly ? [] : fsQuery("follows", [{ field: "orgId", op: "EQUAL", value: uid }], token),
   ]);
   if (!user) throw new Error("Organisation unavailable");
   const prefs = accountPreferences(user).notifications;
@@ -51,13 +52,14 @@ export async function loadOrganisationNotifications(uid: string) {
       href: isPublic && /^sp_[a-f0-9]{32}$/.test(publicId) ? `/supporters/${publicId}` : "/dashboard?tab=overview",
       avatarUrl: isPublic ? notificationMediaUrl(follower?.avatarUrl) : null, thumbnailUrl: null });
   }
-  if (prefs.messages.inApp) for (const event of await personalMessageEvents(uid, token, "organisation")) {
+  if (!options.socialOnly && prefs.messages.inApp) for (const event of await personalMessageEvents(uid, token, "organisation")) {
     const id = notificationId("organisation_message", event.messageId);
     items.push({ id, type: "message", name: event.name, message: `${event.name} sent you a message.`,
       createdAt: event.createdAt, read: event.read || reads.has(id),
       href: `/inbox?orgId=${encodeURIComponent(uid)}&conversation=${encodeURIComponent(event.conversationId)}`,
       avatarUrl: notificationMediaUrl(event.avatarUrl), thumbnailUrl: null });
   }
+  if (prefs.comments.inApp) items.push(...await interactionNotifications(uid, token, reads));
   const recent = [...new Map(items.map(item => [item.id, item])).values()]
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id)).slice(0, 200);
   return ListSupporterNotificationsResponse.parse({ items: recent, unreadCount: recent.filter(item => !item.read).length });

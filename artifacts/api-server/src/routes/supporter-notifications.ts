@@ -18,7 +18,7 @@ router.use("/supporter-notifications", requireAuth, (req, res, next) => {
 
 router.get("/supporter-notifications", async (req, res): Promise<void> => {
   try {
-    res.json(req.user!.accountType === "organisation" ? await loadOrganisationNotifications(req.user!.userId)
+    res.json(req.user!.accountType === "organisation" ? await loadOrganisationNotifications(req.user!.userId, { socialOnly: req.user!.adminDelegated })
       : await loadSupporterNotifications(req.user!.userId, req.headers.authorization!.slice(7)));
   } catch {
     req.log.error("Could not load private supporter notifications");
@@ -33,7 +33,7 @@ router.post("/supporter-notifications/:id/read", async (req, res): Promise<void>
   }
   try {
     const uid = req.user!.userId;
-    const inbox = req.user!.accountType === "organisation" ? await loadOrganisationNotifications(uid)
+    const inbox = req.user!.accountType === "organisation" ? await loadOrganisationNotifications(uid, { socialOnly: req.user!.adminDelegated })
       : await loadSupporterNotifications(uid, req.headers.authorization!.slice(7));
     const item = inbox.items.find(row => row.id === params.data.id);
     if (!item) {

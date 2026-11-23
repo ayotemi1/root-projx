@@ -171,6 +171,7 @@ export default function SupporterLayout({ children }: { children: ReactNode }) {
   const editActive = dashboardTab(location, search) === "build";
   const accountBlock = (desktop = false) => isAuthenticated && isOrg ? (
     <>
+      <Link href="/saved" className="rps-sub" aria-current={location === "/saved" ? "page" : undefined} onClick={() => setMenuOpen(false)} data-testid="link-organisation-saved"><Bookmark size={16} aria-hidden /> Saved</Link>
       <Link href={organisationEditProfileHref} className="rps-sub" aria-current={editActive ? "page" : undefined} onClick={() => setMenuOpen(false)} data-tour-id={desktop ? "dashboard-tab-build-profile" : undefined} data-testid="link-edit-profile"><Pencil size={16} aria-hidden /> Edit profile</Link>
       <Link href="/settings" className="rps-sub" aria-current={/^\/settings(\/|$|[?#])/.test(location) ? "page" : undefined} onClick={() => setMenuOpen(false)} data-testid="link-settings"><Settings size={16} aria-hidden /> Settings</Link>
       <button type="button" className="rps-sub" onClick={signOut} disabled={pending} data-testid="button-sign-out">

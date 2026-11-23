@@ -1,8 +1,8 @@
 import { SupporterAvatar } from "./SupporterAvatar";
-import { useRef, useState, type TouchEvent } from "react";
+import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, ChevronLeft, ChevronRight, Images, Lock, Plus, Trash2, Play } from "lucide-react";
+import { Check, Lock, Plus, Trash2, Play } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import * as api from "@/lib/api";
@@ -14,6 +14,7 @@ import { BookmarkButton } from "@/components/bookmarks/BookmarkButton";
 import { PostActivityRow } from "@/components/post-viewer/PostActivityRow";
 import { DonationAmountDialog } from "@/components/donation-amount-dialog";
 import { CampaignSymbol } from "@/components/campaign-symbol";
+import { PostMediaCarousel } from "@/components/post-media/PostMediaCarousel";
 import "./supporter-post.css";
 
 const dateLabel = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
@@ -34,19 +35,10 @@ export function useSupporterFollow() {
   });
 }
 
-function Carousel({ post, onOpen }: { post: SupporterPostRecord; onOpen?: (trigger: HTMLElement) => void }) {
+function Carousel({ post, onOpen, inlineMedia }: { post: SupporterPostRecord; onOpen?: (trigger: HTMLElement) => void; inlineMedia?: boolean }) {
   const media = [...post.media].sort((a, b) => a.order - b.order);
-  const [i, setI] = useState(0);
-  const tx = useRef<number | null>(null);
   if (!media.length) return null;
-  const go = (n: number) => setI(Math.max(0, Math.min(media.length - 1, n)));
-  const onStart = (e: TouchEvent) => { tx.current = e.touches[0]?.clientX ?? null; };
-  const onEnd = (e: TouchEvent) => {
-    if (tx.current == null) return;
-    const dx = (e.changedTouches[0]?.clientX ?? tx.current) - tx.current; tx.current = null;
-    if (dx < -40) go(i + 1); else if (dx > 40) go(i - 1);
-  };
-  if (onOpen) {
+  if (onOpen && !inlineMedia) {
     const lead = media[0]!;
     return (
       <button type="button" onClick={e => onOpen(e.currentTarget)} className="spc-media block w-full text-left" aria-label={`Open ${post.type} post by ${post.author.name}`} data-testid={`button-profile-media-${post.id}`}>
@@ -59,28 +51,15 @@ function Carousel({ post, onOpen }: { post: SupporterPostRecord; onOpen?: (trigg
     );
   }
   return (
-    <div className="spc-media" onTouchStart={onStart} onTouchEnd={onEnd} aria-roledescription="carousel" data-testid={`carousel-sp-${post.id}`}>
-      <div className="spc-track" style={{ transform: `translateX(-${i * 100}%)` }}>
-        {media.map((m, idx) => (
-          <div className="spc-slide" key={m.id} aria-hidden={idx !== i} aria-label={`${idx + 1} of ${media.length}`}>
-            <EditedMedia src={m.url} kind={m.type} poster={m.video_thumbnail_url} controls={m.type === "video"} natural={m.width && m.height ? m.width / m.height : null}
-              edit={normaliseEdit({ crop: m.crop, filter: m.filter, adjustments: m.adjustments })} alt={post.caption ? post.caption.slice(0, 120) : `Photo by ${post.author.name}`} />
-          </div>
-        ))}
-      </div>
-      {media.length > 1 && (
-        <>
-          {i > 0 && <button type="button" className="spc-nav is-prev" onClick={() => go(i - 1)} aria-label="Previous" data-testid={`button-sp-prev-${post.id}`}><ChevronLeft size={18} aria-hidden /></button>}
-          {i < media.length - 1 && <button type="button" className="spc-nav is-next" onClick={() => go(i + 1)} aria-label="Next" data-testid={`button-sp-next-${post.id}`}><ChevronRight size={18} aria-hidden /></button>}
-          <span className="absolute top-3 right-3 z-[3] rp-label !text-[12px] bg-[#17100F]/80 text-white px-2 py-1 inline-flex items-center gap-1"><Images className="w-3 h-3" />{i + 1}/{media.length}</span>
-          <div className="spc-dots" aria-hidden>{media.map((m, idx) => <span key={m.id} className={idx === i ? "on" : ""} />)}</div>
-        </>
-      )}
-    </div>
+    <PostMediaCarousel items={media.map(m => ({
+      id: m.id, url: m.url, type: m.type === "video" ? "video" : "image", thumbnailUrl: m.video_thumbnail_url,
+      edit: normaliseEdit({ crop: m.crop, filter: m.filter, adjustments: m.adjustments }),
+      natural: m.width && m.height ? m.width / m.height : null,
+    }))} label={post.caption?.slice(0, 120) || `Post by ${post.author.name}`} onOpen={onOpen} />
   );
 }
 
-export function SupporterPostCard({ post, onOpen }: { post: SupporterPostRecord; onOpen?: (trigger: HTMLElement) => void }) {
+export function SupporterPostCard({ post, onOpen, inlineMedia = false }: { post: SupporterPostRecord; onOpen?: (trigger: HTMLElement) => void; inlineMedia?: boolean }) {
   const { isAuthenticated, user, token } = useAuth();
   const [, navigate] = useLocation();
   const qc = useQueryClient();
@@ -142,7 +121,7 @@ export function SupporterPostCard({ post, onOpen }: { post: SupporterPostRecord;
         ))}
       </header>
 
-      <Carousel post={post} onOpen={onOpen} />
+      <Carousel post={post} onOpen={onOpen} inlineMedia={inlineMedia} />
 
       {post.caption && (onOpen
         ? <button type="button" onClick={e => onOpen(e.currentTarget)} className={`block w-full text-left ${post.media.length ? "mt-4 text-[18px]" : "mt-1 border-l-4 border-[#F3BF2C] pl-4 text-[20px] sm:text-[22px] font-medium"} leading-relaxed text-[#17100F]/85 whitespace-pre-wrap break-words`} data-testid={`text-sp-caption-${post.id}`}>{post.caption}</button>

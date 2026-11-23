@@ -78,7 +78,7 @@ export async function saveReference(uid: string, input: BookmarkInput, token: st
   if (!view.available) throw new PostError(404);
   let saved = ref;
   await fsMutateSupporterShowcase(uid, token, user => {
-    if (user.accountType !== "supporter") throw new PostError(403);
+    if (!["supporter", "organisation"].includes(String(user.accountType))) throw new PostError(403);
     const list = bookmarkReferences(user);
     const old = list.find(b => b.id === ref.id);
     if (old) saved = old;

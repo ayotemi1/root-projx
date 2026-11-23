@@ -14,6 +14,7 @@ export interface AuthPayload {
   approvalStatus?: OrganisationApprovalStatus;
   actingUserId?: string;
   actingAccountType?: string;
+  adminDelegated?: boolean;
 }
 
 declare global {
@@ -53,7 +54,7 @@ async function resolveAdminOrganisation(req: Request, token: string): Promise<Au
   // Substitute the server credential only after delegation and scope validation.
   req.headers.authorization = `Bearer ${serverToken}`;
   req.log?.info({ organisationId: orgId, method: req.method, path: req.path }, "Admin organisation access");
-  return { userId: orgId, email: "", accountType: "organisation", approvalStatus: "approved" };
+  return { userId: orgId, email: "", accountType: "organisation", approvalStatus: "approved", adminDelegated: true };
 }
 
 async function resolveTeamOrganisation(req: Request, token: string): Promise<AuthPayload | null> {

@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useSearch } from "wouter";
-import { ArrowRight, Play, Share2, Images, Film, Check, Plus } from "lucide-react";
+import { ArrowRight, Play, Images, Film, Check, Plus } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { GuestFeed } from "@/components/guest-feed/GuestFeed";
 import * as api from "@/lib/api";
 import type { FeedUpdate } from "@/lib/api";
-import { ContentDialog } from "@/components/org-content/content-gallery";
-import { summarise } from "@/lib/content-media";
+import { usePostViewer } from "@/components/post-viewer/PostViewerProvider";
+import { orderedPostMedia, summarise } from "@/lib/content-media";
 import { useToast } from "@/hooks/use-toast";
 import { userErrorMessage } from "@/lib/error-feedback";
 import { SupporterHomeIntro } from "@/components/supporter/SupporterHomeIntro";
@@ -17,7 +17,7 @@ import { BookmarkButton } from "@/components/bookmarks/BookmarkButton";
 import { PostActivityRow } from "@/components/post-viewer/PostActivityRow";
 import { listPosts, spKey, type SupporterPostRecord } from "@/lib/supporter-publishing";
 import { DonationAmountDialog } from "@/components/donation-amount-dialog";
-import { InlineVideoPlayer } from "@/components/inline-video-player";
+import { PostMediaCarousel } from "@/components/post-media/PostMediaCarousel";
 
 type FeedEntry = { kind: "org"; at: number; item: FeedUpdate } | { kind: "sp"; at: number; post: SupporterPostRecord };
 
@@ -28,7 +28,6 @@ function dateLabel(iso: string) {
 function PostCard({ item, logo, onOpen, following, onFollow, followBusy }: {
   item: FeedUpdate; logo: string | null; onOpen: () => void; following: boolean | null; onFollow: () => void; followBusy: boolean;
 }) {
-  const { toast } = useToast();
   const [donateOpen, setDonateOpen] = useState(false);
   const s = summarise(item);
   const cover = s.images[0];
@@ -36,18 +35,6 @@ function PostCard({ item, logo, onOpen, following, onFollow, followBusy }: {
   const count = s.images.length + s.videos.length;
   const kind = hasVideo ? "Video" : cover ? "Photo" : s.link ? s.link.label : "Update";
   const orgName = item.orgName || "Organisation";
-
-  async function share() {
-    const url = `${window.location.origin}/organisations/${item.orgId}`;
-    const title = item.title || `${orgName} on Root ProjX`;
-    try {
-      if (navigator.share) { await navigator.share({ title, url }); return; }
-      await navigator.clipboard.writeText(url);
-      toast({ title: "Link copied", description: "The organisation link is on your clipboard." });
-    } catch (err) {
-      if ((err as Error)?.name !== "AbortError") toast({ title: "Couldn't share", description: "Copy the address from your browser instead.", variant: "destructive" });
-    }
-  }
 
   return (
     <article className="rp-rise" data-testid={`card-content-${item._id}`}>
@@ -76,11 +63,8 @@ function PostCard({ item, logo, onOpen, following, onFollow, followBusy }: {
         )}
       </header>
 
-      {s.videos[0] ? (
-        <div className="relative w-full aspect-[4/3] border border-[#17100F] bg-[#17100F]">
-          <InlineVideoPlayer src={s.videos[0]} poster={cover} label={`${orgName} video`} />
-          {count > 1 && <span className="absolute top-3 right-3 rp-label !text-[12px] bg-[#17100F]/80 text-white px-2 py-1 inline-flex items-center gap-1 pointer-events-none"><Images className="w-3 h-3" />{count}</span>}
-        </div>
+      {count > 0 ? (
+        <PostMediaCarousel items={orderedPostMedia(item)} label={`${orgName} post`} onOpen={onOpen} />
       ) : <button
         type="button"
         onClick={onOpen}
@@ -112,11 +96,11 @@ function PostCard({ item, logo, onOpen, following, onFollow, followBusy }: {
 
       {(item.title || item.content) && (
         <div className="mt-4">
-          {item.title && <h2 className="rp-display text-[30px] sm:text-[40px] text-[#17100F]">{item.title}</h2>}
+          {item.title && <h2 className="rp-display text-[30px] sm:text-[40px] text-[#17100F]"><button type="button" className="text-left" onClick={onOpen}>{item.title}</button></h2>}
           {item.content && (
-            <p className="mt-2 text-[18px] leading-relaxed text-[#17100F]/85 line-clamp-3">
+            <button type="button" onClick={onOpen} className="block text-left mt-2 text-[18px] leading-relaxed text-[#17100F]/85 line-clamp-3">
               {item.content}{" "}
-            </p>
+            </button>
           )}
           <button type="button" onClick={onOpen} className="min-h-11 text-[16px] font-bold underline underline-offset-2 mt-1" data-testid={`button-more-${item._id}`}>More</button>
         </div>
@@ -124,14 +108,11 @@ function PostCard({ item, logo, onOpen, following, onFollow, followBusy }: {
 
       <footer className="mt-4 flex items-center justify-between gap-3">
         <PostActivityRow postRef={{ kind: "update", id: item._id }} label={item.orgName || undefined} className="-ml-2 -mr-3" />
-        <button type="button" onClick={share} className="p-3.5 text-[#17100F]/80 hover:text-[#17100F]" aria-label="Share" data-testid={`button-share-${item._id}`}>
-          <Share2 className="w-4 h-4" />
-        </button>
-        <BookmarkButton kind="update" targetId={item._id} className="mr-auto -ml-2" />
         <button type="button" onClick={() => setDonateOpen(true)} className="min-h-11 text-[16px] inline-flex items-center gap-1.5 group" data-testid={`link-donate-${item._id}`}>
           <span className="rp-link-u">Donate to {orgName}</span>
           <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
         </button>
+        <BookmarkButton kind="update" targetId={item._id} className="ml-auto" />
       </footer>
     </article>
   );
@@ -157,6 +138,7 @@ export default function FeedPage() {
 }
 
 function SignedInFeed() {
+  const viewer = usePostViewer();
   const { isAuthenticated, token, user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -214,6 +196,13 @@ function SignedInFeed() {
   const loading = (active.isLoading && !spPosts.length) || (spQ.isLoading && !(active.data ?? []).length);
   const failed = active.isError && (spQ.isError || !spPosts.length);
   const forYou = isAuthenticated && user?.accountType === "supporter";
+  useEffect(() => {
+    if (!open) return;
+    const refs = entries.map(p => p.kind === "sp" ? { kind: "post" as const, id: p.post.id } : { kind: "update" as const, id: p.item._id });
+    const index = refs.findIndex(p => p.kind === "update" && p.id === open._id);
+    viewer.open({ refs: index >= 0 ? refs : [{ kind: "update", id: open._id }], index: Math.max(0, index), label: open.orgName || undefined });
+    setOpen(null);
+  }, [open, entries, viewer]);
 
   // Notification deep-link: /feed?post=<updateId> opens that published update once, after load.
   const search = useSearch();
@@ -229,10 +218,6 @@ function SignedInFeed() {
     const found = (publicQ.data ?? []).find(u => u._id === linkedPost);
     if (found) { setOpen(found); setPostUnavailable(false); } else setPostUnavailable(true);
   }, [linkedPost, mode, publicQ.isLoading, publicQ.data]);
-  const closeDialog = () => {
-    setOpen(null);
-    if (linkedPost) navigate("/feed", { replace: true });
-  };
 
   const followState = (orgId: string): boolean | null => {
     if (!isAuthenticated) return false;
@@ -306,7 +291,8 @@ function SignedInFeed() {
           </div>
         ) : (
           <div className="space-y-20" data-testid="posts-grid">
-            {entries.map((e) => e.kind === "sp" ? <SupporterPostCard key={`sp-${e.post.id}`} post={e.post} /> : ((u) => (
+            {entries.map((e, i) => e.kind === "sp" ? <SupporterPostCard key={`sp-${e.post.id}`} post={e.post} inlineMedia
+              onOpen={trigger => viewer.open({ refs: entries.map(p => p.kind === "sp" ? { kind: "post", id: p.post.id } : { kind: "update", id: p.item._id }), index: i, trigger })} /> : ((u) => (
               <PostCard
                 key={u._id}
                 item={u}
@@ -328,7 +314,6 @@ function SignedInFeed() {
           <button type="button" className="rps-chip mt-3" onClick={() => { setPostUnavailable(false); navigate("/feed", { replace: true }); }} data-testid="button-dismiss-linked-post">Dismiss</button>
         </div>
       )}
-      <ContentDialog item={open} onClose={closeDialog} />
     </div>
   );
 }

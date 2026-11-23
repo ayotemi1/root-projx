@@ -16,7 +16,7 @@ async function harness() {
       b.onResolve({ filter: /supporter-posts\.js$/ }, () => ({ path: "posts", namespace: "fixture" }));
       b.onLoad({ filter: /.*/, namespace: "fixture" }, a => ({
         resolveDir: new URL(".", import.meta.url).pathname,
-        contents: a.path === "auth" ? `export function requireAuth(req,res,next){const id=req.headers.authorization?.slice(7);if(!["owner","other","org"].includes(id)){res.status(401).json({error:"Sign in"});return}req.user={userId:id,accountType:id==="org"?"organisation":"supporter"};next()}` :
+        contents: a.path === "auth" ? `export function requireAuth(req,res,next){const id=req.headers.authorization?.slice(7);if(!["owner","other","org"].includes(id)){res.status(401).json({error:"Sign in"});return}req.user={userId:id,accountType:id==="org"?"organisation":"supporter"};next()}export function requireApprovedOrganisation(req,res,next){next();}` :
         a.path === "campaign" ? `export function campaignSharePath(o,c){return{sharePath:"/campaigns/test-org/test-campaign"}}` :
         a.path === "posts" ? `export {canSeePost,postDto,POSTS,PostError,POST_ERROR} from ${JSON.stringify(new URL("./supporter-posts.ts", import.meta.url).pathname)};export function setMediaSession(){}` :
         `export const state={docs:new Map(),fail:false};export const getServerToken=async()=>"server";

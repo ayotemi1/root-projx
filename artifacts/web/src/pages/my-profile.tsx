@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Redirect } from "wouter";
+import { Redirect, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import AccountPage from "@/pages/account";
@@ -7,6 +7,7 @@ import { fetchMyShowcase, myShowcaseKey } from "@/lib/supporter-showcase";
 import { SupporterShowcaseView } from "@/components/supporter/profile/SupporterShowcaseView";
 import { HiddenProfile, ShowcaseError, ShowcaseSkeleton } from "@/components/supporter/profile/ShowcaseStates";
 import { VisitorShowcase } from "@/pages/supporter-profile";
+import { SavedTab } from "@/components/supporter/profile/ProfileTabs";
 
 function OwnerShowcase({ token }: { token: string }) {
   const [preview, setPreview] = useState(false);
@@ -24,9 +25,12 @@ function OwnerShowcase({ token }: { token: string }) {
 }
 
 export default function MyProfilePage() {
+  const [location] = useLocation();
   const { isAuthenticated, isLoading, token, user } = useAuth();
   if (isLoading) return null;
   if (!isAuthenticated || !token) return <Redirect to="/login" />;
-  if (user?.accountType === "organisation") return <AccountPage />;
+  if (user?.accountType === "organisation") return location === "/saved"
+    ? <section className="rp-page-shell py-10" data-testid="page-organisation-saved"><h1 className="rp-display text-[42px] mb-6">Saved</h1><SavedTab /></section>
+    : <AccountPage />;
   return <OwnerShowcase token={token} />;
 }

@@ -7,6 +7,24 @@ import { readFile } from "node:fs/promises";
 
 const helper = await import("../../../web/src/lib/content-media.ts");
 
+test("mixed organisation media keeps uploader order, deduplicates the cover and includes all slides", () => {
+  assert.deepEqual(helper.orderedPostMedia({ imageUrl: "/first.jpg", mediaUrls: ["/first.jpg", "/clip.mov", "/second.jpg", "/last.mp4"] }),
+    [{ url: "/first.jpg", type: "image" }, { url: "/clip.mov", type: "video" },
+      { url: "/second.jpg", type: "image" }, { url: "/last.mp4", type: "video" }]);
+  assert.deepEqual(helper.orderedPostMedia({ imageUrl: "/cover.jpg" }), [{ url: "/cover.jpg", type: "image" }]);
+});
+
+test("feed, profile and notification reading use the shared viewer rather than the old content pop-up", async () => {
+  for (const file of ["pages/feed.tsx", "components/guest-feed/GuestFeed.tsx", "components/supporter/use-supporter-notifications.ts"]) {
+    const source = await readFile(new URL(`../../../web/src/${file}`, import.meta.url), "utf8");
+    assert.match(source, /viewer\.open\(/);
+    assert.doesNotMatch(source, /<ContentDialog/);
+  }
+  const viewer = await readFile(new URL("../../../web/src/components/post-viewer/PostViewer.tsx", import.meta.url), "utf8");
+  assert.match(viewer, /slideNavigation\.current\?\./);
+  assert.match(viewer, /text-viewer-slide-count/);
+});
+
 test("the live /feed route uses the shared general-post feed, not the old updates-only home", async () => {
   const app = await readFile(new URL("../../../web/src/App.tsx", import.meta.url), "utf8");
   assert.match(app, /import FeedPage from ["']@\/pages\/feed["']/);

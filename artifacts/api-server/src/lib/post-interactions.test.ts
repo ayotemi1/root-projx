@@ -49,6 +49,23 @@ test("likes persist across service instances, are idempotent and unlike only the
   assert.equal((await f.service.activity("update", "update", "bob", "t")).liked, true);
 });
 
+test("new organisation reactions carry trusted identity, recipient and immutable event time", async () => {
+  const f = fixture();
+  await f.service.like("post", "post", "org", true, "t");
+  const first = [...f.docs.values()].find(r => r.type === "like")!;
+  assert.equal(first.recipientId, "alice");
+  assert.equal(first.author.name, "Real organisation");
+  assert.equal(first.author.verified, true);
+  assert.ok(Number.isFinite(Date.parse(first.createdAt)));
+  await f.service.like("post", "post", "org", true, "t");
+  assert.deepEqual([...f.docs.values()].find(r => r.type === "like"), first);
+  await f.service.comment("post", "post", "org", { clientId: uuid(91), text: "An organisation reply" }, "t");
+  const comment = [...f.docs.values()].find(r => r.type === "comment")!;
+  assert.equal(comment.recipientId, "alice");
+  assert.equal(comment.author.id, "org");
+  assert.equal(comment.author.verified, true);
+});
+
 test("comment retry is idempotent, trims text and cannot overwrite the first payload", async () => {
   const { service } = fixture(), input = { clientId: uuid(1), text: " Hello " };
   const a = await service.comment("update", "update", "alice", input, "t");

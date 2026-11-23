@@ -46,6 +46,8 @@
 .pv-dots { position: absolute; top: 12px; left: 0; right: 0; z-index: 5; display: flex; justify-content: center; gap: 5px; pointer-events: none; }
 .pv-dots i { width: 6px; height: 6px; border-radius: 50%; background: rgba(244,239,230,.45); }
 .pv-dots i.on { background: var(--rp-yellow); }
+.pv-slide-count { position: absolute; top: 10px; right: 10px; z-index: 5; padding: 4px 8px; background: rgba(23,16,15,.6); color: #fff; border-radius: 12px; font: 11px monospace; pointer-events: none; }
+@media (max-width: 639px) { .pv-slide-count { top: 68px; } }
 .pv .rp-inline-video-controls { padding-left: 14px; padding-right: 14px; }
 .pv .rp-inline-video-controls button:last-child { display: none; } /* no fullscreen in the viewer */
 .pv-skel { position: absolute; inset: 0; background: linear-gradient(110deg, #221816 30%, #2f2220 50%, #221816 70%); background-size: 200% 100%; animation: pv-shimmer 1.3s linear infinite; }

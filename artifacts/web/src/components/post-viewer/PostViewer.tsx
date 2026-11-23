@@ -7,7 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useBookmarks } from "@/lib/bookmarks";
 import { BookmarkButton } from "@/components/bookmarks/BookmarkButton";
 import { GuestJoinPrompt } from "@/components/guest-feed/GuestJoinPrompt";
-import { InlineVideoPlayer } from "@/components/inline-video-player";
+import { InlineVideoPlayer, holdFeedPlayback } from "@/components/inline-video-player";
 import { EditedMedia } from "@/components/supporter/EditedMedia";
 import { normaliseEdit, type MediaEdit } from "@/lib/supporter-post-media";
 import {
@@ -35,9 +35,10 @@ function MediaItem({ m, label, autoPlay }: { m: PostViewerMedia; label: string; 
   return <img className="pv-cover" src={m.url} alt={label} draggable={false} />;
 }
 
-function Slide({ postRef, commentsOpen, onComments, onGuest, onSwipe }: {
+function Slide({ postRef, commentsOpen, onComments, onGuest, onSwipe, slideNavigation }: {
   postRef: PostRef; commentsOpen: boolean; onComments: (v: boolean) => void;
   onGuest: (action: string) => void; onSwipe: (dir: 1 | -1) => void;
+  slideNavigation: { current: ((dir: 1 | -1) => boolean) | null };
 }) {
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
@@ -53,6 +54,15 @@ function Slide({ postRef, commentsOpen, onComments, onGuest, onSwipe }: {
   const media = r?.media ?? [];
   const current = media[Math.min(mi, Math.max(0, media.length - 1))];
   const isText = !!r && media.length === 0;
+  useEffect(() => {
+    const move = (dir: 1 | -1) => {
+      const next = mi + dir;
+      if (next < 0 || next >= media.length) return false;
+      setMi(next); return true;
+    };
+    slideNavigation.current = move;
+    return () => { if (slideNavigation.current === move) slideNavigation.current = null; };
+  }, [mi, media.length, slideNavigation]);
   const a = activity.data;
 
   const onTouchStart = (e: TouchEvent) => { const t = e.touches[0]; if (t) touch.current = { x: t.clientX, y: t.clientY }; };
@@ -103,8 +113,9 @@ function Slide({ postRef, commentsOpen, onComments, onGuest, onSwipe }: {
             {media.length > 1 && (
               <>
                 <div className="pv-dots" aria-hidden>{media.map((_, i) => <i key={i} className={i === mi ? "on" : ""} />)}</div>
-                {mi > 0 && <button type="button" className="pv-mnav l" onClick={() => setMi(mi - 1)} aria-label={`Previous photo (${mi} of ${media.length})`} data-testid="button-media-prev"><ChevronLeft size={18} /></button>}
-                {mi < media.length - 1 && <button type="button" className="pv-mnav r" onClick={() => setMi(mi + 1)} aria-label={`Next photo (${mi + 2} of ${media.length})`} data-testid="button-media-next"><ChevronRight size={18} /></button>}
+                <span className="pv-slide-count" data-testid="text-viewer-slide-count">{mi + 1}/{media.length}</span>
+                {mi > 0 && <button type="button" className="pv-mnav l" onClick={() => setMi(mi - 1)} aria-label={`Previous item (${mi} of ${media.length})`} data-testid="button-media-prev"><ChevronLeft size={18} /></button>}
+                {mi < media.length - 1 && <button type="button" className="pv-mnav r" onClick={() => setMi(mi + 1)} aria-label={`Next item (${mi + 2} of ${media.length})`} data-testid="button-media-next"><ChevronRight size={18} /></button>}
               </>
             )}
             <div className={`pv-o ${current?.type === "video" ? "has-video" : ""}`}>
@@ -161,6 +172,7 @@ export function PostViewer({ refs, index, label, commentsOpen, onClose, onGo, on
 }) {
   const rootRef = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
+  const slideNavigation = useRef<((dir: 1 | -1) => boolean) | null>(null);
   const [guest, setGuest] = useState<string | null>(null);
   const ref = refs[index];
   const current = usePostRecord(ref ?? null);
@@ -171,6 +183,7 @@ export function PostViewer({ refs, index, label, commentsOpen, onClose, onGo, on
   state.current = { index, hasPrev, hasNext, commentsOpen, guest, onClose, onGo, onComments };
 
   useEffect(() => { closeRef.current?.focus({ preventScroll: true }); }, []);
+  useEffect(() => holdFeedPlayback(), []);
   useEffect(() => {
     const viewport = window.visualViewport;
     if (!viewport) return;
@@ -211,6 +224,9 @@ export function PostViewer({ refs, index, label, commentsOpen, onClose, onGo, on
         return;
       }
       if (typing) return;
+      if ((e.key === "ArrowRight" || e.key === "ArrowLeft") && slideNavigation.current?.(e.key === "ArrowRight" ? 1 : -1)) {
+        e.preventDefault(); return;
+      }
       if (e.key === "ArrowRight" && s.hasNext) { e.preventDefault(); s.onGo(s.index + 1); }
       else if (e.key === "ArrowLeft" && s.hasPrev) { e.preventDefault(); s.onGo(s.index - 1); }
       else if (e.key === "ArrowLeft" || e.key === "ArrowRight") e.preventDefault();
@@ -228,7 +244,7 @@ export function PostViewer({ refs, index, label, commentsOpen, onClose, onGo, on
       {hasPrev && <button type="button" className="pv-arr l" onClick={() => onGo(index - 1)} aria-label="Previous post" data-testid="button-viewer-prev"><ChevronLeft size={24} /></button>}
       {hasNext && <button type="button" className="pv-arr r" onClick={() => onGo(index + 1)} aria-label="Next post" data-testid="button-viewer-next"><ChevronRight size={24} /></button>}
       <div className={`pv-col ${commentsOpen ? "open" : ""}`}>
-        <Slide key={postRefKey(ref)} postRef={ref} commentsOpen={commentsOpen} onComments={onComments} onGuest={setGuest}
+        <Slide key={postRefKey(ref)} postRef={ref} commentsOpen={commentsOpen} onComments={onComments} onGuest={setGuest} slideNavigation={slideNavigation}
           onSwipe={dir => { const n = index + dir; if (n >= 0 && n < refs.length) onGo(n); }} />
       </div>
       <GuestJoinPrompt action={guest} onClose={() => setGuest(null)} aboveViewer />

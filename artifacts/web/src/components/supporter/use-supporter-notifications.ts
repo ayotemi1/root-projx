@@ -6,16 +6,16 @@ import {
   type SupporterNotification, type SupporterNotificationInbox,
 } from "@workspace/api-client-react";
 import { useAuth } from "@/context/AuthContext";
+import { usePostViewer } from "@/components/post-viewer/PostViewerProvider";
 
 const ROOT = "supporter-notifications";
 export const notificationsKey = (token: string | null) => [ROOT, token] as const;
 
-/** One private cache per auth token; disabled for guests, unapproved organisations and admin delegation. */
+/** One private cache per auth token; delegated admins receive only social alerts on the server. */
 export function useSupporterNotifications() {
   const { token, user } = useAuth();
   const qc = useQueryClient();
-  // Supporters and approved organisation owners; never admin-delegated org tokens.
-  const enabled = !!token && !!user && !token.startsWith("org-admin.") && (
+  const enabled = !!token && !!user && (
     user.accountType === "supporter" || (user.accountType === "organisation" && user.approvalStatus === "approved"));
 
   useEffect(() => {
@@ -36,6 +36,7 @@ export function useSupporterNotifications() {
 
 /** Mark read first; navigate only after the server confirms. */
 export function useOpenNotification(onNavigate?: () => void) {
+  const viewer = usePostViewer();
   const { token } = useAuth();
   const currentToken = useRef(token);
   currentToken.current = token;
@@ -54,7 +55,14 @@ export function useOpenNotification(onNavigate?: () => void) {
       qc.setQueryData(notificationsKey(token), inbox);
       void qc.invalidateQueries({ queryKey: notificationsKey(token) });
       onNavigate?.();
-      navigate(n.href);
+      const url = new URL(n.href, window.location.origin);
+      const direct = url.pathname.match(/\/posts\/([^/]+)\/?$/);
+      const legacy = url.pathname.endsWith("/feed") ? url.searchParams.get("post") : null;
+      const kind = legacy ? "update" : url.searchParams.get("kind");
+      const id = direct ? decodeURIComponent(direct[1]!) : legacy;
+      if (id && (kind === "update" || kind === "post")) {
+        viewer.open({ refs: [{ kind, id }], index: 0, comments: url.searchParams.get("comments") === "1" });
+      } else navigate(n.href);
       const hash = n.href.split("#")[1];
       if (hash) setTimeout(() => document.getElementById(decodeURIComponent(hash))?.scrollIntoView(), 120);
     } catch {

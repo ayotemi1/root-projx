@@ -3,6 +3,7 @@ import { ListSupporterNotificationsResponse } from "@workspace/api-zod";
 import { fsGet, fsQuery, getServerToken } from "./firebase-rest.js";
 import { accountPreferences } from "./supporter-preferences.js";
 import { personalMessageEvents } from "./supporter-notification-events.js";
+import { interactionNotifications } from "./post-interaction-notifications.js";
 
 type Doc = Record<string, unknown>;
 type Inbox = ReturnType<typeof ListSupporterNotificationsResponse.parse>;
@@ -108,6 +109,7 @@ export async function loadSupporterNotifications(uid: string, userToken: string)
         avatarUrl: mediaUrl(event.avatarUrl), thumbnailUrl: null, read: event.read || readIds.has(id) });
     }
   }
+  if (preferences.comments.inApp) items.push(...await interactionNotifications(uid, token, readIds));
   const recent = [...new Map(items.map(item => [item.id, item])).values()]
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id)).slice(0, 200);
   return ListSupporterNotificationsResponse.parse({ items: recent, unreadCount: recent.filter(item => !item.read).length });

@@ -36,7 +36,8 @@ export function createPostInteractions(store: InteractionStore = realStore) {
       if (!post || ["deleted", "archived", "draft"].includes(String(post.status)) || post.removed === true || post.published === false) throw new PostError(404);
       const org = await store.get("organisations", String(post.orgId), token);
       if (!org || org.deletedAt) throw new PostError(404);
-      const urls = [...new Set([...(Array.isArray(post.mediaUrls) ? post.mediaUrls : []), post.imageUrl].filter(mediaUrl))] as string[];
+      const urls = [...new Set((Array.isArray(post.mediaUrls) ? post.mediaUrls : []).filter(mediaUrl))] as string[];
+      if (mediaUrl(post.imageUrl) && !urls.includes(post.imageUrl)) urls.unshift(post.imageUrl);
       return { legacyLikes: Math.max(0, Number(post.likes) || 0), record: {
         id, kind: "update", title: String(post.title || ""), caption: String(post.content || ""), createdAt: String(post.createdAt || ""),
         author: { id: String(post.orgId), name: String(org.name || "Organisation"), avatarUrl: mediaUrl(org.logo) ? org.logo : null, verified: org.verified === true,
@@ -94,8 +95,8 @@ export function createPostInteractions(store: InteractionStore = realStore) {
   }
 
   async function like(kind: string, id: string, uid: string, liked: boolean, token: string, commentId?: string): Promise<PostActivity> {
-    await visible(kind, id, uid, token);
-    await actor(uid, token);
+    const target = await visible(kind, id, uid, token);
+    const author = await actor(uid, token);
     const postKey = ref(kind, id);
     if (commentId) {
       if (!ID.test(commentId)) throw new PostError(400);
@@ -103,13 +104,14 @@ export function createPostInteractions(store: InteractionStore = realStore) {
       if (!comment || comment.type !== "comment" || comment.postKey !== postKey || comment.removed) throw new PostError(404);
     }
     const interactionId = keyOf(postKey, commentId || "", uid);
-    if (liked) await store.put(INTERACTIONS, interactionId, { id: interactionId, postKey, uid, type: commentId ? "comment_like" : "like", commentId: commentId ?? null }, token);
+    if (liked) await store.create(INTERACTIONS, interactionId, { id: interactionId, postKey, uid, type: commentId ? "comment_like" : "like",
+      commentId: commentId ?? null, recipientId: target.record.author.id, author, createdAt: new Date().toISOString() }, token);
     else await store.remove(INTERACTIONS, interactionId, token);
     return activity(kind, id, uid, token);
   }
 
   async function comment(kind: string, id: string, uid: string, input: { clientId: string; text: string; parentId?: string | null }, token: string): Promise<PostActivity> {
-    await visible(kind, id, uid, token);
+    const target = await visible(kind, id, uid, token);
     const author = await actor(uid, token), text = input.text.trim();
     if (!text || text.length > 2000 || !/^[0-9a-f-]{36}$/i.test(input.clientId)) throw new PostError(400);
     const postKey = ref(kind, id), commentId = keyOf("comment", uid, input.clientId);
@@ -123,7 +125,7 @@ export function createPostInteractions(store: InteractionStore = realStore) {
       const parent = await store.get(INTERACTIONS, input.parentId, token);
       if (!parent || parent.postKey !== postKey || parent.type !== "comment" || parent.removed) throw new PostError(404);
     }
-    const created = await store.create(INTERACTIONS, commentId, { id: commentId, postKey, type: "comment", uid, text, author,
+    const created = await store.create(INTERACTIONS, commentId, { id: commentId, postKey, type: "comment", uid, text, author, recipientId: target.record.author.id,
       parentId: input.parentId ?? null, createdAt: new Date().toISOString() }, token);
     if (!created) {
       const duplicate = await store.get(INTERACTIONS, commentId, token);
