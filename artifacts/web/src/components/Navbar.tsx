@@ -34,7 +34,7 @@ function CartLink() {
   );
 }
 
-export default function Navbar() {
+export default function Navbar({ visitorFeed = false }: { visitorFeed?: boolean }) {
   const [location] = useLocation();
   const { user, isAuthenticated, logout } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -68,7 +68,7 @@ export default function Navbar() {
         </div>
 
         <div className="hidden lg:flex items-center gap-3 ml-auto">
-          <CartLink />
+          {!visitorFeed && <CartLink />}
           {isAuthenticated && (
             <Link href="/inbox" className="relative p-2 text-white hover:text-[#F3BF2C] transition-colors" aria-label="Inbox" data-testid="nav-link-inbox">
               <Inbox className="w-[18px] h-[18px]" strokeWidth={1.75} />
@@ -122,6 +122,12 @@ export default function Navbar() {
           )}
         </div>
 
+        {visitorFeed ? (
+        <div className="lg:hidden ml-auto flex items-center gap-3">
+          <Link href="/login" className="h-10 px-3 inline-flex items-center border-2 border-white text-white text-[15px] font-bold" data-testid="nav-mobile-visitor-login">Sign in</Link>
+          <Link href="/register" className="h-10 px-3 inline-flex items-center border-2 border-[#17100F] bg-[#F3BF2C] text-[#17100F] text-[15px] font-bold" data-testid="nav-mobile-visitor-join">Join</Link>
+        </div>
+        ) : (
         <div className="lg:hidden ml-auto flex items-center gap-1">
           <CartLink />
           <button
@@ -134,9 +140,10 @@ export default function Navbar() {
             {mobileOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
         </div>
+        )}
       </nav>
 
-      {mobileOpen && (
+      {mobileOpen && !visitorFeed && (
         <div className="lg:hidden border-t border-white/20 px-4 pb-5 pt-2 flex flex-col">
           {NAV_LINKS.map(({ href, label }) => {
             const active = isActive(href);

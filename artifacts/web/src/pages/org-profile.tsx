@@ -13,6 +13,7 @@ import { useAuth } from "@/context/AuthContext";
 import * as api from "@/lib/api";
 import type { Review, Org, VolunteerRole, Campaign } from "@/lib/api";
 import { GuestDonateSheet } from "@/components/GuestDonateSheet";
+import { GuestJoinPrompt } from "@/components/guest-feed/GuestJoinPrompt";
 import { formatWhole } from "@/lib/currency";
 import { ContentGallery } from "@/components/org-content/content-gallery";
 import { CampaignDonateButton } from "@/components/campaign-donate-button";
@@ -276,6 +277,7 @@ export default function OrgProfilePage() {
   const [, navigate] = useLocation();
   const [messagePending, setMessagePending] = useState(false);
   const [messageError, setMessageError] = useState<string | null>(null);
+  const [guestAction, setGuestAction] = useState<string | null>(null);
   async function handleMessageClick() {
     if (!token || messagePending) return;
     setMessagePending(true); setMessageError(null);
@@ -553,12 +555,12 @@ export default function OrgProfilePage() {
                       {followMut.isPending ? "Saving" : followed ? (<><HeartOff className="w-4 h-4" /> Following</>) : (<><Heart className="w-4 h-4" /> Follow</>)}
                     </button>
                   ) : (
-                    <button type="button" className="rp-btn rp-btn-ghost" onClick={openOrgDonateSheet} data-testid="button-follow-org">
+                    <button type="button" className="rp-btn rp-btn-ghost" onClick={() => setGuestAction("follow organisations")} data-testid="button-follow-org">
                       <Heart className="w-4 h-4" /> Follow
                     </button>
                   )}
-                  {isAuthenticated && authUser?.accountType === "supporter" && (
-                    <button type="button" className="rp-btn rp-btn-ghost" onClick={handleMessageClick} disabled={messagePending} data-testid="button-message-org">
+                  {(!isAuthenticated || authUser?.accountType === "supporter") && (
+                    <button type="button" className="rp-btn rp-btn-ghost" onClick={() => isAuthenticated ? void handleMessageClick() : setGuestAction("message organisations")} disabled={messagePending} data-testid="button-message-org">
                       <MessageSquare className="w-4 h-4" /> {messagePending ? "Opening" : "Message"}
                     </button>
                   )}
@@ -566,6 +568,7 @@ export default function OrgProfilePage() {
                     <Heart className="w-4 h-4" /> Donate
                   </button>
                 </div>
+                <GuestJoinPrompt action={guestAction} onClose={() => setGuestAction(null)} />
                 {messageError && <p role="alert" className="text-sm mt-2" style={{ color: RED }} data-testid="text-message-org-error">{messageError}</p>}
               </div>
             </div>

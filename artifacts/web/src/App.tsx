@@ -97,13 +97,14 @@ function AuthRoute({ component: Component, registration = false }: { component: 
 
 function SitePageLayout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
-  const { user } = useAuth();
-  if (shouldUseSupporterLayout(location, user?.accountType)) {
+  const { user, isAuthenticated } = useAuth();
+  const visitorFeed = !isAuthenticated && (location.split(/[?#]/)[0]!.replace(/\/+$/, "") === "/feed");
+  if (!visitorFeed && shouldUseSupporterLayout(location, user?.accountType)) {
     return <SupporterLayout>{children}</SupporterLayout>;
   }
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Navbar />
+      <Navbar visitorFeed={visitorFeed} />
       <main className="flex-1">{children}</main>
       <Footer />
     </div>

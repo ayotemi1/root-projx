@@ -71,10 +71,12 @@ test("redesigned sign-in retains credential fields and recovery without demo aut
   assert.doesNotMatch(html, /onsubmit="return false"|href="#"/);
 });
 
-test("redesigned feed keeps honest live-feed modes instead of promising unavailable ranking", async () => {
+test("signed-out feed shows the public organisation feed without supporter modes", async () => {
   const html = await page("src/pages/feed.tsx");
-  assert.match(html, /Following/);
-  assert.match(html, /All posts/);
+  assert.match(html, /data-testid="page-guest-feed"/);
+  assert.match(html, /Live from the ground/);
+  assert.match(html, /Real updates from grassroots organisations on Root ProjX, newest first/);
+  assert.doesNotMatch(html, /All posts|role="tab"|Follow organisations to see their work here/);
   assert.doesNotMatch(html, /based on (?:the causes|your giving)|14 hands|12,485|12,260/);
 });
 
@@ -133,8 +135,8 @@ test("public organisation profile uses the redesign with real data and preserves
 
 test("public-page sizing keeps the wide feed, readable captions and model-sized sign-in form", async () => {
   const html = await page("src/pages/feed.tsx");
-  assert.match(html, /rps-feed/);
-  assert.match(html, /max-w-\[860px\]/);
+  assert.match(html, /page-guest-feed/);
+  assert.match(html, /max-w-\[836px\]/);
   assert.doesNotMatch(html, /max-w-\[560px\]/);
   const feed = await readFile(new URL("src/pages/feed.tsx", webRoot), "utf8");
   assert.match(feed, /text-\[18px\] leading-relaxed/);

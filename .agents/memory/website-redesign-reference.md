@@ -50,3 +50,15 @@ receive the existing active style and that Create never be highlighted.
 
 **How to apply:** Keep Create's click actions intact when extending either
 navigation system; do not restore special prominence or route-active styling.
+
+Signed-out Home is a public organisation-only feed, distinct from supporter
+Home. Its references are the guest-feed desktop/phone screenshots and
+`attached_assets/rootprojx-live-feed-signed-out_1795414666629.html`.
+
+**Why:** On 2026-11-23 the user specified no visitor sidebar, no phone bottom
+navigation and no Following tabs. Visitors can read, watch and donate without
+joining; social actions should explain the benefit of joining first.
+
+**How to apply:** Preserve the signed-in dashboard when changing the visitor
+experience. Use actual published organisation data, not sample people, counts
+or stories from the prototype.

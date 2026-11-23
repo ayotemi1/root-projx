@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useSearch } from "wouter";
 import { ArrowRight, Play, Share2, Images, Film, Check, Plus } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { GuestFeed } from "@/components/guest-feed/GuestFeed";
 import * as api from "@/lib/api";
 import type { FeedUpdate } from "@/lib/api";
 import { ContentDialog } from "@/components/org-content/content-gallery";
@@ -138,6 +139,11 @@ function FeedSkeleton() {
 }
 
 export default function FeedPage() {
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? <SignedInFeed /> : <GuestFeed />;
+}
+
+function SignedInFeed() {
   const { isAuthenticated, token, user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
