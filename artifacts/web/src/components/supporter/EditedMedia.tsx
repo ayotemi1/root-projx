@@ -10,11 +10,11 @@ import { InlineVideoPlayer } from "@/components/inline-video-player";
  * are rendered as an untransformed sibling instead.
  */
 export function EditedMedia({
-  src, kind, edit, natural, fit = "width", controls = false, poster, alt = "", muted, className = "",
+  src, kind, edit, natural, fit = "width", controls = false, poster, alt = "", muted, autoPlay, className = "",
   onReady, onBroken, children, testId,
 }: {
   src: string; kind: "image" | "video" | "photo"; edit: MediaEdit; natural: number | null;
-  fit?: "width" | "contain"; controls?: boolean; poster?: string | null; alt?: string; muted?: boolean; className?: string;
+  fit?: "width" | "contain"; controls?: boolean; poster?: string | null; alt?: string; muted?: boolean; autoPlay?: boolean; className?: string;
   onReady?: (natural: number | null, duration?: number) => void; onBroken?: () => void; children?: ReactNode; testId?: string;
 }) {
   const frameRef = useRef<HTMLDivElement>(null);
@@ -34,7 +34,7 @@ export function EditedMedia({
     <div ref={frameRef} className={`rpp-frame ${className}`} style={frame} data-testid={testId}>
       {kind === "video" && controls ? (
         <InlineVideoPlayer src={src} poster={poster} frameRef={frameRef} label={label}
-          className="rpp-frame-media" mediaStyle={style} muted={muted} onError={onBroken}
+          className="rpp-frame-media" mediaStyle={style} muted={muted} autoPlay={autoPlay} onError={onBroken}
           onLoadedMetadata={el => onReady?.(el.videoWidth && el.videoHeight ? el.videoWidth / el.videoHeight : null, el.duration)} />
       ) : kind === "video" ? (
         <>

@@ -80,7 +80,11 @@ import type {
   PayoutRunResult,
   PayoutSettlementInput,
   PayoutSettlementResult,
+  PostActivity,
+  PostCommentInput,
+  PostReactionInput,
   PostStatusInput,
+  PostViewerRecord,
   ProfileResponse,
   PublicUser,
   RecordOrganisationPreviewOpen200,
@@ -130,6 +134,458 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+export const getGetPostViewerUrl = (kind: "update" | "post", id: string) => {
+  return `/api/post-viewer/${kind}/${id}`;
+};
+
+export const getPostViewer = async (
+  kind: "update" | "post",
+  id: string,
+  options?: RequestInit,
+): Promise<PostViewerRecord> => {
+  return customFetch<PostViewerRecord>(getGetPostViewerUrl(kind, id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPostViewerQueryKey = (
+  kind: "update" | "post",
+  id: string,
+) => {
+  return [`/api/post-viewer/${kind}/${id}`] as const;
+};
+
+export const getGetPostViewerQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPostViewer>>,
+  TError = ErrorType<unknown>,
+>(
+  kind: "update" | "post",
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPostViewer>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetPostViewerQueryKey(kind, id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getPostViewer>>> = ({
+    signal,
+  }) => getPostViewer(kind, id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!(kind && id),
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPostViewer>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPostViewerQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPostViewer>>
+>;
+export type GetPostViewerQueryError = ErrorType<unknown>;
+
+export function useGetPostViewer<
+  TData = Awaited<ReturnType<typeof getPostViewer>>,
+  TError = ErrorType<unknown>,
+>(
+  kind: "update" | "post",
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPostViewer>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPostViewerQueryOptions(kind, id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getGetPostActivityUrl = (kind: "update" | "post", id: string) => {
+  return `/api/post-viewer/${kind}/${id}/activity`;
+};
+
+export const getPostActivity = async (
+  kind: "update" | "post",
+  id: string,
+  options?: RequestInit,
+): Promise<PostActivity> => {
+  return customFetch<PostActivity>(getGetPostActivityUrl(kind, id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPostActivityQueryKey = (
+  kind: "update" | "post",
+  id: string,
+) => {
+  return [`/api/post-viewer/${kind}/${id}/activity`] as const;
+};
+
+export const getGetPostActivityQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPostActivity>>,
+  TError = ErrorType<unknown>,
+>(
+  kind: "update" | "post",
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPostActivity>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetPostActivityQueryKey(kind, id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getPostActivity>>> = ({
+    signal,
+  }) => getPostActivity(kind, id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!(kind && id),
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPostActivity>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPostActivityQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPostActivity>>
+>;
+export type GetPostActivityQueryError = ErrorType<unknown>;
+
+export function useGetPostActivity<
+  TData = Awaited<ReturnType<typeof getPostActivity>>,
+  TError = ErrorType<unknown>,
+>(
+  kind: "update" | "post",
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPostActivity>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPostActivityQueryOptions(kind, id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getSetPostLikeUrl = (kind: "update" | "post", id: string) => {
+  return `/api/post-viewer/${kind}/${id}/like`;
+};
+
+export const setPostLike = async (
+  kind: "update" | "post",
+  id: string,
+  postReactionInput: PostReactionInput,
+  options?: RequestInit,
+): Promise<PostActivity> => {
+  return customFetch<PostActivity>(getSetPostLikeUrl(kind, id), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(postReactionInput),
+  });
+};
+
+export const getSetPostLikeMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof setPostLike>>,
+    TError,
+    { kind: "update" | "post"; id: string; data: BodyType<PostReactionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof setPostLike>>,
+  TError,
+  { kind: "update" | "post"; id: string; data: BodyType<PostReactionInput> },
+  TContext
+> => {
+  const mutationKey = ["setPostLike"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof setPostLike>>,
+    { kind: "update" | "post"; id: string; data: BodyType<PostReactionInput> }
+  > = (props) => {
+    const { kind, id, data } = props ?? {};
+
+    return setPostLike(kind, id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SetPostLikeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof setPostLike>>
+>;
+export type SetPostLikeMutationBody = BodyType<PostReactionInput>;
+export type SetPostLikeMutationError = ErrorType<unknown>;
+
+export const useSetPostLike = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof setPostLike>>,
+    TError,
+    { kind: "update" | "post"; id: string; data: BodyType<PostReactionInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof setPostLike>>,
+  TError,
+  { kind: "update" | "post"; id: string; data: BodyType<PostReactionInput> },
+  TContext
+> => {
+  return useMutation(getSetPostLikeMutationOptions(options));
+};
+
+export const getAddPostCommentUrl = (kind: "update" | "post", id: string) => {
+  return `/api/post-viewer/${kind}/${id}/comments`;
+};
+
+export const addPostComment = async (
+  kind: "update" | "post",
+  id: string,
+  postCommentInput: PostCommentInput,
+  options?: RequestInit,
+): Promise<PostActivity> => {
+  return customFetch<PostActivity>(getAddPostCommentUrl(kind, id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(postCommentInput),
+  });
+};
+
+export const getAddPostCommentMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof addPostComment>>,
+    TError,
+    { kind: "update" | "post"; id: string; data: BodyType<PostCommentInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof addPostComment>>,
+  TError,
+  { kind: "update" | "post"; id: string; data: BodyType<PostCommentInput> },
+  TContext
+> => {
+  const mutationKey = ["addPostComment"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof addPostComment>>,
+    { kind: "update" | "post"; id: string; data: BodyType<PostCommentInput> }
+  > = (props) => {
+    const { kind, id, data } = props ?? {};
+
+    return addPostComment(kind, id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AddPostCommentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof addPostComment>>
+>;
+export type AddPostCommentMutationBody = BodyType<PostCommentInput>;
+export type AddPostCommentMutationError = ErrorType<unknown>;
+
+export const useAddPostComment = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof addPostComment>>,
+    TError,
+    { kind: "update" | "post"; id: string; data: BodyType<PostCommentInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof addPostComment>>,
+  TError,
+  { kind: "update" | "post"; id: string; data: BodyType<PostCommentInput> },
+  TContext
+> => {
+  return useMutation(getAddPostCommentMutationOptions(options));
+};
+
+export const getSetPostCommentLikeUrl = (
+  kind: "update" | "post",
+  id: string,
+  commentId: string,
+) => {
+  return `/api/post-viewer/${kind}/${id}/comments/${commentId}/like`;
+};
+
+export const setPostCommentLike = async (
+  kind: "update" | "post",
+  id: string,
+  commentId: string,
+  postReactionInput: PostReactionInput,
+  options?: RequestInit,
+): Promise<PostActivity> => {
+  return customFetch<PostActivity>(
+    getSetPostCommentLikeUrl(kind, id, commentId),
+    {
+      ...options,
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(postReactionInput),
+    },
+  );
+};
+
+export const getSetPostCommentLikeMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof setPostCommentLike>>,
+    TError,
+    {
+      kind: "update" | "post";
+      id: string;
+      commentId: string;
+      data: BodyType<PostReactionInput>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof setPostCommentLike>>,
+  TError,
+  {
+    kind: "update" | "post";
+    id: string;
+    commentId: string;
+    data: BodyType<PostReactionInput>;
+  },
+  TContext
+> => {
+  const mutationKey = ["setPostCommentLike"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof setPostCommentLike>>,
+    {
+      kind: "update" | "post";
+      id: string;
+      commentId: string;
+      data: BodyType<PostReactionInput>;
+    }
+  > = (props) => {
+    const { kind, id, commentId, data } = props ?? {};
+
+    return setPostCommentLike(kind, id, commentId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SetPostCommentLikeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof setPostCommentLike>>
+>;
+export type SetPostCommentLikeMutationBody = BodyType<PostReactionInput>;
+export type SetPostCommentLikeMutationError = ErrorType<unknown>;
+
+export const useSetPostCommentLike = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof setPostCommentLike>>,
+    TError,
+    {
+      kind: "update" | "post";
+      id: string;
+      commentId: string;
+      data: BodyType<PostReactionInput>;
+    },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof setPostCommentLike>>,
+  TError,
+  {
+    kind: "update" | "post";
+    id: string;
+    commentId: string;
+    data: BodyType<PostReactionInput>;
+  },
+  TContext
+> => {
+  return useMutation(getSetPostCommentLikeMutationOptions(options));
+};
 
 export const getListManagedOrganisationsUrl = () => {
   return `/api/organisation-team`;

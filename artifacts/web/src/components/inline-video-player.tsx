@@ -18,9 +18,11 @@ function playbackUrl(src: string): string {
 }
 
 /** Uploaded footage stays in its card; the source is not requested until Play. */
-export function InlineVideoPlayer({ src, poster, label = "video", className = "", style, mediaStyle, frameRef, muted = false, onLoadedMetadata, onError }: {
+export function InlineVideoPlayer({ src, poster, label = "video", className = "", style, mediaStyle, frameRef, muted = false, autoPlay = false, onLoadedMetadata, onError }: {
   src: string; poster?: string | null; label?: string; className?: string; style?: CSSProperties; mediaStyle?: CSSProperties;
   frameRef?: RefObject<HTMLDivElement | null>; muted?: boolean;
+  /** Optional: start eagerly (with sound). A browser autoplay block leaves the Play button usable. */
+  autoPlay?: boolean;
   onLoadedMetadata?: (video: HTMLVideoElement) => void; onError?: () => void;
 }) {
   const ownFrame = useRef<HTMLDivElement>(null);
@@ -33,11 +35,13 @@ export function InlineVideoPlayer({ src, poster, label = "video", className = ""
   const [failed, setFailed] = useState(false);
   const frame = frameRef ?? ownFrame;
   useEffect(() => {
-    videoRef.current?.pause();
-    videoRef.current?.removeAttribute("src");
-    videoRef.current?.load();
+    const video = videoRef.current;
+    video?.pause();
+    video?.removeAttribute("src");
+    video?.load();
     setStarted(false); setPlaying(false); setFailed(false); setPosition(0); setDuration(0);
-    return () => { if (currentVideo === videoRef.current) currentVideo = null; videoRef.current?.pause(); };
+    // React may clear the DOM ref before passive unmount cleanup runs.
+    return () => { if (currentVideo === video) currentVideo = null; video?.pause(); };
   }, [src]);
   useEffect(() => {
     const el = frame.current;
@@ -48,15 +52,26 @@ export function InlineVideoPlayer({ src, poster, label = "video", className = ""
     observer.observe(el);
     return () => observer.disconnect();
   }, [started, frame]);
-  const play = async () => {
+  const play = async (auto = false) => {
     if (failed) return;
     const video = videoRef.current;
     if (!video) return;
     if (!started) { video.src = playbackUrl(src); setStarted(true); }
     if (currentVideo && currentVideo !== video) currentVideo.pause();
     currentVideo = video;
-    try { await video.play(); } catch { setFailed(true); onError?.(); }
+    try { await video.play(); } catch (e) {
+      // Autoplay with sound may be refused by the browser; that is not a media failure.
+      if ((e as { name?: string } | null)?.name === "NotAllowedError" || (auto && (e as { name?: string } | null)?.name === "AbortError")) return;
+      setFailed(true); onError?.();
+    }
   };
+  const playRef = useRef(play);
+  playRef.current = play;
+  useEffect(() => {
+    if (!autoPlay) return;
+    const t = window.setTimeout(() => { void playRef.current(true); }, 0);
+    return () => window.clearTimeout(t);
+  }, [autoPlay, src]);
   const toggle = () => { if (videoRef.current && !videoRef.current.paused) videoRef.current.pause(); else void play(); };
   const fullScreen = () => {
     const element = frame.current;

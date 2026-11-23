@@ -51,7 +51,11 @@ test("public content gallery renders real cards, filters and distinct failure/em
   const require = createRequire(new URL("package.json", root));
   const result = await build({
     entryPoints: [new URL("src/components/org-content/content-gallery.tsx", root).pathname],
-    bundle: true, write: false, platform: "node", format: "cjs", packages: "external", jsx: "automatic",
+    bundle: true, write: false, platform: "node", format: "cjs", packages: "external", jsx: "automatic", loader: { ".css": "empty" },
+    plugins: [{ name: "viewer-presentation-boundary", setup(b) {
+      b.onResolve({ filter: /post-viewer\/PostViewerProvider$/ }, () => ({ path: "viewer", namespace: "viewer-presentation" }));
+      b.onLoad({ filter: /.*/, namespace: "viewer-presentation" }, () => ({ contents: "export const usePostViewer=()=>({open(){}});" }));
+    } }],
   });
   const mod = { exports: {} as any };
   new Function("require", "module", "exports", result.outputFiles[0]!.text)(require, mod, mod.exports);
@@ -79,6 +83,7 @@ test("public content gallery renders real cards, filters and distinct failure/em
     orgName: "Community Organisation", title: "", content: "", type: "update",
     mediaUrls: ["/device-video.mp4"], createdAt: "2026-10-28T00:00:00Z" }] });
   assert.match(feed, /Community Organisation/);
-  assert.match(feed, /device-video\.mp4/);
+  assert.match(feed, /inline-video-player/);
+  assert.doesNotMatch(feed, /<video[^>]+src=/, "Home must not request video bytes before Play");
   assert.doesNotMatch(feed, />Update</);
 });

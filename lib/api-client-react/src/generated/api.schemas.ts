@@ -5,6 +5,95 @@
  * Root ProjX API — community giving platform
  * OpenAPI spec version: 0.1.0
  */
+export interface PostViewerAuthor {
+  id: string;
+  name: string;
+  /** @nullable */
+  avatarUrl: string | null;
+  verified: boolean;
+  /** @nullable */
+  href: string | null;
+}
+
+export type PostViewerMediaType =
+  (typeof PostViewerMediaType)[keyof typeof PostViewerMediaType];
+
+export const PostViewerMediaType = {
+  photo: "photo",
+  video: "video",
+} as const;
+
+export type PostViewerMediaCrop = { [key: string]: unknown };
+
+export type PostViewerMediaAdjustments = { [key: string]: unknown };
+
+export interface PostViewerMedia {
+  url: string;
+  type: PostViewerMediaType;
+  /** @nullable */
+  thumbnailUrl?: string | null;
+  crop?: PostViewerMediaCrop;
+  filter?: string;
+  adjustments?: PostViewerMediaAdjustments;
+  /** @nullable */
+  width?: number | null;
+  /** @nullable */
+  height?: number | null;
+}
+
+export type PostViewerRecordKind =
+  (typeof PostViewerRecordKind)[keyof typeof PostViewerRecordKind];
+
+export const PostViewerRecordKind = {
+  update: "update",
+  post: "post",
+} as const;
+
+export interface PostViewerRecord {
+  id: string;
+  kind: PostViewerRecordKind;
+  author: PostViewerAuthor;
+  caption: string;
+  title: string;
+  createdAt: string;
+  media: PostViewerMedia[];
+  /** @nullable */
+  externalUrl: string | null;
+}
+
+export interface PostViewerComment {
+  id: string;
+  /** @nullable */
+  parentId: string | null;
+  text: string;
+  author: PostViewerAuthor;
+  createdAt: string;
+  likes: number;
+  liked: boolean;
+}
+
+export interface PostActivity {
+  likes: number;
+  liked: boolean;
+  commentCount: number;
+  comments: PostViewerComment[];
+}
+
+export interface PostReactionInput {
+  liked: boolean;
+}
+
+export interface PostCommentInput {
+  clientId: string;
+  /**
+   * @minLength 1
+   * @maxLength 2000
+   */
+  text: string;
+  /** @nullable */
+  parentId?: string | null;
+}
+
 export interface SupporterNotificationChannels {
   inApp: boolean;
   email: boolean;

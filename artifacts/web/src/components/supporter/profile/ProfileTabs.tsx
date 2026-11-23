@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Lock, Play, Plus } from "lucide-react";
+import { Lock, Play, Plus, Maximize2 } from "lucide-react";
 import type { SupporterShowcase } from "@workspace/api-client-react";
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { SupporterPostCard } from "@/components/supporter/SupporterPostCard";
 import { useToast } from "@/hooks/use-toast";
 import { MANUAL_LIMIT, formatWhen, groupInvolvement, initialsOf, refreshShowcase, removeInvolvement } from "@/lib/supporter-showcase";
@@ -11,9 +10,7 @@ import type { SupporterPostRecord } from "@/lib/supporter-publishing";
 import { AddInvolvementDialog } from "./AddInvolvementDialog";
 import { useBookmarks, useToggleBookmark, GENERIC_ERROR } from "@/lib/bookmarks";
 import { CampaignSymbol } from "@/components/campaign-symbol";
-import { InlineVideoPlayer } from "@/components/inline-video-player";
-import { normaliseEdit } from "@/lib/supporter-post-media";
-import { EditedMedia } from "@/components/supporter/EditedMedia";
+import { usePostViewer } from "@/components/post-viewer/PostViewerProvider";
 
 const Empty = ({ text, testId }: { text: string; testId: string }) => (
   <p className="border border-dashed border-[#17100F]/35 px-6 py-10 text-center text-[15px] text-[#17100F]/70" data-testid={testId}>{text}</p>
@@ -21,12 +18,17 @@ const Empty = ({ text, testId }: { text: string; testId: string }) => (
 
 export function PostsTab({ posts, editable }: { posts: SupporterPostRecord[]; editable: boolean }) {
   void editable;
+  const viewer = usePostViewer();
   if (!posts.length) return <Empty testId="status-posts-empty" text="Nothing shared yet." />;
+  const refs = posts.map(p => ({ kind: "post" as const, id: p.id }));
   return (
     <div className="divide-y divide-[#17100F]/12">
-      {posts.map(p => (
+      {posts.map((p, i) => (
         <div key={p.id} id={`post-${p.id}`} className="py-8 first:pt-2 scroll-mt-24 target:bg-[#F3BF2C]/10">
-          <SupporterPostCard post={p} />
+          <SupporterPostCard post={p} onOpen={trigger => viewer.open({ refs, index: i, label: p.author.name, trigger })} />
+          <button type="button" onClick={e => viewer.open({ refs, index: i, label: p.author.name, trigger: e.currentTarget })}
+            className="mt-2 min-h-10 inline-flex items-center gap-1.5 rp-label !text-[11px] text-[#17100F]/75 hover:text-[#CA0813]"
+            data-testid={`button-open-post-${p.id}`}><Maximize2 className="w-3.5 h-3.5" aria-hidden />Open post</button>
         </div>
       ))}
     </div>
@@ -34,37 +36,25 @@ export function PostsTab({ posts, editable }: { posts: SupporterPostRecord[]; ed
 }
 
 export function MediaTab({ posts }: { posts: SupporterPostRecord[] }) {
-  const [open, setOpen] = useState<SupporterPostRecord | null>(null);
+  const viewer = usePostViewer();
   const media = posts.filter(p => p.type !== "text" && p.media.length > 0);
   if (!media.length) return <Empty testId="status-media-empty" text="No photos or videos yet." />;
+  const refs = media.map(p => ({ kind: "post" as const, id: p.id }));
   return (
-    <>
-      <div className="grid grid-cols-3 gap-[3px]" data-testid="grid-media">
-        {media.map(p => {
-          const lead = [...p.media].sort((a, b) => a.order - b.order)[0]!;
-          const thumb = lead.type === "video" ? lead.video_thumbnail_url : lead.url;
-          return (
-            lead.type === "video" ? <div key={p.id} className="relative aspect-square overflow-hidden bg-[#17100F] grid place-items-center [container-type:size]" data-testid={`tile-media-${p.id}`}>
-              <EditedMedia src={lead.url} kind="video" poster={thumb} alt={`${p.author.name} video`}
-                edit={normaliseEdit({ crop: lead.crop, filter: lead.filter, adjustments: lead.adjustments })}
-                natural={lead.width && lead.height ? lead.width / lead.height : null} fit="contain" controls />
-            </div> : <button key={p.id} type="button" onClick={() => setOpen(p)} className="relative aspect-square overflow-hidden bg-[#17100F] group text-left"
-              aria-label={`Open ${p.type} post${p.caption ? `: ${p.caption.slice(0, 60)}` : ""}`} data-testid={`tile-media-${p.id}`}>
-              {thumb ? <img src={thumb} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]" />
-                : <video src={lead.url} muted preload="metadata" playsInline className="absolute inset-0 w-full h-full object-cover" />}
-              {p.type === "video" && <Play className="absolute top-2 right-2 w-4 h-4 text-[#FBF8F2] fill-[#FBF8F2] drop-shadow" aria-hidden />}
-            </button>
-          );
-        })}
-      </div>
-      <Dialog open={!!open} onOpenChange={v => !v && setOpen(null)}>
-        <DialogContent className="max-w-[calc(100vw-1rem)] sm:max-w-xl p-4 sm:p-6 bg-[#FBF8F2] border-[#17100F] top-[calc(50%-2.25rem)] md:top-1/2 max-h-[calc(100dvh-8.5rem)] md:max-h-[92dvh] overflow-y-auto overscroll-contain touch-pan-y" data-testid="dialog-media-post">
-          <DialogTitle className="sr-only">Post</DialogTitle>
-          <DialogDescription className="sr-only">The full post with its media.</DialogDescription>
-          {open && <div className="pt-6"><SupporterPostCard post={open} /></div>}
-        </DialogContent>
-      </Dialog>
-    </>
+    <div className="grid grid-cols-3 gap-[3px]" data-testid="grid-media">
+      {media.map((p, i) => {
+        const lead = [...p.media].sort((a, b) => a.order - b.order)[0]!;
+        const thumb = lead.type === "video" ? lead.video_thumbnail_url : lead.url;
+        return (
+          <button key={p.id} type="button" onClick={e => viewer.open({ refs, index: i, label: p.author.name, trigger: e.currentTarget })} className="relative aspect-square overflow-hidden bg-[#17100F] group text-left"
+            aria-label={`Open ${p.type} post${p.caption ? `: ${p.caption.slice(0, 60)}` : ""}`} data-testid={`tile-media-${p.id}`}>
+            {thumb ? <img src={thumb} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]" />
+              : <video src={`${lead.url}#t=0.1`} muted preload="metadata" playsInline className="absolute inset-0 w-full h-full object-cover pointer-events-none" aria-hidden />}
+            {p.type === "video" && <Play className="absolute top-2 right-2 w-4 h-4 text-[#FBF8F2] fill-[#FBF8F2] drop-shadow" aria-hidden />}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -163,6 +153,14 @@ export function SavedTab() {
     navigate(qs ? `${location}?${qs}` : location);
   };
   const items = (q.data ?? []).filter(b => filter === "all" || (filter === "campaigns" ? b.kind === "campaign" : b.kind !== "campaign"));
+  const viewer = usePostViewer();
+  const postItems = items.filter(b => b.available && b.kind !== "campaign");
+  const postRefs = postItems.map(b => ({ kind: b.kind as "post" | "update", id: b.targetId }));
+  const activate = (b: (typeof items)[number], trigger: HTMLElement) => {
+    if (b.kind === "campaign") { open(b.href); return; }
+    const i = postItems.indexOf(b);
+    if (i >= 0) viewer.open({ refs: postRefs, index: i, label: "Saved", trigger });
+  };
   const open = (href: string | null) => { if (!href) return; if (/^https?:/.test(href)) window.location.href = href; else navigate(href); };
 
   return (
@@ -194,21 +192,16 @@ export function SavedTab() {
               </div>
             );
             const label = b.title || b.authorName;
-            if (b.isVideo && b.videoUrl) return (
-              <div key={b.id} className="relative aspect-square overflow-hidden bg-[#17100F]" data-testid={`tile-saved-${b.id}`}>
-                <InlineVideoPlayer src={b.videoUrl} poster={b.imageUrl} label={`${label} video`} />
-              </div>
-            );
             if (b.imageUrl || b.videoUrl) return (
-              <button key={b.id} type="button" onClick={() => open(b.href)} className="relative aspect-square overflow-hidden bg-[#17100F] group" aria-label={`Open ${b.kind}: ${label}`} data-testid={`tile-saved-${b.id}`}>
+              <button key={b.id} type="button" onClick={e => activate(b, e.currentTarget)} className="relative aspect-square overflow-hidden bg-[#17100F] group" aria-label={`Open ${b.kind}: ${label}`} data-testid={`tile-saved-${b.id}`}>
                 {b.imageUrl ? <img src={b.imageUrl} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]" />
-                  : <video src={`${b.videoUrl}#t=0.1`} muted playsInline preload="metadata" className="absolute inset-0 w-full h-full object-cover" />}
+                  : <video src={`${b.videoUrl}#t=0.1`} muted playsInline preload="metadata" className="absolute inset-0 w-full h-full object-cover pointer-events-none" aria-hidden />}
                 {b.kind === "campaign" && <span className="absolute top-1.5 left-1.5 rp-label !text-[9px] sm:!text-[10px] bg-[#F3BF2C] text-[#17100F] px-1.5 py-0.5">Campaign</span>}
                 {b.isVideo && <Play className="absolute top-2 right-2 w-4 h-4 text-[#FBF8F2] fill-[#FBF8F2] drop-shadow" aria-hidden />}
               </button>
             );
             return (
-              <button key={b.id} type="button" onClick={() => open(b.href)} className="relative aspect-square overflow-hidden bg-[#FBF8F2] border border-[#17100F]/15 p-2 sm:p-4 flex flex-col justify-between text-left hover:border-[#17100F]" data-testid={`tile-saved-${b.id}`}>
+              <button key={b.id} type="button" onClick={e => activate(b, e.currentTarget)} className="relative aspect-square overflow-hidden bg-[#FBF8F2] border border-[#17100F]/15 p-2 sm:p-4 flex flex-col justify-between text-left hover:border-[#17100F]" data-testid={`tile-saved-${b.id}`}>
                 {b.kind === "campaign" && <span className="self-start rp-label !text-[9px] sm:!text-[10px] bg-[#F3BF2C] text-[#17100F] px-1.5 py-0.5 mb-1">Campaign</span>}
                 <p className="text-[11px] sm:text-[15px] leading-snug line-clamp-4 sm:line-clamp-5 [overflow-wrap:anywhere]">{b.title}</p>
                 <span className="flex items-center gap-1.5 min-w-0 mt-1">

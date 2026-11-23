@@ -3,10 +3,10 @@ import { X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogClose } from "@/components/ui/dialog";
 
 /** No interaction is submitted until the visitor has joined or signed in. */
-export function GuestJoinPrompt({ action, onClose }: { action: string | null; onClose: () => void }) {
+export function GuestJoinPrompt({ action, onClose, aboveViewer = false }: { action: string | null; onClose: () => void; aboveViewer?: boolean }) {
   return (
     <Dialog open={!!action} onOpenChange={open => { if (!open) onClose(); }}>
-      <DialogContent className="max-w-[312px] w-[calc(100vw-2rem)] gap-0 rounded-none border border-[#17100F] bg-[#F4EFE6] p-5 pt-8 text-center [&>button:last-child]:hidden" data-testid="dialog-guest-join">
+      <DialogContent overlayClassName={aboveViewer ? "!z-[79]" : undefined} className={`max-w-[312px] w-[calc(100vw-2rem)] gap-0 rounded-none border border-[#17100F] bg-[#F4EFE6] p-5 pt-8 text-center [&>button:last-child]:hidden ${aboveViewer ? "!z-[80]" : ""}`} data-testid="dialog-guest-join">
         <DialogClose className="absolute left-4 top-4 p-2 text-[#17100F]" aria-label="Close" data-testid="button-close-join"><X className="w-4 h-4" /></DialogClose>
         <img src="/logo-stylised.png" alt="Root ProjX" className="h-12 mx-auto object-contain" />
         <DialogTitle className="rp-display text-[34px] text-[#17100F] mt-4">Join the<br />movement</DialogTitle>

@@ -28,6 +28,9 @@ export function resolveOrganisationAccess(token: string, now = Date.now()): stri
 /** Deliberately exclude banking, payment, account and admin operations. */
 export function organisationAccessAllows(orgId: string, method: string, originalUrl: string): boolean {
   const path = originalUrl.split("?")[0];
+  if (/^\/api\/post-viewer\/(?:post|update)\/[A-Za-z0-9_-]+(?:\/activity|\/like|\/comments(?:\/[A-Za-z0-9_-]+\/like)?)?$/.test(path ?? "")) {
+    return ["GET", "POST", "PUT"].includes(method);
+  }
   const root = `/api/organisations/${orgId}`;
   if (path === root || path?.startsWith(`${root}/`)) {
     if (/\/(payout|stripe|wise|bank)/i.test(path.slice(root.length))) {

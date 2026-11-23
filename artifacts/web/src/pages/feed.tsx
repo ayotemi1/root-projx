@@ -14,6 +14,7 @@ import { SupporterHomeIntro } from "@/components/supporter/SupporterHomeIntro";
 import { OrganisationLogo } from "@/components/organisation-logo";
 import { SupporterPostCard } from "@/components/supporter/SupporterPostCard";
 import { BookmarkButton } from "@/components/bookmarks/BookmarkButton";
+import { PostActivityRow } from "@/components/post-viewer/PostActivityRow";
 import { listPosts, spKey, type SupporterPostRecord } from "@/lib/supporter-publishing";
 import { DonationAmountDialog } from "@/components/donation-amount-dialog";
 import { InlineVideoPlayer } from "@/components/inline-video-player";
@@ -122,7 +123,8 @@ function PostCard({ item, logo, onOpen, following, onFollow, followBusy }: {
       )}
 
       <footer className="mt-4 flex items-center justify-between gap-3">
-        <button type="button" onClick={share} className="p-3.5 -ml-3.5 text-[#17100F]/80 hover:text-[#17100F]" aria-label="Share" data-testid={`button-share-${item._id}`}>
+        <PostActivityRow postRef={{ kind: "update", id: item._id }} label={item.orgName || undefined} className="-ml-2 -mr-3" />
+        <button type="button" onClick={share} className="p-3.5 text-[#17100F]/80 hover:text-[#17100F]" aria-label="Share" data-testid={`button-share-${item._id}`}>
           <Share2 className="w-4 h-4" />
         </button>
         <BookmarkButton kind="update" targetId={item._id} className="mr-auto -ml-2" />

@@ -25,6 +25,76 @@ tags:
   - name: profile
     description: User profile
 paths:
+  /post-viewer/{kind}/{id}:
+    parameters: &postViewerParams
+      - {name: kind, in: path, required: true, schema: {type: string, enum: [update, post]}}
+      - {name: id, in: path, required: true, schema: {type: string}}
+    get:
+      operationId: getPostViewer
+      responses:
+        '200':
+          description: Visible post and attachments
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PostViewerRecord'}
+  /post-viewer/{kind}/{id}/activity:
+    parameters: *postViewerParams
+    get:
+      operationId: getPostActivity
+      responses:
+        '200':
+          description: Authorised post reactions and comments
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PostActivity'}
+  /post-viewer/{kind}/{id}/like:
+    parameters: *postViewerParams
+    put:
+      operationId: setPostLike
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/PostReactionInput'}
+      responses:
+        '200':
+          description: Updated activity
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PostActivity'}
+  /post-viewer/{kind}/{id}/comments:
+    parameters: *postViewerParams
+    post:
+      operationId: addPostComment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/PostCommentInput'}
+      responses:
+        '200':
+          description: Updated activity
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PostActivity'}
+  /post-viewer/{kind}/{id}/comments/{commentId}/like:
+    parameters:
+      - {name: kind, in: path, required: true, schema: {type: string, enum: [update, post]}}
+      - {name: id, in: path, required: true, schema: {type: string}}
+      - {name: commentId, in: path, required: true, schema: {type: string}}
+    put:
+      operationId: setPostCommentLike
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/PostReactionInput'}
+      responses:
+        '200':
+          description: Updated activity
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/PostActivity'}
   /organisation-team:
     get:
       operationId: listManagedOrganisations
@@ -1715,6 +1785,72 @@ components:
       bearerFormat: JWT
 
   schemas:
+    PostViewerAuthor:
+      type: object
+      required: [id, name, avatarUrl, verified, href]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        avatarUrl: {type: [string, 'null']}
+        verified: {type: boolean}
+        href: {type: [string, 'null']}
+    PostViewerMedia:
+      type: object
+      required: [url, type]
+      properties:
+        url: {type: string}
+        type: {type: string, enum: [photo, video]}
+        thumbnailUrl: {type: [string, 'null']}
+        crop: {type: object, additionalProperties: true}
+        filter: {type: string}
+        adjustments: {type: object, additionalProperties: true}
+        width: {type: [number, 'null']}
+        height: {type: [number, 'null']}
+    PostViewerRecord:
+      type: object
+      required: [id, kind, author, caption, title, createdAt, media, externalUrl]
+      properties:
+        id: {type: string}
+        kind: {type: string, enum: [update, post]}
+        author: {$ref: '#/components/schemas/PostViewerAuthor'}
+        caption: {type: string}
+        title: {type: string}
+        createdAt: {type: string}
+        media: {type: array, items: {$ref: '#/components/schemas/PostViewerMedia'}}
+        externalUrl: {type: [string, 'null']}
+    PostViewerComment:
+      type: object
+      required: [id, parentId, text, author, createdAt, likes, liked]
+      properties:
+        id: {type: string}
+        parentId: {type: [string, 'null']}
+        text: {type: string}
+        author: {$ref: '#/components/schemas/PostViewerAuthor'}
+        createdAt: {type: string}
+        likes: {type: integer}
+        liked: {type: boolean}
+    PostActivity:
+      type: object
+      required: [likes, liked, commentCount, comments]
+      properties:
+        likes: {type: integer}
+        liked: {type: boolean}
+        commentCount: {type: integer}
+        comments: {type: array, items: {$ref: '#/components/schemas/PostViewerComment'}}
+    PostReactionInput:
+      type: object
+      additionalProperties: false
+      required: [liked]
+      properties:
+        liked: {type: boolean}
+    PostCommentInput:
+      type: object
+      additionalProperties: false
+      required: [clientId, text]
+      properties:
+        clientId: {type: string, format: uuid}
+        text: {type: string, minLength: 1, maxLength: 2000}
+        parentId: {type: [string, 'null']}
     SupporterNotificationChannels:
       type: object
       required: [inApp, email]

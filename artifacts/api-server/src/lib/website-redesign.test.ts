@@ -27,6 +27,8 @@ async function page(path: string, options: { route?: string; search?: string; si
           path: new URL("../../../../lib/api-client-react/src/generated/api.ts", import.meta.url).pathname,
         }));
         b.onResolve({ filter: /context\/AuthContext$/ }, () => ({ path: "auth", namespace: "isolated" }));
+        b.onResolve({ filter: /post-viewer\/PostViewerProvider$/ }, () => ({ path: "viewer", namespace: "viewer-presentation" }));
+        b.onLoad({ filter: /.*/, namespace: "viewer-presentation" }, () => ({ contents: "export const usePostViewer=()=>({open(){}});" }));
         b.onLoad({ filter: /.*/, namespace: "isolated" }, () => ({
           contents: `export const useAuth=()=>({user:${options.signedIn ? '{id:"fixture",name:"Fixture Supporter",accountType:"supporter"}' : "null"},token:${options.signedIn ? '"fixture-token"' : "null"},isAuthenticated:${!!options.signedIn},isLoading:false,login:async()=>{throw new Error('Not called during rendering')}});`,
         }));

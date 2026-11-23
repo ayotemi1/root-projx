@@ -2,7 +2,7 @@ import { SupporterAvatar } from "./SupporterAvatar";
 import { useRef, useState, type TouchEvent } from "react";
 import { Link, useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, ChevronLeft, ChevronRight, Images, Lock, Plus, Trash2 } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Images, Lock, Plus, Trash2, Play } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import * as api from "@/lib/api";
@@ -11,6 +11,7 @@ import { deletePost, followAuthor, unfollowAuthor, type SupporterPostRecord } fr
 import { myShowcaseKey, refreshShowcase } from "@/lib/supporter-showcase";
 import { EditedMedia } from "./EditedMedia";
 import { BookmarkButton } from "@/components/bookmarks/BookmarkButton";
+import { PostActivityRow } from "@/components/post-viewer/PostActivityRow";
 import { DonationAmountDialog } from "@/components/donation-amount-dialog";
 import { CampaignSymbol } from "@/components/campaign-symbol";
 import "./supporter-post.css";
@@ -33,7 +34,7 @@ export function useSupporterFollow() {
   });
 }
 
-function Carousel({ post }: { post: SupporterPostRecord }) {
+function Carousel({ post, onOpen }: { post: SupporterPostRecord; onOpen?: (trigger: HTMLElement) => void }) {
   const media = [...post.media].sort((a, b) => a.order - b.order);
   const [i, setI] = useState(0);
   const tx = useRef<number | null>(null);
@@ -45,6 +46,18 @@ function Carousel({ post }: { post: SupporterPostRecord }) {
     const dx = (e.changedTouches[0]?.clientX ?? tx.current) - tx.current; tx.current = null;
     if (dx < -40) go(i + 1); else if (dx > 40) go(i - 1);
   };
+  if (onOpen) {
+    const lead = media[0]!;
+    return (
+      <button type="button" onClick={e => onOpen(e.currentTarget)} className="spc-media block w-full text-left" aria-label={`Open ${post.type} post by ${post.author.name}`} data-testid={`button-profile-media-${post.id}`}>
+        <EditedMedia src={lead.url} kind={lead.type} poster={lead.video_thumbnail_url} muted
+          natural={lead.width && lead.height ? lead.width / lead.height : null}
+          edit={normaliseEdit({ crop: lead.crop, filter: lead.filter, adjustments: lead.adjustments })} alt={post.caption || `Post by ${post.author.name}`} />
+        {lead.type === "video" && <Play className="absolute inset-0 m-auto w-12 h-12 p-3 rounded-full bg-black/60 text-white fill-white" aria-hidden />}
+        {media.length > 1 && <span className="absolute top-3 right-3 bg-black/70 text-white px-2 py-1 text-xs">{media.length} items</span>}
+      </button>
+    );
+  }
   return (
     <div className="spc-media" onTouchStart={onStart} onTouchEnd={onEnd} aria-roledescription="carousel" data-testid={`carousel-sp-${post.id}`}>
       <div className="spc-track" style={{ transform: `translateX(-${i * 100}%)` }}>
@@ -67,7 +80,7 @@ function Carousel({ post }: { post: SupporterPostRecord }) {
   );
 }
 
-export function SupporterPostCard({ post }: { post: SupporterPostRecord }) {
+export function SupporterPostCard({ post, onOpen }: { post: SupporterPostRecord; onOpen?: (trigger: HTMLElement) => void }) {
   const { isAuthenticated, user, token } = useAuth();
   const [, navigate] = useLocation();
   const qc = useQueryClient();
@@ -129,9 +142,11 @@ export function SupporterPostCard({ post }: { post: SupporterPostRecord }) {
         ))}
       </header>
 
-      <Carousel post={post} />
+      <Carousel post={post} onOpen={onOpen} />
 
-      {post.caption && <p className={`${post.media.length ? "mt-4 text-[18px]" : "mt-1 border-l-4 border-[#F3BF2C] pl-4 text-[20px] sm:text-[22px] font-medium"} leading-relaxed text-[#17100F]/85 whitespace-pre-wrap break-words`} data-testid={`text-sp-caption-${post.id}`}>{post.caption}</p>}
+      {post.caption && (onOpen
+        ? <button type="button" onClick={e => onOpen(e.currentTarget)} className={`block w-full text-left ${post.media.length ? "mt-4 text-[18px]" : "mt-1 border-l-4 border-[#F3BF2C] pl-4 text-[20px] sm:text-[22px] font-medium"} leading-relaxed text-[#17100F]/85 whitespace-pre-wrap break-words`} data-testid={`text-sp-caption-${post.id}`}>{post.caption}</button>
+        : <p className={`${post.media.length ? "mt-4 text-[18px]" : "mt-1 border-l-4 border-[#F3BF2C] pl-4 text-[20px] sm:text-[22px] font-medium"} leading-relaxed text-[#17100F]/85 whitespace-pre-wrap break-words`} data-testid={`text-sp-caption-${post.id}`}>{post.caption}</p>)}
       {donationPost && camp && org && <button type="button" onClick={() => setDonateOpen(true)}
         className="w-full mt-4 flex gap-3 text-left items-center border border-[#17100F] p-3 hover:bg-[#F3BF2C]/10" data-testid={`button-sp-donation-${post.id}`}>
         <CampaignSymbol campaign={camp} className="w-10 h-10 shrink-0" />
@@ -145,7 +160,10 @@ export function SupporterPostCard({ post }: { post: SupporterPostRecord }) {
             {camp && <> for <Link href={camp.sharePath ?? (camp.publicId ? `/campaigns/${camp.publicId}` : `/organisations/${post.organisation_id}/campaigns`)} className="rp-link-u">{camp.name}</Link></>}
           </span>
         ) : <span />}
-        <BookmarkButton kind="post" targetId={post.id} className="ml-auto" />
+        <span className="ml-auto inline-flex items-center">
+          <PostActivityRow postRef={{ kind: "post", id: post.id }} label={a.name} />
+          <BookmarkButton kind="post" targetId={post.id} />
+        </span>
         {a.isOwner && (confirm ? (
           <span className="inline-flex items-center gap-3 text-[14px]">
             Delete this post?

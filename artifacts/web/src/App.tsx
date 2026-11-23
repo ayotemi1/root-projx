@@ -56,6 +56,9 @@ import CampaignLandingPage from "@/pages/campaign-landing";
 import CampaignThankYouPage from "@/pages/campaign-thank-you";
 import CampaignShareGiftPage from "@/pages/campaign-share-gift";
 import CampaignPreviewPage from "@/pages/campaign-preview";
+import PostPage from "@/pages/post";
+import { PostViewerProvider, useViewerAwareLocation, useViewerAwareSearch } from "@/components/post-viewer/PostViewerProvider";
+import { PostViewerHost } from "@/components/post-viewer/PostViewerHost";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -197,6 +200,7 @@ function AppRoutes() {
               <Route path="/organisations/:id/volunteer" component={OrgVolunteerPage} />
               <Route path="/organisations/:id/about" component={OrgAboutPage} />
               <Route path="/organisations/:id" component={OrgProfilePage} />
+              <Route path="/posts/:id" component={PostPage} />
               <Route path="/supporters/:publicId" component={SupporterProfilePage} />
               <Route path="/donate/success" component={DonateSuccessPage} />
               <Route path="/donate/:orgId" component={DonatePage} />
@@ -225,9 +229,11 @@ function App() {
       <AuthProvider>
         <CartProvider>
           <TooltipProvider>
-            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-              <OrganisationTeamAccess><AdminOrganisationAccess><AppRoutes /></AdminOrganisationAccess></OrganisationTeamAccess>
-            </WouterRouter>
+            <PostViewerProvider>
+              <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")} hook={useViewerAwareLocation} searchHook={useViewerAwareSearch}>
+                <OrganisationTeamAccess><AdminOrganisationAccess><AppRoutes /><PostViewerHost /></AdminOrganisationAccess></OrganisationTeamAccess>
+              </WouterRouter>
+            </PostViewerProvider>
             <Toaster />
           </TooltipProvider>
         </CartProvider>

@@ -39,6 +39,9 @@ export function parseManagerSession(token: string, now = Date.now()): { orgId: s
  * operations are deliberately excluded. */
 export function managerAccessAllows(orgId: string, method: string, originalUrl: string): boolean {
   if (!UID.test(orgId)) return false;
+  if (/^\/api\/post-viewer\/(?:post|update)\/[A-Za-z0-9_-]+(?:\/activity|\/like|\/comments(?:\/[A-Za-z0-9_-]+\/like)?)?$/.test(originalUrl.split("?")[0]!)) {
+    return ["GET", "POST", "PUT"].includes(method);
+  }
   const path = originalUrl.split("?")[0]!, root = `/api/organisations/${orgId}`;
   if (path === root) return method === "GET" || method === "PATCH";
   const tail = path.startsWith(`${root}/`) ? path.slice(root.length) : "";

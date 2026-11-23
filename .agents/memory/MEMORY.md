@@ -31,4 +31,6 @@
 - [Campaign symbols](campaign-symbols.md) — hands belong only to Out of Many Hands; Drum Life uses drums; other campaigns default to a heart and neutral wording.
 - [Campaign section layout](campaign-section-layout.md) — all campaigns share left-aligned split headings and full box rows, with phone stacking.
 - [Inline video playback](inline-video-playback.md) — avoid competing React and imperative source loads; seek needs byte ranges on the actual media origin.
+- [Post viewer scope](post-viewer-scope.md) — use the viewer for profiles and Saved while keeping Home cards and videos inline.
+- [Browser recording resources](browser-recording-resources.md) — orphaned X11 recorders can exhaust memory and interrupt Preview; stop only abandoned recordings.
 - [Website redesign reference](website-redesign-reference.md) — supplied nine-page HTML preview pack guides appearance; prototypes must not replace live data, auth or financial rules.

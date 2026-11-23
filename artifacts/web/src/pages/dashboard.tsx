@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { OrganisationBanner } from "@/components/organisation/OrganisationBanner";
+import { usePostViewer } from "@/components/post-viewer/PostViewerProvider";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearch, useLocation } from "wouter";
 import {
@@ -42,6 +43,7 @@ function timeAgo(iso: string): string {
 // ── Main dashboard page ───────────────────────────────────────────────────────
 
 export default function DashboardPage() {
+  const postViewer = usePostViewer();
   const { user, token } = useAuth();
   const adminAccess = token?.startsWith("org-admin.") ?? false;
   // Owners and delegated administrators use the same navigation shell.
@@ -368,7 +370,7 @@ export default function DashboardPage() {
                     {updates.map((post) => {
                       const media = post.mediaUrls?.[0] ?? post.imageUrl ?? null;
                       const kind = media ? mediaKind(media) : null;
-                      if (media && kind === "video") return (
+                      if (media && kind === "video" && postFilter === "archived") return (
                         <div key={post._id} className="ops-tile" data-testid={`tile-post-${post._id}`}>
                           <InlineVideoPlayer src={media} label={`${post.title || "Organisation"} video`} />
                           <button type="button" className="absolute bottom-0 left-0 right-0 z-[4] p-3 pt-5 text-left font-bold bg-gradient-to-t from-[#17100F]/90 to-transparent"
@@ -378,7 +380,9 @@ export default function DashboardPage() {
                         </div>
                       );
                       return (
-                        <button type="button" key={post._id} className={`ops-tile text-left ${media ? "" : "ops-tile--text"}`} onClick={() => setViewPost(post)} data-testid={`tile-post-${post._id}`} aria-label={`View post: ${post.title || "Untitled post"}`}>
+                        <button type="button" key={post._id} className={`ops-tile text-left ${media ? "" : "ops-tile--text"}`}
+                          onClick={e => postFilter === "archived" ? setViewPost(post) : postViewer.open({ refs: updates.map(p => ({ kind: "update", id: p._id })), index: updates.findIndex(p => p._id === post._id), label: org?.name, trigger: e.currentTarget })}
+                          data-testid={`tile-post-${post._id}`} aria-label={`View post: ${post.title || "Untitled post"}`}>
                           {media && kind === "image" ? <img src={media} alt="" loading="lazy" />
                             : media && kind === "video" ? <video src={media} muted playsInline preload="metadata" />
                             : null}

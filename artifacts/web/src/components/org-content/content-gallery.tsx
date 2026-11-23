@@ -7,6 +7,7 @@ import type { FeedUpdate } from "@/lib/api";
 import { Link } from "wouter";
 import { summarise, matchesFilter, type FilterKey, type ExternalLink as Ext } from "@/lib/content-media";
 import { InlineVideoPlayer } from "@/components/inline-video-player";
+import { usePostViewer } from "@/components/post-viewer/PostViewerProvider";
 
 const RED = "#B50000";
 
@@ -103,7 +104,7 @@ export function ContentDialog({ item, onClose }: { item: FeedUpdate | null; onCl
   );
 }
 
-function Card({ item, onOpen, feed = false }: { item: FeedUpdate; onOpen: () => void; feed?: boolean }) {
+function Card({ item, onOpen, feed = false }: { item: FeedUpdate; onOpen: (trigger: HTMLElement) => void; feed?: boolean }) {
   const s = summarise(item);
   const cover = s.images[0];
   const hasVideo = s.videos.length > 0 || !!s.link?.embedUrl;
@@ -115,10 +116,10 @@ function Card({ item, onOpen, feed = false }: { item: FeedUpdate; onOpen: () => 
       data-testid={`card-content-${item._id}`}
     >
       {feed && <p className="px-3 py-2 text-sm font-bold truncate">{item.orgName}</p>}
-      {s.videos[0] ? <div className={`relative ${feed ? "aspect-[4/3]" : "aspect-square"} w-full bg-secondary overflow-hidden`}>
+      {s.videos[0] && feed ? <div className={`relative ${feed ? "aspect-[4/3]" : "aspect-square"} w-full bg-secondary overflow-hidden`}>
         <InlineVideoPlayer src={s.videos[0]} poster={cover} label={`${item.orgName || "Organisation"} video`} />
         {count > 1 && <span className="absolute top-2 left-2 z-10 text-[10px] font-bold px-1.5 py-0.5 rounded bg-black/60 text-white pointer-events-none">{count} items</span>}
-      </div> : <button type="button" onClick={onOpen} aria-label={`Open ${item.title || "post"}`}
+      </div> : <button type="button" onClick={e => onOpen(e.currentTarget)} aria-label={`Open ${item.title || "post"}`}
         className={`relative ${feed ? "aspect-[4/3]" : "aspect-square"} w-full bg-secondary overflow-hidden`}>
         {cover ? (
           <img src={cover} alt="" loading="lazy" className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500" />
@@ -139,7 +140,7 @@ function Card({ item, onOpen, feed = false }: { item: FeedUpdate; onOpen: () => 
           {s.link && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-white/90 text-foreground">{s.link.label}</span>}
         </div>
       </button>}
-      <button type="button" onClick={onOpen} className={feed ? "p-3 text-left" : "p-2 text-left text-xs hover:underline"} aria-label={`Open ${item.title || "post"}`}>
+      <button type="button" onClick={e => onOpen(e.currentTarget)} className={feed ? "p-3 text-left" : "p-2 text-left text-xs hover:underline"} aria-label={`Open ${item.title || "post"}`}>
         <p className="text-[10px] text-muted-foreground font-semibold">{dateLabel(item.createdAt)}</p>
         <h4 className="font-bold text-sm leading-snug line-clamp-2 mt-0.5">{item.title || item.content || "View post"}</h4>
       </button>
@@ -152,6 +153,7 @@ export function ContentGallery({ items, isLoading, isError, onRetry, feed = fals
 }) {
   const [filter, setFilter] = useState<FilterKey>("all");
   const [open, setOpen] = useState<FeedUpdate | null>(null);
+  const viewer = usePostViewer();
   const counts = useMemo(() => {
     const sums = items.map(summarise);
     return Object.fromEntries(FILTERS.map((f) => [f.key, sums.filter((s) => matchesFilter(s, f.key)).length])) as Record<FilterKey, number>;
@@ -212,7 +214,11 @@ export function ContentGallery({ items, isLoading, isError, onRetry, feed = fals
         <p className="text-center py-10 text-sm text-muted-foreground">Nothing in this filter yet.</p>
       ) : (
         <div className={feed ? "grid grid-cols-1 sm:grid-cols-2 gap-4" : "grid grid-cols-3 gap-1"} data-testid="posts-grid">
-          {visible.map((u) => <Card key={u._id} item={u} feed={feed} onOpen={() => setOpen(u)} />)}
+          {visible.map((u, i) => <Card key={u._id} item={u} feed={feed} onOpen={trigger => {
+            // Profile grids open the shared viewer across everything in this filter, videos included.
+            if (feed) { setOpen(u); return; }
+            viewer.open({ refs: visible.map(v => ({ kind: "update" as const, id: v._id })), index: i, label: u.orgName || undefined, trigger });
+          }} />)}
         </div>
       )}
       <ContentDialog item={open} onClose={() => setOpen(null)} />

@@ -7,6 +7,168 @@
  */
 import * as zod from "zod";
 
+export const GetPostViewerParams = zod.object({
+  kind: zod.enum(["update", "post"]),
+  id: zod.coerce.string(),
+});
+
+export const GetPostViewerResponse = zod.object({
+  id: zod.string(),
+  kind: zod.enum(["update", "post"]),
+  author: zod.object({
+    id: zod.string(),
+    name: zod.string(),
+    avatarUrl: zod.string().nullable(),
+    verified: zod.boolean(),
+    href: zod.string().nullable(),
+  }),
+  caption: zod.string(),
+  title: zod.string(),
+  createdAt: zod.string(),
+  media: zod.array(
+    zod.object({
+      url: zod.string(),
+      type: zod.enum(["photo", "video"]),
+      thumbnailUrl: zod.string().nullish(),
+      crop: zod.record(zod.string(), zod.unknown()).optional(),
+      filter: zod.string().optional(),
+      adjustments: zod.record(zod.string(), zod.unknown()).optional(),
+      width: zod.number().nullish(),
+      height: zod.number().nullish(),
+    }),
+  ),
+  externalUrl: zod.string().nullable(),
+});
+
+export const GetPostActivityParams = zod.object({
+  kind: zod.enum(["update", "post"]),
+  id: zod.coerce.string(),
+});
+
+export const GetPostActivityResponse = zod.object({
+  likes: zod.number(),
+  liked: zod.boolean(),
+  commentCount: zod.number(),
+  comments: zod.array(
+    zod.object({
+      id: zod.string(),
+      parentId: zod.string().nullable(),
+      text: zod.string(),
+      author: zod.object({
+        id: zod.string(),
+        name: zod.string(),
+        avatarUrl: zod.string().nullable(),
+        verified: zod.boolean(),
+        href: zod.string().nullable(),
+      }),
+      createdAt: zod.string(),
+      likes: zod.number(),
+      liked: zod.boolean(),
+    }),
+  ),
+});
+
+export const SetPostLikeParams = zod.object({
+  kind: zod.enum(["update", "post"]),
+  id: zod.coerce.string(),
+});
+
+export const SetPostLikeBody = zod.object({
+  liked: zod.boolean(),
+});
+
+export const SetPostLikeResponse = zod.object({
+  likes: zod.number(),
+  liked: zod.boolean(),
+  commentCount: zod.number(),
+  comments: zod.array(
+    zod.object({
+      id: zod.string(),
+      parentId: zod.string().nullable(),
+      text: zod.string(),
+      author: zod.object({
+        id: zod.string(),
+        name: zod.string(),
+        avatarUrl: zod.string().nullable(),
+        verified: zod.boolean(),
+        href: zod.string().nullable(),
+      }),
+      createdAt: zod.string(),
+      likes: zod.number(),
+      liked: zod.boolean(),
+    }),
+  ),
+});
+
+export const AddPostCommentParams = zod.object({
+  kind: zod.enum(["update", "post"]),
+  id: zod.coerce.string(),
+});
+
+export const addPostCommentBodyTextMax = 2000;
+
+export const AddPostCommentBody = zod.object({
+  clientId: zod.string().uuid(),
+  text: zod.string().min(1).max(addPostCommentBodyTextMax),
+  parentId: zod.string().nullish(),
+});
+
+export const AddPostCommentResponse = zod.object({
+  likes: zod.number(),
+  liked: zod.boolean(),
+  commentCount: zod.number(),
+  comments: zod.array(
+    zod.object({
+      id: zod.string(),
+      parentId: zod.string().nullable(),
+      text: zod.string(),
+      author: zod.object({
+        id: zod.string(),
+        name: zod.string(),
+        avatarUrl: zod.string().nullable(),
+        verified: zod.boolean(),
+        href: zod.string().nullable(),
+      }),
+      createdAt: zod.string(),
+      likes: zod.number(),
+      liked: zod.boolean(),
+    }),
+  ),
+});
+
+export const SetPostCommentLikeParams = zod.object({
+  kind: zod.enum(["update", "post"]),
+  id: zod.coerce.string(),
+  commentId: zod.coerce.string(),
+});
+
+export const SetPostCommentLikeBody = zod.object({
+  liked: zod.boolean(),
+});
+
+export const SetPostCommentLikeResponse = zod.object({
+  likes: zod.number(),
+  liked: zod.boolean(),
+  commentCount: zod.number(),
+  comments: zod.array(
+    zod.object({
+      id: zod.string(),
+      parentId: zod.string().nullable(),
+      text: zod.string(),
+      author: zod.object({
+        id: zod.string(),
+        name: zod.string(),
+        avatarUrl: zod.string().nullable(),
+        verified: zod.boolean(),
+        href: zod.string().nullable(),
+      }),
+      createdAt: zod.string(),
+      likes: zod.number(),
+      liked: zod.boolean(),
+    }),
+  ),
+});
+
 export const ListManagedOrganisationsResponse = zod.object({
   organisations: zod.array(
     zod.object({
