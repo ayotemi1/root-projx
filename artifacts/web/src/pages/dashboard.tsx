@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { DashboardOverview } from "@/components/dashboard/overview";
 import "@/components/dashboard/operations.css";
+import { InlineVideoPlayer } from "@/components/inline-video-player";
 import { useWalkthrough } from "@/components/tour/use-walkthrough";
 import { OPEN_SHELL_MENU_EVENT } from "@/components/supporter/SupporterLayout";
 import {
@@ -395,6 +396,15 @@ export default function DashboardPage() {
                     {updates.map((post) => {
                       const media = post.mediaUrls?.[0] ?? post.imageUrl ?? null;
                       const kind = media ? mediaKind(media) : null;
+                      if (media && kind === "video") return (
+                        <div key={post._id} className="ops-tile" data-testid={`tile-post-${post._id}`}>
+                          <InlineVideoPlayer src={media} label={`${post.title || "Organisation"} video`} />
+                          <button type="button" className="absolute bottom-0 left-0 right-0 z-[4] p-3 pt-5 text-left font-bold bg-gradient-to-t from-[#17100F]/90 to-transparent"
+                            onClick={() => setViewPost(post)} aria-label={`View post details: ${post.title || "Untitled post"}`}>
+                            <span className="ops-display uppercase text-[15px] sm:text-lg leading-none line-clamp-2">{post.title || "Video post"}</span>
+                          </button>
+                        </div>
+                      );
                       return (
                         <button type="button" key={post._id} className={`ops-tile text-left ${media ? "" : "ops-tile--text"}`} onClick={() => setViewPost(post)} data-testid={`tile-post-${post._id}`} aria-label={`View post: ${post.title || "Untitled post"}`}>
                           {media && kind === "image" ? <img src={media} alt="" loading="lazy" />
@@ -426,7 +436,7 @@ export default function DashboardPage() {
                 <div>
                   {(viewPost.mediaUrls?.length ? viewPost.mediaUrls : viewPost.imageUrl ? [viewPost.imageUrl] : []).map((url) => (
                     mediaKind(url) === "video"
-                      ? <video key={url} src={url} controls playsInline className="w-full max-h-[60dvh] bg-[color:var(--ops-ink)]" />
+                       ? <div key={url} className="w-full aspect-video bg-[color:var(--ops-ink)]"><InlineVideoPlayer src={url} label={`${viewPost.title || "Organisation"} video`} /></div>
                       : <img key={url} src={url} alt="" className="w-full max-h-[60dvh] object-contain bg-[color:var(--ops-ink)]" />
                   ))}
                   <div className="p-5 space-y-2">

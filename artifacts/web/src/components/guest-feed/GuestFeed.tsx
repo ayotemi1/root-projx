@@ -9,6 +9,7 @@ import { ContentDialog } from "@/components/org-content/content-gallery";
 import { summarise } from "@/lib/content-media";
 import { GuestJoinPrompt } from "./GuestJoinPrompt";
 import { VisitorHeading } from "@/components/visitor/VisitorHeading";
+import { InlineVideoPlayer } from "@/components/inline-video-player";
 
 function ago(iso: string) {
   const s = Math.max(0, (Date.now() - Date.parse(iso)) / 1000);
@@ -66,7 +67,10 @@ function GuestPost({ item, org, onOpen, gate }: { item: FeedUpdate; org?: Org; o
         </div>
       </header>
       {(cover || s.videos[0]) && (
-        <button type="button" onClick={onOpen} className="group relative block w-full aspect-square overflow-hidden border border-[#17100F] bg-[#17100F] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#F3BF2C]" aria-label={`Open ${item.title || `${name} post`}`} data-testid={`button-open-post-${item._id}`}>
+        s.videos[0] ? <div className="relative w-full aspect-square border border-[#17100F] bg-[#17100F]">
+          <InlineVideoPlayer src={s.videos[0]} poster={cover} label={`${name} video`} />
+          {count > 1 && <span className="absolute top-3 right-3 rp-label !text-[11px] bg-[#17100F]/80 text-white px-2 py-1 pointer-events-none">{count} items</span>}
+        </div> : <button type="button" onClick={onOpen} className="group relative block w-full aspect-square overflow-hidden border border-[#17100F] bg-[#17100F] focus:outline-none focus-visible:ring-4 focus-visible:ring-[#F3BF2C]" aria-label={`Open ${item.title || `${name} post`}`} data-testid={`button-open-post-${item._id}`}>
           {cover ? <img src={cover} alt="" loading="lazy" className="w-full h-full object-cover" />
             : <video src={`${s.videos[0]}#t=0.1`} muted playsInline preload="metadata" className="w-full h-full object-cover pointer-events-none" aria-hidden />}
           {count > 1 && <span className="absolute top-3 right-3 rp-label !text-[11px] bg-[#17100F]/80 text-white px-2 py-1 inline-flex items-center gap-1"><Images className="w-3 h-3" />{count}</span>}

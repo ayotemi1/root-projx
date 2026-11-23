@@ -2,6 +2,7 @@ import { Router } from "express";
 import multer from "multer";
 import { requireApprovedOrganisation, requireAuth } from "../lib/auth.js";
 import { objectStorageClient } from "../lib/objectStorage.js";
+import { mediaRange } from "../lib/media-range.js";
 
 const router = Router();
 
@@ -95,9 +96,33 @@ router.use("/uploads/object", async (req, res) => {
     const [metadata] = await file.getMetadata();
     res.set("Content-Type", (metadata.contentType as string) || "application/octet-stream");
     res.set("Cache-Control", "public, max-age=86400, stale-while-revalidate=3600");
-    if (metadata.size) res.set("Content-Length", String(metadata.size));
-
-    file.createReadStream().pipe(res);
+    const size = Number(metadata.size);
+    if (Number.isSafeInteger(size) && size > 0) {
+      res.set("Accept-Ranges", "bytes");
+      if (req.headers.range) {
+        const range = mediaRange(req.headers.range, size);
+        if (!range) {
+          res.set("Content-Range", `bytes */${size}`);
+          res.status(416).end();
+          return;
+        }
+        res.status(206);
+        res.set("Content-Range", `bytes ${range.start}-${range.end}/${size}`);
+        res.set("Content-Length", String(range.end - range.start + 1));
+        if (req.method === "HEAD") { res.end(); return; }
+        const stream = file.createReadStream(range);
+        res.on("close", () => stream.destroy());
+        stream.on("error", () => res.destroy());
+        stream.pipe(res);
+        return;
+      }
+      res.set("Content-Length", String(size));
+    }
+    if (req.method === "HEAD") { res.end(); return; }
+    const stream = file.createReadStream();
+    res.on("close", () => stream.destroy());
+    stream.on("error", () => res.destroy());
+    stream.pipe(res);
   } catch (err) {
     res.status(500).json({ error: "Failed to serve file" });
   }

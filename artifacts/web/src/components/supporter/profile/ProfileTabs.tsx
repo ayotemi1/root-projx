@@ -11,6 +11,9 @@ import type { SupporterPostRecord } from "@/lib/supporter-publishing";
 import { AddInvolvementDialog } from "./AddInvolvementDialog";
 import { useBookmarks, useToggleBookmark, GENERIC_ERROR } from "@/lib/bookmarks";
 import { CampaignSymbol } from "@/components/campaign-symbol";
+import { InlineVideoPlayer } from "@/components/inline-video-player";
+import { normaliseEdit } from "@/lib/supporter-post-media";
+import { EditedMedia } from "@/components/supporter/EditedMedia";
 
 const Empty = ({ text, testId }: { text: string; testId: string }) => (
   <p className="border border-dashed border-[#17100F]/35 px-6 py-10 text-center text-[15px] text-[#17100F]/70" data-testid={testId}>{text}</p>
@@ -41,7 +44,11 @@ export function MediaTab({ posts }: { posts: SupporterPostRecord[] }) {
           const lead = [...p.media].sort((a, b) => a.order - b.order)[0]!;
           const thumb = lead.type === "video" ? lead.video_thumbnail_url : lead.url;
           return (
-            <button key={p.id} type="button" onClick={() => setOpen(p)} className="relative aspect-square overflow-hidden bg-[#17100F] group text-left"
+            lead.type === "video" ? <div key={p.id} className="relative aspect-square overflow-hidden bg-[#17100F] grid place-items-center [container-type:size]" data-testid={`tile-media-${p.id}`}>
+              <EditedMedia src={lead.url} kind="video" poster={thumb} alt={`${p.author.name} video`}
+                edit={normaliseEdit({ crop: lead.crop, filter: lead.filter, adjustments: lead.adjustments })}
+                natural={lead.width && lead.height ? lead.width / lead.height : null} fit="contain" controls />
+            </div> : <button key={p.id} type="button" onClick={() => setOpen(p)} className="relative aspect-square overflow-hidden bg-[#17100F] group text-left"
               aria-label={`Open ${p.type} post${p.caption ? `: ${p.caption.slice(0, 60)}` : ""}`} data-testid={`tile-media-${p.id}`}>
               {thumb ? <img src={thumb} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]" />
                 : <video src={lead.url} muted preload="metadata" playsInline className="absolute inset-0 w-full h-full object-cover" />}
@@ -187,6 +194,11 @@ export function SavedTab() {
               </div>
             );
             const label = b.title || b.authorName;
+            if (b.isVideo && b.videoUrl) return (
+              <div key={b.id} className="relative aspect-square overflow-hidden bg-[#17100F]" data-testid={`tile-saved-${b.id}`}>
+                <InlineVideoPlayer src={b.videoUrl} poster={b.imageUrl} label={`${label} video`} />
+              </div>
+            );
             if (b.imageUrl || b.videoUrl) return (
               <button key={b.id} type="button" onClick={() => open(b.href)} className="relative aspect-square overflow-hidden bg-[#17100F] group" aria-label={`Open ${b.kind}: ${label}`} data-testid={`tile-saved-${b.id}`}>
                 {b.imageUrl ? <img src={b.imageUrl} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]" />

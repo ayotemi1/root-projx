@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/context/AuthContext";
 import * as api from "@/lib/api";
 import type { FeedUpdate } from "@/lib/api";
+import { InlineVideoPlayer } from "@/components/inline-video-player";
 
 function timeAgo(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
@@ -89,15 +90,9 @@ function PostCard({ post }: { post: FeedUpdate }) {
 
       {/* Hero media — video only */}
       {showVideoHero && (
-        <a
-          href={firstVideo!}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center justify-center gap-3 w-full h-36 bg-secondary border-b border-border text-foreground/70 hover:text-foreground transition-colors"
-        >
-          <Video className="w-8 h-8 text-muted-foreground" />
-          <span className="text-sm font-semibold">Watch video</span>
-        </a>
+        <div className="w-full aspect-video bg-secondary border-b border-border">
+          <InlineVideoPlayer src={firstVideo!} label={`${post.orgName} video`} />
+        </div>
       )}
 
       {/* Caption */}

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import type { FeedUpdate } from "@/lib/api";
 import { Link } from "wouter";
 import { summarise, matchesFilter, type FilterKey, type ExternalLink as Ext } from "@/lib/content-media";
+import { InlineVideoPlayer } from "@/components/inline-video-player";
 
 const RED = "#B50000";
 
@@ -71,9 +72,9 @@ export function ContentDialog({ item, onClose }: { item: FeedUpdate | null; onCl
             </div>
             <div className="space-y-3">
               {s.videos.map((v, i) => (
-                <video key={v} src={v} controls playsInline preload="metadata" className="w-full max-h-[60dvh] rounded-xl bg-black" data-testid={`video-content-${i}`}>
-                  Your browser can't play this video.
-                </video>
+                <div key={v} className="w-full aspect-video bg-black" data-testid={`video-content-${i}`}>
+                  <InlineVideoPlayer src={v} label={`${item.title || "Organisation"} video ${i + 1}`} />
+                </div>
               ))}
               {s.link?.embedUrl && <ClickToPlayEmbed link={s.link} title={item.title} />}
               {s.images.map((img, i) => (
@@ -108,16 +109,17 @@ function Card({ item, onOpen, feed = false }: { item: FeedUpdate; onOpen: () => 
   const hasVideo = s.videos.length > 0 || !!s.link?.embedUrl;
   const count = s.images.length + s.videos.length;
   return (
-    <button
-      type="button"
-      onClick={onOpen}
+    <div
       className={`group text-left bg-white border border-border overflow-hidden flex flex-col hover:shadow-md transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${feed ? "rounded-xl" : "rounded-sm"}`}
       style={{ ["--tw-ring-color" as string]: RED }}
-      aria-label={`Open ${item.title || item.content.slice(0, 80) || `${item.orgName || "organisation"} post`}`}
       data-testid={`card-content-${item._id}`}
     >
       {feed && <p className="px-3 py-2 text-sm font-bold truncate">{item.orgName}</p>}
-      <div className={`relative ${feed ? "aspect-[4/3]" : "aspect-square"} w-full bg-secondary overflow-hidden`}>
+      {s.videos[0] ? <div className={`relative ${feed ? "aspect-[4/3]" : "aspect-square"} w-full bg-secondary overflow-hidden`}>
+        <InlineVideoPlayer src={s.videos[0]} poster={cover} label={`${item.orgName || "Organisation"} video`} />
+        {count > 1 && <span className="absolute top-2 left-2 z-10 text-[10px] font-bold px-1.5 py-0.5 rounded bg-black/60 text-white pointer-events-none">{count} items</span>}
+      </div> : <button type="button" onClick={onOpen} aria-label={`Open ${item.title || "post"}`}
+        className={`relative ${feed ? "aspect-[4/3]" : "aspect-square"} w-full bg-secondary overflow-hidden`}>
         {cover ? (
           <img src={cover} alt="" loading="lazy" className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500" />
         ) : s.videos[0] ? (
@@ -136,12 +138,12 @@ function Card({ item, onOpen, feed = false }: { item: FeedUpdate; onOpen: () => 
           {count > 1 && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-black/60 text-white flex items-center gap-1"><Images className="w-3 h-3" />{count}</span>}
           {s.link && <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-white/90 text-foreground">{s.link.label}</span>}
         </div>
-      </div>
-      <div className={feed ? "p-3" : "sr-only"}>
+      </button>}
+      <button type="button" onClick={onOpen} className={feed ? "p-3 text-left" : "p-2 text-left text-xs hover:underline"} aria-label={`Open ${item.title || "post"}`}>
         <p className="text-[10px] text-muted-foreground font-semibold">{dateLabel(item.createdAt)}</p>
         <h4 className="font-bold text-sm leading-snug line-clamp-2 mt-0.5">{item.title || item.content || "View post"}</h4>
-      </div>
-    </button>
+      </button>
+    </div>
   );
 }
 

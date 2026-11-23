@@ -16,6 +16,7 @@ import { SupporterPostCard } from "@/components/supporter/SupporterPostCard";
 import { BookmarkButton } from "@/components/bookmarks/BookmarkButton";
 import { listPosts, spKey, type SupporterPostRecord } from "@/lib/supporter-publishing";
 import { DonationAmountDialog } from "@/components/donation-amount-dialog";
+import { InlineVideoPlayer } from "@/components/inline-video-player";
 
 type FeedEntry = { kind: "org"; at: number; item: FeedUpdate } | { kind: "sp"; at: number; post: SupporterPostRecord };
 
@@ -74,7 +75,12 @@ function PostCard({ item, logo, onOpen, following, onFollow, followBusy }: {
         )}
       </header>
 
-      <button
+      {s.videos[0] ? (
+        <div className="relative w-full aspect-[4/3] border border-[#17100F] bg-[#17100F]">
+          <InlineVideoPlayer src={s.videos[0]} poster={cover} label={`${orgName} video`} />
+          {count > 1 && <span className="absolute top-3 right-3 rp-label !text-[12px] bg-[#17100F]/80 text-white px-2 py-1 inline-flex items-center gap-1 pointer-events-none"><Images className="w-3 h-3" />{count}</span>}
+        </div>
+      ) : <button
         type="button"
         onClick={onOpen}
         className="group relative block w-full aspect-[4/3] overflow-hidden bg-[#17100F] text-left focus:outline-none focus-visible:ring-4 focus-visible:ring-[#F3BF2C]"
@@ -101,7 +107,7 @@ function PostCard({ item, logo, onOpen, following, onFollow, followBusy }: {
             </span>
           </span>
         )}
-      </button>
+      </button>}
 
       {(item.title || item.content) && (
         <div className="mt-4">
