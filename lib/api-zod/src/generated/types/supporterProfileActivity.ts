@@ -5,9 +5,11 @@
  * Root ProjX API — community giving platform
  * OpenAPI spec version: 0.1.0
  */
+import type { CampaignDonationPresentation } from "./campaignDonationPresentation";
 import type { SupporterProfileActivitySource } from "./supporterProfileActivitySource";
 
 export interface SupporterProfileActivity {
+  donationPresentation?: CampaignDonationPresentation;
   id: string;
   source: SupporterProfileActivitySource;
   /** @nullable */

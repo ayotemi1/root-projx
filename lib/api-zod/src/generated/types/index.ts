@@ -18,6 +18,8 @@ export * from "./bookmarkViewKind";
 export * from "./campaignAssistRequest";
 export * from "./campaignAssistRequestField";
 export * from "./campaignColourScheme";
+export * from "./campaignDonationPresentation";
+export * from "./campaignDonationPresentationIcon";
 export * from "./campaignEditableSection";
 export * from "./campaignEditorRequest";
 export * from "./campaignEditorRequestBreakdownItem";

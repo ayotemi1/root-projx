@@ -35,7 +35,7 @@
 .rpshare-author { display:flex; align-items:center; gap:8px; font-size:14px; }
 .rpshare-author > span { width:35px; height:35px; display:grid; place-items:center; background:#17100F; color:#F3BF2C; border-radius:50%; font-weight:700; font-size:11px; }
 .rpshare-campaign { display:flex; gap:12px; align-items:center; border-top:1px solid #17100F; border-bottom:1px solid #17100F; padding:12px 0; margin-top:15px; font-size:14px; }
-.rpshare-campaign svg { width:38px; height:38px; background:#17100F; color:#F3BF2C; padding:6px; }
+.rpshare-campaign svg { width:38px; height:38px; }
 .rpshare-switch { display:flex; justify-content:space-between; align-items:center; font-size:14px; margin-top:16px; }
 .rpshare-switch input { accent-color:#17100F; width:20px; height:20px; }
 .rpt button.rpt-button { border:0; display:inline-flex; min-height:48px; padding:12px 24px; align-items:center; justify-content:center; background:#17100F; color:#F4EFE6; cursor:pointer; font-weight:700; font:inherit; }

@@ -2484,6 +2484,7 @@ components:
     CampaignEditorRequest:
       type: object
       properties:
+        donationPresentation: { $ref: "#/components/schemas/CampaignDonationPresentation" }
         drumExperience:
           anyOf:
             - $ref: "#/components/schemas/DrumExperience"
@@ -3164,10 +3165,20 @@ components:
         details: { type: string, maxLength: 500 }
         when: { type: string, minLength: 1, maxLength: 80 }
         shared: { type: boolean }
+    CampaignDonationPresentation:
+      type: object
+      properties:
+        icon: { type: string, enum: [hand, drum, heart] }
+        symbolColour: { type: string }
+        confirmationLine: { type: string }
+        counterLabel: { type: string }
+        hasWall: { type: boolean }
+      required: [icon, symbolColour, confirmationLine, counterLabel, hasWall]
     SupporterProfileActivity:
       type: object
       required: [id, source, organisationId, projectName, logo, sector, location, activity, details, when, shared, href]
       properties:
+        donationPresentation: { $ref: "#/components/schemas/CampaignDonationPresentation" }
         id: { type: string }
         source: { type: string, enum: [manual, post, repost, gift] }
         organisationId: { type: [string, "null"] }

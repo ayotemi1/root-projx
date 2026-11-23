@@ -128,6 +128,19 @@ export function campaignPatch(input: unknown, previous: Record<string, unknown> 
     // Legacy clients can still replace/remove a single video after an upgrade.
     if (Array.isArray(previous.videos)) patch.videos = patch.video ? [patch.video] : [];
   }
+  if ("donationPresentation" in body) {
+    const settings = record(body.donationPresentation, "donation presentation");
+    if (!["hand", "drum", "heart"].includes(String(settings.icon)) ||
+        typeof settings.symbolColour !== "string" || !/^#[a-f0-9]{6}$/i.test(settings.symbolColour) ||
+        typeof settings.confirmationLine !== "string" || settings.confirmationLine.length > 180 ||
+        typeof settings.counterLabel !== "string" || settings.counterLabel.length > 80 || !settings.counterLabel.includes("{n}")) {
+      invalid("Choose a valid campaign symbol, colour and counter label.");
+    }
+    patch.donationPresentation = {
+      icon: settings.icon, symbolColour: settings.symbolColour,
+      confirmationLine: settings.confirmationLine, counterLabel: settings.counterLabel,
+    };
+  }
   if ("theme" in body) {
     const theme = record(body.theme, "theme");
     const old = previous.theme && typeof previous.theme === "object" ? previous.theme as Record<string, unknown> : {};

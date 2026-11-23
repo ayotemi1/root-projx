@@ -520,6 +520,7 @@ export interface DrumExperience {
 }
 
 export interface Campaign {
+  donationPresentation?: import("../../../api-server/src/lib/campaign-presentation").CampaignPresentation;
   pageDesign?: CampaignPageDesign | null;
   drumExperience?: DrumExperience | null;
   currency?: "gbp" | "usd";
@@ -577,6 +578,7 @@ export interface PublicSupporter {
 
 /** Editable fields accepted by PATCH, plus editor flags. Never includes amountRaised. */
 export interface CampaignEditorPatch {
+  donationPresentation?: Campaign["donationPresentation"];
   pageDesign?: CampaignPageDesign | null;
   drumExperience?: DrumExperience | null;
   currency?: "gbp" | "usd";

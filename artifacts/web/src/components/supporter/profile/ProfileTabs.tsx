@@ -10,6 +10,7 @@ import { MANUAL_LIMIT, formatWhen, groupInvolvement, initialsOf, refreshShowcase
 import type { SupporterPostRecord } from "@/lib/supporter-publishing";
 import { AddInvolvementDialog } from "./AddInvolvementDialog";
 import { useBookmarks, useToggleBookmark, GENERIC_ERROR } from "@/lib/bookmarks";
+import { CampaignSymbol } from "@/components/campaign-symbol";
 
 const Empty = ({ text, testId }: { text: string; testId: string }) => (
   <p className="border border-dashed border-[#17100F]/35 px-6 py-10 text-center text-[15px] text-[#17100F]/70" data-testid={testId}>{text}</p>
@@ -111,7 +112,7 @@ export function InvolvementTab({ showcase, editable, token, onOpenPost }: {
               const text = it.details || "";
               return (
                 <li key={it.id} className="grid grid-cols-[84px_minmax(0,1fr)] sm:grid-cols-[100px_minmax(0,1fr)_auto] gap-x-3 gap-y-1 py-2.5 border-t border-[#17100F]/10 first:border-t-0 text-[14px]" data-testid={`row-involvement-${it.id}`}>
-                  <span className="font-bold">{it.activity}</span>
+                  <span className="font-bold">{it.donationPresentation && <CampaignSymbol presentation={it.donationPresentation} className="w-6 h-6 mr-2 align-middle" />}{it.activity}</span>
                   <span className="min-w-0 [overflow-wrap:anywhere] whitespace-pre-wrap">
                     {postId ? <button type="button" onClick={() => onOpenPost(postId)} className="underline underline-offset-2 text-left hover:text-[#CA0813]" data-testid={`link-involvement-post-${it.id}`}>{text}</button>
                       : it.href ? <Link href={it.href} className="underline underline-offset-2">{text}</Link> : text}

@@ -833,3 +833,29 @@ test("only the paying supporter can change private, post and Involvement sharing
   await post("test-user", "private");
   assert.equal(state.documents.get("users/test-user").profileShowcase.entries.length, 0);
 });
+
+for (const [name, question] of [
+  ["Out of Many Hands", "Show your name on the wall?"],
+  ["Drum Life", "Show your name on the campaign page?"],
+  ["Another campaign", "Show your name on the campaign page?"],
+]) {
+  test(`${name}: presentation question leaves synthetic donation recording unchanged`, async () => {
+    const { donations, webhooks, state } = await isolatedRouters();
+    const org = state.documents.get("organisations/test-org");
+    org.campaigns[0].name = name;
+    const log = { info() {}, warn() {}, error() { assert.fail("Unexpected donation error"); } };
+    await invoke(donations, "/donations/checkout", {
+      body: { orgId: "test-org", campaignId: "test-campaign", amountPence: 300,
+        originalAmountPence: 300, feeCovered: false },
+      user: { userId: "test-user", accountType: "supporter" }, headers: {}, log,
+    });
+    assert.equal(state.checkout.custom_fields[0].label.custom, question);
+    const event = checkoutEvent({ id: "pi_presentation" + name.replace(/\W/g, ""),
+      amount: 300, currency: "gbp", metadata: state.checkout.metadata }, state.checkout.metadata);
+    const req = { body: Buffer.from(JSON.stringify(event)), headers: { "stripe-signature": "synthetic-signature" }, log };
+    await invoke(webhooks, "/stripe", req);
+    await invoke(webhooks, "/stripe", req);
+    assert.equal(state.writes.filter((w: any) => w.collection === "donations").length, 1);
+    assert.equal(state.documents.get("organisations/test-org").campaigns[0].amountRaised, 13);
+  });
+}

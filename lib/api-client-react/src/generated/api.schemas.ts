@@ -1194,6 +1194,23 @@ export const CampaignEditorRequestPartnerFundingAnswer = {
   no: "no",
 } as const;
 
+export type CampaignDonationPresentationIcon =
+  (typeof CampaignDonationPresentationIcon)[keyof typeof CampaignDonationPresentationIcon];
+
+export const CampaignDonationPresentationIcon = {
+  hand: "hand",
+  drum: "drum",
+  heart: "heart",
+} as const;
+
+export interface CampaignDonationPresentation {
+  icon: CampaignDonationPresentationIcon;
+  symbolColour: string;
+  confirmationLine: string;
+  counterLabel: string;
+  hasWall: boolean;
+}
+
 export interface DrumBuildUpdate {
   /**
    * @minLength 1
@@ -1219,6 +1236,7 @@ export interface DrumExperience {
 }
 
 export interface CampaignEditorRequest {
+  donationPresentation?: CampaignDonationPresentation;
   drumExperience?: DrumExperience | null;
   /** Campaign goals and donations use this currency. Locked once checkout has started. */
   currency?: CampaignEditorRequestCurrency;
@@ -1763,6 +1781,7 @@ export const SupporterProfileActivitySource = {
 } as const;
 
 export interface SupporterProfileActivity {
+  donationPresentation?: CampaignDonationPresentation;
   id: string;
   source: SupporterProfileActivitySource;
   /** @nullable */

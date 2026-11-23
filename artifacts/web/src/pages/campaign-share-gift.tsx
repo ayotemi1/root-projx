@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/context/AuthContext";
 import * as api from "@/lib/api";
 import { appFetch } from "@/lib/error-feedback";
-import { DonationHand } from "@/components/donation-hand";
+import { CampaignSymbol } from "@/components/campaign-symbol";
 import { DonationAmountDialog } from "@/components/donation-amount-dialog";
 import { currencySymbol, currencyOf } from "@/lib/currency";
 import { refreshShowcase } from "@/lib/supporter-showcase";
@@ -70,14 +70,14 @@ export default function CampaignShareGiftPage() {
                 <div className="rpshare-author"><span>{user?.name?.slice(0, 2).toUpperCase()}</span>{user?.name} · gave to {campaign?.name}</div>
                 <textarea value={copy} onChange={e => setText(e.target.value)} maxLength={280} aria-label="Share post text" />
                 <span className="rpt-mono">{copy.length}/280</span>
-                <button type="button" onClick={() => setDonateOpen(true)} className="rpshare-campaign w-full text-left"><DonationHand /> <span><b>{campaign?.name}</b><small>{org?.name} · Support the training</small></span></button>
+                <button type="button" onClick={() => setDonateOpen(true)} className="rpshare-campaign w-full text-left"><CampaignSymbol campaign={campaign} className="w-10 h-10 shrink-0" /> <span><b>{campaign?.name}</b><small>{org?.name} · Support the campaign</small></span></button>
                 <label className="rpshare-switch">Show the amount ({currencySymbol(currencyOf(gift.currency))}{(gift.receiptAccounting?.intendedGbp ?? gift.amountGbp)?.toFixed(2)})
                   <input type="checkbox" checked={showAmount} onChange={e => setShowAmount(e.target.checked)} role="switch" />
                 </label>
               </div>}
               <label className="rpshare-option"><input type="radio" name="share" checked={choice === "involvement"} onChange={() => setChoice("involvement")} /><span><strong>Add it to my Involvement</strong><small>A quiet record on your profile. Nothing appears in anyone's feed.</small></span></label>
               {choice === "involvement" && <div className="rpshare-expanded">
-                <div className="rpshare-campaign"><DonationHand /><span><b>Supporter · {campaign?.name}</b><small>{org?.name}</small><small>Donation · {new Date(gift.createdAt).toLocaleDateString("en-GB", { month: "short", year: "numeric" })}</small></span></div>
+                <div className="rpshare-campaign"><CampaignSymbol campaign={campaign} className="w-10 h-10 shrink-0" /><span><b>Supporter · {campaign?.name}</b><small>{org?.name}</small><small>Donation · {new Date(gift.createdAt).toLocaleDateString("en-GB", { month: "short", year: "numeric" })}</small></span></div>
                 <small>The amount is never shown.</small>
               </div>}
               <label className="rpshare-option"><input type="radio" name="share" checked={choice === "private"} onChange={() => setChoice("private")} /><span><strong>Keep it private</strong><small>Only you can see it, in your Giving history.</small></span></label>

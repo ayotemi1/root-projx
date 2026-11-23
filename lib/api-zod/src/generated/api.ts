@@ -1055,6 +1055,15 @@ export const getOwnerCampaignPreviewResponseCampaignTwoSupporterUnitsMax = 300;
 export const GetOwnerCampaignPreviewResponse = zod.object({
   campaign: zod
     .object({
+      donationPresentation: zod
+        .object({
+          icon: zod.enum(["hand", "drum", "heart"]),
+          symbolColour: zod.string(),
+          confirmationLine: zod.string(),
+          counterLabel: zod.string(),
+          hasWall: zod.boolean(),
+        })
+        .optional(),
       drumExperience: zod
         .union([
           zod
@@ -1801,6 +1810,15 @@ export const getPublicCampaignsResponseTwoSupporterUnitsMax = 300;
 
 export const GetPublicCampaignsResponseItem = zod
   .object({
+    donationPresentation: zod
+      .object({
+        icon: zod.enum(["hand", "drum", "heart"]),
+        symbolColour: zod.string(),
+        confirmationLine: zod.string(),
+        counterLabel: zod.string(),
+        hasWall: zod.boolean(),
+      })
+      .optional(),
     drumExperience: zod
       .union([
         zod
@@ -2341,6 +2359,15 @@ export const createCampaignDraftBodyThemeUnitPluralMax = 60;
 export const createCampaignDraftBodyEditorStepMax = 5;
 
 export const CreateCampaignDraftBody = zod.object({
+  donationPresentation: zod
+    .object({
+      icon: zod.enum(["hand", "drum", "heart"]),
+      symbolColour: zod.string(),
+      confirmationLine: zod.string(),
+      counterLabel: zod.string(),
+      hasWall: zod.boolean(),
+    })
+    .optional(),
   drumExperience: zod
     .union([
       zod
@@ -2809,6 +2836,15 @@ export const getManagedCampaignDraftsResponseTwoSupporterUnitsMax = 300;
 
 export const GetManagedCampaignDraftsResponseItem = zod
   .object({
+    donationPresentation: zod
+      .object({
+        icon: zod.enum(["hand", "drum", "heart"]),
+        symbolColour: zod.string(),
+        confirmationLine: zod.string(),
+        counterLabel: zod.string(),
+        hasWall: zod.boolean(),
+      })
+      .optional(),
     drumExperience: zod
       .union([
         zod
@@ -3372,6 +3408,15 @@ export const saveCampaignDraftBodyThemeUnitPluralMax = 60;
 export const saveCampaignDraftBodyEditorStepMax = 5;
 
 export const SaveCampaignDraftBody = zod.object({
+  donationPresentation: zod
+    .object({
+      icon: zod.enum(["hand", "drum", "heart"]),
+      symbolColour: zod.string(),
+      confirmationLine: zod.string(),
+      counterLabel: zod.string(),
+      hasWall: zod.boolean(),
+    })
+    .optional(),
   drumExperience: zod
     .union([
       zod
@@ -3829,6 +3874,15 @@ export const saveCampaignDraftResponseTwoSupporterUnitsMax = 300;
 
 export const SaveCampaignDraftResponse = zod
   .object({
+    donationPresentation: zod
+      .object({
+        icon: zod.enum(["hand", "drum", "heart"]),
+        symbolColour: zod.string(),
+        confirmationLine: zod.string(),
+        counterLabel: zod.string(),
+        hasWall: zod.boolean(),
+      })
+      .optional(),
     drumExperience: zod
       .union([
         zod
@@ -6750,6 +6804,15 @@ export const GetMySupporterShowcaseResponse = zod.object({
   ),
   involvement: zod.array(
     zod.object({
+      donationPresentation: zod
+        .object({
+          icon: zod.enum(["hand", "drum", "heart"]),
+          symbolColour: zod.string(),
+          confirmationLine: zod.string(),
+          counterLabel: zod.string(),
+          hasWall: zod.boolean(),
+        })
+        .optional(),
       id: zod.string(),
       source: zod.enum(["manual", "post", "repost", "gift"]),
       organisationId: zod.string().nullable(),
@@ -6943,6 +7006,15 @@ export const GetVisitorSupporterShowcaseResponse = zod.object({
   ),
   involvement: zod.array(
     zod.object({
+      donationPresentation: zod
+        .object({
+          icon: zod.enum(["hand", "drum", "heart"]),
+          symbolColour: zod.string(),
+          confirmationLine: zod.string(),
+          counterLabel: zod.string(),
+          hasWall: zod.boolean(),
+        })
+        .optional(),
       id: zod.string(),
       source: zod.enum(["manual", "post", "repost", "gift"]),
       organisationId: zod.string().nullable(),

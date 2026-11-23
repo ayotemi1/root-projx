@@ -3,6 +3,7 @@ import { profilePatch, ProfileValidationError } from "../lib/organisation-profil
 import { campaignPatch, campaignForEditor, campaignPublishGates, CampaignInputError } from "../lib/campaign-editor.js";
 import { publicDrumExperience, canUseDrumExperience, assertDrumExperienceAccess } from "../lib/drum-experience.js";
 import { campaignSupporters } from "../lib/campaign-supporters.js";
+import { campaignPresentation } from "../lib/campaign-presentation.js";
 import { Router } from "express";
 import multer from "multer";
 import { fsGet, fsPatch, fsList, fsQuery, fsCreate, fsMutateCampaigns, getServerToken } from "../lib/firebase-rest.js";
@@ -334,6 +335,7 @@ function organisationDisplayName(
 
 export function publicCampaignFields(campaign: Record<string, unknown>, orgId?: string): Record<string, unknown> {
   return {
+    donationPresentation: campaignPresentation(campaign),
     _id: campaign["_id"],
     publicId: campaign["publicId"],
     enabled: campaign["enabled"] !== false,

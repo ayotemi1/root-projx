@@ -12,7 +12,7 @@ import { myShowcaseKey, refreshShowcase } from "@/lib/supporter-showcase";
 import { EditedMedia } from "./EditedMedia";
 import { BookmarkButton } from "@/components/bookmarks/BookmarkButton";
 import { DonationAmountDialog } from "@/components/donation-amount-dialog";
-import { DonationHand } from "@/components/donation-hand";
+import { CampaignSymbol } from "@/components/campaign-symbol";
 import "./supporter-post.css";
 
 const dateLabel = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
@@ -134,8 +134,8 @@ export function SupporterPostCard({ post }: { post: SupporterPostRecord }) {
       {post.caption && <p className={`${post.media.length ? "mt-4 text-[18px]" : "mt-1 border-l-4 border-[#F3BF2C] pl-4 text-[20px] sm:text-[22px] font-medium"} leading-relaxed text-[#17100F]/85 whitespace-pre-wrap break-words`} data-testid={`text-sp-caption-${post.id}`}>{post.caption}</p>}
       {donationPost && camp && org && <button type="button" onClick={() => setDonateOpen(true)}
         className="w-full mt-4 flex gap-3 text-left items-center border border-[#17100F] p-3 hover:bg-[#F3BF2C]/10" data-testid={`button-sp-donation-${post.id}`}>
-        <DonationHand className="w-10 h-10 shrink-0 text-[#CA0813]" />
-        <span><strong className="block">{camp.name}</strong><small>{org.name} · Support the training</small></span>
+        <CampaignSymbol campaign={camp} className="w-10 h-10 shrink-0" />
+        <span><strong className="block">{camp.name}</strong><small>{org.name} · Support the campaign</small></span>
       </button>}
 
       <footer className="mt-3 flex flex-wrap items-center justify-between gap-3">

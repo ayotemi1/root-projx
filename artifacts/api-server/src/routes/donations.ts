@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { campaignPresentation } from "../lib/campaign-presentation.js";
 import { fsGet, fsPatch, fsQuery, fsMutateCampaigns, fsMutateSupporterShowcase, fsPublishSupporterPost, getServerToken } from "../lib/firebase-rest.js";
 import { checkoutCurrency } from "../lib/donation-currency.js";
 import { requireAuth, optionalAuth } from "../lib/auth.js";
@@ -512,7 +513,7 @@ router.post("/donations/checkout", optionalAuth, async (req, res) => {
       ],
       custom_fields: [{
         key: "wall_name",
-        label: { type: "custom", custom: "Show your name on the wall?" },
+        label: { type: "custom", custom: campaignPresentation(selectedCampaign).hasWall ? "Show your name on the wall?" : "Show your name on the campaign page?" },
         type: "dropdown",
         dropdown: { options: [
           { label: "Yes, show my first name and last initial", value: "yes" },
@@ -731,7 +732,7 @@ router.post("/donations/:id/sharing", requireAuth, async (req, res) => {
       return {
         ...showcase, entries: choice === "involvement"
           ? [...without, {
-            id: involvementId, organisationId: gift.orgId, projectName: String(org.name),
+            id: involvementId, organisationId: gift.orgId, campaignId: gift.campaignId, projectName: String(org.name),
             activity: "Gave", details: `Supporter · ${campaign.name}`,
             when: String(gift.createdAt).slice(0, 10), shared: true, createdAt: new Date().toISOString(),
           }] : without,

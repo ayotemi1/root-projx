@@ -2,7 +2,7 @@ import { Fragment, useEffect, useState, type CSSProperties, type ReactNode } fro
 import { Link } from "wouter";
 import { BookmarkButton } from "@/components/bookmarks/BookmarkButton";
 import {
-  Share2, MapPin, CheckCircle, Users, ArrowRight, ShieldCheck, Play, Handshake, Link2, Hand,
+  Share2, MapPin, CheckCircle, Users, ArrowRight, ShieldCheck, Play, Handshake, Link2,
 } from "lucide-react";
 import type { Campaign, PublicCampaignLanding, CampaignVideo, CampaignEditableSection } from "@/lib/api";
 import { DEFAULT_SCHEMES, resolveSectionOrder, schemeSectionClass } from "./section-design";
@@ -10,6 +10,7 @@ import { AccumulationField } from "./accumulation-field";
 import { capOf, partnerMatch, ratioLabel } from "@/lib/partner-funding";
 import { whereYourMoneyGoes } from "@/lib/money-disclosure";
 import { CampaignFeeBreakdown } from "./campaign-fee-breakdown";
+import { CampaignSymbol, campaignPresentation } from "@/components/campaign-symbol";
 import { CampaignDonatePanel, focusDonateBox, type DonateChoice, type ConfirmedReceiptView } from "./campaign-donate-panel";
 import { currencyOf, formatWhole } from "@/lib/currency";
 import { campaignVideos } from "@/components/campaign-builder/model";
@@ -185,9 +186,10 @@ export function CampaignPageView({
   const locations = (campaign.locations ?? []).filter((l) => l.name || l.description);
   // Campaign-specific people replace the organisation team for display only.
   const team = pd.team ? pd.team.people.map((p) => ({ name: p.name, role: p.role, photoUrl: p.photoUrl ?? null })) : (org.team ?? []).filter((m) => m.name);
-  const unit = campaign.theme?.unit;
-  const unitSingular = unit?.singular?.trim() || "supporter";
-  const unitPlural = unit?.plural?.trim() || "supporters";
+  const presentation = campaignPresentation(campaign);
+  const unit = presentation.hasWall ? campaign.theme?.unit : null;
+  const unitSingular = presentation.hasWall ? "hand" : "supporter";
+  const unitPlural = presentation.hasWall ? "hands" : "supporters";
   // Older campaigns named a built-in unit without saving its artwork URL.
   // Render that chosen artwork without changing the organisation's saved draft.
   const builtinUnit = unitSingular.toLowerCase();
@@ -214,7 +216,7 @@ export function CampaignPageView({
   const programmeIntroText = pd.programme ? pd.programme.intro : t("programmeIntro");
   const outcomesIntroText = pd.outcomes ? pd.outcomes.intro : t("outcomesIntro");
   const moneyHeading = pd.money?.headline ?? "Where your money goes";
-  const wallHeading = pd.wall?.headline ?? (t("supportersHeading") || "Recent supporters");
+  const wallHeading = presentation.hasWall ? (pd.wall?.headline ?? (t("supportersHeading") || "Latest hands")) : "Recent supporters";
   const donateLabel = t("donateLabel");
   const hasCustomSupport = !!(t("supportHeading") || t("supportBody") || t("cohortHeading") || t("cohortBody") || t("cohortNote"));
   const fundingNote = t("fundingNote");
@@ -555,7 +557,7 @@ export function CampaignPageView({
     wall: () => (
       <>
         {/* Recent supporters */}
-        {isFundraising && (
+        {isFundraising && presentation.hasWall && (
           <section className={schemeClass("wall", "rc-t-cream")} data-section="wall">
             <div className="rc-wrap rc-section" data-testid="block-recent-supporters">
               <Strip n={next()} label={wallHeading || "Recent supporters"} />
@@ -567,7 +569,7 @@ export function CampaignPageView({
                 <ul className="rc-givers rc-bento-grid">
                   {recent.map((s, i) => (
                     <li key={`${s.createdAt}-${i}`} className="rc-giver" data-testid={`row-supporter-${i}`}>
-                      {unitImageUrl ? <img src={unitImageUrl} alt="" className="unit" /> : <span className="dot" aria-hidden="true" />}
+                      <CampaignSymbol campaign={campaign} className="w-7 h-7 shrink-0" />
                       <span className="font-bold truncate flex-1 min-w-0">{s.displayName || "Anonymous"}</span>
                       <span className="rc-mono text-[11px] shrink-0 rc-muted">{timeAgo(s.createdAt)}</span>
                     </li>
@@ -660,6 +662,11 @@ export function CampaignPageView({
                           <p className="mt-4 mb-0 text-[14px] leading-relaxed rc-muted" data-testid="text-drum-intro">{DRUM_LIFE_COPY.drumIntro}</p>
                         )}
                       </>
+                    ) : !presentation.hasWall ? (
+                      <div className="flex flex-col items-center justify-center gap-5 min-h-[260px]" data-testid="block-campaign-hero">
+                        <CampaignSymbol campaign={campaign} className="w-24 h-24" />
+                        <p className="rc-mono">{supporters.toLocaleString("en-GB")} {supporters === 1 ? "supporter" : "supporters"}</p>
+                      </div>
                     ) : (
                       <>
                         <div className="rc-count-row" data-testid="text-supporter-count">
@@ -676,7 +683,7 @@ export function CampaignPageView({
                             unitSingular={unitSingular}
                             unitPlural={unitPlural}
                             imageUrl={unitImageUrl}
-                            colour={red}
+                            colour={presentation.symbolColour}
                             accent={gold}
                             background="#EDE4D6"
                             highlightNewest={highlightNewest}
@@ -687,9 +694,7 @@ export function CampaignPageView({
                             <div className="rc-you" data-testid="marker-your-hand">
                               <span className="flex flex-col items-center">
                                 <span className="rc-you-ring motion-safe:animate-[pulse_2.4s_ease-in-out_2]">
-                                  {unitImageUrl
-                                    ? <span className="w-12 h-12 block" style={{ backgroundColor: red, WebkitMaskImage: `url(${unitImageUrl})`, maskImage: `url(${unitImageUrl})`, WebkitMaskSize: "contain", maskSize: "contain", WebkitMaskRepeat: "no-repeat", maskRepeat: "no-repeat", WebkitMaskPosition: "center", maskPosition: "center" }} aria-hidden="true" />
-                                    : <Hand className="w-10 h-10" style={{ color: red }} aria-hidden="true" />}
+                                  <CampaignSymbol campaign={campaign} className="w-12 h-12" />
                                 </span>
                                 <span className="rc-you-tag rc-mono">Your hand</span>
                               </span>
@@ -711,7 +716,7 @@ export function CampaignPageView({
                       heading={donateLabel || "Support this campaign"}
                       cohortName={cohortName || undefined}
                       preview={preview}
-                      receipt={confirmedReceipt}
+                      receipt={presentation.hasWall ? confirmedReceipt : null}
                       onDonate={donateWith}
                       onShare={doShare}
                     />

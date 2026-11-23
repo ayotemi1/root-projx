@@ -97,7 +97,7 @@ test("the shared page reads Story overrides in public and preview without changi
 test("Look reorders real sections and numbers in public and preview, scopes all five schemes and fixes the opening and close", async () => {
   const { CampaignPageView } = await loadComponent("src/components/campaign/campaign-page-view.tsx");
   const order = ["wall", "money", "team", "outcomes", "programme", "need"];
-  const campaign = { _id: "look-order", name: "Look order", type: "fundraising", enabled: true,
+  const campaign = { _id: "look-order", name: "Out of Many Hands", type: "fundraising", enabled: true,
     description: "Actual story", goal: 1000, amountRaised: 25, supporterCount: 1,
     breakdown: [{ label: "First trade", detail: "Actual detail" }, { label: "Second trade", detail: "Actual detail" }],
     phases: [{ id: "p", title: "Outcome", description: "Actual result" }], pageDesign: { order, schemes: {} } };
@@ -147,7 +147,7 @@ test("fitted words leave rounding space at both actual and scaled preview widths
   assert.match(css, /rc-hero-copy \.rc-h1 span,[\s\S]*?overflow-wrap: normal; word-break: normal; hyphens: none;/);
 });
 
-test("Drum Life renders 50 drums from money in public and preview; other campaigns retain the supporter wall", async () => {
+test("Drum Life renders 50 drums from money and never falls back to a hand wall", async () => {
   const { CampaignPageView } = await loadComponent("src/components/campaign/campaign-page-view.tsx");
   const { DRUM_SPOTS, fundedDrums } = await loadComponent("src/lib/drum-experience.ts");
   assert.equal(DRUM_SPOTS.length, 50);
@@ -181,7 +181,8 @@ test("Drum Life renders 50 drums from money in public and preview; other campaig
     for (const changes of [{ drumExperience: null }, { drumExperience: { enabled: false, updates: [] } }, { currency: "gbp" }]) {
       const ordinary = render(changes, preview);
       assert.doesNotMatch(ordinary, /block-drum-circle/);
-      assert.match(ordinary, /canvas-accumulation/);
+      assert.doesNotMatch(ordinary, /canvas-accumulation|marker-your-hand|Latest hands/);
+      assert.match(ordinary, /lucide-drum/);
     }
   }
 });
@@ -276,7 +277,7 @@ test("Lifeyard budget purpose labels use real descriptions, not row positions or
   assert.doesNotMatch(DRUM_LIFE_COPY.budgetIntro, /18,?000|16,?000|2,?000|not itemised/);
 });
 
-test("legacy built-in campaign units render their artwork instead of generic circles", async () => {
+test("legacy unit settings cannot give an unrelated campaign a hand wall", async () => {
   const { CampaignPageView } = await loadComponent("src/components/campaign/campaign-page-view.tsx");
   const render = (singular: string, imageUrl: string | null = null) =>
     renderToStaticMarkup(createElement(Router, { hook: () => ["/", () => {}] },
@@ -288,9 +289,10 @@ test("legacy built-in campaign units render their artwork instead of generic cir
         organisation: { _id: "org", name: "Community organisation" }, layout: "phone",
       })));
   for (const unit of ["hand", "brick", "seedling", "drop"]) {
-    assert.ok(render(unit).includes(`src="/campaign-units/${unit}.svg"`), unit);
+    assert.doesNotMatch(render(unit), /canvas-accumulation|campaign-units\/|your hand is on the wall|Latest hands/);
+    assert.match(render(unit), /lucide-heart/);
   }
-  assert.ok(render("hand", "https://example.test/custom.svg").includes('src="https://example.test/custom.svg"'));
+  assert.doesNotMatch(render("hand", "https://example.test/custom.svg"), /example.test\/custom.svg/);
   assert.doesNotMatch(render("custom unit"), /src="\/campaign-units\//);
 });
 

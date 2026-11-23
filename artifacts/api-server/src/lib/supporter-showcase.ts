@@ -1,5 +1,6 @@
 import { fsGet, fsQuery } from "./firebase-rest.js";
 import { canSeePost, postDto, POSTS, FOLLOWERS } from "./supporter-posts.js";
+import { campaignPresentation } from "./campaign-presentation.js";
 
 type Doc = Record<string, any>;
 export const ACTIVITY_TYPES = ["Volunteered", "Visited", "Went to an event", "Fundraised", "Gave", "Other"] as const;
@@ -30,7 +31,10 @@ export async function supporterShowcase(user: Doc, uid: string, token: string, o
   };
   const manual = await Promise.all(entries(details).filter(e => owner || e.shared === true).map(async e => {
     const linked = e.organisationId ? await org(e.organisationId) : null;
+    const giftCampaign = e.activity === "Gave" && Array.isArray(linked?.campaigns)
+      ? linked.campaigns.find((c: Doc) => c._id === e.campaignId || e.details === `Supporter · ${c.name}`) : null;
     return {
+      ...(giftCampaign ? { donationPresentation: campaignPresentation(giftCampaign) } : {}),
       id: e.id, source: "manual" as const,
       organisationId: linked ? e.organisationId : null,
       projectName: linked ? text(linked.name) : text(e.projectName),
@@ -49,6 +53,7 @@ export async function supporterShowcase(user: Doc, uid: string, token: string, o
     const donationCampaign = p.donation_post === true && Array.isArray(linked.campaigns)
       ? linked.campaigns.find((c: Doc) => c._id === p.campaign_id) : null;
     return {
+      ...(p.donation_post === true ? { donationPresentation: campaignPresentation(donationCampaign) } : {}),
       id: `post_${p.id}`, source: "post" as const, organisationId: p.organisation_id,
       projectName: text(linked.name), logo: text(linked.logo) || null,
       sector: text(linked.category) || null,

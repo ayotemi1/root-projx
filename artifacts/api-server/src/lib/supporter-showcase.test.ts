@@ -86,6 +86,23 @@ test("donation Involvement never repeats an opted-in amount from a post caption"
   assert.doesNotMatch(JSON.stringify(involvement), /987|£/);
   assert.match(result.data.posts[0].caption, /987\.65/);
 });
+
+test("Involvement resolves hand, drum and default gift icons from the linked campaign", async () => {
+  for (const [name, icon] of [["Out of Many Hands", "hand"], ["Drum Life", "drum"], ["Other", "heart"]]) {
+    const f = fixture();
+    f.state.docs.get("organisations/org").campaigns = [{ _id: "campaign", name }];
+    Object.assign(f.state.docs.get("supporter_posts/post"), {
+      donation_post: true, campaign_id: "campaign", activity_type: "Gave",
+    });
+    f.state.docs.get("users/owner").profileShowcase.entries = [{
+      id: "entry", organisationId: "org", campaignId: "campaign",
+      activity: "Gave", details: `Supporter · ${name}`, when: "2026-11", shared: true,
+    }];
+    const result = await f.call();
+    assert.equal(result.data.involvement.length, 2);
+    for (const entry of result.data.involvement) assert.equal(entry.donationPresentation.icon, icon);
+  }
+});
 const activity = (changes = {}) => ({ id: ENTRY, organisationId: "org", projectName: "Forged label ignored", activity: "Visited",
   details: "Saw the workshop", when: "Summer 2025", shared: true, ...changes });
 

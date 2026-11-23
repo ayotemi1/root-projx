@@ -5,6 +5,7 @@
  * Root ProjX API — community giving platform
  * OpenAPI spec version: 0.1.0
  */
+import type { CampaignDonationPresentation } from "./campaignDonationPresentation";
 import type { CampaignEditorRequestBreakdownItem } from "./campaignEditorRequestBreakdownItem";
 import type { CampaignEditorRequestCurrency } from "./campaignEditorRequestCurrency";
 import type { CampaignEditorRequestLocationsItem } from "./campaignEditorRequestLocationsItem";
@@ -19,6 +20,7 @@ import type { CampaignPageDesign } from "./campaignPageDesign";
 import type { DrumExperience } from "./drumExperience";
 
 export interface CampaignEditorRequest {
+  donationPresentation?: CampaignDonationPresentation;
   drumExperience?: DrumExperience | null;
   /** Campaign goals and donations use this currency. Locked once checkout has started. */
   currency?: CampaignEditorRequestCurrency;
