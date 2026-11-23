@@ -21,6 +21,7 @@ import { SupporterAvatar } from "./SupporterAvatar";
 import { OrganisationSwitcher } from "@/components/organisation/OrganisationTeamAccess";
 import "./supporter.css";
 import "@/pages/account-pages.css";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 const icons: Record<NavigationId, typeof Home> = {
   home: Home, discover: Compass, create: PlusSquare, inbox: Inbox,
@@ -176,6 +177,15 @@ export default function SupporterLayout({ children }: { children: ReactNode }) {
         <LogOut size={16} aria-hidden /> {pending ? "Signing out…" : "Sign out"}
       </button>
       <Link href={organisationResumeWalkthroughHref} className="rps-sub" onClick={() => setMenuOpen(false)} data-testid="link-resume-walkthrough"><CompassIcon size={16} aria-hidden /> Resume walkthrough</Link>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button type="button" className="rps-sub" data-testid={desktop ? "button-replay-menu" : "button-replay-menu-mobile"}><CompassIcon size={16} aria-hidden /> Show me around</button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start">
+          <DropdownMenuItem asChild><Link href="/dashboard?tab=build&walkthrough=profile" onClick={() => setMenuOpen(false)} data-testid="menu-replay-profile">Profile walkthrough</Link></DropdownMenuItem>
+          <DropdownMenuItem asChild><Link href="/dashboard?tab=campaigns&walkthrough=campaign" onClick={() => setMenuOpen(false)} data-testid="menu-replay-campaign">Campaign walkthrough</Link></DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
       {error && <p className="rps-error" role="alert">{error}</p>}
     </>
   ) : isAuthenticated ? (

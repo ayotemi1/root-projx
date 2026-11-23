@@ -38,10 +38,11 @@ const fieldOf = (p: SupporterAccountSettingsInput) =>
 export default function SettingsPage() {
   const { token, user } = useAuth();
   const isOrg = user?.accountType === "organisation";
+  const adminAccess = !!token?.startsWith("org-admin.");
   const rows = isOrg ? ORG_ROWS : ROWS;
   const qc = useQueryClient();
   const key = accountKey(token);
-  const q = useQuery({ queryKey: key, queryFn: ({ signal }) => getSupporterAccount(authInit(token, signal)), enabled: !!token });
+  const q = useQuery({ queryKey: key, queryFn: ({ signal }) => getSupporterAccount(authInit(token, signal)), enabled: !!token && !adminAccess });
   const [overlay, setOverlay] = useState<Overlay>({});
   const [status, setStatus] = useState<"idle" | "saved" | "error">("idle");
   const chain = useRef<Promise<void>>(Promise.resolve());
@@ -76,6 +77,11 @@ export default function SettingsPage() {
     });
   };
 
+  if (adminAccess) return <div className="rpa-page" data-testid="page-settings">
+    <h1 className="rpa-h1">Settings</h1>
+    <section className="rpa-box first"><p className="rpa-hint">Notification preferences and account controls are managed by the organisation owner. Admin access is limited to content management.</p></section>
+    <OrganisationSettingsSections />
+  </div>;
   if (q.isLoading || !token) {
     return <div className="rpa-page" data-testid="page-settings"><h1 className="rpa-h1">Settings</h1>{[0, 1, 2].map(i => <div key={i} className="rpa-skel" />)}</div>;
   }

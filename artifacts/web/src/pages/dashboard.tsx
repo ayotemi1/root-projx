@@ -2,23 +2,20 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearch, useLocation } from "wouter";
 import {
-  CheckCircle, Image as ImageIcon, X, AlertCircle, Video, Compass, Circle, PlusSquare, MapPin, Landmark, PenLine,
+  CheckCircle, Image as ImageIcon, X, AlertCircle, Video, Compass, Circle, PlusSquare,
 } from "lucide-react";
 import { DashboardOverview } from "@/components/dashboard/overview";
 import "@/components/dashboard/operations.css";
 import { InlineVideoPlayer } from "@/components/inline-video-player";
 import { useWalkthrough } from "@/components/tour/use-walkthrough";
 import { OPEN_SHELL_MENU_EVENT } from "@/components/supporter/SupporterLayout";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { useAuth } from "@/context/AuthContext";
 import * as api from "@/lib/api";
@@ -46,9 +43,8 @@ function timeAgo(iso: string): string {
 export default function DashboardPage() {
   const { user, token } = useAuth();
   const adminAccess = token?.startsWith("org-admin.") ?? false;
-  // Owners see the dashboard inside the shared supporter/organisation shell (App SitePageLayout);
-  // admin delegation keeps the original standalone dashboard shell.
-  const sharedShell = !adminAccess;
+  // Owners and delegated administrators use the same navigation shell.
+  const sharedShell = true;
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const search = useSearch();
@@ -241,14 +237,18 @@ export default function DashboardPage() {
   const setTab = (v: string) => setLocation(`${adminAccess ? `/admin/organisations/${orgId}/manage` : "/dashboard"}?tab=${v}`);
   // Shell "Resume walkthrough" links to ?tab=build&resume=1; resume once progress is loaded, then drop the flag.
   const resumeRequested = new URLSearchParams(search).get("resume") === "1";
+  const replayRequested = new URLSearchParams(search).get("walkthrough");
   const resumeRef = useRef(tour.resume);
   resumeRef.current = tour.resume;
+  const replayRef = useRef(tour.replay);
+  replayRef.current = tour.replay;
   const tourReady = !tour.wtQ.isLoading && !!org;
   useEffect(() => {
-    if (!resumeRequested || !tourReady) return;
-    if (!tour.active) resumeRef.current();
-    setLocation(`/dashboard?tab=${urlTab || "build"}`, { replace: true });
-  }, [resumeRequested, tourReady, tour.active, urlTab, setLocation]);
+    if (!tourReady || (!resumeRequested && replayRequested !== "profile" && replayRequested !== "campaign")) return;
+    if (replayRequested === "profile" || replayRequested === "campaign") replayRef.current(replayRequested);
+    else if (!tour.active) resumeRef.current();
+    setLocation(`${adminAccess ? `/admin/organisations/${orgId}/manage` : "/dashboard"}?tab=${urlTab || "build"}`, { replace: true });
+  }, [resumeRequested, replayRequested, tourReady, tour.active, urlTab, adminAccess, orgId, setLocation]);
   const doneCount = tour.items.filter((i) => i.done).length;
   const updates = (updatesQ.data ?? []).filter((post) => postFilter === "archived"
     ? post.status === "archived" : post.status !== "archived");
@@ -268,36 +268,6 @@ export default function DashboardPage() {
         <div className="ops-main mx-auto space-y-4"><Skeleton className="h-11" /><Skeleton className="h-64" /></div>
       ) : (
       <Tabs value={tab} onValueChange={setTab} orientation="vertical" className="ops-shell">
-        <aside className="ops-side" aria-label="Dashboard" hidden={sharedShell} style={sharedShell ? { display: "none" } : undefined}>
-          <div className="px-3 pb-4 mb-2 ops-hair">
-            <img src={`${import.meta.env.BASE_URL}logo-stylised.png`} alt="Root ProjX" className="h-8 object-contain" />
-          </div>
-          <TabsList aria-label="Dashboard sections">
-            <TabsTrigger value="overview" className="ops-navitem" data-testid="tab-overview"><span className="ops-monogram" aria-hidden="true">{initials}</span><span className="ops-navtext">Profile</span></TabsTrigger>
-            <TabsTrigger value="posts" className="ops-navitem" data-nav-action="create" data-testid="tab-posts"><PlusSquare aria-hidden="true" /><span className="ops-navtext">Create</span></TabsTrigger>
-            <TabsTrigger value="campaigns" className="ops-navitem" data-testid="tab-campaigns"><MapPin aria-hidden="true" /><span className="ops-navtext">Campaigns</span></TabsTrigger>
-            <TabsTrigger value="profile" className="ops-navitem" data-testid="tab-payouts"><Landmark aria-hidden="true" /><span className="ops-navtext">Payouts</span></TabsTrigger>
-            <TabsTrigger value="build" className="ops-navitem" data-testid="tab-build-profile" data-tour-id="dashboard-tab-build-profile"><PenLine aria-hidden="true" /><span className="ops-navtext"><span className="sm:hidden">Edit</span><span className="hidden sm:inline">Edit profile</span></span></TabsTrigger>
-          </TabsList>
-          <div className="ops-side-foot">
-            {tour.allDone && !tour.active && tour.unfinished && (
-              <button type="button" className="ops-btn ops-btn--sm" onClick={tour.resume} data-testid="button-resume-walkthrough-compact">
-                <Compass className="w-3.5 h-3.5" /> Resume walkthrough
-              </button>
-            )}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button type="button" className="ops-btn ops-btn--sm" data-testid="button-replay-menu"><Compass className="w-3.5 h-3.5" /> Show me around</button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                <DropdownMenuItem onSelect={() => tour.replay("profile")} data-testid="menu-replay-profile">Profile walkthrough</DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => tour.replay("campaign")} data-testid="menu-replay-campaign">Campaign walkthrough</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            {adminAccess && <p className="ops-label" style={{ color: "var(--ops-site)" }}>Admin access</p>}
-          </div>
-        </aside>
-
         <div className="ops-main">
           <header className={tab === "overview" ? "mb-4" : "ops-rule pb-5 mb-6"}>
             <p className="ops-label text-[color:var(--ops-muted)]">{adminAccess ? "Managing as administrator" : "Organisation dashboard"}</p>

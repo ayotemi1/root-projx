@@ -8,7 +8,7 @@ import * as api from "@/lib/api";
 export default function OrganisationSettingsSections() {
   const { user, token } = useAuth();
   if (!user || !token || user.accountType !== "organisation") return null;
-  if (token.startsWith("org-team.")) return <>
+  if (token.startsWith("org-team.") || token.startsWith("org-admin.")) return <>
     <section className="rpa-box"><h2 className="rpa-h2">Team</h2><p className="rpa-hint">Only the organisation owner can add or remove account managers.</p></section>
     <section className="rpa-box"><h2 className="rpa-h2">Payout details</h2><p className="rpa-hint">Only the organisation owner can view or change payout details.</p></section>
   </>;

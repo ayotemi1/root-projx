@@ -145,7 +145,9 @@ function AppRoutes() {
       <Route path="/onboarding" component={OnboardingPage} />
 
       {/* Admin — standalone, no navbar/footer */}
-      <Route path="/admin/organisations/:id/manage" component={DashboardPage} />
+      <Route path="/admin/organisations/:id/manage">
+        {() => <SitePageLayout><DashboardPage /></SitePageLayout>}
+      </Route>
       <Route path="/admin/login" component={AdminLoginPage} />
       <Route path="/admin" component={AdminPage} />
 

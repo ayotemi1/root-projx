@@ -68,7 +68,8 @@ export function isSupporterPath(location: string) {
 
 const organisationShellPaths = ["/feed", "/discover", "/inbox", "/notifications", "/settings", "/dashboard"];
 export function isOrganisationShellPath(location: string) {
-  return organisationShellPaths.includes(pathname(location)) || isOrganisationDetailPath(location);
+  return organisationShellPaths.includes(pathname(location)) || isOrganisationDetailPath(location) ||
+    /^\/admin\/organisations\/[\w-]+\/manage$/.test(pathname(location));
 }
 
 /** `approvalStatus` optional for backward compatibility with older callers. */
@@ -79,7 +80,7 @@ export function shouldUseSupporterLayout(location: string, accountType?: string 
 
 /** Dashboard tab as the dashboard itself resolves it when explicit; null otherwise. */
 export function dashboardTab(location: string, search?: string) {
-  if (pathname(location) !== "/dashboard") return null;
+  if (pathname(location) !== "/dashboard" && !/^\/admin\/organisations\/[\w-]+\/manage$/.test(pathname(location))) return null;
   return queryOf(location, search).get("tab");
 }
 
@@ -88,7 +89,7 @@ export function isSupporterNavigationActive(item: NavigationItem, location: stri
   const path = pathname(location);
   const itemPath = pathname(item.href);
   if (itemPath === "/dashboard") {
-    if (path !== "/dashboard") return false;
+    if (path !== "/dashboard" && !/^\/admin\/organisations\/[\w-]+\/manage$/.test(path)) return false;
     const want = queryOf(item.href).get("tab");
     const tab = dashboardTab(location, search);
     return tab === want || (want === "overview" && !tab);

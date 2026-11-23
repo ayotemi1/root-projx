@@ -129,6 +129,10 @@ export default function InboxPage() {
   const open = (id: string) => { setSelected(id); setMobileThread(true); };
   const back = () => { setMobileThread(false); if (urlConv) navigate(scope && scope !== PERSONAL ? `/inbox?orgId=${encodeURIComponent(scope)}` : "/inbox", { replace: true }); };
 
+  if (token?.startsWith("org-admin.")) return <section className="rpm-page" data-testid="page-inbox">
+    <div className="rpm-head"><h1 className="rpm-title">Inbox</h1></div>
+    <p>Private conversations are available to the organisation owner and authorised team members. Admin access is limited to content management.</p>
+  </section>;
   if (!isAuthenticated) {
     return (
       <section className="rpm-page rpm-state-page" data-testid="page-inbox">

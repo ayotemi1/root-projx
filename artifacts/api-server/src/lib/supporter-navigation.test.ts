@@ -99,6 +99,25 @@ test("navigation highlights one destination, including the existing account alia
   assert.equal(supporterNavigation.filter(nav => isSupporterNavigationActive(nav, "/account#profile"))[0]?.id, "profile");
 });
 
+test("admin-managed organisations use the shared sidebar and dashboard tab highlighting", async () => {
+  const nav = await import("../../../web/src/lib/supporter-navigation.ts");
+  const account = { accountType: "organisation", approvalStatus: "approved" };
+  for (const tab of ["overview", "posts", "campaigns", "profile", "build"]) {
+    const route = `/admin/organisations/managed-org/manage?tab=${tab}`;
+    assert.equal(nav.shouldUseSupporterLayout(route, "organisation", "approved"), true);
+    assert.equal(nav.dashboardTab(route), tab);
+    const active = nav.navigationFor(account).filter(item => nav.isSupporterNavigationActive(item, route)).map(item => item.id);
+    assert.deepEqual(active, tab === "overview" ? ["profile"] : tab === "campaigns" ? ["campaigns"] : tab === "profile" ? ["payouts"] : []);
+  }
+  const dashboard = await readFile(new URL("src/pages/dashboard.tsx", webRoot), "utf8");
+  assert.doesNotMatch(dashboard, /<aside className="ops-side"/);
+  const app = await readFile(new URL("src/App.tsx", webRoot), "utf8");
+  assert.match(app, /path="\/admin\/organisations\/:id\/manage">[\s\S]*?<SitePageLayout><DashboardPage/);
+  const access = await readFile(new URL("src/components/admin-organisation-access.tsx", webRoot), "utf8");
+  assert.match(access, /isOrganisationShellPath\(location\)/);
+  assert.match(access, /rps-admin-banner/);
+});
+
 test("Create is an unhighlighted action in both supporter and organisation navigation", async () => {
   const shell = await render("src/components/supporter/SupporterLayout.tsx", { signedIn: true, route: "/create" });
   assert.doesNotMatch(shell, /is-create|aria-current="page"/);
@@ -109,7 +128,7 @@ test("Create is an unhighlighted action in both supporter and organisation navig
   const orgStyles = await readFile(new URL("src/components/dashboard/operations.css", webRoot), "utf8");
   assert.ok(orgStyles.includes('.ops-navitem:not([data-nav-action="create"])[data-state="active"]'));
   const dashboard = await readFile(new URL("src/pages/dashboard.tsx", webRoot), "utf8");
-  assert.match(dashboard, /value="posts" className="ops-navitem" data-nav-action="create"/);
+  assert.doesNotMatch(dashboard, /<aside className="ops-side"/);
 });
 
 test("real supporter shell links every destination and never invents guest notifications or follows", async () => {
@@ -163,6 +182,8 @@ test("organisation phone navigation labels the fifth tab Profile and preserves t
   assert.match(action, /href="\/dashboard\?tab=posts"/);
   assert.match(action, /class="rps-tab"/);
   assert.doesNotMatch(action, /aria-current/);
+  assert.match(html, /Resume walkthrough/);
+  assert.match(html, /Show me around/);
 });
 
 test("organisation donor profiles use the signed-in shell without Home's Following rail", async () => {

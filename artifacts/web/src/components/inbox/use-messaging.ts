@@ -29,7 +29,7 @@ export function useMessagingContext() {
   useEffect(() => {
     qc.removeQueries({ queryKey: [ROOT], predicate: q => q.queryKey[1] !== token });
   }, [token, qc]);
-  const enabled = !!token && !!user;
+  const enabled = !!token && !!user && !token.startsWith("org-admin.");
   const q = useQuery<MessagingContext>({
     queryKey: [...msgKey(token), "context"],
     enabled,

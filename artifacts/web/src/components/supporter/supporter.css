@@ -1,4 +1,15 @@
 /* Supporter shell — scoped rps- classes */
+.rps-admin-access { --rps-admin-head: 72px; }
+.rps-admin-banner { position: sticky; top: 0; z-index: 60; height: var(--rps-admin-head); align-items: center; font-size: 12px; line-height: 18px; }
+.rps-admin-banner strong { min-width: 0; flex: 1 1 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rps-admin-banner a { flex-shrink: 0; }
+.rps-admin-access .rps-mhead { top: var(--rps-admin-head); }
+.rps-admin-access .rps-mmenu { top: calc(var(--rps-admin-head) + var(--rps-head)); }
+@media (min-width: 1024px) {
+  .rps-admin-access { --rps-admin-head: 56px; }
+  .rps-admin-access .rps-side { top: var(--rps-admin-head); height: calc(100dvh - var(--rps-admin-head)); }
+  .rps-admin-access .rpn-drawer { top: var(--rps-admin-head); height: calc(100dvh - var(--rps-admin-head)); }
+}
 .rps-shell { --rps-side: clamp(192px, 18vw, 232px); --rps-right: clamp(208px, 21vw, 300px); --rps-head: 64px; --rps-tab: 64px;
   min-height: 100dvh; background: var(--rp-cream); color: var(--rp-ink); overflow-x: clip; }
 .rps-shell :focus-visible { outline: 3px solid var(--rp-ink); outline-offset: 2px; box-shadow: 0 0 0 5px var(--rp-yellow); }
