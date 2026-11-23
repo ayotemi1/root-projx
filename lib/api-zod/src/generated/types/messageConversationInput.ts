@@ -5,8 +5,12 @@
  * Root ProjX API — community giving platform
  * OpenAPI spec version: 0.1.0
  */
+import type { MessageRecipient } from "./messageRecipient";
 
 export interface MessageConversationInput {
   /** @pattern ^[A-Za-z0-9_-]{1,128}$ */
-  orgId: string;
+  orgId?: string;
+  /** @pattern ^[A-Za-z0-9_-]{1,128}$ */
+  asOrgId?: string;
+  recipient?: MessageRecipient;
 }

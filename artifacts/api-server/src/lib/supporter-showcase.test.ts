@@ -79,7 +79,7 @@ test("supporter showcase: strict public projection, real counts and linked-post 
   const f = fixture();
   const owner = await f.call();
   assert.equal(owner.status, 200);
-  assert.deepEqual(owner.data.counts, { posts: 1, following: 1, organisations: 1 });
+  assert.deepEqual(owner.data.counts, { posts: 1, following: 2, organisations: 1 });
   assert.equal(owner.data.posts[0].author.isOwner, true);
   assert.deepEqual(owner.data.availableInterests, ["Education", "Health"]);
   assert.equal(owner.data.involvement[0].activity, "Visited");
@@ -155,6 +155,33 @@ test("supporter showcase: opt-in interest publication and presentation-only writ
   assert.deepEqual(latest.publicProfile, original.publicProfile);
   assert.deepEqual(latest.interests, original.interests);
   assert.deepEqual(latest.supportedOrgs, original.supportedOrgs);
+});
+
+test("supporter showcase: community activity and organisation counts use visible involvement, not follows", async () => {
+  const f = fixture();
+  const user = f.state.docs.get("users/owner");
+  user.avatarUrl = "https://example.test/avatar.png";
+  user.profileShowcase.entries = [
+    { id: ENTRY, organisationId: null, projectName: "Outside project", activity: "Visited", details: "", when: "Summer 2025", shared: true },
+    { id: "private", organisationId: null, projectName: "PRIVATE_GROUP", activity: "Gave", details: "", when: "2020", shared: false },
+  ];
+  const post = f.state.docs.get("supporter_posts/post");
+  post.tag = { type: "community", value: "volunteers", label: "Volunteers" };
+  delete post.activity_type;
+  f.state.docs.set("follows/unrelated", { userId: "owner", orgId: "not-involved" });
+  assert.equal((await f.call()).data.counts.organisations, 3);
+  const publicView = (await f.call("/supporter-showcase/public/:publicId")).data;
+  assert.equal(publicView.counts.organisations, 2);
+  assert.equal(publicView.avatarUrl, "https://example.test/avatar.png");
+  assert.equal(publicView.storyExpiresAt, null);
+  assert.equal(publicView.involvement[0].activity, "Volunteered");
+  for (const [value, expected] of [["visitors", "Visited"], ["fundraisers", "Fundraised"]]) {
+    post.tag.value = value;
+    assert.equal((await f.call()).data.involvement[0].activity, expected);
+  }
+  post.tag = null; post.community_tag = "Volunteers";
+  assert.equal((await f.call()).data.involvement[0].activity, "Posted", "untrusted label alone isn't a structured activity");
+  assert.doesNotMatch(JSON.stringify(publicView), /PRIVATE_GROUP/);
 });
 
 test("supporter showcase: atomic field-only writes preserve concurrent additions and unrelated account fields", async () => {

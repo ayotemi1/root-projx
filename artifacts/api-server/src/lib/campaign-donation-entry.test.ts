@@ -21,6 +21,10 @@ async function loadComponent(path: string) {
     bundle: true, write: false, format: "cjs", platform: "node",
     packages: "external", jsx: "automatic", loader: { ".css": "empty" },
     alias: { "@": new URL("src/", webRoot).pathname },
+    plugins: [{ name: "signed-out-bookmarks", setup(b) {
+      b.onResolve({ filter: /bookmarks\/BookmarkButton/ }, () => ({ path: "guest", namespace: "bookmark" }));
+      b.onLoad({ filter: /.*/, namespace: "bookmark" }, () => ({ contents: "export const BookmarkButton=()=>null;" }));
+    } }],
   });
   const mod = { exports: {} as any };
   new Function("require", "module", "exports", result.outputFiles[0]!.text)(webRequire, mod, mod.exports);

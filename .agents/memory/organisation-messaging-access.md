@@ -14,3 +14,13 @@ The intended messaging scope includes supporter-to-supporter, organisation-to-or
 **Why:** The user explicitly confirmed this expanded product scope on 2026-11-23 when requesting Message on supporter profiles.
 
 **How to apply:** Do not keep new conversations limited to a supporter initiator and organisation recipient. Preserve explicit sender identity and trusted organisation membership for every direction.
+
+Preserve older inbox clients when adding participant combinations: historical
+message-side names remain stable conversation positions, not the sender's actual
+account role. Use the actual participants for authorisation and role labels.
+
+**Why:** Renaming or interpreting those old positions as roles would break
+message alignment and misidentify organisations in same-role or reversed threads.
+
+**How to apply:** Keep old supporter–organisation history and request shapes
+working, and resolve sender context independently on every request.

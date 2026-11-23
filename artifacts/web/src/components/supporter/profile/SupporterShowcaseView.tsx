@@ -1,12 +1,10 @@
 import { useEffect, useState } from "react";
-import { Link, useLocation } from "wouter";
-import { useQuery } from "@tanstack/react-query";
-import { Check, Eye, EyeOff, Lock, Plus, Send } from "lucide-react";
+import { Link, useLocation, useSearch } from "wouter";
+import { Eye, EyeOff, Lock, MessageSquare, Send } from "lucide-react";
 import type { SupporterShowcase } from "@workspace/api-client-react";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import { useSupporterFollow } from "@/components/supporter/SupporterPostCard";
-import { getFollowStatus } from "@/lib/supporter-publishing";
+import { StartMessageButton } from "@/components/messaging/StartMessageButton";
 import { InvolvementTab, MediaTab, PostsTab, SavedTab } from "./ProfileTabs";
 import "./profile.css";
 
@@ -15,23 +13,26 @@ type Tab = "posts" | "media" | "involvement" | "saved";
 
 const monthYear = (iso: string | null) => iso ? new Date(iso).toLocaleDateString("en-GB", { month: "short", year: "numeric" }) : null;
 
-function FollowButton({ publicId }: { publicId: string }) {
-  const { isAuthenticated, token, user } = useAuth();
-  const [, navigate] = useLocation();
-  const follow = useSupporterFollow();
-  const own = user?.publicProfileSettings?.publicId === publicId;
-  const canQuery = isAuthenticated && user?.accountType === "supporter" && !own;
-  const q = useQuery({ queryKey: ["supporter-follow", publicId, token], queryFn: () => getFollowStatus(publicId, token!), enabled: canQuery });
-  if (own || (isAuthenticated && user?.accountType !== "supporter")) return null;
-  if (!isAuthenticated) return <button type="button" className="rp-btn rp-btn-yellow !min-h-10 !text-[14px]" onClick={() => navigate("/login")} data-testid="button-follow-supporter"><Plus className="w-4 h-4" />Follow</button>;
-  if (q.isLoading) return <span className="inline-block h-10 w-28 bg-[#17100F]/10 animate-pulse" data-testid="status-follow-loading" />;
-  if (q.isError) return <button type="button" className="rp-btn rp-btn-ghost !min-h-10 !text-[14px]" onClick={() => q.refetch()} data-testid="button-follow-retry">Try again</button>;
-  const following = q.data === true;
+const TABS = ["posts", "media", "involvement", "saved"] as const;
+
+/** Real photo, or plain black circle with yellow initials. Ring only for a real unexpired story. */
+function ProfileAvatar({ showcase }: { showcase: SupporterShowcase }) {
+  const [failed, setFailed] = useState(false);
+  const exp = showcase.storyExpiresAt ? Date.parse(showcase.storyExpiresAt) : NaN;
+  const story = Number.isFinite(exp) && exp > Date.now();
+  const inner = (
+    <div className="w-full h-full rounded-full overflow-hidden bg-[#17100F] text-[#F3BF2C] grid place-items-center rp-display text-[38px] sm:text-[48px]" data-testid="img-avatar">
+      {showcase.avatarUrl && !failed ? <img src={showcase.avatarUrl} alt="" className="w-full h-full object-cover" onError={() => setFailed(true)} /> : showcase.avatarInitials}
+    </div>
+  );
   return (
-    <button type="button" className={`rp-btn !min-h-10 !text-[14px] ${following ? "rp-btn-ghost" : "rp-btn-yellow"}`} disabled={follow.isPending}
-      onClick={() => follow.mutate({ publicId, follow: !following })} data-testid={following ? "button-unfollow-supporter" : "button-follow-supporter"}>
-      {following ? <><Check className="w-4 h-4" />Following</> : <><Plus className="w-4 h-4" />Follow</>}
-    </button>
+    <div className="w-24 h-24 sm:w-[124px] sm:h-[124px] shrink-0">
+      {story ? (
+        <div className="w-full h-full rounded-full p-[4px] bg-[linear-gradient(135deg,#F3BF2C,#CA0813)]" data-testid="status-story-ring">
+          <div className="w-full h-full rounded-full p-[3px] bg-[#F4EFE6]">{inner}</div>
+        </div>
+      ) : inner}
+    </div>
   );
 }
 
@@ -39,9 +40,42 @@ export function SupporterShowcaseView({ showcase, mode, token, onPreview, onExit
   showcase: SupporterShowcase; mode: ShowcaseMode; token: string | null; onPreview?: () => void; onExitPreview?: () => void;
 }) {
   const { toast } = useToast();
-  const [tab, setTab] = useState<Tab>("posts");
+  const { user } = useAuth();
+  const [location, navigate] = useLocation();
+  const search = useSearch();
   const editable = mode === "owner";
-  const tabs: Tab[] = editable ? ["posts", "media", "involvement", "saved"] : ["posts", "media", "involvement"];
+  const tabs: Tab[] = editable ? [...TABS] : ["posts", "media", "involvement"];
+  // Owner and visitor tabs live in the URL (refresh/back/direct entry); Preview stays local.
+  const urlTab = (() => {
+    if (location === "/saved") return "saved";
+    const sp = new URLSearchParams(search);
+    if (sp.get("post")) return "posts";
+    const t = sp.get("tab");
+    return (TABS as readonly string[]).includes(t ?? "") ? t as Tab : "posts";
+  })();
+  const [previewTab, setPreviewTab] = useState<Tab>("posts");
+  const wanted = mode === "preview" ? previewTab : urlTab;
+  const tab: Tab = tabs.includes(wanted) ? wanted : "posts";
+  const setTab = (t: Tab) => {
+    if (mode === "preview") { setPreviewTab(t); return; }
+    const base = editable ? "/profile" : location;
+    if (editable && t === "saved") navigate("/saved");
+    else navigate(t === "posts" ? base : `${base}?tab=${t}`);
+  };
+  const linkedPost = mode === "preview" ? null : new URLSearchParams(search).get("post");
+  // Saved/notification deep link: open Posts and scroll once the post is rendered.
+  useEffect(() => {
+    if (!linkedPost) return;
+    let tries = 0; let raf = 0;
+    const seek = () => {
+      const el = document.getElementById(`post-${linkedPost}`);
+      if (el) { el.scrollIntoView({ behavior: "smooth", block: "start" }); el.focus?.({ preventScroll: true }); return; }
+      if (++tries < 60) raf = requestAnimationFrame(seek);
+    };
+    raf = requestAnimationFrame(seek);
+    return () => cancelAnimationFrame(raf);
+  }, [linkedPost, showcase.posts.length]);
+  const isSelf = !!showcase.publicId && user?.publicProfileSettings?.publicId === showcase.publicId;
   const canShare = showcase.isPublic && !!showcase.publicId;
   const since = monthYear(showcase.createdAt);
   const interests = showcase.visibleInterests;
@@ -90,7 +124,7 @@ export function SupporterShowcaseView({ showcase, mode, token, onPreview, onExit
       <div className="grid grid-cols-[minmax(0,1fr)] lg:grid-cols-[minmax(0,1fr)_280px] gap-10 lg:gap-14">
         <div className="min-w-0">
           <header className="rp-rise flex flex-col sm:flex-row sm:items-start gap-5 sm:gap-7">
-            <div className="w-24 h-24 sm:w-[124px] sm:h-[124px] shrink-0 rounded-full bg-[#17100F] text-[#F3BF2C] grid place-items-center rp-display text-[38px] sm:text-[48px]" data-testid="img-avatar">{showcase.avatarInitials}</div>
+            <ProfileAvatar showcase={showcase} />
             <div className="min-w-0 flex-1">
               <h1 className="rp-display text-[clamp(30px,8.5vw,40px)] sm:text-[clamp(34px,4.4vw,52px)] [overflow-wrap:break-word] [word-break:normal] hyphens-none max-w-full" data-testid="text-display-name">{showcase.displayName}</h1>
               <div className="flex flex-wrap gap-2 mt-3 min-w-0">
@@ -98,9 +132,15 @@ export function SupporterShowcaseView({ showcase, mode, token, onPreview, onExit
                   <Link href="/account" className="rp-btn rp-btn-ghost !min-h-10 !text-[14px] !px-4" data-testid="link-edit-profile">Edit profile</Link>
                   <button type="button" className="rp-btn rp-btn-ghost !min-h-10 !text-[14px] !px-4" onClick={onPreview} data-testid="button-preview-profile">Preview</button>
                 </>}
-                {mode === "visitor" && showcase.publicId && <FollowButton publicId={showcase.publicId} />}
-                {canShare && mode !== "preview" && (
-                  <button type="button" className="rp-btn rp-btn-ghost !min-h-10 !w-12 !px-0" onClick={share} aria-label="Share profile" data-testid="button-share-profile"><Send className="w-4 h-4" /></button>
+                {mode === "visitor" && showcase.publicId && !isSelf && (
+                  <StartMessageButton recipient={{ kind: "supporter", id: showcase.publicId }} recipientName={showcase.displayName}
+                    className="rp-btn rp-btn-yellow !min-h-10 !text-[14px] !px-4" testId="button-message-supporter" />
+                )}
+                {mode === "preview" && (
+                  <button type="button" className="rp-btn rp-btn-yellow !min-h-10 !text-[14px] !px-4" disabled title="Visitors can message you from here" data-testid="button-message-supporter"><MessageSquare className="w-4 h-4" aria-hidden /> Message</button>
+                )}
+                {canShare && (
+                  <button type="button" className="rp-btn rp-btn-ghost !min-h-10 !w-12 !px-0" onClick={share} disabled={mode === "preview"} aria-label="Share profile" data-testid="button-share-profile"><Send className="w-4 h-4" /></button>
                 )}
               </div>
               <dl className="flex flex-wrap gap-x-5 gap-y-1 mt-4" data-testid="stats-profile">

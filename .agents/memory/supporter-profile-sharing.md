@@ -25,3 +25,13 @@ while keeping donation amounts out of Involvement and private giving private.
 **How to apply:** Derive automatic activity only from explicit recorded links
 and real activity types, not caption guesses. A public supporter-wall opt-in is
 not an explicit request to publish a donation post.
+
+Following an organisation is not evidence of participation. The profile's
+organisations count reflects distinct groups represented in the viewer-visible
+Involvement, including outside projects, rather than organisations followed.
+
+**Why:** The user explicitly separates following from involvement, and private
+participation must not leak through a public aggregate.
+
+**How to apply:** Count only the activity projection the current viewer may see;
+do not use private donations or follow records as a shortcut.

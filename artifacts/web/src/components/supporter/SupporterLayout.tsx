@@ -77,7 +77,7 @@ function FollowingPanel() {
 
 export default function SupporterLayout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
-  const profilePage = location === "/profile" || /^\/supporters\/[^/?#]+\/?$/.test(location);
+  const profilePage = location === "/profile" || location === "/saved" || /^\/supporters\/[^/?#]+\/?$/.test(location);
   const { user, isAuthenticated } = useAuth();
   const { signOut, error, pending } = useSignOut();
   const [menuOpen, setMenuOpen] = useState(false);

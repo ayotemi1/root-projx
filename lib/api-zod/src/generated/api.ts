@@ -62,6 +62,8 @@ export const ListMessageConversationsResponse = zod.object({
         .number()
         .min(listMessageConversationsResponseConversationsItemUnreadCountMin),
       canSend: zod.boolean(),
+      peerHref: zod.string().nullish(),
+      senderLabel: zod.string().optional(),
     }),
   ),
   unreadCount: zod.number().min(listMessageConversationsResponseUnreadCountMin),
@@ -70,9 +72,28 @@ export const ListMessageConversationsResponse = zod.object({
 export const startMessageConversationBodyOrgIdRegExp = new RegExp(
   "^[A-Za-z0-9_-]{1,128}$",
 );
+export const startMessageConversationBodyAsOrgIdRegExp = new RegExp(
+  "^[A-Za-z0-9_-]{1,128}$",
+);
+export const startMessageConversationBodyRecipientIdRegExp = new RegExp(
+  "^[A-Za-z0-9_-]{1,128}$",
+);
 
 export const StartMessageConversationBody = zod.object({
-  orgId: zod.string().regex(startMessageConversationBodyOrgIdRegExp),
+  orgId: zod.string().regex(startMessageConversationBodyOrgIdRegExp).optional(),
+  asOrgId: zod
+    .string()
+    .regex(startMessageConversationBodyAsOrgIdRegExp)
+    .optional(),
+  recipient: zod
+    .object({
+      kind: zod.enum(["supporter", "organisation"]),
+      id: zod
+        .string()
+        .regex(startMessageConversationBodyRecipientIdRegExp)
+        .describe("Public supporter ID or organisation ID"),
+    })
+    .optional(),
 });
 
 export const startMessageConversationResponseUnreadCountMin = 0;
@@ -88,6 +109,8 @@ export const StartMessageConversationResponse = zod.object({
   updatedAt: zod.string(),
   unreadCount: zod.number().min(startMessageConversationResponseUnreadCountMin),
   canSend: zod.boolean(),
+  peerHref: zod.string().nullish(),
+  senderLabel: zod.string().optional(),
 });
 
 export const getConversationMessagesQueryConversationIdRegExp = new RegExp(
@@ -126,6 +149,8 @@ export const GetConversationMessagesResponse = zod.object({
       .number()
       .min(getConversationMessagesResponseConversationUnreadCountMin),
     canSend: zod.boolean(),
+    peerHref: zod.string().nullish(),
+    senderLabel: zod.string().optional(),
   }),
   messages: zod.array(
     zod.object({
@@ -206,6 +231,8 @@ export const MarkConversationReadResponse = zod.object({
   updatedAt: zod.string(),
   unreadCount: zod.number().min(markConversationReadResponseUnreadCountMin),
   canSend: zod.boolean(),
+  peerHref: zod.string().nullish(),
+  senderLabel: zod.string().optional(),
 });
 
 export const getMessagingTeamPathOrgIdRegExp = new RegExp(
@@ -4937,6 +4964,8 @@ export const GetMySupporterShowcaseResponse = zod.object({
   displayName: zod.string(),
   bio: zod.string(),
   avatarInitials: zod.string(),
+  avatarUrl: zod.string().nullish(),
+  storyExpiresAt: zod.string().nullish(),
   location: zod.string(),
   visibleInterests: zod.array(zod.string()),
   availableInterests: zod
@@ -5121,6 +5150,8 @@ export const GetVisitorSupporterShowcaseResponse = zod.object({
   displayName: zod.string(),
   bio: zod.string(),
   avatarInitials: zod.string(),
+  avatarUrl: zod.string().nullish(),
+  storyExpiresAt: zod.string().nullish(),
   location: zod.string(),
   visibleInterests: zod.array(zod.string()),
   availableInterests: zod
@@ -5327,4 +5358,58 @@ export const AddSupporterInvolvementBody = zod.object({
 
 export const RemoveSupporterInvolvementParams = zod.object({
   id: zod.coerce.string(),
+});
+
+export const ListBookmarksResponseItem = zod.object({
+  id: zod.string(),
+  kind: zod.enum(["post", "update", "campaign"]),
+  targetId: zod.string(),
+  orgId: zod.string().nullable(),
+  createdAt: zod.string(),
+  available: zod.boolean(),
+  title: zod.string(),
+  authorName: zod.string(),
+  imageUrl: zod.string().nullable(),
+  videoUrl: zod
+    .string()
+    .nullish()
+    .describe("Video preview fallback when no thumbnail exists."),
+  isVideo: zod.boolean(),
+  href: zod.string().nullable(),
+});
+export const ListBookmarksResponse = zod.array(ListBookmarksResponseItem);
+
+export const saveBookmarkBodyTargetIdRegExp = new RegExp(
+  "^[A-Za-z0-9_-]{1,128}$",
+);
+export const saveBookmarkBodyOrgIdRegExp = new RegExp("^[A-Za-z0-9_-]{1,128}$");
+
+export const SaveBookmarkBody = zod.object({
+  kind: zod.enum(["post", "update", "campaign"]),
+  targetId: zod.string().regex(saveBookmarkBodyTargetIdRegExp),
+  orgId: zod.string().regex(saveBookmarkBodyOrgIdRegExp).optional(),
+});
+
+export const SaveBookmarkResponse = zod.object({
+  id: zod.string(),
+  kind: zod.enum(["post", "update", "campaign"]),
+  targetId: zod.string(),
+  orgId: zod.string().nullable(),
+  createdAt: zod.string(),
+  available: zod.boolean(),
+  title: zod.string(),
+  authorName: zod.string(),
+  imageUrl: zod.string().nullable(),
+  videoUrl: zod
+    .string()
+    .nullish()
+    .describe("Video preview fallback when no thumbnail exists."),
+  isVideo: zod.boolean(),
+  href: zod.string().nullable(),
+});
+
+export const removeBookmarkPathIdRegExp = new RegExp("^[A-Za-z0-9_-]{43}$");
+
+export const RemoveBookmarkParams = zod.object({
+  id: zod.coerce.string().regex(removeBookmarkPathIdRegExp),
 });

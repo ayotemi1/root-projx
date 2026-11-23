@@ -4,7 +4,7 @@ import { Globe, Lock } from "lucide-react";
 import { SupporterInvolvementInputActivity, type SupporterInvolvementInputActivity as Activity } from "@workspace/api-client-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import * as api from "@/lib/api";
-import { userErrorMessage } from "@/lib/error-feedback";
+import { GENERIC_ERROR } from "@/lib/bookmarks";
 import { useToast } from "@/hooks/use-toast";
 import { addInvolvement, newEntryId, refreshShowcase } from "@/lib/supporter-showcase";
 
@@ -37,15 +37,15 @@ export function AddInvolvementDialog({ open, onOpenChange, token, profileIsPubli
       id: idRef.current, organisationId: orgId, projectName: project.trim(), activity,
       details: details.trim(), when: when.trim(), shared,
     }, token),
-    onSuccess: () => {
-      refreshShowcase(qc);
+    onSuccess: async () => {
+      await refreshShowcase(qc);
       toast({ title: "Added to your involvement" });
       idRef.current = newEntryId();
       setProject(""); setOrgId(null); setActivity("Volunteered"); setDetails(""); setWhen(""); setShared(true); setError("");
       onOpenChange(false);
     },
     // Form and id are kept so a retry is idempotent.
-    onError: e => setError(userErrorMessage(e, "add this involvement")),
+    onError: () => setError(GENERIC_ERROR),
   });
 
   function submit(e: React.FormEvent) {

@@ -20,7 +20,7 @@
 .rp-orgp .orgp-cover-fallback span { font-family: var(--font-display); font-stretch: 72%; font-variation-settings: "wdth" 72; font-weight: 900; font-size: clamp(120px, 22vw, 320px); line-height: .8; color: rgba(244,239,230,.14); }
 .rp-orgp .orgp-cover-tag { position: absolute; left: 0; top: 0; background: var(--o-yellow); color: var(--o-ink); padding: 8px 14px; border-right: 1px solid var(--o-ink); border-bottom: 1px solid var(--o-ink); }
 .rp-orgp .orgp-id { display: grid; grid-template-columns: auto 1fr; gap: 28px; padding: 0 clamp(18px, 3vw, 40px) 28px; }
-.rp-orgp .orgp-logo { width: clamp(96px, 12vw, 148px); aspect-ratio: 1; margin-top: calc(clamp(96px, 12vw, 148px) / -2); background: var(--o-yellow); border: 1px solid var(--o-ink); box-shadow: 6px 6px 0 var(--o-ink); overflow: hidden; position: relative; display: flex; align-items: center; justify-content: center; }
+.rp-orgp .orgp-logo { width: clamp(96px, 12vw, 148px); aspect-ratio: 1; margin-top: calc(clamp(96px, 12vw, 148px) / -2); background: var(--o-ink); color: var(--o-yellow); border-radius: 9999px; border: 0; box-shadow: none; overflow: hidden; position: relative; display: flex; align-items: center; justify-content: center; }
 .rp-orgp .orgp-logo img { width: 100%; height: 100%; object-fit: cover; }
 .rp-orgp .orgp-logo span { font-family: var(--font-display); font-weight: 900; font-size: 44px; }
 .rp-orgp .orgp-id-main { padding-top: 24px; min-width: 0; }
@@ -82,7 +82,7 @@
 @media (max-width: 767px) {
   .rp-orgp .orgp-cover { aspect-ratio: 21 / 8; min-height: 0; }
   .rp-orgp .orgp-id { grid-template-columns: 1fr; gap: 0; }
-  .rp-orgp .orgp-logo { width: 96px; margin-top: -48px; box-shadow: 4px 4px 0 var(--o-ink); }
+  .rp-orgp .orgp-logo { width: 96px; margin-top: -48px; box-shadow: none; }
   .rp-orgp .orgp-id-main { padding-top: 16px; }
   .rp-orgp .orgp-actions .rp-btn { flex: 1 1 140px; }
   .rp-orgp .orgp-stats { grid-template-columns: repeat(2, 1fr); }

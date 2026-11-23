@@ -400,7 +400,7 @@ function Thread({ scope, conversationId, summary, active, onBack }: {
             <Avatar name={conv.name} url={conv.avatarUrl} />
             <div className="rpm-thread-id">
               <span className="rpm-thread-name" data-testid="text-thread-name">{conv.name}</span>
-              <span className="rpm-thread-label">{conv.participantLabel}</span>
+              <span className="rpm-thread-label">{conv.participantLabel}{conv.senderLabel ? ` · Sending as ${conv.senderLabel}` : ""}</span>
             </div>
           </>
         ) : <div className="rpm-thread-id" />}
@@ -410,8 +410,8 @@ function Thread({ scope, conversationId, summary, active, onBack }: {
           </button>
           {menu && (
             <div className="rpm-menu" role="menu">
-              {conv?.side === "supporter" && (
-                <Link href={`/organisations/${conv.orgId}`} role="menuitem" className="rpm-menu-item" data-testid="link-thread-org">View organisation</Link>
+              {conv?.peerHref && (
+                <Link href={conv.peerHref} role="menuitem" className="rpm-menu-item" data-testid="link-thread-peer">View profile</Link>
               )}
               <button type="button" role="menuitem" className="rpm-menu-item" onClick={() => { setMenu(false); void newest.refetch(); }} data-testid="button-thread-refresh">Refresh</button>
             </div>

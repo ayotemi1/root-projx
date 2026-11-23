@@ -8,6 +8,8 @@ import multer from "multer";
 import { fsGet, fsPatch, fsList, fsQuery, fsCreate, fsMutateCampaigns, getServerToken } from "../lib/firebase-rest.js";
 import { requireApprovedOrganisation, requireAuth } from "../lib/auth.js";
 import { isCampaignPublished } from "../lib/campaign-publication.js";
+import { campaignSharePath } from "../lib/campaign-links.js";
+export { campaignSharePath } from "../lib/campaign-links.js";
 import { objectStorageClient } from "../lib/objectStorage.js";
 import { withoutPrivatePayoutSetup } from "../lib/payout-setup.js";
 import { migrateCampaignPartnerFunding, partnerFundingFor } from "../lib/campaign-matching.js";
@@ -319,42 +321,6 @@ function parseCampaignTheme(theme: unknown): Record<string, unknown> {
 
 function createPublicCampaignId(): string {
   return `cp_${randomUUID().replace(/-/g, "").slice(0, 24)}`;
-}
-
-function slugifyPublicName(value: unknown, fallback: string): string {
-  const slug = String(value ?? "")
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 70);
-  return slug || fallback;
-}
-
-export function campaignSharePath(
-  org: Record<string, unknown>,
-  campaign: Record<string, unknown>,
-): { organisationSlug: string; campaignSlug: string; sharePath: string } {
-  const orgId = String(org["_id"] ?? "").slice(-6).toLowerCase();
-  const campaignId = String(campaign["_id"] ?? campaign["publicId"] ?? "").slice(-6).toLowerCase();
-  const storedOrganisationSlug =
-    typeof campaign["organisationSlug"] === "string" ? campaign["organisationSlug"] : "";
-  const storedCampaignSlug =
-    typeof campaign["campaignSlug"] === "string" ? campaign["campaignSlug"] : "";
-  const organisationSlug =
-    storedOrganisationSlug && orgId && storedOrganisationSlug.endsWith(`-${orgId}`)
-      ? storedOrganisationSlug
-      : `${slugifyPublicName(org["name"], "organisation")}-${orgId}`;
-  const campaignSlug =
-    storedCampaignSlug && campaignId && storedCampaignSlug.endsWith(`-${campaignId}`)
-      ? storedCampaignSlug
-      : `${slugifyPublicName(campaign["name"], "campaign")}-${campaignId}`;
-  return {
-    organisationSlug,
-    campaignSlug,
-    sharePath: `/campaigns/${organisationSlug}/${campaignSlug}`,
-  };
 }
 
 function organisationDisplayName(

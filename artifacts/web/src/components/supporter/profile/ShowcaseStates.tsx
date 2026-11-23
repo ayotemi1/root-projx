@@ -19,7 +19,7 @@ export function ShowcaseSkeleton() {
 export function ShowcaseError({ onRetry, what = "this profile" }: { onRetry: () => void; what?: string }) {
   return (
     <div className="max-w-md mx-auto px-4 py-24 text-center" role="alert" data-testid="status-profile-error">
-      <h1 className="rp-display text-[40px]">Couldn’t load {what}</h1>
+      <h1 className="rp-display text-[40px]" data-what={what}>Something went wrong, please try again</h1>
       <p className="text-[#17100F]/70 mt-3">Check your connection and try again.</p>
       <button type="button" className="rp-btn rp-btn-yellow mt-6" onClick={onRetry} data-testid="button-retry-profile">Try again</button>
     </div>

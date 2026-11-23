@@ -148,7 +148,7 @@ function AppRoutes() {
               <Route path="/create">{() => <SupporterPlaceholder section="create" />}</Route>
               <Route path="/inbox" component={InboxPage} />
               <Route path="/notifications" component={NotificationsPage} />
-              <Route path="/saved">{() => <SupporterPlaceholder section="saved" />}</Route>
+              <Route path="/saved" component={MyProfilePage} />
               <Route path="/profile" component={MyProfilePage} />
               <Route path="/giving-history" component={GivingHistoryPage} />
               <Route path="/shop/success" component={ShopSuccessPage} />

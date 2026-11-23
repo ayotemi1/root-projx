@@ -20,4 +20,7 @@ export interface MessageConversation {
   /** @minimum 0 */
   unreadCount: number;
   canSend: boolean;
+  /** @nullable */
+  peerHref?: string | null;
+  senderLabel?: string;
 }

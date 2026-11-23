@@ -1531,6 +1531,39 @@ paths:
       responses:
         "204": { description: Own manual entry removed }
 
+  /bookmarks:
+    get:
+      operationId: listBookmarks
+      tags: [profile]
+      responses:
+        '200':
+          description: Own bookmarks resolved against current content visibility
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: '#/components/schemas/BookmarkView'}}
+    post:
+      operationId: saveBookmark
+      tags: [profile]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/BookmarkInput'}
+      responses:
+        '200':
+          description: Idempotently saved reference
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/BookmarkView'}
+  /bookmarks/{id}:
+    delete:
+      operationId: removeBookmark
+      tags: [profile]
+      parameters:
+        - {in: path, name: id, required: true, schema: {type: string, pattern: '^[A-Za-z0-9_-]{43}$'}}
+      responses:
+        '204': {description: Own reference removed}
+
 components:
   securitySchemes:
     adminSecret:
@@ -1547,6 +1580,29 @@ components:
       bearerFormat: JWT
 
   schemas:
+    BookmarkInput:
+      type: object
+      required: [kind, targetId]
+      properties:
+        kind: {type: string, enum: [post, update, campaign]}
+        targetId: {type: string, pattern: '^[A-Za-z0-9_-]{1,128}$'}
+        orgId: {type: string, pattern: '^[A-Za-z0-9_-]{1,128}$'}
+    BookmarkView:
+      type: object
+      required: [id, kind, targetId, orgId, createdAt, available, title, authorName, imageUrl, isVideo, href]
+      properties:
+        id: {type: string}
+        kind: {type: string, enum: [post, update, campaign]}
+        targetId: {type: string}
+        orgId: {type: ['string', 'null']}
+        createdAt: {type: string}
+        available: {type: boolean}
+        title: {type: string}
+        authorName: {type: string}
+        imageUrl: {type: ['string', 'null']}
+        videoUrl: {type: ['string', 'null'], description: Video preview fallback when no thumbnail exists.}
+        isVideo: {type: boolean}
+        href: {type: ['string', 'null']}
     MessagingContext:
       type: object
       required: [personal, personalUnreadCount, organisations, unreadCount]
@@ -1568,9 +1624,16 @@ components:
         unreadCount: {type: integer, minimum: 0}
     MessageConversationInput:
       type: object
-      required: [orgId]
       properties:
         orgId: {type: string, pattern: '^[A-Za-z0-9_-]{1,128}$'}
+        asOrgId: {type: string, pattern: '^[A-Za-z0-9_-]{1,128}$'}
+        recipient: {$ref: '#/components/schemas/MessageRecipient'}
+    MessageRecipient:
+      type: object
+      required: [kind, id]
+      properties:
+        kind: {type: string, enum: [supporter, organisation]}
+        id: {type: string, pattern: '^[A-Za-z0-9_-]{1,128}$', description: Public supporter ID or organisation ID, never a private account lookup}
     MessageInbox:
       type: object
       required: [conversations, unreadCount]
@@ -1593,6 +1656,8 @@ components:
         updatedAt: {type: string}
         unreadCount: {type: integer, minimum: 0}
         canSend: {type: boolean}
+        peerHref: {type: ['string', 'null']}
+        senderLabel: {type: string}
     ConversationMessages:
       type: object
       required: [conversation, messages, hasMore, readThrough]
@@ -2794,6 +2859,8 @@ components:
         displayName: { type: string }
         bio: { type: string }
         avatarInitials: { type: string }
+        avatarUrl: { type: [string, "null"] }
+        storyExpiresAt: { type: [string, "null"] }
         location: { type: string }
         visibleInterests: { type: array, items: { type: string } }
         availableInterests: { type: array, items: { type: string }, description: Owner-only interest editing choices; empty in public projection }

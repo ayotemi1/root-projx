@@ -27,9 +27,11 @@ export const addInvolvement = (body: SupporterInvolvementInput, token: string) =
 export const removeInvolvement = (id: string, token: string) => removeSupporterInvolvement(id, bearer(token));
 
 export function refreshShowcase(qc: QueryClient) {
-  void qc.invalidateQueries({ queryKey: getGetMySupporterShowcaseQueryKey() });
-  void qc.invalidateQueries({ queryKey: ["supporter-showcase-public"] });
-  void qc.invalidateQueries({ queryKey: [SP_KEY] });
+  return Promise.all([
+    qc.invalidateQueries({ queryKey: getGetMySupporterShowcaseQueryKey() }),
+    qc.invalidateQueries({ queryKey: ["supporter-showcase-public"] }),
+    qc.invalidateQueries({ queryKey: [SP_KEY] }),
+  ]);
 }
 
 export const MANUAL_LIMIT = 100;

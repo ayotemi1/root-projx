@@ -13,6 +13,7 @@ import { userErrorMessage } from "@/lib/error-feedback";
 import { SupporterHomeIntro } from "@/components/supporter/SupporterHomeIntro";
 import { OrganisationLogo } from "@/components/organisation-logo";
 import { SupporterPostCard } from "@/components/supporter/SupporterPostCard";
+import { BookmarkButton } from "@/components/bookmarks/BookmarkButton";
 import { listPosts, spKey, type SupporterPostRecord } from "@/lib/supporter-publishing";
 
 type FeedEntry = { kind: "org"; at: number; item: FeedUpdate } | { kind: "sp"; at: number; post: SupporterPostRecord };
@@ -115,6 +116,7 @@ function PostCard({ item, logo, onOpen, following, onFollow, followBusy }: {
         <button type="button" onClick={share} className="p-3.5 -ml-3.5 text-[#17100F]/80 hover:text-[#17100F]" aria-label="Share" data-testid={`button-share-${item._id}`}>
           <Share2 className="w-4 h-4" />
         </button>
+        <BookmarkButton kind="update" targetId={item._id} className="mr-auto -ml-2" />
         <Link href={`/donate/${item.orgId}`} className="min-h-11 text-[16px] inline-flex items-center gap-1.5 group" data-testid={`link-donate-${item._id}`}>
           <span className="rp-link-u">Donate to {orgName}</span>
           <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />

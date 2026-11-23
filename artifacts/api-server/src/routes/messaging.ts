@@ -49,7 +49,7 @@ const handle = (run: (req: Request) => Promise<unknown>): RequestHandler => asyn
     }
     // Never log message text, participant identities, provider bodies or tokens.
     req.log?.warn("Private messaging operation could not be completed");
-    res.status(503).json({ error: "Messaging couldn't complete that request. Please try again. Any unsent message has not been cleared." });
+    res.status(503).json({ error: "Something went wrong, please try again" });
   }
 };
 
@@ -62,7 +62,8 @@ router.get("/messaging/conversations", handle(async req => {
 router.post("/messaging/conversations", handle(async req => {
   const body = parse(StartMessageConversationBody, req.body);
   limit(req.user!.userId);
-  return StartMessageConversationResponse.parse(await startConversation(req.user!, body.orgId));
+  if (body.recipient && body.orgId || !body.recipient && !body.orgId || body.asOrgId && !body.recipient) throw new MessagingError(400, "Choose a sender and recipient.");
+  return StartMessageConversationResponse.parse(await startConversation(req.user!, body.recipient ? { recipient: body.recipient, asOrgId: body.asOrgId } : body.orgId!));
 }));
 router.get("/messaging/messages", handle(async req => {
   const query = parse(GetConversationMessagesQueryParams, req.query);

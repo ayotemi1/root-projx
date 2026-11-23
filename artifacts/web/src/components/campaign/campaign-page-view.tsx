@@ -1,5 +1,6 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Link } from "wouter";
+import { BookmarkButton } from "@/components/bookmarks/BookmarkButton";
 import {
   Share2, MapPin, CheckCircle, Users, ArrowRight, ShieldCheck, Play, Handshake, Link2, Hand,
 } from "lucide-react";
@@ -275,6 +276,7 @@ export function CampaignPageView({
               className="rc-btn rc-btn-ghost-cream" data-testid="button-header-share">
               <Share2 className="w-4 h-4" aria-hidden="true" /><span className="rc-top-share-label">Share</span>
             </button>
+            {!preview && <BookmarkButton kind="campaign" targetId={campaign._id} orgId={org._id} unstyled className="rc-btn rc-btn-ghost-cream" />}
             <button type="button" className="rc-btn rc-btn-hi" onClick={() => (isFundraising ? donate() : volunteer())}
               disabled={preview} title={previewTitle} data-testid="button-header-campaign-action">
               {isFundraising ? "Donate" : "Get involved"}

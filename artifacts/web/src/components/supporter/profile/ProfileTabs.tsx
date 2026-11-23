@@ -1,7 +1,7 @@
 import { useState } from "react";
-import { Link } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Images, Lock, Play, Plus } from "lucide-react";
+import { Lock, Play, Plus } from "lucide-react";
 import type { SupporterShowcase } from "@workspace/api-client-react";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { SupporterPostCard } from "@/components/supporter/SupporterPostCard";
@@ -9,17 +9,15 @@ import { useToast } from "@/hooks/use-toast";
 import { MANUAL_LIMIT, formatWhen, groupInvolvement, initialsOf, refreshShowcase, removeInvolvement } from "@/lib/supporter-showcase";
 import type { SupporterPostRecord } from "@/lib/supporter-publishing";
 import { AddInvolvementDialog } from "./AddInvolvementDialog";
+import { useBookmarks, useToggleBookmark, GENERIC_ERROR } from "@/lib/bookmarks";
 
-const Empty = ({ title, body, testId, children }: { title: string; body: string; testId: string; children?: React.ReactNode }) => (
-  <div className="border border-dashed border-[#17100F]/35 px-6 py-10 text-center" data-testid={testId}>
-    <p className="rp-display text-[26px]">{title}</p>
-    <p className="text-sm text-[#17100F]/65 mt-2 max-w-sm mx-auto">{body}</p>
-    {children}
-  </div>
+const Empty = ({ text, testId }: { text: string; testId: string }) => (
+  <p className="border border-dashed border-[#17100F]/35 px-6 py-10 text-center text-[15px] text-[#17100F]/70" data-testid={testId}>{text}</p>
 );
 
 export function PostsTab({ posts, editable }: { posts: SupporterPostRecord[]; editable: boolean }) {
-  if (!posts.length) return <Empty testId="status-posts-empty" title="Nothing posted yet" body={editable ? "Share a photo, video or a few words from something you were part of." : "No posts to show here yet."} />;
+  void editable;
+  if (!posts.length) return <Empty testId="status-posts-empty" text="Nothing shared yet." />;
   return (
     <div className="divide-y divide-[#17100F]/12">
       {posts.map(p => (
@@ -34,10 +32,10 @@ export function PostsTab({ posts, editable }: { posts: SupporterPostRecord[]; ed
 export function MediaTab({ posts }: { posts: SupporterPostRecord[] }) {
   const [open, setOpen] = useState<SupporterPostRecord | null>(null);
   const media = posts.filter(p => p.type !== "text" && p.media.length > 0);
-  if (!media.length) return <Empty testId="status-media-empty" title="No photos or videos" body="Photo and video posts collect here as a grid." />;
+  if (!media.length) return <Empty testId="status-media-empty" text="No photos or videos yet." />;
   return (
     <>
-      <div className="grid grid-cols-3 gap-1" data-testid="grid-media">
+      <div className="grid grid-cols-3 gap-[3px]" data-testid="grid-media">
         {media.map(p => {
           const lead = [...p.media].sort((a, b) => a.order - b.order)[0]!;
           const thumb = lead.type === "video" ? lead.video_thumbnail_url : lead.url;
@@ -46,12 +44,7 @@ export function MediaTab({ posts }: { posts: SupporterPostRecord[] }) {
               aria-label={`Open ${p.type} post${p.caption ? `: ${p.caption.slice(0, 60)}` : ""}`} data-testid={`tile-media-${p.id}`}>
               {thumb ? <img src={thumb} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]" />
                 : <video src={lead.url} muted preload="metadata" playsInline className="absolute inset-0 w-full h-full object-cover" />}
-              <span className="absolute inset-0 bg-gradient-to-t from-[#17100F]/85 via-[#17100F]/10 to-transparent" />
-              <span className="absolute top-1.5 left-1.5 rp-label !text-[9px] sm:!text-[10px] bg-[#17100F]/75 text-[#FBF8F2] px-1.5 py-0.5 inline-flex items-center gap-1">
-                {p.type === "video" ? <Play className="w-2.5 h-2.5" /> : null}{p.type}
-              </span>
-              {p.media.length > 1 && <Images className="absolute top-1.5 right-1.5 w-4 h-4 text-[#FBF8F2]" aria-hidden />}
-              {p.caption && <span className="absolute bottom-1.5 left-1.5 right-1.5 sm:bottom-3 sm:left-3 sm:right-3 text-[#FBF8F2] text-[10px] sm:text-[14px] font-semibold leading-snug line-clamp-3">{p.caption}</span>}
+              {p.type === "video" && <Play className="absolute top-2 right-2 w-4 h-4 text-[#FBF8F2] fill-[#FBF8F2] drop-shadow" aria-hidden />}
             </button>
           );
         })}
@@ -78,26 +71,26 @@ export function InvolvementTab({ showcase, editable, token, onOpenPost }: {
   const manualCount = showcase.involvement.filter(i => i.source === "manual").length;
   const remove = useMutation({
     mutationFn: (id: string) => removeInvolvement(id, token!),
-    onSuccess: () => { setConfirmId(null); refreshShowcase(qc); toast({ title: "Removed" }); },
-    onError: () => toast({ title: "Couldn’t remove that, please try again", variant: "destructive" }),
+    onSuccess: async () => { await refreshShowcase(qc); setConfirmId(null); toast({ title: "Removed" }); },
+    onError: () => toast({ title: GENERIC_ERROR, variant: "destructive" }),
   });
 
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-[#17100F]">
         <p className="text-[13px] text-[#17100F]/70">
-          {editable ? "Filled in from posts you link to an organisation. Add anything else you’ve done." : "Projects and groups this supporter has been part of."}
+          {editable ? "Filled in from your posts and shared gifts. Add anything else you've done." : "Projects and groups this supporter has been part of."}
         </p>
         {editable && token && (
-          <button type="button" className="min-h-11 inline-flex items-center gap-1.5 text-[14px] font-bold disabled:opacity-50" onClick={() => setAdding(true)}
+          <button type="button" className="min-h-11 inline-flex items-center gap-1 text-[14px] font-semibold text-[#17100F] hover:underline disabled:opacity-50" onClick={() => setAdding(true)}
             disabled={manualCount >= MANUAL_LIMIT} title={manualCount >= MANUAL_LIMIT ? `You can add up to ${MANUAL_LIMIT} entries` : undefined} data-testid="button-add-involvement">
-            <Plus className="w-4 h-4 border border-[#17100F] p-px" /> Add involvement
+            <Plus className="w-4 h-4" /> Add involvement
           </button>
         )}
       </div>
 
       {!groups.length ? (
-        <div className="mt-6"><Empty testId="status-involvement-empty" title="Nothing recorded yet" body={editable ? "Link a post to an organisation, or add something you did by hand, including before you joined." : "Nothing shared here yet."} /></div>
+        <div className="mt-6"><Empty testId="status-involvement-empty" text="Nothing here yet. Giving, volunteering and visits will show up here." /></div>
       ) : groups.map(g => (
         <section key={g.key} className="border-b border-[#17100F] py-4" data-testid={`group-involvement-${g.key}`}>
           <header className="flex items-center gap-3 mb-2">
@@ -115,7 +108,7 @@ export function InvolvementTab({ showcase, editable, token, onOpenPost }: {
             {g.items.map(it => {
               const removable = editable && it.source === "manual";
               const postId = it.href?.startsWith("#post-") ? it.href.slice(6) : null;
-              const text = it.details || it.activity;
+              const text = it.details || "";
               return (
                 <li key={it.id} className="grid grid-cols-[84px_minmax(0,1fr)] sm:grid-cols-[100px_minmax(0,1fr)_auto] gap-x-3 gap-y-1 py-2.5 border-t border-[#17100F]/10 first:border-t-0 text-[14px]" data-testid={`row-involvement-${it.id}`}>
                   <span className="font-bold">{it.activity}</span>
@@ -146,10 +139,74 @@ export function InvolvementTab({ showcase, editable, token, onOpenPost }: {
   );
 }
 
+type SavedFilter = "all" | "posts" | "campaigns";
+
 export function SavedTab() {
+  const q = useBookmarks();
+  const toggle = useToggleBookmark();
+  const [location, navigate] = useLocation();
+  const search = useSearch();
+  const raw = new URLSearchParams(search).get("filter");
+  const filter: SavedFilter = raw === "posts" || raw === "campaigns" ? raw : "all";
+  const setFilter = (f: SavedFilter) => {
+    const p = new URLSearchParams(search);
+    if (f === "all") p.delete("filter"); else p.set("filter", f);
+    const qs = p.toString();
+    navigate(qs ? `${location}?${qs}` : location);
+  };
+  const items = (q.data ?? []).filter(b => filter === "all" || (filter === "campaigns" ? b.kind === "campaign" : b.kind !== "campaign"));
+  const open = (href: string | null) => { if (!href) return; if (/^https?:/.test(href)) window.location.href = href; else navigate(href); };
+
   return (
-    <Empty testId="status-saved-unavailable" title="Saved isn’t connected yet" body="Bookmarking posts isn’t available on Root ProjX yet, so there’s nothing saved to show. Only you can see this tab.">
-      <Link href="/saved" className="rp-link-u inline-block mt-4 text-[14px]" data-testid="link-saved-page">Go to Saved</Link>
-    </Empty>
+    <div data-testid="section-saved">
+      <p className="flex items-center gap-1.5 text-[13px] text-[#17100F]/70 pb-3" data-testid="text-saved-private"><Lock className="w-3.5 h-3.5" aria-hidden />Only you can see what you've saved.</p>
+      <div className="flex gap-2 mb-4" role="group" aria-label="Filter saved">
+        {(["all", "posts", "campaigns"] as const).map(f => (
+          <button key={f} type="button" aria-pressed={filter === f} onClick={() => setFilter(f)}
+            className={`rp-label !text-[11px] min-h-9 px-3 border border-[#17100F] ${filter === f ? "bg-[#17100F] text-[#FBF8F2]" : "hover:bg-[#17100F]/5"}`} data-testid={`filter-saved-${f}`}>{f}</button>
+        ))}
+      </div>
+      {q.isLoading ? (
+        <div className="grid grid-cols-3 gap-[3px]" aria-busy="true" data-testid="status-saved-loading">{[0, 1, 2, 3, 4, 5].map(i => <span key={i} className="aspect-square bg-[#17100F]/10 animate-pulse" />)}</div>
+      ) : q.isError ? (
+        <div className="border border-dashed border-[#17100F]/35 px-6 py-10 text-center" role="alert">
+          <p className="text-[15px]">{GENERIC_ERROR}</p>
+          <button type="button" className="rp-btn rp-btn-yellow !min-h-10 !text-[14px] mt-4" onClick={() => q.refetch()} data-testid="button-saved-retry">Try again</button>
+        </div>
+      ) : !items.length ? (
+        <Empty testId="status-saved-empty" text="Nothing saved yet. Tap the bookmark on any post or campaign to keep it here." />
+      ) : (
+        <div className="grid grid-cols-3 gap-[3px]" data-testid="grid-saved">
+          {items.map(b => {
+            if (!b.available) return (
+              <div key={b.id} className="relative aspect-square bg-[#17100F]/[.06] border border-dashed border-[#17100F]/25 p-2 sm:p-3 flex flex-col justify-between text-[#17100F]/50" data-testid={`tile-saved-unavailable-${b.id}`}>
+                <p className="text-[11px] sm:text-[13px] leading-snug">This post was removed or made private</p>
+                <button type="button" className="self-start underline text-[12px] sm:text-[13px] font-semibold text-[#17100F]/80 min-h-8 disabled:opacity-50" disabled={toggle.isPending}
+                  onClick={() => toggle.mutate({ existing: b })} data-testid={`button-saved-remove-${b.id}`}>Remove</button>
+              </div>
+            );
+            const label = b.title || b.authorName;
+            if (b.imageUrl || b.videoUrl) return (
+              <button key={b.id} type="button" onClick={() => open(b.href)} className="relative aspect-square overflow-hidden bg-[#17100F] group" aria-label={`Open ${b.kind}: ${label}`} data-testid={`tile-saved-${b.id}`}>
+                {b.imageUrl ? <img src={b.imageUrl} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]" />
+                  : <video src={`${b.videoUrl}#t=0.1`} muted playsInline preload="metadata" className="absolute inset-0 w-full h-full object-cover" />}
+                {b.kind === "campaign" && <span className="absolute top-1.5 left-1.5 rp-label !text-[9px] sm:!text-[10px] bg-[#F3BF2C] text-[#17100F] px-1.5 py-0.5">Campaign</span>}
+                {b.isVideo && <Play className="absolute top-2 right-2 w-4 h-4 text-[#FBF8F2] fill-[#FBF8F2] drop-shadow" aria-hidden />}
+              </button>
+            );
+            return (
+              <button key={b.id} type="button" onClick={() => open(b.href)} className="relative aspect-square overflow-hidden bg-[#FBF8F2] border border-[#17100F]/15 p-2 sm:p-4 flex flex-col justify-between text-left hover:border-[#17100F]" data-testid={`tile-saved-${b.id}`}>
+                {b.kind === "campaign" && <span className="self-start rp-label !text-[9px] sm:!text-[10px] bg-[#F3BF2C] text-[#17100F] px-1.5 py-0.5 mb-1">Campaign</span>}
+                <p className="text-[11px] sm:text-[15px] leading-snug line-clamp-4 sm:line-clamp-5 [overflow-wrap:anywhere]">{b.title}</p>
+                <span className="flex items-center gap-1.5 min-w-0 mt-1">
+                  <span className="w-5 h-5 sm:w-6 sm:h-6 shrink-0 rounded-full bg-[#17100F] text-[#F3BF2C] grid place-items-center text-[8px] sm:text-[10px] font-extrabold" aria-hidden>{initialsOf(b.authorName)}</span>
+                  <span className="text-[10px] sm:text-[12px] font-semibold truncate">{b.authorName}</span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }

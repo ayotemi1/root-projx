@@ -14,7 +14,7 @@ export async function supporterShowcase(user: Doc, uid: string, token: string, o
   const availableInterests: string[] = Array.isArray(user.interests) ? user.interests.filter((i: unknown) => typeof i === "string") : [];
   const visibleInterests = Array.isArray(details.visibleInterests)
     ? details.visibleInterests.filter((i: unknown) => typeof i === "string" && availableInterests.includes(i)) as string[] : [];
-  const [rows, people, orgFollows] = await Promise.all([
+  const [rows, people, organisationsFollowed] = await Promise.all([
     fsQuery(POSTS, [{ field: "author_id", op: "EQUAL", value: uid }], token),
     fsQuery(FOLLOWERS, [{ field: "follower_id", op: "EQUAL", value: uid }], token),
     fsQuery("follows", [{ field: "userId", op: "EQUAL", value: uid }], token),
@@ -42,6 +42,7 @@ export async function supporterShowcase(user: Doc, uid: string, token: string, o
     };
   }));
   const linkedPosts = await Promise.all(visibleRows.filter(p => p.organisation_id).map(async p => {
+    const tag = p.tag as Doc | undefined;
     const linked = await org(text(p.organisation_id));
     // A removed organisation must not expose private drafts via a profile.
     if (!linked) return null;
@@ -50,22 +51,33 @@ export async function supporterShowcase(user: Doc, uid: string, token: string, o
       projectName: text(linked.name), logo: text(linked.logo) || null,
       sector: text(linked.category) || null,
       location: [linked.city, linked.country].filter(Boolean).join(", ") || null,
-      activity: (ACTIVITY_TYPES as readonly unknown[]).includes(p.activity_type) ? String(p.activity_type) : "Posted",
+      activity: p.type === "text" && tag?.type === "community" &&
+        ({ volunteers: "Volunteered", visitors: "Visited", fundraisers: "Fundraised" } as Record<string, string>)[tag.value]
+        || ((ACTIVITY_TYPES as readonly unknown[]).includes(p.activity_type) ? String(p.activity_type) : "Posted"),
       details: text(p.caption), when: text(p.created_at),
       shared: !owner || publicProfile.enabled === true, href: `#post-${p.id}`,
     };
   }));
-  const followedOrgs = await Promise.all(orgFollows.map(f => org(text(f.orgId))));
+  const involvement = [...linkedPosts.filter((p): p is NonNullable<typeof p> => p !== null), ...manual];
+  const organisationCount = new Set(involvement.map(i => i.organisationId
+    ? `org:${i.organisationId}` : `outside:${i.projectName.trim().toLowerCase()}`)).size;
   const displayName = text(publicProfile.displayName) || text(user.name) || "Supporter";
   return {
     displayName, bio: text(publicProfile.bio),
     avatarInitials: displayName.split(/\s+/).filter(Boolean).slice(0, 2).map(s => s[0]).join("").toUpperCase(),
+    avatarUrl: typeof user.avatarUrl === "string" && /^(https?:\/\/|\/api\/)/.test(user.avatarUrl) ? user.avatarUrl : null,
+    // No persisted expiring supporter-story source exists yet. Ordinary posts
+    // and following an organisation must never manufacture a story ring.
+    storyExpiresAt: null,
     location: text(details.location), visibleInterests,
     availableInterests: owner ? availableInterests : [], createdAt: text(user.createdAt) || null,
     publicId: text(publicProfile.publicId) || null,
     isPublic: publicProfile.enabled === true, isOwner: owner,
-    counts: { posts: posts.length, following: people.length, organisations: followedOrgs.filter(Boolean).length },
-    posts, involvement: [...linkedPosts.filter((p): p is NonNullable<typeof p> => p !== null), ...manual],
-    sources: { saved: false, reposts: false, sharedGifts: false },
+    counts: { posts: posts.length, following: new Set([
+      ...people.map(p => `supporter:${text(p.author_id)}`),
+      ...organisationsFollowed.map(o => `organisation:${text(o.orgId)}`),
+    ]).size, organisations: organisationCount },
+    posts, involvement,
+    sources: { saved: true, reposts: false, sharedGifts: false },
   };
 }

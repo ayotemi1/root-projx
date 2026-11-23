@@ -21,7 +21,7 @@ async function harness() {
           export const getServerToken=async()=>"server-fixture";
           export const fsGet=async(c,id,t)=>{if(state.fail)throw Error("PRIVATE_MESSAGE_BODY");state.calls.push({c,id,t});return structuredClone(state.docs.get(c+"/"+id)||null)};
           export const fsQuery=async(c,filters,t)=>{if(state.fail)throw Error("PRIVATE_MESSAGE_BODY");state.calls.push({c,filters,t});
-            return [...state.docs.entries()].filter(([k,v])=>k.startsWith(c+"/")&&filters.every(f=>f.op==="ARRAY_CONTAINS"?v[f.field]?.includes(f.value):v[f.field]===f.value)).map(([k,v])=>({...structuredClone(v),_id:k.slice(c.length+1)}));};
+            return [...state.docs.entries()].filter(([k,v])=>k.startsWith(c+"/")&&filters.every(f=>{const x=f.field.split(".").reduce((o,k)=>o?.[k],v);return f.op==="ARRAY_CONTAINS"?x?.includes(f.value):x===f.value})).map(([k,v])=>({...structuredClone(v),_id:k.slice(c.length+1)}));};
           export const fsCreateIfAbsent=async(c,id,data)=>{if(state.fail)throw Error("PRIVATE_MESSAGE_BODY");if(state.docs.has(c+"/"+id))return false;state.docs.set(c+"/"+id,structuredClone(data));return true};
           export const fsMutateMessaging=async(c,id,t,decide,mid)=>{const key=c+"/"+id;const previous=state.queues.get(key)||Promise.resolve();let release;
             const current=new Promise(r=>release=r);state.queues.set(key,current);await previous;
@@ -194,6 +194,57 @@ test("messaging: message validation, actor spoofing, removed organisations and d
     const kept = (await h.call("alice", `/messages?conversationId=${c.id}`)).body;
     assert.equal(kept.conversation.canSend, false); assert.equal(kept.messages.length, 2);
     assert.equal((await h.send("alice", c.id, "Unavailable", "deleted")).status, 404);
+  } finally { await h.close(); }
+});
+
+test("messaging: all participant directions, canonical pairs, explicit team context and private recipient protection", async () => {
+  const h = await harness();
+  const aid = `sp_${"a".repeat(32)}`, bid = `sp_${"b".repeat(32)}`;
+  h.state.docs.get("users/alice").publicProfile = { enabled: true, publicId: aid };
+  h.state.docs.get("users/bob").publicProfile = { enabled: true, publicId: bid };
+  const start = (who: string, kind: string, id: string, asOrgId?: string) =>
+    h.call(who, "/conversations", "POST", { recipient: { kind, id }, asOrgId });
+  try {
+    const pp = await start("alice", "supporter", bid);
+    assert.equal(pp.status, 200);
+    assert.equal(pp.body.participantLabel, "Supporter");
+    assert.equal(pp.body.peerHref, `/supporters/${bid}`);
+    assert.equal((await start("bob", "supporter", aid)).body.id, pp.body.id);
+    assert.equal((await h.send("alice", pp.body.id, "Personal hello", "personal-hello")).status, 200);
+    assert.equal((await h.call("bob", "/conversations")).body.unreadCount, 1);
+    assert.equal((await h.call("org", `/messages?conversationId=${pp.body.id}`)).status, 404);
+    assert.equal((await start("alice", "supporter", aid)).status, 400);
+    h.state.docs.get("users/bob").publicProfile.enabled = false;
+    assert.equal((await start("alice", "supporter", bid)).status, 404, "hidden supporters cannot be discovered through start");
+    assert.equal((await h.call("bob", `/messages?conversationId=${pp.body.id}`)).status, 200, "hiding profile does not erase a participant's private history");
+    const oo = await start("org", "organisation", "otherorg");
+    assert.equal(oo.status, 200);
+    assert.equal(oo.body.participantLabel, "Organisation");
+    assert.equal((await start("otherorg", "organisation", "org")).body.id, oo.body.id);
+    assert.equal((await h.send("org", oo.body.id, "Organisation hello", "org-hello")).status, 200);
+    assert.equal((await h.call("otherorg", "/context")).body.unreadCount, 1);
+    assert.equal((await start("alice", "organisation", "otherorg", "org")).status, 404, "cannot spoof organisation sender");
+    const op = await start("org", "supporter", aid);
+    assert.equal(op.status, 200);
+    assert.equal(op.body.id, (await h.start()).id, "org-initiated pair reopens legacy supporter/org ID");
+    assert.equal((await h.send("org", op.body.id, "We would like to connect", "org-initiates")).status, 200);
+    const legacy = h.state.docs.get(`conversations/${op.body.id}`);
+    delete legacy.participants; delete legacy.participantKeys; delete legacy.initiatorKey;
+    assert.equal((await start("org", "supporter", aid)).body.id, op.body.id, "new requests reopen an unmigrated legacy document");
+    assert.equal((await h.call("alice", `/messages?conversationId=${op.body.id}`)).status, 200);
+    assert.equal((await h.send("alice", op.body.id, "Legacy reply", "legacy-reply")).status, 200);
+    await h.call("org", "/access/org", "POST", { userId: "staff" });
+    assert.equal((await start("staff", "organisation", "otherorg", "org")).body.id, oo.body.id);
+    assert.equal((await h.send("staff", oo.body.id, "Without context", "no-scope")).status, 404);
+    assert.equal((await h.send("staff", oo.body.id, "On behalf", "scoped", "org")).status, 200);
+    await h.call("org", "/access/org/staff", "DELETE");
+    for (const operation of [
+      () => h.call("staff", `/messages?conversationId=${oo.body.id}&orgId=org`),
+      () => h.send("staff", oo.body.id, "Revoked", "revoked-new", "org"),
+      () => h.call("staff", `/conversations/${oo.body.id}/read`, "POST", { through: 999, orgId: "org" }),
+      () => start("staff", "organisation", "otherorg", "org"),
+    ]) assert.equal((await operation()).status, 404);
+    assert.equal((await h.call("alice", "/conversations")).body.conversations.length, 2);
   } finally { await h.close(); }
 });
 

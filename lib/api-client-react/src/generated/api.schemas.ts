@@ -5,6 +5,54 @@
  * Root ProjX API — community giving platform
  * OpenAPI spec version: 0.1.0
  */
+export type BookmarkInputKind =
+  (typeof BookmarkInputKind)[keyof typeof BookmarkInputKind];
+
+export const BookmarkInputKind = {
+  post: "post",
+  update: "update",
+  campaign: "campaign",
+} as const;
+
+export interface BookmarkInput {
+  kind: BookmarkInputKind;
+  /** @pattern ^[A-Za-z0-9_-]{1,128}$ */
+  targetId: string;
+  /** @pattern ^[A-Za-z0-9_-]{1,128}$ */
+  orgId?: string;
+}
+
+export type BookmarkViewKind =
+  (typeof BookmarkViewKind)[keyof typeof BookmarkViewKind];
+
+export const BookmarkViewKind = {
+  post: "post",
+  update: "update",
+  campaign: "campaign",
+} as const;
+
+export interface BookmarkView {
+  id: string;
+  kind: BookmarkViewKind;
+  targetId: string;
+  /** @nullable */
+  orgId: string | null;
+  createdAt: string;
+  available: boolean;
+  title: string;
+  authorName: string;
+  /** @nullable */
+  imageUrl: string | null;
+  /**
+   * Video preview fallback when no thumbnail exists.
+   * @nullable
+   */
+  videoUrl?: string | null;
+  isVideo: boolean;
+  /** @nullable */
+  href: string | null;
+}
+
 export interface MessagingOrganisation {
   id: string;
   name: string;
@@ -24,9 +72,29 @@ export interface MessagingContext {
   organisations: MessagingOrganisation[];
 }
 
+export type MessageRecipientKind =
+  (typeof MessageRecipientKind)[keyof typeof MessageRecipientKind];
+
+export const MessageRecipientKind = {
+  supporter: "supporter",
+  organisation: "organisation",
+} as const;
+
+export interface MessageRecipient {
+  kind: MessageRecipientKind;
+  /**
+   * Public supporter ID or organisation ID
+   * @pattern ^[A-Za-z0-9_-]{1,128}$
+   */
+  id: string;
+}
+
 export interface MessageConversationInput {
   /** @pattern ^[A-Za-z0-9_-]{1,128}$ */
-  orgId: string;
+  orgId?: string;
+  /** @pattern ^[A-Za-z0-9_-]{1,128}$ */
+  asOrgId?: string;
+  recipient?: MessageRecipient;
 }
 
 export type MessageConversationSide =
@@ -50,6 +118,9 @@ export interface MessageConversation {
   /** @minimum 0 */
   unreadCount: number;
   canSend: boolean;
+  /** @nullable */
+  peerHref?: string | null;
+  senderLabel?: string;
 }
 
 export interface MessageInbox {
@@ -1457,6 +1528,10 @@ export interface SupporterShowcase {
   displayName: string;
   bio: string;
   avatarInitials: string;
+  /** @nullable */
+  avatarUrl?: string | null;
+  /** @nullable */
+  storyExpiresAt?: string | null;
   location: string;
   visibleInterests: string[];
   /** Owner-only interest editing choices; empty in public projection */

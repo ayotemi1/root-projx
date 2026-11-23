@@ -60,6 +60,10 @@ function load(): Promise<Mod> {
       plugins: [{
         name: "web-react-and-mocks",
         setup(b) {
+          // Campaign rendering is a signed-out view; auth-bound bookmarking is
+          // exercised separately with a real account, not during static SSR.
+          b.onResolve({ filter: /bookmarks\/BookmarkButton/ }, () => ({ path: "guest", namespace: "bookmark" }));
+          b.onLoad({ filter: /.*/, namespace: "bookmark" }, () => ({ contents: "export const BookmarkButton=()=>null;" }));
           // Use exactly the web app's React, loaded at runtime.
           b.onResolve({ filter: /^react(-dom)?(\/.*)?$/ }, (a) =>
             reactIds.includes(a.path) ? { path: webRequire.resolve(a.path), external: true } : undefined);

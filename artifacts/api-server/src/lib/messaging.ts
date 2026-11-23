@@ -15,6 +15,35 @@ const label = (v: unknown, fallback: string) => str(v).trim() || fallback;
 const image = (v: unknown) => typeof v === "string" && /^(https?:\/\/|\/api\/)/.test(v) ? v : null;
 const members = (d: Doc | null) => Array.isArray(d?.memberIds) ? d.memberIds.filter((v): v is string => typeof v === "string") : [];
 export const conversationIdFor = (supporterId: string, orgId: string) => id("c", supporterId, orgId);
+type Participant = { kind: "supporter" | "organisation"; id: string };
+type Side = "supporter" | "organisation"; // Stable thread slots, not a person's role.
+const opposite = (side: Side): Side => side === "supporter" ? "organisation" : "supporter";
+const identityKey = (p: Participant) => `${p.kind}:${p.id}`;
+function participants(thread: Doc): Record<Side, Participant> {
+  const stored = thread.participants as Record<Side, Participant> | undefined;
+  const result = stored ?? {
+    supporter: { kind: "supporter", id: str(thread.supporterId) },
+    organisation: { kind: "organisation", id: str(thread.orgId) },
+  };
+  for (const p of Object.values(result)) if (!p || !["supporter", "organisation"].includes(p.kind) ||
+      !/^[A-Za-z0-9_-]{1,128}$/.test(p.id)) throw unavailable();
+  if (!result.supporter || !result.organisation || identityKey(result.supporter) === identityKey(result.organisation)) throw unavailable();
+  return result;
+}
+async function activeParticipant(p: Participant, token: string): Promise<Doc | null> {
+  if (p.kind === "organisation") return activeOrganisation(p.id, token);
+  const user = await fsGet("users", p.id, token);
+  return user?.accountType === "supporter" ? user : null;
+}
+async function senderIdentity(actor: AuthPayload, token: string, scope?: string): Promise<Participant> {
+  const orgId = scope ?? (actor.accountType === "organisation" ? actor.userId : undefined);
+  if (orgId) {
+    if (!await canUseOrganisation(actor, orgId, token)) throw unavailable();
+    return { kind: "organisation", id: orgId };
+  }
+  if (actor.accountType !== "supporter" || !await activeParticipant({ kind: "supporter", id: actor.userId }, token)) throw unavailable();
+  return { kind: "supporter", id: actor.userId };
+}
 
 async function activeOrganisation(orgId: string, token: string): Promise<Doc | null> {
   const org = await fsGet("organisations", orgId, token);
@@ -42,14 +71,12 @@ async function requireOwner(actor: AuthPayload, orgId: string, token: string) {
 
 async function authorisedThread(actor: AuthPayload, conversationId: string, token: string, orgScope?: string) {
   const thread = await fsGet("conversations", conversationId, token);
-  if (!thread || typeof thread.orgId !== "string" || typeof thread.supporterId !== "string") throw unavailable();
-  if (orgScope && orgScope !== thread.orgId) throw unavailable();
-  if (!orgScope && actor.accountType === "supporter" && thread.supporterId === actor.userId) {
-    return { thread, side: "supporter" as const, org: await activeOrganisation(thread.orgId, token) };
-  }
-  const org = await canUseOrganisation(actor, thread.orgId, token);
-  if (!org) throw unavailable();
-  return { thread, side: "organisation" as const, org };
+  if (!thread) throw unavailable();
+  const parts = participants(thread);
+  const sender = await senderIdentity(actor, token, orgScope);
+  const side = (["supporter", "organisation"] as const).find(s => identityKey(parts[s]) === identityKey(sender));
+  if (!side) throw unavailable();
+  return { thread, side, org: await activeParticipant(parts[opposite(side)], token) };
 }
 
 function unread(thread: Doc, side: "supporter" | "organisation") {
@@ -58,15 +85,23 @@ function unread(thread: Doc, side: "supporter" | "organisation") {
 }
 
 async function conversationView(threadId: string, thread: Doc, side: "supporter" | "organisation", org: Doc | null, token: string) {
-  const person = side === "organisation" ? await fsGet("users", str(thread.supporterId), token) : null;
+  const parts = participants(thread);
+  const peer = parts[opposite(side)], me = parts[side];
+  const person = org;
+  const publicProfile = person?.publicProfile as Doc | undefined;
+  const peerName = label(peer.kind === "organisation" ? person?.name : publicProfile?.displayName,
+    label(person?.name, label(thread[opposite(side) === "supporter" ? "supporterName" : "orgName"], peer.kind === "organisation" ? "Organisation" : "Supporter")));
+  const mine = await activeParticipant(me, token);
   return {
-    id: threadId, orgId: str(thread.orgId), side,
-    name: side === "supporter" ? label(org?.name, label(thread.orgName, "Organisation")) : label(person?.name, label(thread.supporterName, "Supporter")),
-    avatarUrl: side === "supporter" ? image(org?.logo) : image(person?.avatarUrl),
-    participantLabel: side === "supporter" ? "Organisation" : "Supporter",
+    id: threadId, orgId: str(thread.orgId, peer.kind === "organisation" ? peer.id : me.kind === "organisation" ? me.id : ""), side,
+    name: peerName, avatarUrl: image(peer.kind === "organisation" ? person?.logo : person?.avatarUrl),
+    participantLabel: peer.kind === "organisation" ? "Organisation" : "Supporter",
+    peerHref: !person ? null : peer.kind === "organisation" ? `/organisations/${peer.id}` :
+      publicProfile?.enabled === true && /^sp_[a-f0-9]{32}$/.test(str(publicProfile.publicId)) ? `/supporters/${publicProfile.publicId}` : null,
+    senderLabel: label(mine?.name, me.kind === "organisation" ? "Organisation" : "Personal"),
     lastMessage: str(thread.lastMessage),
     updatedAt: str(thread.updatedAt, str(thread.createdAt)),
-    unreadCount: unread(thread, side), canSend: !!org,
+    unreadCount: unread(thread, side), canSend: !!org && !!mine,
   };
 }
 
@@ -78,18 +113,21 @@ function messageView(messageId: string, message: Doc) {
 
 export async function listConversations(actor: AuthPayload, requestedOrgId?: string) {
   const token = await getServerToken();
-  const orgId = requestedOrgId ?? (actor.accountType === "organisation" ? actor.userId : undefined);
-  const side = orgId ? "organisation" as const : "supporter" as const;
-  if (!orgId && actor.accountType !== "supporter") throw unavailable();
-  const scopedOrg = orgId ? await canUseOrganisation(actor, orgId, token) : null;
-  if (orgId && !scopedOrg) throw unavailable();
-  const rows = await fsQuery("conversations", [{ field: orgId ? "orgId" : "supporterId", op: "EQUAL", value: orgId ?? actor.userId }], token);
+  const sender = await senderIdentity(actor, token, requestedOrgId);
+  const [legacy, modern] = await Promise.all([
+    fsQuery("conversations", [{ field: sender.kind === "organisation" ? "orgId" : "supporterId", op: "EQUAL", value: sender.id }], token),
+    fsQuery("conversations", [{ field: "participantKeys", op: "ARRAY_CONTAINS", value: identityKey(sender) }], token),
+  ]);
+  const rows = [...new Map([...legacy, ...modern].map(row => [str(row._id), row])).values()];
   const conversations = [];
   for (const row of rows) {
-    // Defence in depth: never trust a broad/malformed storage result.
-    if (orgId ? row.orgId !== orgId : row.supporterId !== actor.userId) continue;
-    if (side === "organisation" && count(row.lastSequence) === 0) continue;
-    const org = scopedOrg ?? await activeOrganisation(str(row.orgId), token);
+    let parts: Record<Side, Participant>;
+    try { parts = participants(row); } catch { continue; }
+    const side = (["supporter", "organisation"] as const).find(s => identityKey(parts[s]) === identityKey(sender));
+    if (!side) continue;
+    if (count(row.lastSequence) === 0 && row.initiatorKey !== identityKey(sender) &&
+        !(row.initiatorKey === undefined && sender.kind === "supporter")) continue;
+    const org = await activeParticipant(parts[opposite(side)], token);
     conversations.push(await conversationView(str(row._id), row, side, org, token));
   }
   conversations.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt) || a.id.localeCompare(b.id));
@@ -114,22 +152,38 @@ export async function messagingContext(actor: AuthPayload) {
   return { personal, personalUnreadCount, organisations, unreadCount: personalUnreadCount + organisations.reduce((sum, org) => sum + org.unreadCount, 0) };
 }
 
-export async function startConversation(actor: AuthPayload, orgId: string) {
-  if (actor.accountType !== "supporter") throw new MessagingError(403, "Sign in with a supporter account to start a conversation.");
+export async function startConversation(actor: AuthPayload, input: string | { recipient: Participant; asOrgId?: string }) {
+  if (typeof input === "string" && actor.accountType !== "supporter") throw new MessagingError(403, "Choose a sender and recipient.");
   const token = await getServerToken();
-  const org = await activeOrganisation(orgId, token);
-  if (!org) throw new MessagingError(404, "This organisation is not available for messaging.");
-  const supporter = await fsGet("users", actor.userId, token);
-  if (!supporter || supporter.accountType !== "supporter") throw unavailable();
-  const conversationId = conversationIdFor(actor.userId, orgId);
+  const sender = await senderIdentity(actor, token, typeof input === "string" ? undefined : input.asOrgId);
+  let recipient: Participant = typeof input === "string" ? { kind: "organisation", id: input } : input.recipient;
+  if (recipient.kind === "supporter") {
+    if (!/^sp_[a-f0-9]{32}$/.test(recipient.id)) throw unavailable();
+    const users = await fsQuery("users", [{ field: "publicProfile.publicId", op: "EQUAL", value: recipient.id }], token);
+    const user = users.find(u => u.accountType === "supporter" && (u.publicProfile as Doc)?.enabled === true);
+    if (!user) throw unavailable();
+    recipient = { kind: "supporter", id: str(user._id) };
+  }
+  const peer = await activeParticipant(recipient, token);
+  if (!peer) throw unavailable();
+  if (identityKey(sender) === identityKey(recipient)) throw new MessagingError(400, "Choose someone else to message.");
+  const pair = [sender, recipient].sort((a, b) => a.kind === b.kind ? identityKey(a).localeCompare(identityKey(b)) : a.kind === "supporter" ? -1 : 1);
+  const a = pair[0]!, b = pair[1]!;
+  const mixed = a.kind !== b.kind;
+  const conversationId = mixed ? conversationIdFor(a.id, b.id) : id("c", identityKey(a), identityKey(b));
+  const own = await activeParticipant(sender, token);
   const now = new Date().toISOString();
   await fsCreateIfAbsent("conversations", conversationId, {
-    supporterId: actor.userId, orgId, orgName: label(org.name, "Organisation"), supporterName: label(supporter.name, "Supporter"),
+    ...(mixed ? { supporterId: a.id, orgId: b.id } : {}),
+    participants: { supporter: a, organisation: b }, participantKeys: pair.map(identityKey),
+    initiatorKey: identityKey(sender),
+    supporterName: label((identityKey(a) === identityKey(sender) ? own : peer)?.name, "Supporter"),
+    orgName: label((identityKey(b) === identityKey(sender) ? own : peer)?.name, "Organisation"),
     createdAt: now, updatedAt: now, lastMessage: "", lastSequence: 0,
     supporterSent: 0, organisationSent: 0, supporterRead: 0, organisationRead: 0,
   }, token);
-  const { thread } = await authorisedThread(actor, conversationId, token);
-  return conversationView(conversationId, thread, "supporter", org, token);
+  const { thread, side, org } = await authorisedThread(actor, conversationId, token, typeof input === "string" ? undefined : input.asOrgId);
+  return conversationView(conversationId, thread, side, org, token);
 }
 
 export async function conversationMessages(actor: AuthPayload, conversationId: string, before?: number, orgScope?: string) {

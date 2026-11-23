@@ -9,6 +9,7 @@ import { normaliseEdit } from "@/lib/supporter-post-media";
 import { deletePost, followAuthor, unfollowAuthor, type SupporterPostRecord } from "@/lib/supporter-publishing";
 import { myShowcaseKey, refreshShowcase } from "@/lib/supporter-showcase";
 import { EditedMedia } from "./EditedMedia";
+import { BookmarkButton } from "@/components/bookmarks/BookmarkButton";
 import "./supporter-post.css";
 
 const dateLabel = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
@@ -130,6 +131,7 @@ export function SupporterPostCard({ post }: { post: SupporterPostRecord }) {
             {camp && <> for <Link href={camp.sharePath ?? (camp.publicId ? `/campaigns/${camp.publicId}` : `/organisations/${post.organisation_id}/campaigns`)} className="rp-link-u">{camp.name}</Link></>}
           </span>
         ) : <span />}
+        <BookmarkButton kind="post" targetId={post.id} className="ml-auto" />
         {a.isOwner && (confirm ? (
           <span className="inline-flex items-center gap-3 text-[14px]">
             Delete this post?

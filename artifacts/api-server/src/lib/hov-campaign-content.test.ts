@@ -57,6 +57,10 @@ test("all imported sections render through the shared campaign component in publ
   const result = await build({
     entryPoints: [new URL("src/components/campaign/campaign-page-view.tsx", root).pathname],
     bundle: true, write: false, platform: "node", format: "cjs", packages: "external", jsx: "automatic", loader: { ".css": "empty" },
+    plugins: [{ name: "signed-out-bookmarks", setup(b) {
+      b.onResolve({ filter: /bookmarks\/BookmarkButton/ }, () => ({ path: "guest", namespace: "bookmark" }));
+      b.onLoad({ filter: /.*/, namespace: "bookmark" }, () => ({ contents: "export const BookmarkButton=()=>null;" }));
+    } }],
   });
   const mod = { exports: {} as any };
   new Function("require", "module", "exports", result.outputFiles[0]!.text)(require, mod, mod.exports);

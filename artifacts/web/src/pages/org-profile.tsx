@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { useRoute, Link, useLocation } from "wouter";
-import { startMessageConversation } from "@workspace/api-client-react";
+import { useRoute, Link } from "wouter";
+import { StartMessageButton } from "@/components/messaging/StartMessageButton";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle, ArrowLeft, ChevronRight, Heart, HeartOff,
   MapPin, Tag, Users, TrendingUp, Zap, DollarSign,
-  Clock, Mail, Phone, Globe, MessageSquare,
+  Clock, Mail, Phone, Globe,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -274,20 +274,7 @@ export default function OrgProfilePage() {
   const [localFollow, setLocalFollow] = useState<boolean | null>(null);
   const [donateModalOpen, setDonateModalOpen] = useState(false);
   const [donationCampaign, setDonationCampaign] = useState<Campaign | null>(null);
-  const [, navigate] = useLocation();
-  const [messagePending, setMessagePending] = useState(false);
-  const [messageError, setMessageError] = useState<string | null>(null);
   const [guestAction, setGuestAction] = useState<string | null>(null);
-  async function handleMessageClick() {
-    if (!token || messagePending) return;
-    setMessagePending(true); setMessageError(null);
-    try {
-      const conv = await startMessageConversation({ orgId: id }, { headers: { Authorization: `Bearer ${token}` } });
-      navigate(`/inbox?conversation=${encodeURIComponent(conv.id)}`);
-    } catch {
-      setMessageError("Couldn't open a conversation. Try again.");
-    } finally { setMessagePending(false); }
-  }
 
   const orgQ = useQuery({
     queryKey: ["org", id],
@@ -559,17 +546,15 @@ export default function OrgProfilePage() {
                       <Heart className="w-4 h-4" /> Follow
                     </button>
                   )}
-                  {(!isAuthenticated || authUser?.accountType === "supporter") && (
-                    <button type="button" className="rp-btn rp-btn-ghost" onClick={() => isAuthenticated ? void handleMessageClick() : setGuestAction("message organisations")} disabled={messagePending} data-testid="button-message-org">
-                      <MessageSquare className="w-4 h-4" /> {messagePending ? "Opening" : "Message"}
-                    </button>
+                  {!(authUser?.accountType === "organisation" && String(authUser.id) === id) && (
+                    <StartMessageButton recipient={{ kind: "organisation", id }} recipientName={org.name} testId="button-message-org"
+                      onGuest={() => setGuestAction("message organisations")} />
                   )}
                   <button type="button" className="rp-btn rp-btn-yellow orgp-donate" onClick={handleDonateClick} data-testid="button-donate-org">
                     <Heart className="w-4 h-4" /> Donate
                   </button>
                 </div>
                 <GuestJoinPrompt action={guestAction} onClose={() => setGuestAction(null)} />
-                {messageError && <p role="alert" className="text-sm mt-2" style={{ color: RED }} data-testid="text-message-org-error">{messageError}</p>}
               </div>
             </div>
             <dl className="orgp-stats">

@@ -14,6 +14,10 @@ export interface SupporterShowcase {
   displayName: string;
   bio: string;
   avatarInitials: string;
+  /** @nullable */
+  avatarUrl?: string | null;
+  /** @nullable */
+  storyExpiresAt?: string | null;
   location: string;
   visibleInterests: string[];
   /** Owner-only interest editing choices; empty in public projection */
