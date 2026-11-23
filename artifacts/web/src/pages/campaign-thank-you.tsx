@@ -85,7 +85,7 @@ export default function CampaignThankYouPage() {
     <header className="rpt-top"><span className="rpt-logo">{landing?.organisation.name?.slice(0, 3).toUpperCase() || "RPX"}</span><span>{landing?.organisation.name || "Organisation"}<small>on Root ProjX</small></span></header>
     <main className="rpt-main">
       {statusQ.data?.status === "failed" ? <>
-        <CampaignSymbol campaign={landing?.campaign} className="rpt-hand rpt-faded" />
+        {landing && <CampaignSymbol campaign={landing.campaign} className="rpt-hand rpt-faded" />}
         <span className="rpt-mono">Payment not completed</span>
         <h1>That didn't go through</h1>
         <p>You haven't been charged. Please try again when you're ready.</p>

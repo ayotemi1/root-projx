@@ -3,6 +3,8 @@ import test from "node:test";
 import { createRequire } from "node:module";
 import { readFile } from "node:fs/promises";
 import { build } from "esbuild";
+import { createHash } from "node:crypto";
+import { access } from "node:fs/promises";
 
 // Bundle the real web controls with the web React instance. No network calls or
 // charges: click wiring, recipient text and checkout payload are tested locally.
@@ -30,6 +32,36 @@ async function loadComponent(path: string) {
   new Function("require", "module", "exports", result.outputFiles[0]!.text)(webRequire, mod, mod.exports);
   return mod.exports;
 }
+
+test("Out of Many Hands uses the exact original currentColor handprint asset everywhere", async () => {
+  const asset = await readFile(new URL("public/campaign-units/handprint.svg", webRoot), "utf8");
+  assert.match(asset, /viewBox="0 0 240 240"/);
+  assert.match(asset, /id="handprint"/);
+  assert.match(asset, /fill="currentColor"/);
+  assert.doesNotMatch(asset, /#[0-9a-f]{3,8}\b/i);
+  const path = asset.match(/\bd="([^"]+)"/)?.[1];
+  assert.ok(path);
+  assert.equal(createHash("sha256").update(path).digest("hex"), "e2eb9693aa314344a461fa70d9f8530314a6c0597bad7dd9fbcee5c4b928d2eb");
+  await assert.rejects(access(new URL("public/campaign-units/hand.svg", webRoot)));
+  const { CampaignSymbol } = await loadComponent("src/components/campaign-symbol.tsx");
+  const hand = renderToStaticMarkup(createElement(CampaignSymbol, { campaign: { name: "Out of Many Hands" } }));
+  assert.match(hand, /handprint.svg#handprint/);
+  assert.match(hand, /color:#B3121B/);
+  for (const name of ["Drum Life", "Other campaign"]) {
+    const html = renderToStaticMarkup(createElement(CampaignSymbol, { campaign: { name } }));
+    assert.doesNotMatch(html, /handprint/);
+  }
+  const wall = await readFile(new URL("src/components/campaign/accumulation-field.tsx", webRoot), "utf8");
+  assert.match(wall, /globalCompositeOperation = "source-in"/);
+  assert.match(wall, /marker-ghost-hand/);
+  assert.match(wall, /<DonationHand/);
+  const page = await readFile(new URL("src/components/campaign/campaign-page-view.tsx", webRoot), "utf8");
+  assert.match(page, /imageUrl=\{HANDPRINT_URL\}/);
+  assert.match(page, /colour="#17100F"/);
+  assert.match(page, /accent="#B3121B"/);
+  assert.match(page, /highlightNewest=\{highlightNewest \|\| !!confirmedReceipt\}/);
+  assert.doesNotMatch(page, /unit\?\.imageUrl|unitImageUrl/);
+});
 
 test("outcomes show only their saved titles and descriptions in public and preview, without stat numbers or footnotes", async () => {
   const { CampaignPageView } = await loadComponent("src/components/campaign/campaign-page-view.tsx");

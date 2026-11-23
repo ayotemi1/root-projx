@@ -1,5 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { accumulationProgress, hitSupporterUnit, supporterUnitName, type SupporterUnitPosition } from "@/lib/supporter-unit-hit";
+import { DonationHand } from "@/components/donation-hand";
 
 const NO_SUPPORTERS: { displayName: string }[] = [];
 
@@ -11,6 +12,8 @@ export interface AccumulationFieldProps {
   unitSingular: string;
   unitPlural: string;
   imageUrl: string | null;
+  /** Out of Many Hands: tint the shared SVG without changing its geometry. */
+  handprint?: boolean;
   colour: string;
   accent: string;
   background: string;
@@ -67,7 +70,7 @@ function prefersReducedMotion() {
  * Load: one orchestrated fill. New unit while mounted: one drop. Nothing else moves.
  */
 export function AccumulationField({
-  count, unitSingular, unitPlural, imageUrl, colour, background,
+  count, unitSingular, unitPlural, imageUrl, colour, accent, background, handprint = false,
   highlightNewest = false, still = false, className = "", height = 240, testId = "canvas-accumulation",
   supporters = NO_SUPPORTERS,
 }: AccumulationFieldProps) {
@@ -97,10 +100,13 @@ export function AccumulationField({
   useEffect(() => {
     if (!imageUrl) { setImg(null); return; }
     const im = new Image();
+    let cancelled = false;
     im.decoding = "async";
-    im.onload = () => setImg(im);
-    im.onerror = () => setImg(null);
+    setImg(null);
+    im.onload = () => { if (!cancelled) setImg(im); };
+    im.onerror = () => { if (!cancelled) setImg(null); };
     im.src = imageUrl;
+    return () => { cancelled = true; };
   }, [imageUrl]);
 
   const placed = useMemo(() => (width > 0 ? layout(drawn, width, height, massH) : null), [drawn, width, height, massH]);
@@ -116,15 +122,29 @@ export function AccumulationField({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    const tint = (color: string) => {
+      if (!handprint || !img) return img;
+      const layer = document.createElement("canvas");
+      layer.width = layer.height = 240;
+      const paint = layer.getContext("2d");
+      if (!paint) return null;
+      paint.drawImage(img, 0, 0, 240, 240);
+      paint.globalCompositeOperation = "source-in";
+      paint.fillStyle = color;
+      paint.fillRect(0, 0, 240, 240);
+      return layer;
+    };
+    const wallImage = tint(colour), ownImage = tint(accent);
     const drawUnit = (p: Placed, alpha: number, lift: number, index: number) => {
       if (alpha > 0.1) paintedRef.current.push({ ...p, y: p.y - lift, index });
       ctx.save();
       ctx.globalAlpha = highlightNewest && p === placed.items[placed.items.length - 1] ? alpha : p.o * alpha;
       ctx.translate(p.x, p.y - lift);
       ctx.rotate(p.r);
-      if (img) {
-        ctx.drawImage(img, -p.s / 2, -p.s / 2, p.s, p.s);
-      } else {
+      const artwork = highlightNewest && index === placed.items.length - 1 ? ownImage : wallImage;
+      if (artwork) {
+        ctx.drawImage(artwork, -p.s / 2, -p.s / 2, p.s, p.s);
+      } else if (!handprint) {
         ctx.fillStyle = colour;
         ctx.beginPath();
         ctx.arc(0, 0, p.s * 0.38, 0, Math.PI * 2);
@@ -196,7 +216,7 @@ export function AccumulationField({
       frame(drawn, -1);
     }
     return () => { cancelAnimationFrame(rafRef.current); paintedRef.current = []; };
-  }, [placed, width, height, img, colour, massH, highlightNewest, still, drawn, safeCount]);
+  }, [placed, width, height, img, colour, accent, handprint, massH, highlightNewest, still, drawn, safeCount]);
 
   const noun = safeCount === 1 ? unitSingular : unitPlural;
   const description = safeCount === 0
@@ -246,7 +266,13 @@ export function AccumulationField({
         style={{ left: Math.max(8, Math.min(active.x - 80, width - 168)), top: Math.max(8, active.y - active.s / 2 - 42), width: 160, maxWidth: "calc(100% - 16px)" }}>
         {supporterUnitName(supporters, drawn, active.index)}
       </div>}
-      {safeCount === 0 && (
+      {handprint && !highlightNewest && (
+        <div className="absolute right-[5%] bottom-[6%] flex flex-col items-center gap-1 pointer-events-none" data-testid="marker-ghost-hand">
+          <span style={{ color: "#C6C6C6", transform: "rotate(10deg)" }}><DonationHand className="w-[52px] h-[52px]" /></span>
+          <span className="text-[11px] font-bold" style={{ color: "#68605A" }}>Your hand here</span>
+        </div>
+      )}
+      {safeCount === 0 && !handprint && (
         <div className="absolute inset-0 flex items-end justify-center pb-6 pointer-events-none" aria-hidden="true">
           <div className="flex flex-col items-center gap-2 opacity-60">
             <div className="w-12 h-12 rounded-full border-2 border-dashed flex items-center justify-center" style={{ borderColor: colour }}>

@@ -11,6 +11,7 @@ import { capOf, partnerMatch, ratioLabel } from "@/lib/partner-funding";
 import { whereYourMoneyGoes } from "@/lib/money-disclosure";
 import { CampaignFeeBreakdown } from "./campaign-fee-breakdown";
 import { CampaignSymbol, campaignPresentation } from "@/components/campaign-symbol";
+import { DonationHand, HANDPRINT_URL } from "@/components/donation-hand";
 import { CampaignDonatePanel, focusDonateBox, type DonateChoice, type ConfirmedReceiptView } from "./campaign-donate-panel";
 import { currencyOf, formatWhole } from "@/lib/currency";
 import { campaignVideos } from "@/components/campaign-builder/model";
@@ -187,15 +188,8 @@ export function CampaignPageView({
   // Campaign-specific people replace the organisation team for display only.
   const team = pd.team ? pd.team.people.map((p) => ({ name: p.name, role: p.role, photoUrl: p.photoUrl ?? null })) : (org.team ?? []).filter((m) => m.name);
   const presentation = campaignPresentation(campaign);
-  const unit = presentation.hasWall ? campaign.theme?.unit : null;
   const unitSingular = presentation.hasWall ? "hand" : "supporter";
   const unitPlural = presentation.hasWall ? "hands" : "supporters";
-  // Older campaigns named a built-in unit without saving its artwork URL.
-  // Render that chosen artwork without changing the organisation's saved draft.
-  const builtinUnit = unitSingular.toLowerCase();
-  const unitImageUrl = unit?.imageUrl || (["hand", "brick", "seedling", "drop"].includes(builtinUnit)
-    ? `${(import.meta.env?.BASE_URL ?? "/").replace(/\/$/, "")}/campaign-units/${builtinUnit}.svg`
-    : null);
   const supporters = campaign.supporterCount ?? 0;
   const recent = campaign.recentSupporters ?? [];
   const anon = campaign.unidentifiedGifts ?? 0;
@@ -698,11 +692,12 @@ export function CampaignPageView({
                             supporters={campaign.supporterUnits}
                             unitSingular={unitSingular}
                             unitPlural={unitPlural}
-                            imageUrl={unitImageUrl}
-                            colour={presentation.symbolColour}
-                            accent={gold}
+                            imageUrl={HANDPRINT_URL}
+                            handprint
+                            colour="#17100F"
+                            accent="#B3121B"
                             background="#EDE4D6"
-                            highlightNewest={highlightNewest}
+                            highlightNewest={highlightNewest || !!confirmedReceipt}
                             still={preview}
                             height={layout === "phone" || (layout === "responsive" && smallViewport) ? 260 : 400}
                           />
@@ -718,7 +713,7 @@ export function CampaignPageView({
                           )}
                         </div>
                         <button type="button" className="rc-wall-cta" onClick={donate} disabled={preview} title={previewTitle} data-testid="button-wall-add">
-                          Add your {unitSingular} to the wall <ArrowRight className="w-4 h-4" aria-hidden="true" />
+                          <DonationHand className="w-4 h-4" /> Add your {unitSingular} to the wall <ArrowRight className="w-4 h-4" aria-hidden="true" />
                         </button>
                       </>
                     )}

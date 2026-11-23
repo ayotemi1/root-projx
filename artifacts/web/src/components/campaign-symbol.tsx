@@ -8,7 +8,7 @@ export function CampaignSymbol({ campaign, presentation, className = "" }: {
   campaign?: Parameters<typeof campaignPresentation>[0]; presentation?: CampaignPresentation; className?: string;
 }) {
   const p = presentation ?? campaignPresentation(campaign);
-  return <span className={`inline-flex items-center justify-center ${className}`} style={{ color: p.symbolColour }} aria-hidden="true">
+  return <span className={`inline-flex items-center justify-center ${className}`} style={{ color: p.hasWall && p.icon === "hand" ? "#B3121B" : p.symbolColour }} aria-hidden="true">
     {p.icon === "hand" ? <DonationHand className="w-full h-full" />
       : p.icon === "drum" ? <Drum className="w-full h-full" strokeWidth={1.6} />
         : <Heart className="w-full h-full" fill="currentColor" strokeWidth={1.6} />}

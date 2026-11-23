@@ -61,7 +61,7 @@ const draft = {
     accentColor: "#F5B800",
     backgroundColor: "#FFF9F2",
     textColor: "#1A1A1A",
-    unit: { singular: "hand", plural: "hands", imageUrl: "/campaign-units/hand.svg" },
+    unit: { singular: "hand", plural: "hands", imageUrl: "/campaign-units/handprint.svg" },
   },
   unitChosen: true,
   editorStep: 2,

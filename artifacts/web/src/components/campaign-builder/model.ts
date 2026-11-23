@@ -49,7 +49,7 @@ export interface BuiltinUnit extends CampaignUnit {
 
 const base = (import.meta.env?.BASE_URL ?? "/").replace(/\/$/, "");
 export const BUILTIN_UNITS: BuiltinUnit[] = [
-  { id: "hand", singular: "hand", plural: "hands", imageUrl: `${base}/campaign-units/hand.svg` },
+  { id: "hand", singular: "hand", plural: "hands", imageUrl: `${base}/campaign-units/handprint.svg` },
   { id: "brick", singular: "brick", plural: "bricks", imageUrl: `${base}/campaign-units/brick.svg` },
   { id: "seedling", singular: "seedling", plural: "seedlings", imageUrl: `${base}/campaign-units/seedling.svg` },
   { id: "drop", singular: "drop", plural: "drops", imageUrl: `${base}/campaign-units/drop.svg` },
