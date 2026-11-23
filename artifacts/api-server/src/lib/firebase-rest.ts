@@ -124,7 +124,7 @@ type FsValue =
   | { nullValue: null }
   | { timestampValue: string }
   | { arrayValue: { values?: FsValue[] } }
-  | { mapValue: { fields: Record<string, FsValue> } };
+  | { mapValue: { fields?: Record<string, FsValue> } };
 
 function toFsVal(v: unknown): FsValue {
   if (v === null || v === undefined) return { nullValue: null };
@@ -153,7 +153,8 @@ function fromFsVal(v: FsValue): unknown {
   if ("arrayValue" in v) return (v.arrayValue.values ?? []).map(fromFsVal);
   if ("mapValue" in v) {
     const res: Record<string, unknown> = {};
-    for (const [k, fv] of Object.entries(v.mapValue.fields)) res[k] = fromFsVal(fv);
+    // Firestore REST omits fields for a valid empty map, including nested maps.
+    for (const [k, fv] of Object.entries(v.mapValue.fields ?? {})) res[k] = fromFsVal(fv);
     return res;
   }
   return null;
