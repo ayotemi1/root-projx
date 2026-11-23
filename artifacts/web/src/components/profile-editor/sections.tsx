@@ -51,7 +51,7 @@ export function IdentitySection(ctx: SectionCtx) {
   const cover = useSectionAutosave<string | null>({
     ...base(ctx, "identity-cover"),
     initial: org.coverImage ?? null,
-    validate: (v) => (v ? null : "Upload a cover image first."),
+    validate: () => null,
     toPatch: (v) => ({ coverImage: v }),
   });
 
@@ -103,10 +103,11 @@ export function IdentitySection(ctx: SectionCtx) {
           <SaveIndicator section="identity-logo" manualSave status={logo.status} error={logo.error && `Logo uploaded but not attached yet. ${logo.error}`} onRetry={logo.commit} storageWarning={logo.storageWarning} />
         </div>
         <div className="space-y-2">
-          <ImageUploadField id="pe-cover" label="Cover image" spec={COVER_SPEC} token={ctx.token} currentUrl={cover.value}
-            guidance="Required. Wide, at least 1600x600. A real photo of your work lands better than a graphic."
-            onUploaded={(url) => attach(cover, url)} tourId="profile-identity-cover" />
-          <SaveIndicator section="identity-cover" manualSave status={cover.status} error={cover.error && `Cover uploaded but not attached yet. ${cover.error}`} onRetry={cover.commit} storageWarning={cover.storageWarning} />
+          <ImageUploadField id="pe-cover" label="Banner image" spec={COVER_SPEC} token={ctx.token} currentUrl={cover.value}
+            guidance="Wide, at least 1600x600. Choose a photo, position the crop, then use it. Without a banner, your profile shows a plain ink block."
+            onUploaded={(url) => attach(cover, url)}
+            onRemoved={async () => { cover.setValue(null); await cover.commit(); }} tourId="profile-identity-cover" />
+          <SaveIndicator section="identity-cover" manualSave status={cover.status} error={cover.error && `Banner change not saved yet. ${cover.error}`} onRetry={cover.commit} storageWarning={cover.storageWarning} />
         </div>
       </div>
     </SectionShell>

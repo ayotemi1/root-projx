@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { OrganisationBanner } from "@/components/organisation/OrganisationBanner";
 import { useRoute, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Send, Mail } from "lucide-react";
@@ -194,6 +195,7 @@ export default function OrgProfilePage() {
       <div className="rp-orgp" data-testid="status-org-loading">
         {previewBar}
         <div className="orgp-wrap">
+          <OrganisationBanner name="Organisation" />
           <div className="orgp-cols">
             <div className="orgp-main">
               <div className="orgp-head">
@@ -302,6 +304,7 @@ export default function OrgProfilePage() {
             <button type="button" className="orgp-btn" onClick={recordProfilePreview} data-testid="button-retry-profile-preview-record">Retry</button>
           </div>
         )}
+        <OrganisationBanner src={org.coverImage} name={org.name} />
         <div className="orgp-cols">
           <div className="orgp-main">
             <header id={PROFILE_ANCHORS.identity} className="orgp-head" style={{ scrollMarginTop: 80 }}>

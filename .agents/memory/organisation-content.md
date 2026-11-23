@@ -13,3 +13,9 @@ update, category, title or caption must not be required for a media post.
 **Why:** The user wants visitors to see enough real content to understand what an organisation has done and to give its profile life beyond fundraising information. They explicitly corrected the earlier updates-oriented implementation: this should be any kind of post.
 
 **How to apply:** Keep on-site uploads and public social links usable independently. Do not promise that an Instagram link alone can always be played inline; uploaded video is the reliable on-site viewing option.
+
+Retain organisations' existing saved banner photos across public, donor-preview and dashboard profile views. Do not remove banners during profile redesigns or ask organisations to upload their existing images again. A missing banner still reserves the full banner area with an organisation-colour or ink fallback.
+
+**Why:** The user explicitly requested restoring banners removed by the public-profile rebuild, while preserving all other profile content.
+
+**How to apply:** Treat banners and overlapping round logos as part of the profile identity, and retain banner replacement, positioning/cropping and removal in Edit profile.

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { OrganisationBanner } from "@/components/organisation/OrganisationBanner";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearch, useLocation } from "wouter";
 import {
@@ -307,15 +308,16 @@ export default function DashboardPage() {
           )}
 
         <TabsContent value="overview" className="mt-0">
+          <OrganisationBanner src={org?.coverImage} name={org?.name ?? "Your organisation"} />
           <div className="grid lg:grid-cols-[minmax(0,1fr)_300px] gap-8 items-start">
             <div className="min-w-0">
               <section aria-labelledby="profile-identity-heading" data-testid="section-profile-identity" className="flex flex-col sm:flex-row gap-5 sm:gap-7 items-start">
-                <div className="ops-round w-24 h-24 sm:w-32 sm:h-32 shrink-0 rounded-full p-1 border-[3px] border-[color:var(--ops-site)]">
+                <div className="ops-round relative -mt-8 sm:-mt-11 w-24 h-24 sm:w-32 sm:h-32 shrink-0 rounded-full border-4 border-[#F4EFE6] bg-[#F4EFE6]">
                   {org?.logo
                     ? <img src={org.logo} alt="" className="ops-round w-full h-full rounded-full object-cover" />
                     : <span className="ops-round w-full h-full rounded-full bg-[color:var(--ops-ink)] text-[color:var(--ops-yellow)] flex items-center justify-center ops-display text-3xl sm:text-4xl">{initials}</span>}
                 </div>
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 pt-6">
                   <div className="flex items-center gap-2 flex-wrap">
                     <h1 id="profile-identity-heading" className="text-[34px] sm:text-[46px] leading-[.92] uppercase break-words" data-testid="text-dashboard-org-name">{org?.name ?? user?.name ?? "Your organisation"}</h1>
                     {org?.verified && <CheckCircle className="w-5 h-5 text-[color:var(--ops-ok)]" aria-label="Verified" />}

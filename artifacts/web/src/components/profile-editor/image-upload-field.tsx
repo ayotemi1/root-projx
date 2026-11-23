@@ -11,7 +11,7 @@ import { checkSize, cropAndResize, cropBox, loadImage, type ImageSpec } from "@/
  * Never removes the current image; a failed upload leaves it untouched.
  */
 export function ImageUploadField({
-  id, label, guidance, spec, currentUrl, token, onUploaded, shape = "wide", tourId,
+  id, label, guidance, spec, currentUrl, token, onUploaded, onRemoved, shape = "wide", tourId,
 }: {
   id: string;
   label: string;
@@ -20,6 +20,7 @@ export function ImageUploadField({
   currentUrl: string | null;
   token: string;
   onUploaded: (url: string) => Promise<void> | void;
+  onRemoved?: () => Promise<void> | void;
   shape?: "wide" | "square" | "round";
   tourId?: string;
 }) {
@@ -29,6 +30,7 @@ export function ImageUploadField({
   const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastBlob, setLastBlob] = useState<Blob | null>(null);
+  const [removing, setRemoving] = useState(false);
   useEffect(() => () => {
     if (img) URL.revokeObjectURL(img.src);
   }, [img]);
@@ -82,6 +84,19 @@ export function ImageUploadField({
   const previewShape = shape === "round" ? "rounded-full" : "rounded-xl";
   const previewSize = shape === "wide" ? "w-full aspect-[8/3]" : "w-24 h-24";
   const uploading = progress !== null;
+
+  async function remove() {
+    setRemoving(true);
+    setError(null);
+    try {
+      await onRemoved?.();
+      setLastBlob(null);
+    } catch (err) {
+      setError(userErrorMessage(err, "remove this image"));
+    } finally {
+      setRemoving(false);
+    }
+  }
 
   return (
     <div className="space-y-2" data-tour-id={tourId}
@@ -155,11 +170,17 @@ export function ImageUploadField({
                 variant="outline"
                 className="h-9 font-semibold"
                 onClick={() => inputRef.current?.click()}
-                disabled={uploading}
+                disabled={uploading || removing}
                 data-testid={`button-choose-${id}`}
               >
                 <Upload className="w-3.5 h-3.5 mr-1.5" /> {currentUrl ? "Replace" : "Choose image"}
               </Button>
+              {currentUrl && onRemoved && (
+                <Button type="button" size="sm" variant="outline" className="h-9 ml-2" onClick={remove}
+                  disabled={uploading || removing} data-testid={`button-remove-${id}`}>
+                  <X className="w-3.5 h-3.5 mr-1" /> {removing ? "Removing…" : "Remove"}
+                </Button>
+              )}
             </>
           )}
         </div>

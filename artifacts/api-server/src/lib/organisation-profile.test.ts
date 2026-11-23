@@ -55,6 +55,7 @@ test("drum circle cannot be enabled for pounds or volunteer campaigns, or reset 
 });
 
 test("profile patches are partial and cannot touch financial or campaign fields", () => {
+  assert.deepEqual(profilePatch({ coverImage: null }, { coverImage: "/api/old-banner.jpg" }), { coverImage: null });
   assert.deepEqual(profilePatch({
     shortDescription: "  Local work, lasting change  ", totalRaised: 0,
     totalOwedGbp: 0, campaigns: [], payoutMethod: "none", payoutSettlementBatchId: null,

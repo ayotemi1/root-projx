@@ -143,7 +143,9 @@ test("public organisation profile uses the redesign with real data and preserves
   assert.match(html, /data-testid="text-org-name">Profile Regression Organisation/);
   assert.match(html, /A library for everyone\./);
   assert.match(html, /src="\/test-logo\.png"/);
-  assert.doesNotMatch(html, /src="\/test-cover\.png"|orgp-cover/);
+  assert.match(html, /data-testid="org-profile-banner"/);
+  assert.match(html, /src="\/test-cover\.png"/);
+  assert.ok(html.indexOf('data-testid="org-profile-banner"') < html.indexOf('class="orgp-cols"'));
   assert.match(html, /data-testid="card-content-profile-test-post"/);
   assert.match(html, /Opening the library/);
   assert.match(html, /data-testid="tab-posts"/);
