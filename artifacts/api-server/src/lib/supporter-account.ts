@@ -19,9 +19,9 @@ export function accountView(user: AccountDoc, verifiedEmail: string): SupporterA
     email: verifiedEmail, visibility: pp.enabled === true ? "public" : "private", ...accountPreferences(user),
   };
 }
-export async function accountUser(uid: string, token: string): Promise<AccountDoc> {
+export async function accountUser(uid: string, token: string, allowOrganisation = false): Promise<AccountDoc> {
   const user = await fsGet("users", uid, token);
-  if (!user || user.accountType !== "supporter") throw new AccountError(403);
+  if (!user || (user.accountType !== "supporter" && !(allowOrganisation && user.accountType === "organisation"))) throw new AccountError(403);
   return user;
 }
 export async function saveAccountProfile(uid: string, body: SupporterAccountProfileInput, token: string) {
@@ -39,8 +39,9 @@ export async function saveAccountProfile(uid: string, body: SupporterAccountProf
     }),
   }));
 }
-export async function saveAccountSetting(uid: string, body: SupporterAccountSettingsInput, token: string) {
+export async function saveAccountSetting(uid: string, body: SupporterAccountSettingsInput, token: string, organisation = false) {
   if (Object.keys(body).length !== 1) throw new AccountError(400);
+  if (organisation && !body.notification) throw new AccountError(400);
   if (body.notification?.category === "receipts" && body.notification.channel === "email" && !body.notification.enabled)
     throw new AccountError(400, "Receipts and security emails are always sent.");
   const candidate = `sp_${randomUUID().replaceAll("-", "")}`;
@@ -58,7 +59,7 @@ export async function saveAccountSetting(uid: string, body: SupporterAccountSett
     return { profileShowcase: { ...(user.profileShowcase ?? {}), settings: {
       ...(user.profileShowcase?.settings ?? {}), ...current,
     } } };
-  });
+  }, organisation);
 }
 
 // A browser-writable profile email is never a trusted delivery identity.

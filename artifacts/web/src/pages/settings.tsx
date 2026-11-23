@@ -8,6 +8,7 @@ import {
 } from "@workspace/api-client-react";
 import { useAuth } from "@/context/AuthContext";
 import { accountKey, authInit } from "./account-shared";
+import OrganisationSettingsSections from "@/components/organisation/OrganisationSettingsSections";
 import "./account-pages.css";
 
 type Category = keyof SupporterAccount["notifications"];
@@ -19,6 +20,13 @@ const ROWS: { key: Category; label: string }[] = [
   { key: "campaigns", label: "Campaigns you gave to" },
   { key: "receipts", label: "Receipts" },
 ];
+const ORG_ROWS: { key: Category; label: string }[] = [
+  { key: "updates", label: "New followers" },
+  { key: "comments", label: "Likes and comments on your posts" },
+  { key: "messages", label: "New messages" },
+  { key: "campaigns", label: "Campaign milestones" },
+  { key: "receipts", label: "New donations" },
+];
 
 /** Overlay of in-flight values; field id -> value. */
 type Overlay = Record<string, string | boolean>;
@@ -28,7 +36,9 @@ const fieldOf = (p: SupporterAccountSettingsInput) =>
   : [`n.${p.notification!.category}.${p.notification!.channel}`, p.notification!.enabled] as const;
 
 export default function SettingsPage() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
+  const isOrg = user?.accountType === "organisation";
+  const rows = isOrg ? ORG_ROWS : ROWS;
   const qc = useQueryClient();
   const key = accountKey(token);
   const q = useQuery({ queryKey: key, queryFn: ({ signal }) => getSupporterAccount(authInit(token, signal)), enabled: !!token });
@@ -98,6 +108,7 @@ export default function SettingsPage() {
     <div className="rpa-page" data-testid="page-settings">
       <h1 className="rpa-h1">Settings</h1>
 
+      {!isOrg && <>
       <section className="rpa-box first" aria-labelledby="rpa-vis">
         <h2 className="rpa-h2" id="rpa-vis">Profile visibility</h2>
         <div role="radiogroup" aria-labelledby="rpa-vis" className="rpa-radios">
@@ -113,13 +124,14 @@ export default function SettingsPage() {
           {radio("messages", "replies", messagePolicy, "Only replies", "Organisations can only reply to messages you start.", () => save({ messagePolicy: "replies" }))}
         </div>
       </section>
+      </>}
 
-      <section className="rpa-box" aria-labelledby="rpa-notif">
+      <section className={`rpa-box${isOrg ? " first" : ""}`} aria-labelledby="rpa-notif">
         <h2 className="rpa-h2" id="rpa-notif">Notifications</h2>
         <table className="rpa-table">
           <thead><tr><th scope="col">Notify me about</th><th scope="col" className="c">In app</th><th scope="col" className="c">Email</th></tr></thead>
           <tbody>
-            {ROWS.map(r => (
+            {rows.map(r => (
               <tr key={r.key}>
                 <td>{r.label}</td>
                 {(["inApp", "email"] as Channel[]).map(ch => {
@@ -140,19 +152,22 @@ export default function SettingsPage() {
             ))}
           </tbody>
         </table>
-        <p className="rpa-hint" style={{ marginTop: 14 }}>Receipts and security emails are always sent.</p>
+        <p className="rpa-hint" style={{ marginTop: 14 }}>{isOrg ? "Donation and security emails are always sent." : "Receipts and security emails are always sent."}</p>
       </section>
 
+      {isOrg ? <OrganisationSettingsSections /> : (
       <section className="rpa-box">
         <h2 className="rpa-h2">Interests</h2>
         <p className="rpa-hint">Used to suggest organisations on Discover.</p>
         <div className="rpa-row" style={{ marginTop: 12 }}><Link href="/settings/interests" className="rpa-btn sm" data-testid="link-edit-interests">Edit interests</Link></div>
       </section>
+      )}
 
       <section className="rpa-box">
         <h2 className="rpa-h2">Account</h2>
-        <p className="rpa-mut" data-testid="text-account-email">Email: {acc.email}</p>
-        <p className="rpa-hint">Saved items, giving history, receipts and messages are always private.</p>
+        {acc.email ? <p className="rpa-mut" data-testid="text-account-email">Email: {acc.email}</p> :
+          <p className="rpa-hint">You’re managing this organisation. Account sign-in details stay with its owner.</p>}
+        <p className="rpa-hint">{isOrg ? "Messages and donation details are always private." : "Saved items, giving history, receipts and messages are always private."}</p>
       </section>
 
       <div aria-live="polite">

@@ -25,6 +25,77 @@ tags:
   - name: profile
     description: User profile
 paths:
+  /organisation-team:
+    get:
+      operationId: listManagedOrganisations
+      security: [{bearerAuth: []}]
+      responses:
+        '200':
+          description: Organisations this signed-in account may manage
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ManagedOrganisations'}
+  /organisation-team/session:
+    get:
+      operationId: getOrganisationManagerSession
+      security: [{bearerAuth: []}]
+      responses:
+        '200':
+          description: Current authorised organisation context
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/ManagedOrganisation'}
+  /organisation-team/{orgId}:
+    parameters:
+      - {name: orgId, in: path, required: true, schema: {type: string, pattern: '^[A-Za-z0-9_-]{1,128}$'}}
+    get:
+      operationId: getOrganisationManagers
+      security: [{bearerAuth: []}]
+      responses:
+        '200':
+          description: Owner-only account manager list
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/OrganisationManagers'}
+    post:
+      operationId: addOrganisationManager
+      security: [{bearerAuth: []}]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/OrganisationManagerInput'}
+      responses:
+        '200':
+          description: Updated account manager list
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/OrganisationManagers'}
+  /organisation-team/{orgId}/{userId}:
+    delete:
+      operationId: removeOrganisationManager
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: orgId, in: path, required: true, schema: {type: string, pattern: '^[A-Za-z0-9_-]{1,128}$'}}
+        - {name: userId, in: path, required: true, schema: {type: string, pattern: '^[A-Za-z0-9_-]{1,128}$'}}
+      responses:
+        '200':
+          description: Updated account manager list
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/OrganisationManagers'}
+  /organisation-team/{orgId}/session:
+    post:
+      operationId: startOrganisationManagerSession
+      security: [{bearerAuth: []}]
+      parameters:
+        - {name: orgId, in: path, required: true, schema: {type: string, pattern: '^[A-Za-z0-9_-]{1,128}$'}}
+      responses:
+        '200':
+          description: Short-lived content and Inbox access, never financial or owner privileges
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/OrganisationManagerSession'}
   /messaging/context:
     get:
       operationId: getMessagingContext
@@ -1825,12 +1896,45 @@ components:
       properties:
         userId: {type: string}
         name: {type: string}
+    ManagedOrganisation:
+      type: object
+      required: [id, name, logo]
+      properties:
+        id: {type: string}
+        name: {type: string}
+        logo: {type: [string, 'null']}
+    ManagedOrganisations:
+      type: object
+      required: [organisations]
+      properties:
+        organisations:
+          type: array
+          items: {$ref: '#/components/schemas/ManagedOrganisation'}
+    OrganisationManagerSession:
+      type: object
+      required: [token, organisation]
+      properties:
+        token: {type: string}
+        organisation: {$ref: '#/components/schemas/ManagedOrganisation'}
+    OrganisationManagers:
+      type: object
+      required: [ownerId, members]
+      properties:
+        ownerId: {type: string}
+        members:
+          type: array
+          items: {$ref: '#/components/schemas/MessagingTeamMember'}
+    OrganisationManagerInput:
+      type: object
+      required: [userId]
+      properties:
+        userId: {type: string, pattern: '^[A-Za-z0-9_-]{1,128}$'}
     SupporterNotification:
       type: object
       required: [id, type, message, createdAt, read, href, name]
       properties:
         id: {type: string}
-        type: {type: string, enum: [organisation_post, story, comment, like, campaign_milestone, donation, message]}
+        type: {type: string, enum: [organisation_post, story, comment, like, campaign_milestone, donation, message, follower]}
         message: {type: string}
         createdAt: {type: string}
         read: {type: boolean}

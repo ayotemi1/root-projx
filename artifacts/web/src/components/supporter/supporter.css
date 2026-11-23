@@ -132,3 +132,15 @@
 @media (prefers-reduced-motion: reduce) {
   .rps-mmenu, .rps-skel-ring, .rps-skel-line { animation: none; }
 }
+
+/* Organisation configuration: no Following panel, so main column spans the remaining width. */
+@media (min-width: 1024px) {
+  .rps-shell.rps-org { grid-template-columns: var(--rps-side) minmax(0, 1fr); }
+  .rps-shell.rps-org .rps-main:has(> .ops) { max-width: none; padding: 0; justify-self: stretch; }
+}
+.rps-shell.rps-org .rps-main:has(> .ops) { padding: 0; }
+.rps-shell.rps-org .ops { min-height: 0; padding-bottom: calc(var(--rps-tab) + env(safe-area-inset-bottom)); }
+@media (min-width: 1024px) {
+  .rps-shell.rps-org .ops { padding-bottom: 0; }
+  .rps-shell.rps-org .ops [data-testid="button-profile-menu"] { display: none; }
+}

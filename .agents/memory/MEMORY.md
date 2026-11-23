@@ -23,7 +23,7 @@
 - [Web UI SSR tests](web-ui-ssr-tests.md) — Wouter components need a static Router hook in raw Node React SSR tests.
 - [Campaign template reference](campaign-template-reference.md) — use the supplied “Out of Many Hands — Campaign Page” PDF as the shared campaign-page design.
 - [Admin organisation access](admin-organisation-access.md) — manage content on behalf of organisations without sharing their login or taking over banking setup.
-- [Organisation messaging access](organisation-messaging-access.md) — public team cards and profile emails cannot authorise private Inbox access; use trusted account identities.
+- [Organisation messaging access](organisation-messaging-access.md) — use trusted account grants; content-and-Inbox managers never gain payouts or team ownership.
 - [Organisation content](organisation-content.md) — profiles need browsable photos, watchable videos and optional social links without requiring Instagram connection.
 - [OpenAPI body naming](openapi-inline-body-names.md) — named request schemas prevent Orval validator/type export collisions.
 - [Organisation deletion](organisation-deletion.md) — remove public presence and owner access while retaining financial history and settlement capability.

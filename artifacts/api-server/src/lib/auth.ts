@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
 import { resolveOrganisationAccess, organisationAccessAllows } from "./admin-organisation-access.js";
+import { managerAccessAllows, validateManagerSession } from "./organisation-team-access.js";
 import { firebaseLookup, fsGet, getServerToken } from "./firebase-rest.js";
 import {
   organisationAccessDecision,
@@ -11,6 +12,8 @@ export interface AuthPayload {
   email: string;
   accountType: string;
   approvalStatus?: OrganisationApprovalStatus;
+  actingUserId?: string;
+  actingAccountType?: string;
 }
 
 declare global {
@@ -53,6 +56,14 @@ async function resolveAdminOrganisation(req: Request, token: string): Promise<Au
   return { userId: orgId, email: "", accountType: "organisation", approvalStatus: "approved" };
 }
 
+async function resolveTeamOrganisation(req: Request, token: string): Promise<AuthPayload | null> {
+  const session = await validateManagerSession(token);
+  if (!session || !managerAccessAllows(session.orgId, req.method, req.originalUrl)) return null;
+  req.headers.authorization = `Bearer ${await getServerToken()}`;
+  return { userId: session.orgId, email: "", accountType: "organisation", approvalStatus: "approved",
+    actingUserId: session.actorId, actingAccountType: session.actorAccountType };
+}
+
 export async function requireAuth(
   req: Request,
   res: Response,
@@ -65,8 +76,8 @@ export async function requireAuth(
   }
   try {
     const token = authHeader.slice(7);
-    const user = token.startsWith("org-admin.")
-      ? await resolveAdminOrganisation(req, token) : await resolveUser(token);
+    const user = token.startsWith("org-admin.") ? await resolveAdminOrganisation(req, token)
+      : token.startsWith("org-team.") ? await resolveTeamOrganisation(req, token) : await resolveUser(token);
     if (!user) {
       res.status(401).json({ error: "Unauthorized — invalid or expired token" });
       return;
@@ -74,6 +85,9 @@ export async function requireAuth(
     req.user = user;
     next();
   } catch {
+    if (authHeader.slice(7).startsWith("org-team.")) {
+      res.status(503).json({ error: "We couldn't verify organisation access. Please try again." }); return;
+    }
     res.status(401).json({ error: "Unauthorized — invalid or expired token" });
   }
 }
@@ -144,8 +158,8 @@ export async function optionalAuth(
   }
   try {
     const token = authHeader.slice(7);
-    const user = token.startsWith("org-admin.")
-      ? await resolveAdminOrganisation(req, token) : await resolveUser(token);
+    const user = token.startsWith("org-admin.") ? await resolveAdminOrganisation(req, token)
+      : token.startsWith("org-team.") ? await resolveTeamOrganisation(req, token) : await resolveUser(token);
     if (user) req.user = user;
   } catch {
     // ignore — optional

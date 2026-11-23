@@ -6,9 +6,10 @@ import { NotificationsInbox } from "@/components/supporter/NotificationsInbox";
 
 /** Mobile full page; desktop deep-link shows the same inbox as a dismissible card with a way home. */
 export default function NotificationsPage() {
-  const { isAuthenticated, user } = useAuth();
-  // Guests and organisations keep the existing placeholder access behaviour; no private API call.
-  if (!isAuthenticated || user?.accountType !== "supporter") return <SupporterPlaceholder section="notifications" />;
+  const { isAuthenticated, user, token } = useAuth();
+  const allowed = user?.accountType === "supporter" || (user?.accountType === "organisation" && user.approvalStatus === "approved");
+  // Guests, unapproved organisations and admin delegation keep the placeholder; no private API call.
+  if (!isAuthenticated || !allowed || token?.startsWith("org-admin.")) return <SupporterPlaceholder section="notifications" />;
   return (
     <div>
       <Link href="/feed" className="rp-link-u rpn-back" data-testid="link-notifications-back-home">

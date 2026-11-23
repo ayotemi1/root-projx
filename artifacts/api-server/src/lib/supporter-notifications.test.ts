@@ -17,8 +17,9 @@ async function fixture() {
       b.onResolve({ filter: /\/(auth|firebase-rest)\.js$/ }, a => ({ path: a.path.endsWith("auth.js") ? "auth" : "storage", namespace: "fixture" }));
       b.onLoad({ filter: /.*/, namespace: "fixture" }, a => ({ loader: "js", contents:
         a.path === "state" ? `export const state={docs:new Map(),calls:[],writes:[],fail:false,failMark:false,mix:false};` :
-        a.path === "auth" ? `export function requireAuth(req,res,next){const id=req.headers.authorization?.replace("Bearer ","");
-          if(!id)return res.sendStatus(401);req.user={userId:id,accountType:id==="org"?"organisation":"supporter"};next();}` :
+        a.path === "auth" ? `import{state}from"fixture:state";export function requireAuth(req,res,next){const id=req.headers.authorization?.replace("Bearer ","");
+          if(!id)return res.sendStatus(401);req.user={userId:id,accountType:id==="org"?"organisation":"supporter"};next();}
+          export function requireApprovedOrganisation(req,res,next){if(state.docs.get("users/"+req.user.userId)?.approvalStatus!=="approved")return res.sendStatus(403);next();}` :
         `import{state}from"fixture:state";export const getServerToken=async()=>"server";
         export const fsGet=async(c,id,token)=>{if(state.fail)throw Error("PRIVATE_INTERNAL_SECRET");state.calls.push({c,id,token});return state.docs.get(c+"/"+id)||null};
         export const fsQuery=async(c,filters,token)=>{if(state.fail)throw Error("PRIVATE_INTERNAL_SECRET");state.calls.push({c,filters,token});
@@ -41,6 +42,8 @@ async function fixture() {
   };
   state.docs.set("users/alice", { accountType: "supporter" });
   state.docs.set("users/bob", { accountType: "supporter" });
+  state.docs.set("users/org", { accountType: "organisation", approvalStatus: "approved" });
+  state.docs.set("organisations/org", { name: "Own organisation" });
   state.docs.set("organisations/school", { name: "School", logo: "/logo.png" });
   state.docs.set("organisations/removed", { name: "Removed", deletedAt: "2026-01-01" });
   state.docs.set("follows/alice_school", { userId: "alice", orgId: "school", createdAt: "2026-11-01T00:00:00Z" });
@@ -127,7 +130,7 @@ test("notification auth, absent IDs, failed storage and failed marking never rep
   const f = await fixture();
   try {
     assert.equal((await f.call(undefined, null)).status, 401);
-    assert.equal((await f.call(undefined, "org")).status, 403);
+    assert.equal((await f.call(undefined, "org")).status, 200);
     assert.equal((await f.call("/supporter-notifications/not-valid/read", "alice", "POST")).status, 404);
     f.state.failMark = true;
     const read = await f.call(`/supporter-notifications/${f.notificationId("donation", "own")}/read`, "alice", "POST");
@@ -137,6 +140,46 @@ test("notification auth, absent IDs, failed storage and failed marking never rep
     const unavailable = await f.call();
     assert.equal(unavailable.status, 503); assert.equal(unavailable.data.items, undefined);
     assert.doesNotMatch(JSON.stringify(unavailable.data), /PRIVATE_INTERNAL_SECRET/);
+  } finally { await f.close(); }
+});
+
+test("organisation bell uses only its real donations and follows, respects private followers and persists individual reads", async () => {
+  const f = await fixture();
+  try {
+    f.state.docs.set("donations/org-gift", { orgId: "org", userId: "bob", amountGbp: 12, currency: "usd",
+      receiptAccounting: { amountGbp: 15 }, status: "succeeded", createdAt: "2026-11-22T12:00:00Z", donorEmail: "PRIVATE_DONOR" });
+    f.state.docs.set("donations/unrelated-org", { orgId: "school", amountGbp: 99, status: "succeeded", createdAt: "2026-11-22T14:00:00Z", campaignName: "PRIVATE_OTHER_CAMPAIGN" });
+    f.state.docs.get("users/alice").publicProfile = { enabled: false, displayName: "PRIVATE_FOLLOWER" };
+    f.state.docs.get("users/alice").avatarUrl = "/api/PRIVATE_AVATAR";
+    f.state.docs.set("follows/alice_org", { userId: "alice", orgId: "org", createdAt: "2026-11-22T13:00:00Z" });
+    f.state.mix = true; // Deliberately over-broad storage response; defend again in the loader.
+    const inbox = await f.call(undefined, "org");
+    assert.equal(inbox.status, 200); assert.equal(inbox.data.items.length, 2); assert.equal(inbox.data.unreadCount, 2);
+    assert.deepEqual(inbox.data.items.map((n: any) => n.type), ["follower", "donation"]);
+    assert.match(inbox.data.items[1].message, /\$15\.00/);
+    assert.doesNotMatch(JSON.stringify(inbox.data), /PRIVATE_DONOR|PRIVATE_OTHER_CAMPAIGN|PRIVATE_FOLLOWER|PRIVATE_AVATAR|BOBS_PRIVATE_GIFT/);
+    assert.equal((await f.call(`/supporter-notifications/${f.notificationId("organisation_donation", "unrelated-org")}/read`, "org", "POST")).status, 404);
+    const id = inbox.data.items[0].id;
+    assert.equal((await f.call(`/supporter-notifications/${id}/read`, "org", "POST")).data.unreadCount, 1);
+    assert.equal((await f.call(undefined, "org")).data.items.find((n: any) => n.id === id).read, true);
+    f.state.docs.get("users/org").profileShowcase = { settings: { notifications: { updates: { inApp: false }, receipts: { inApp: false } } } };
+    assert.equal((await f.call(undefined, "org")).data.items.length, 0);
+  } finally { await f.close(); }
+});
+
+test("organisation message alerts reuse real history and follow the shared Inbox read state", async () => {
+  const f = await fixture();
+  try {
+    f.state.docs.set("conversations/org-thread", { orgId: "org", supporterId: "alice", supporterSent: 1, organisationRead: 0 });
+    f.state.docs.set("conversation_messages/incoming", { conversationId: "org-thread", side: "supporter", sequence: 1,
+      incomingIndex: 1, createdAt: "2026-11-22T15:00:00Z", text: "PRIVATE_MESSAGE_BODY" });
+    const result = await f.call(undefined, "org");
+    assert.equal(result.status, 200); assert.equal(result.data.items.length, 1);
+    assert.equal(result.data.items[0].type, "message"); assert.equal(result.data.unreadCount, 1);
+    assert.match(result.data.items[0].href, /conversation=org-thread/);
+    assert.doesNotMatch(JSON.stringify(result.data), /PRIVATE_MESSAGE_BODY/);
+    f.state.docs.get("conversations/org-thread").organisationRead = 1;
+    assert.equal((await f.call(undefined, "org")).data.unreadCount, 0);
   } finally { await f.close(); }
 });
 

@@ -34,11 +34,13 @@ export const fingerprint = (input: unknown) => createHash("sha256").update(JSON.
 // An explicit identity is allowed only from a Firebase-verified sign-in result,
 // never a UID or role supplied by an HTTP caller.
 export function setMediaSession(req: Request, res: Response,
-  identity: { userId: string; accountType: string } | undefined = req.user) {
+  identity: { userId: string; accountType: string; actingUserId?: string } | undefined = req.user) {
   if (!identity || !["supporter", "organisation"].includes(identity.accountType)) return;
   const key = process.env.SESSION_SECRET;
   if (!key) throw new PostError(503);
-  const value = Buffer.from(JSON.stringify({ uid: identity.userId, exp: Date.now() + 3600_000 })).toString("base64url");
+  // A manager's media permission must be rechecked against their real identity,
+  // not retained as an owner cookie after their team grant is revoked.
+  const value = Buffer.from(JSON.stringify({ uid: identity.actingUserId ?? identity.userId, exp: Date.now() + 3600_000 })).toString("base64url");
   const signature = createHmac("sha256", key).update(value).digest("base64url");
   res.cookie(COOKIE, `${value}.${signature}`, { ...mediaCookieOptions(req), maxAge: 3600_000 });
 }

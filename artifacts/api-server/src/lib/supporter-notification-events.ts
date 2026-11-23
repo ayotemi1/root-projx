@@ -26,19 +26,33 @@ export async function emailOrganisationUpdate(orgId: string, name: string, postI
     if (batch.some(r => r.status === "rejected")) console.warn("Some supporter update emails could not be delivered");
   }
 }
-export async function personalMessageEvents(uid: string, token: string) {
+export async function personalMessageEvents(uid: string, token: string, kind: "supporter" | "organisation" = "supporter") {
   const [modern, legacy] = await Promise.all([
-    fsQuery("conversations", [{ field: "participantKeys", op: "ARRAY_CONTAINS", value: `supporter:${uid}` }], token),
-    fsQuery("conversations", [{ field: "supporterId", op: "EQUAL", value: uid }], token),
+    fsQuery("conversations", [{ field: "participantKeys", op: "ARRAY_CONTAINS", value: `${kind}:${uid}` }], token),
+    fsQuery("conversations", [{ field: kind === "organisation" ? "orgId" : "supporterId", op: "EQUAL", value: uid }], token),
   ]);
   const events = [];
   for (const thread of new Map([...modern, ...legacy].map(t => [t._id, t as Doc])).values()) {
     const p = thread.participants;
     const side = p && typeof p === "object"
-      ? (["supporter", "organisation"] as const).find(s => p[s]?.kind === "supporter" && p[s]?.id === uid)
-      : thread.supporterId === uid ? "supporter" : undefined;
+      ? (["supporter", "organisation"] as const).find(s => p[s]?.kind === kind && p[s]?.id === uid)
+      : kind === "organisation" && thread.orgId === uid ? "organisation" : kind === "supporter" && thread.supporterId === uid ? "supporter" : undefined;
     if (!side) continue;
-    const incoming = thread[`${side}LastIncoming`];
+    let incoming = thread[`${side}LastIncoming`];
+    // Older organisation threads have no LastIncoming snapshot. Derive the
+    // actual event from their persisted message history, never from counters
+    // alone or a made-up timestamp.
+    if (!incoming && kind === "organisation") {
+      const history = await fsQuery("conversation_messages", [{ field: "conversationId", op: "EQUAL", value: thread._id }], token);
+      const last = history.filter(m => m.conversationId === thread._id && m.side === (side === "supporter" ? "organisation" : "supporter"))
+        .sort((a, b) => Number(b.sequence) - Number(a.sequence))[0];
+      if (last) {
+        const peer = p?.[side === "supporter" ? "organisation" : "supporter"];
+        const person = peer?.id ? await fsGet(peer.kind === "organisation" ? "organisations" : "users", peer.id, token) : null;
+        incoming = { recipientUid: uid, messageId: last._id, incomingIndex: last.incomingIndex,
+          createdAt: last.createdAt, name: person?.name || thread.supporterName || "Someone", avatarUrl: null };
+      }
+    }
     if (!incoming || incoming.recipientUid !== uid || typeof incoming.messageId !== "string" ||
       typeof incoming.createdAt !== "string" || !Number.isFinite(Date.parse(incoming.createdAt))) continue;
     events.push({

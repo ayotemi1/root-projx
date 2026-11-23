@@ -7,6 +7,7 @@ import {
 import { DashboardOverview } from "@/components/dashboard/overview";
 import "@/components/dashboard/operations.css";
 import { useWalkthrough } from "@/components/tour/use-walkthrough";
+import { OPEN_SHELL_MENU_EVENT } from "@/components/supporter/SupporterLayout";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -44,6 +45,9 @@ function timeAgo(iso: string): string {
 export default function DashboardPage() {
   const { user, token } = useAuth();
   const adminAccess = token?.startsWith("org-admin.") ?? false;
+  // Owners see the dashboard inside the shared supporter/organisation shell (App SitePageLayout);
+  // admin delegation keeps the original standalone dashboard shell.
+  const sharedShell = !adminAccess;
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const search = useSearch();
@@ -234,6 +238,16 @@ export default function DashboardPage() {
   const deciding = !explicitTab && (tour.wtQ.isLoading || orgQ.isLoading || campaignsQ.isLoading);
   const tab = explicitTab ? urlTab : (tour.active ? "build" : "overview");
   const setTab = (v: string) => setLocation(`${adminAccess ? `/admin/organisations/${orgId}/manage` : "/dashboard"}?tab=${v}`);
+  // Shell "Resume walkthrough" links to ?tab=build&resume=1; resume once progress is loaded, then drop the flag.
+  const resumeRequested = new URLSearchParams(search).get("resume") === "1";
+  const resumeRef = useRef(tour.resume);
+  resumeRef.current = tour.resume;
+  const tourReady = !tour.wtQ.isLoading && !!org;
+  useEffect(() => {
+    if (!resumeRequested || !tourReady) return;
+    if (!tour.active) resumeRef.current();
+    setLocation(`/dashboard?tab=${urlTab || "build"}`, { replace: true });
+  }, [resumeRequested, tourReady, tour.active, urlTab, setLocation]);
   const doneCount = tour.items.filter((i) => i.done).length;
   const updates = (updatesQ.data ?? []).filter((post) => postFilter === "archived"
     ? post.status === "archived" : post.status !== "archived");
@@ -253,7 +267,7 @@ export default function DashboardPage() {
         <div className="ops-main mx-auto space-y-4"><Skeleton className="h-11" /><Skeleton className="h-64" /></div>
       ) : (
       <Tabs value={tab} onValueChange={setTab} orientation="vertical" className="ops-shell">
-        <aside className="ops-side" aria-label="Dashboard">
+        <aside className="ops-side" aria-label="Dashboard" hidden={sharedShell} style={sharedShell ? { display: "none" } : undefined}>
           <div className="px-3 pb-4 mb-2 ops-hair">
             <img src={`${import.meta.env.BASE_URL}logo-stylised.png`} alt="Root ProjX" className="h-8 object-contain" />
           </div>
@@ -305,7 +319,10 @@ export default function DashboardPage() {
               )}
             </div>
             )}
-            <div className="ops-mobilehead flex-wrap gap-2 mt-3">
+            <div className={`ops-mobilehead flex-wrap gap-2 mt-3`} style={sharedShell ? { display: "flex" } : undefined}>
+              {sharedShell && tab === "overview" && (
+                <button type="button" className="ops-btn ops-btn--sm lg:hidden" onClick={() => window.dispatchEvent(new Event(OPEN_SHELL_MENU_EVENT))} aria-label="Open menu: Notifications, Campaigns, Payouts, Settings, Edit profile, Sign out" data-testid="button-profile-menu">Menu</button>
+              )}
               {tour.allDone && !tour.active && tour.unfinished && (
                 <button type="button" className="ops-btn ops-btn--sm" onClick={tour.resume} data-testid="button-resume-walkthrough-mobile"><Compass className="w-3.5 h-3.5" /> Resume walkthrough</button>
               )}
@@ -429,6 +446,7 @@ export default function DashboardPage() {
         </TabsContent>
 
         <TabsContent value="profile" className="space-y-6 mt-0">
+          {token?.startsWith("org-team.") ? <p className="ops-note">Only the organisation owner can view or change payout details.</p> : <>
 
           <h2 className="text-3xl uppercase ops-rule pb-3">Payouts</h2>
           <PendingPayout key={`pending-${orgId}`} orgId={orgId} token={token!} />
@@ -446,6 +464,7 @@ export default function DashboardPage() {
             <PayoutSetup key={orgId} orgId={orgId} token={token!} totalRaised={org?.totalRaised ?? 0} connectComplete={connectComplete} />}
           </div>
 
+          </>}
         </TabsContent>
         <TabsContent value="posts" className="space-y-6 mt-0">
           <h2 className="text-3xl uppercase ops-rule pb-3">Create</h2>

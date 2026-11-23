@@ -7,6 +7,107 @@
  */
 import * as zod from "zod";
 
+export const ListManagedOrganisationsResponse = zod.object({
+  organisations: zod.array(
+    zod.object({
+      id: zod.string(),
+      name: zod.string(),
+      logo: zod.string().nullable(),
+    }),
+  ),
+});
+
+export const GetOrganisationManagerSessionResponse = zod.object({
+  id: zod.string(),
+  name: zod.string(),
+  logo: zod.string().nullable(),
+});
+
+export const getOrganisationManagersPathOrgIdRegExp = new RegExp(
+  "^[A-Za-z0-9_-]{1,128}$",
+);
+
+export const GetOrganisationManagersParams = zod.object({
+  orgId: zod.coerce.string().regex(getOrganisationManagersPathOrgIdRegExp),
+});
+
+export const GetOrganisationManagersResponse = zod.object({
+  ownerId: zod.string(),
+  members: zod.array(
+    zod.object({
+      userId: zod.string(),
+      name: zod.string(),
+    }),
+  ),
+});
+
+export const addOrganisationManagerPathOrgIdRegExp = new RegExp(
+  "^[A-Za-z0-9_-]{1,128}$",
+);
+
+export const AddOrganisationManagerParams = zod.object({
+  orgId: zod.coerce.string().regex(addOrganisationManagerPathOrgIdRegExp),
+});
+
+export const addOrganisationManagerBodyUserIdRegExp = new RegExp(
+  "^[A-Za-z0-9_-]{1,128}$",
+);
+
+export const AddOrganisationManagerBody = zod.object({
+  userId: zod.string().regex(addOrganisationManagerBodyUserIdRegExp),
+});
+
+export const AddOrganisationManagerResponse = zod.object({
+  ownerId: zod.string(),
+  members: zod.array(
+    zod.object({
+      userId: zod.string(),
+      name: zod.string(),
+    }),
+  ),
+});
+
+export const removeOrganisationManagerPathOrgIdRegExp = new RegExp(
+  "^[A-Za-z0-9_-]{1,128}$",
+);
+export const removeOrganisationManagerPathUserIdRegExp = new RegExp(
+  "^[A-Za-z0-9_-]{1,128}$",
+);
+
+export const RemoveOrganisationManagerParams = zod.object({
+  orgId: zod.coerce.string().regex(removeOrganisationManagerPathOrgIdRegExp),
+  userId: zod.coerce.string().regex(removeOrganisationManagerPathUserIdRegExp),
+});
+
+export const RemoveOrganisationManagerResponse = zod.object({
+  ownerId: zod.string(),
+  members: zod.array(
+    zod.object({
+      userId: zod.string(),
+      name: zod.string(),
+    }),
+  ),
+});
+
+export const startOrganisationManagerSessionPathOrgIdRegExp = new RegExp(
+  "^[A-Za-z0-9_-]{1,128}$",
+);
+
+export const StartOrganisationManagerSessionParams = zod.object({
+  orgId: zod.coerce
+    .string()
+    .regex(startOrganisationManagerSessionPathOrgIdRegExp),
+});
+
+export const StartOrganisationManagerSessionResponse = zod.object({
+  token: zod.string(),
+  organisation: zod.object({
+    id: zod.string(),
+    name: zod.string(),
+    logo: zod.string().nullable(),
+  }),
+});
+
 export const getMessagingContextResponsePersonalUnreadCountMin = 0;
 
 export const getMessagingContextResponseUnreadCountMin = 0;
@@ -315,6 +416,7 @@ export const ListSupporterNotificationsResponse = zod.object({
         "campaign_milestone",
         "donation",
         "message",
+        "follower",
       ]),
       message: zod.string(),
       createdAt: zod.string(),
@@ -355,6 +457,7 @@ export const ReadSupporterNotificationResponse = zod.object({
         "campaign_milestone",
         "donation",
         "message",
+        "follower",
       ]),
       message: zod.string(),
       createdAt: zod.string(),

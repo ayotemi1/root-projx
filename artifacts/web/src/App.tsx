@@ -29,6 +29,7 @@ import OrgDashboardPage from "@/pages/org-dashboard";
 import DonatePage from "@/pages/donate";
 import DonateSuccessPage from "@/pages/donate-success";
 import DashboardPage from "@/pages/dashboard";
+import { OrganisationTeamAccess } from "@/components/organisation/OrganisationTeamAccess";
 import { AdminOrganisationAccess } from "@/components/admin-organisation-access";
 import LoginPage from "@/pages/login";
 import ForgotPasswordPage from "@/pages/forgot-password";
@@ -103,7 +104,7 @@ function SitePageLayout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const { user, isAuthenticated } = useAuth();
   const visitorFeed = !isAuthenticated;
-  if (!visitorFeed && shouldUseSupporterLayout(location, user?.accountType)) {
+  if (!visitorFeed && shouldUseSupporterLayout(location, user?.accountType, user?.approvalStatus)) {
     return <SupporterLayout>{children}</SupporterLayout>;
   }
   return (
@@ -216,7 +217,7 @@ function App() {
         <CartProvider>
           <TooltipProvider>
             <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-              <AdminOrganisationAccess><AppRoutes /></AdminOrganisationAccess>
+              <OrganisationTeamAccess><AdminOrganisationAccess><AppRoutes /></AdminOrganisationAccess></OrganisationTeamAccess>
             </WouterRouter>
             <Toaster />
           </TooltipProvider>

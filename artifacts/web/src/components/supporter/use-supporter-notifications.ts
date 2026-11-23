@@ -10,11 +10,13 @@ import { useAuth } from "@/context/AuthContext";
 const ROOT = "supporter-notifications";
 export const notificationsKey = (token: string | null) => [ROOT, token] as const;
 
-/** One private cache per auth token; disabled for guests and organisations. */
+/** One private cache per auth token; disabled for guests, unapproved organisations and admin delegation. */
 export function useSupporterNotifications() {
   const { token, user } = useAuth();
   const qc = useQueryClient();
-  const enabled = !!token && !!user && user.accountType === "supporter";
+  // Supporters and approved organisation owners; never admin-delegated org tokens.
+  const enabled = !!token && !!user && !token.startsWith("org-admin.") && (
+    user.accountType === "supporter" || (user.accountType === "organisation" && user.approvalStatus === "approved"));
 
   useEffect(() => {
     // Drop any other account's private inbox as soon as the account changes.

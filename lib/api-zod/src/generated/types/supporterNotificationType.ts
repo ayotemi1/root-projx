@@ -17,4 +17,5 @@ export const SupporterNotificationType = {
   campaign_milestone: "campaign_milestone",
   donation: "donation",
   message: "message",
+  follower: "follower",
 } as const;

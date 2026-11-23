@@ -294,6 +294,32 @@ export interface MessagingTeam {
   members: MessagingTeamMember[];
 }
 
+export interface ManagedOrganisation {
+  id: string;
+  name: string;
+  /** @nullable */
+  logo: string | null;
+}
+
+export interface ManagedOrganisations {
+  organisations: ManagedOrganisation[];
+}
+
+export interface OrganisationManagerSession {
+  token: string;
+  organisation: ManagedOrganisation;
+}
+
+export interface OrganisationManagers {
+  ownerId: string;
+  members: MessagingTeamMember[];
+}
+
+export interface OrganisationManagerInput {
+  /** @pattern ^[A-Za-z0-9_-]{1,128}$ */
+  userId: string;
+}
+
 export type SupporterNotificationType =
   (typeof SupporterNotificationType)[keyof typeof SupporterNotificationType];
 
@@ -305,6 +331,7 @@ export const SupporterNotificationType = {
   campaign_milestone: "campaign_milestone",
   donation: "donation",
   message: "message",
+  follower: "follower",
 } as const;
 
 export interface SupporterNotification {

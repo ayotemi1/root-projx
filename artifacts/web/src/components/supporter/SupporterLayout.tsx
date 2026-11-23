@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Link, useLocation } from "wouter";
+import { Link, useLocation, useSearch } from "wouter";
 import {
-  Home, Compass, PlusSquare, Inbox, Bell, User, Bookmark, Heart, Menu, X, Pencil, Settings, LogOut, ArrowRight,
+  Home, Compass, PlusSquare, Inbox, Bell, User, Bookmark, Heart, Menu, X, Pencil, Settings, LogOut, ArrowRight, MapPin, Landmark, Compass as CompassIcon,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { OrganisationLogo } from "@/components/organisation-logo";
 import {
-  supporterNavigation, supporterMobileNavigation, isSupporterNavigationActive,
-  type SupporterNavigationId,
+  supporterMobileNavigation, isSupporterNavigationActive, navigationFor, isApprovedOrganisation,
+  organisationEditProfileHref, organisationResumeWalkthroughHref, dashboardTab,
+  type NavigationId,
 } from "@/lib/supporter-navigation";
 import { useSupporterFollowing } from "./use-supporter-following";
 import { SupporterCreateMenu } from "./SupporterCreateMenu";
@@ -17,13 +18,18 @@ import { NotificationsInbox, UnreadBadge } from "./NotificationsInbox";
 import { useSupporterNotifications } from "./use-supporter-notifications";
 import { InboxBadge } from "@/components/inbox/InboxBadge";
 import { SupporterAvatar } from "./SupporterAvatar";
+import { OrganisationSwitcher } from "@/components/organisation/OrganisationTeamAccess";
 import "./supporter.css";
 import "@/pages/account-pages.css";
 
-const icons: Record<SupporterNavigationId, typeof Home> = {
+const icons: Record<NavigationId, typeof Home> = {
   home: Home, discover: Compass, create: PlusSquare, inbox: Inbox,
   notifications: Bell, profile: User, saved: Bookmark, giving: Heart,
+  campaigns: MapPin, payouts: Landmark,
 };
+
+/** Pages (e.g. the organisation Profile tab) can open the phone overflow menu. */
+export const OPEN_SHELL_MENU_EVENT = "rps:open-menu";
 
 function useSignOut() {
   const { logout } = useAuth();
@@ -79,9 +85,13 @@ function FollowingPanel() {
 
 export default function SupporterLayout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
+  const search = useSearch();
   const accountPage = /^\/(settings|profile\/edit)\/?(?:[?#]|$)/.test(location);
   const profilePage = location === "/profile" || location === "/saved" || /^\/supporters\/[^/?#]+\/?$/.test(location);
   const { user, isAuthenticated } = useAuth();
+  const isOrg = isApprovedOrganisation(user);
+  const supporterNavigation = navigationFor(user);
+  const isActive = (item: typeof supporterNavigation[number]) => isSupporterNavigationActive(item, location, search);
   const { signOut, error, pending } = useSignOut();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuBtn = useRef<HTMLButtonElement>(null);
@@ -114,7 +124,7 @@ export default function SupporterLayout({ children }: { children: ReactNode }) {
   useEffect(() => {
     setMenuOpen(false);
     window.scrollTo(0, 0);
-    const page = supporterNavigation.find(item => isSupporterNavigationActive(item, location));
+    const page = supporterNavigation.find(item => isSupporterNavigationActive(item, location, window.location.search));
     const title = `${page?.label ?? "Supporter"} | Root ProjX`;
     const description = `Your ${page?.label.toLowerCase() ?? "supporter"} space on Root ProjX, connecting diaspora with grassroots change.`;
     const priorTitle = document.title;
@@ -134,7 +144,13 @@ export default function SupporterLayout({ children }: { children: ReactNode }) {
       return () => { if (!existing) tag.remove(); else if (before === null) tag.removeAttribute("content"); else tag.content = before; };
     });
     return () => { document.title = priorTitle; restore.forEach(reset => reset()); };
-  }, [location]);
+  }, [location, search, supporterNavigation]);
+  useEffect(() => {
+    const open = () => setMenuOpen(true);
+    window.addEventListener(OPEN_SHELL_MENU_EVENT, open);
+    return () => window.removeEventListener(OPEN_SHELL_MENU_EVENT, open);
+  }, []);
+  useEffect(() => { setMenuOpen(false); }, [search]);
   useEffect(() => {
     if (!menuOpen) return;
     const onKey = (e: KeyboardEvent) => {
@@ -151,7 +167,18 @@ export default function SupporterLayout({ children }: { children: ReactNode }) {
   const notif = supporterNavigation.find(i => i.id === "notifications")!;
   const inboxNav = supporterNavigation.find(i => i.id === "inbox")!;
 
-  const accountBlock = isAuthenticated ? (
+  const editActive = dashboardTab(location, search) === "build";
+  const accountBlock = (desktop = false) => isAuthenticated && isOrg ? (
+    <>
+      <Link href={organisationEditProfileHref} className="rps-sub" aria-current={editActive ? "page" : undefined} onClick={() => setMenuOpen(false)} data-tour-id={desktop ? "dashboard-tab-build-profile" : undefined} data-testid="link-edit-profile"><Pencil size={16} aria-hidden /> Edit profile</Link>
+      <Link href="/settings" className="rps-sub" aria-current={/^\/settings(\/|$|[?#])/.test(location) ? "page" : undefined} onClick={() => setMenuOpen(false)} data-testid="link-settings"><Settings size={16} aria-hidden /> Settings</Link>
+      <button type="button" className="rps-sub" onClick={signOut} disabled={pending} data-testid="button-sign-out">
+        <LogOut size={16} aria-hidden /> {pending ? "Signing out…" : "Sign out"}
+      </button>
+      <Link href={organisationResumeWalkthroughHref} className="rps-sub" onClick={() => setMenuOpen(false)} data-testid="link-resume-walkthrough"><CompassIcon size={16} aria-hidden /> Resume walkthrough</Link>
+      {error && <p className="rps-error" role="alert">{error}</p>}
+    </>
+  ) : isAuthenticated ? (
     <>
       <Link href="/profile/edit" className="rps-sub" aria-current={location.split(/[?#]/)[0]!.replace(/\/+$/, "") === "/profile/edit" ? "page" : undefined} onClick={() => setMenuOpen(false)} data-testid="link-edit-profile"><Pencil size={16} aria-hidden /> Edit profile</Link>
       <Link href="/settings" className="rps-sub" aria-current={/^\/settings(\/|$|[?#])/.test(location) ? "page" : undefined} onClick={() => setMenuOpen(false)} data-testid="link-settings"><Settings size={16} aria-hidden /> Settings</Link>
@@ -170,7 +197,7 @@ export default function SupporterLayout({ children }: { children: ReactNode }) {
   return (
     <SupporterPostDraftProvider>
     <TextPostProvider>
-    <div className={`rps-shell${profilePage ? " rps-profile" : ""}${accountPage ? " rps-account" : ""}`}>
+    <div className={`rps-shell${isOrg ? " rps-org" : ""}${profilePage ? " rps-profile" : ""}${accountPage ? " rps-account" : ""}`}>
       <a href="#rps-main" className="rps-skip">Skip to content</a>
 
       <header className="rps-mhead">
@@ -179,13 +206,13 @@ export default function SupporterLayout({ children }: { children: ReactNode }) {
         </Link>
         <div className="rps-mhead-actions">
           <Link href={notif.href} className="rps-icon-btn" aria-label="Notifications"
-            aria-current={isSupporterNavigationActive(notif, location) ? "page" : undefined} data-testid="link-notifications-mobile">
+            aria-current={isActive(notif) ? "page" : undefined} data-testid="link-notifications-mobile">
             <Bell size={22} aria-hidden />
             <UnreadBadge testId="badge-notifications-mobile" />
           </Link>
           {isAuthenticated && (
             <Link href={inboxNav.href} className="rps-icon-btn" aria-label="Inbox"
-              aria-current={isSupporterNavigationActive(inboxNav, location) ? "page" : undefined} data-testid="link-inbox-mobile">
+              aria-current={isActive(inboxNav) ? "page" : undefined} data-testid="link-inbox-mobile">
               <Inbox size={22} aria-hidden />
               <InboxBadge testId="badge-inbox-mobile" />
             </Link>
@@ -206,7 +233,7 @@ export default function SupporterLayout({ children }: { children: ReactNode }) {
             return (
               <li key={item.id}>
                 <Link href={item.href} className="rps-nav-item"
-                  aria-current={isSupporterNavigationActive(item, location) ? "page" : undefined}
+                  aria-current={isActive(item) ? "page" : undefined}
                   onClick={() => setMenuOpen(false)} data-testid={`link-menu-${item.id}`}>
                   <Icon size={20} aria-hidden /> {item.label}
                   {item.id === "notifications" && <UnreadBadge testId="badge-notifications-menu" />}
@@ -215,21 +242,25 @@ export default function SupporterLayout({ children }: { children: ReactNode }) {
             );
           })}
         </ul>
-        <div className="rps-mmenu-account">{accountBlock}</div>
+        <div className="rps-mmenu-account">{accountBlock()}<OrganisationSwitcher /></div>
       </nav>
 
       <aside className="rps-side">
         <Link href="/" className="rps-logo" aria-label="Root ProjX home" data-testid="link-logo">
           <img src="/logo-stylised.png" alt="" />
         </Link>
-        <nav aria-label="Supporter">
+        <nav aria-label={isOrg ? "Organisation" : "Supporter"}>
           <ul className="rps-nav">
             {supporterNavigation.map(item => {
               const Icon = icons[item.id];
-              const active = isSupporterNavigationActive(item, location);
+              const active = isActive(item);
               return (
                 <li key={item.id}>
-                  {item.id === "create" ? (
+                  {item.id === "create" && isOrg ? (
+                    <Link href={item.href} className="rps-nav-item" data-testid="link-nav-create">
+                      <Icon size={20} aria-hidden />{item.label}
+                    </Link>
+                  ) : item.id === "create" ? (
                     <SupporterCreateMenu className="rps-nav-item" testId="link-nav-create">
                       <Icon size={20} aria-hidden />{item.label}
                     </SupporterCreateMenu>
@@ -253,7 +284,7 @@ export default function SupporterLayout({ children }: { children: ReactNode }) {
             })}
           </ul>
         </nav>
-        <div className="rps-side-foot">{accountBlock}</div>
+        <div className="rps-side-foot">{accountBlock(true)}<OrganisationSwitcher /></div>
       </aside>
 
       {panelOpen && notifications.enabled && (
@@ -267,7 +298,7 @@ export default function SupporterLayout({ children }: { children: ReactNode }) {
 
       <main id="rps-main" className="rps-main" tabIndex={-1}>{children}</main>
 
-      {!profilePage && !accountPage && <FollowingPanel />}
+      {!profilePage && !accountPage && !isOrg && <FollowingPanel />}
 
       <nav className="rps-bottom" aria-label="Primary">
         <ul>
@@ -275,16 +306,20 @@ export default function SupporterLayout({ children }: { children: ReactNode }) {
             const Icon = icons[item.id];
             return (
               <li key={item.id}>
-                {item.id === "create" ? (
+                {item.id === "create" && isOrg ? (
+                  <Link href={item.href} className="rps-tab" data-testid="link-tab-create">
+                    <Icon size={20} aria-hidden /><span>{item.label}</span>
+                  </Link>
+                ) : item.id === "create" ? (
                   <SupporterCreateMenu className="rps-tab" testId="link-tab-create" variant="sheet">
                     <Icon size={20} aria-hidden /><span>{item.label}</span>
                   </SupporterCreateMenu>
                 ) : (
                 <Link href={item.href} className="rps-tab"
-                  aria-current={isSupporterNavigationActive(item, location) ? "page" : undefined}
+                  aria-current={isActive(item) ? "page" : undefined}
                   data-testid={`link-tab-${item.id}`}>
                   {item.id === "profile" && user ? <SupporterAvatar avatarUrl={user.avatarUrl} initials={user.avatarInitials} size={22} /> : <Icon size={20} aria-hidden />}
-                  <span>{item.id === "profile" ? "Me" : item.label}</span>
+                  <span>{item.id === "profile" && !isOrg ? "Me" : item.label}</span>
                   {item.id === "inbox" && <InboxBadge testId="badge-inbox-tab" className="rpn-badge rpm-tab-badge" />}
                 </Link>
                 )}

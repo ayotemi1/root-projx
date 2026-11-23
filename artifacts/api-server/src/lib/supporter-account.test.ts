@@ -25,7 +25,8 @@ async function fixture() {
       b.onLoad({ filter: /.*/, namespace: "fake-account" }, a => ({ contents:
         a.path === "auth" ? `import{state}from"account-fixture";export function requireAuth(req,res,next){
           const uid=req.headers.authorization?.replace("Bearer ",""),u=state.docs.get("users/"+uid);
-          if(!u)return res.status(401).json({error:"Sign in"});req.user={userId:uid,email:uid+"@account.invalid",accountType:u.accountType};next();}` :
+          if(!u)return res.status(401).json({error:"Sign in"});req.user={userId:uid,email:uid+"@account.invalid",accountType:u.accountType};next();}
+          export function requireApprovedOrganisation(req,res,next){if(state.docs.get("users/"+req.user.userId)?.approvalStatus!=="approved")return res.sendStatus(403);next();}` :
         a.path === "media" ? `export function mediaViewer(req){return req.headers["x-media-user"]||null}export function setMediaSession(){}` :
         a.path === "storage" ? `import{state}from"account-fixture";import{Readable}from"node:stream";export const objectStorageClient={bucket:()=>({file:path=>({
           save:async(bytes,opts)=>state.files.set(path,{bytes,metadata:opts.metadata}),exists:async()=>[state.files.has(path)],
@@ -36,8 +37,8 @@ async function fixture() {
           export const fsQuery=async(c,filters)=>[...state.docs].filter(([k,v])=>k.startsWith(c+"/")&&filters.every(f=>{
             const value=f.field.split(".").reduce((x,p)=>x?.[p],v);return f.op==="ARRAY_CONTAINS"?Array.isArray(value)&&value.includes(f.value):value===f.value;
           })).map(([k,v])=>({...structuredClone(v),_id:k.slice(c.length+1)}));
-          export const fsMutateSupporterAccount=async(uid,t,decide)=>{if(state.fail)throw Error("PRIVATE_PROVIDER_BODY");
-            const current=state.docs.get("users/"+uid);if(current.accountType!=="supporter")throw Error("No");
+          export const fsMutateSupporterAccount=async(uid,t,decide,allowOrg=false)=>{if(state.fail)throw Error("PRIVATE_PROVIDER_BODY");
+            const current=state.docs.get("users/"+uid);if(current.accountType!=="supporter"&&!(allowOrg&&current.accountType==="organisation"))throw Error("No");
             state.docs.set("users/"+uid,{...current,...decide(structuredClone(current))});};
           export const fsCreateIfAbsent=async()=>{throw Error("not used")};
           export const fsMutateMessaging=async()=>{throw Error("not used")};`
@@ -104,7 +105,7 @@ test("supporter settings persist individual controls, keep mandatory receipts an
     assert.equal((await set({ visibility: "public", messagePolicy: "replies" })).status, 400);
     assert.equal((await set({ approvalStatus: "approved" })).status, 400);
     assert.equal((await f.call(undefined, { who: null })).status, 401);
-    assert.equal((await f.call(undefined, { who: "org" })).status, 403);
+    assert.equal((await f.call(undefined, { who: "org" })).status, 200);
     const stored = f.state.docs.get("users/alice");
     assert.equal(stored.financialPrivateField, "keep-financial");
     assert.equal(stored.profileShowcase.bookmarks[0].id, "keep-bookmark");
@@ -133,6 +134,27 @@ test("profile saves validate name and bio, preserve privacy and unrelated data, 
     assert.equal(failed.data.error, "Something went wrong, please try again");
     assert.doesNotMatch(JSON.stringify(failed.data), /PRIVATE_PROVIDER_BODY/);
     assert.equal(f.state.docs.get("users/alice").name, "Alice New");
+  } finally { await f.close(); }
+});
+
+test("organisation settings reuse the account controls without exposing supporter profile writes or owner privileges", async () => {
+  const f = await fixture();
+  try {
+    const call = (body: unknown) => f.call("/supporter/account/settings", { who: "org", method: "PATCH", body });
+    const before = f.state.docs.get("users/org");
+    before.financialPrivateField = "PRIVATE_PAYOUT_VALUE";
+    assert.equal((await f.call(undefined, { who: "org" })).status, 200);
+    const saved = await call({ notification: { category: "updates", channel: "inApp", enabled: false } });
+    assert.equal(saved.status, 200); assert.equal(saved.data.notifications.updates.inApp, false);
+    assert.equal((await f.call(undefined, { who: "org" })).data.notifications.updates.inApp, false);
+    assert.doesNotMatch(JSON.stringify(saved.data), /PRIVATE_PAYOUT_VALUE|managerIds|approvalStatus/);
+    assert.equal((await call({ visibility: "private" })).status, 400);
+    assert.equal((await call({ messagePolicy: "replies" })).status, 400);
+    assert.equal((await f.call("/supporter/account/profile", { who: "org", method: "PATCH", body: profile })).status, 403);
+    assert.equal(f.state.docs.get("users/org").publicProfile, undefined);
+    assert.equal(f.state.docs.get("users/org").financialPrivateField, "PRIVATE_PAYOUT_VALUE");
+    f.state.docs.get("users/org").approvalStatus = "declined";
+    assert.equal((await f.call(undefined, { who: "org" })).status, 403);
   } finally { await f.close(); }
 });
 

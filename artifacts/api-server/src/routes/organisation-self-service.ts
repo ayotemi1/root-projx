@@ -89,13 +89,15 @@ router.get("/organisations/:id/dashboard-summary", ...owner, async (req, res) =>
     const org = await fsGet("organisations", id, token);
     if (!org) { res.status(404).json({ error: "Reopen your organisation dashboard." }); return; }
     const filter = [{ field: "orgId", op: "EQUAL" as const, value: id }];
+    const contentManager = !!req.user!.actingUserId;
     // A denied history query must not discard confirmed raised totals/supporters.
     const results = await Promise.allSettled([
-      fsQuery("donations", filter, token), fsQuery("payouts", filter, token),
-      fsQuery("disbursements", filter, token), fsQuery("updates", filter, token),
+      contentManager ? Promise.resolve([]) : fsQuery("donations", filter, token),
+      contentManager ? Promise.resolve([]) : fsQuery("payouts", filter, token),
+      contentManager ? Promise.resolve([]) : fsQuery("disbursements", filter, token), fsQuery("updates", filter, token),
     ]);
     const sections = ["supporters", "payouts", "payoutHistory", "posts"] as const;
-    const unavailable: string[] = [];
+    const unavailable: string[] = contentManager ? ["supporters", "payouts", "payoutHistory"] : [];
     const readSection = (i: 0 | 1 | 2 | 3) => {
       const result = results[i];
       if (result.status === "fulfilled") return result.value;
@@ -122,7 +124,7 @@ router.get("/organisations/:id/dashboard-summary", ...owner, async (req, res) =>
     // The active goal is the fourth impact figure and also needs a monthly refresh.
     const refreshableMetrics = org.activeGoal && typeof org.activeGoal === "object" ? [...metrics, org.activeGoal] : metrics;
     const staleBefore = Date.now() - 30 * 86_400_000;
-    const nextPayoutAt = typeof org.nextPayoutAt === "string" && Number.isFinite(Date.parse(org.nextPayoutAt)) && Date.parse(org.nextPayoutAt) >= Date.now() ? org.nextPayoutAt : null;
+    const nextPayoutAt = !contentManager && typeof org.nextPayoutAt === "string" && Number.isFinite(Date.parse(org.nextPayoutAt)) && Date.parse(org.nextPayoutAt) >= Date.now() ? org.nextPayoutAt : null;
     res.json({ raisedGbp: Number(org.totalRaised ?? 0),
       owedGbp: unavailable.includes("payouts") ? null : roundedSum(unpaid), nextPayoutAt,
       lastPayout: unavailable.includes("payouts") || unavailable.includes("payoutHistory") ? null : lastPayout,

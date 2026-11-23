@@ -18,6 +18,7 @@ const mediaUrl = (value: unknown): string | null => {
   const url = text(value, 2048);
   return /^https?:\/\//i.test(url) || /^\/(?:api\/|logo)[^\\]*$/.test(url) ? url : null;
 };
+export { mediaUrl as notificationMediaUrl };
 
 function donationMessage(donation: Doc): string {
   const org = text(donation.orgName) || "an organisation";

@@ -6,7 +6,7 @@ import {
   SaveSupporterAccountProfileResponse, SaveSupporterAccountSettingsResponse, UploadSupporterAccountPhotoResponse,
   DiscardSupporterAccountPhotoParams,
 } from "@workspace/api-zod";
-import { requireAuth } from "../lib/auth.js";
+import { requireAuth, requireApprovedOrganisation } from "../lib/auth.js";
 import { fsGet, getServerToken } from "../lib/firebase-rest.js";
 import { accountUser, accountView, saveAccountProfile, saveAccountSetting, rememberNotificationEmail, AccountError, ACCOUNT_ERROR } from "../lib/supporter-account.js";
 import { PHOTO_ID, PHOTO_LIMIT, stagePhoto, validateOwnedPhoto, photoObject } from "../lib/supporter-photo.js";
@@ -25,15 +25,20 @@ const failure = (req: any, res: any, error: unknown) => {
 router.use("/supporter/account", requireAuth, (req, res, next) => {
   res.setHeader("Cache-Control", "private, no-store");
   res.setHeader("Vary", "Authorization, Cookie");
+  if (req.user!.accountType === "organisation") {
+    if (req.method !== "GET" && req.path !== "/settings") { res.status(403).json({ error: ACCOUNT_ERROR }); return; }
+    if (req.method === "GET" && req.path !== "/") { res.status(403).json({ error: ACCOUNT_ERROR }); return; }
+    void requireApprovedOrganisation(req, res, next); return;
+  }
   if (req.user!.accountType !== "supporter") { res.status(403).json({ error: ACCOUNT_ERROR }); return; }
   next();
 });
 router.get("/supporter/account", async (req, res) => {
   try {
     const token = await getServerToken(), uid = req.user!.userId;
-    await rememberNotificationEmail(uid, req.user!.email, token);
+    if (req.user!.accountType === "supporter") await rememberNotificationEmail(uid, req.user!.email, token);
     setMediaSession(req, res);
-    res.json(GetSupporterAccountResponse.parse(accountView(await accountUser(uid, token), req.user!.email)));
+    res.json(GetSupporterAccountResponse.parse(accountView(await accountUser(uid, token, req.user!.accountType === "organisation"), req.user!.email)));
   } catch (e) { failure(req, res, e); }
 });
 router.patch("/supporter/account/profile", async (req, res) => {
@@ -56,9 +61,10 @@ router.patch("/supporter/account/settings", async (req, res) => {
   if (!parsed.success) { res.status(400).json({ error: ACCOUNT_ERROR }); return; }
   try {
     const token = await getServerToken(), uid = req.user!.userId;
-    await rememberNotificationEmail(uid, req.user!.email, token);
-    await saveAccountSetting(uid, parsed.data, token);
-    res.json(SaveSupporterAccountSettingsResponse.parse(accountView(await accountUser(uid, token), req.user!.email)));
+    const organisation = req.user!.accountType === "organisation";
+    if (!organisation) await rememberNotificationEmail(uid, req.user!.email, token);
+    await saveAccountSetting(uid, parsed.data, token, organisation);
+    res.json(SaveSupporterAccountSettingsResponse.parse(accountView(await accountUser(uid, token, organisation), req.user!.email)));
   } catch (e) { failure(req, res, e); }
 });
 router.post("/supporter/account/photo", limit, async (req, res) => {

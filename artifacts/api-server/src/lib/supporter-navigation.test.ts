@@ -20,11 +20,11 @@ const supporter = {
 };
 
 async function render(path: string, options: {
-  signedIn?: boolean; route?: string; props?: Record<string, unknown>; exportName?: string;
+  signedIn?: boolean; organisation?: boolean; route?: string; props?: Record<string, unknown>; exportName?: string;
   seeds?: Array<[unknown[], unknown]>; search?: string;
 } = {}) {
   const auth = {
-    user: options.signedIn ? supporter : null,
+    user: options.signedIn ? options.organisation ? { ...supporter, accountType: "organisation", approvalStatus: "approved" } : supporter : null,
     token: options.signedIn ? "isolated-fixture-token" : null,
     isAuthenticated: !!options.signedIn, isLoading: false,
   };
@@ -41,7 +41,7 @@ async function render(path: string, options: {
         }));
         b.onResolve({ filter: /context\/AuthContext$/ }, () => ({ path: "auth", namespace: "isolated" }));
         b.onLoad({ filter: /.*/, namespace: "isolated" }, () => ({
-          contents: `export const useAuth=()=>({...${JSON.stringify(auth)},logout:async()=>{},refreshUser:async()=>{}});`,
+          contents: `export const OrganisationAccessProvider=({children})=>children;export const useAuth=()=>({...${JSON.stringify(auth)},logout:async()=>{},refreshUser:async()=>{}});`,
         }));
       },
     }],
@@ -148,6 +148,17 @@ test("signed-in supporter Create triggers open a chooser instead of navigating a
   });
   assert.doesNotMatch(intro, /link-composer-create|rps-composer|caught your attention/i);
   assert.match(intro, /Home/);
+});
+
+test("organisation phone navigation labels the fifth tab Profile and preserves the neutral Create action", async () => {
+  const html = await render("src/components/supporter/SupporterLayout.tsx", { signedIn: true, organisation: true, route: "/dashboard" });
+  const bottom = html.slice(html.indexOf('<nav class="rps-bottom"'));
+  assert.match(bottom, /data-testid="link-tab-profile"[\s\S]*?<span>Profile<\/span>/);
+  assert.doesNotMatch(bottom, />Me</);
+  const action = bottom.match(/<a[^>]*data-testid="link-tab-create"[^>]*>/)?.[0] ?? "";
+  assert.match(action, /href="\/dashboard\?tab=posts"/);
+  assert.match(action, /class="rps-tab"/);
+  assert.doesNotMatch(action, /aria-current/);
 });
 
 test("unavailable supporter composers are explicitly flagged without a fake publishing form", async () => {

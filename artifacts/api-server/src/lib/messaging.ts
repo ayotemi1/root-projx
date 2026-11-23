@@ -4,6 +4,7 @@ import { fsCreateIfAbsent, fsGet, fsMutateMessaging, fsQuery, getServerToken } f
 import { organisationAccessDecision, type OrganisationApprovalStatus } from "./organisation-approval.js";
 import { accountPreferences } from "./supporter-preferences.js";
 import { emailSupporter } from "./supporter-notification-events.js";
+import { managerIds } from "./organisation-team-access.js";
 
 type Doc = Record<string, unknown>;
 export class MessagingError extends Error {
@@ -57,15 +58,17 @@ async function activeOrganisation(orgId: string, token: string): Promise<Doc | n
 }
 
 async function canUseOrganisation(actor: AuthPayload, orgId: string, token: string) {
+  if (actor.actingUserId && orgId !== actor.userId) return null;
   const org = await activeOrganisation(orgId, token);
   if (!org) return null;
-  if (actor.accountType === "organisation" && actor.userId === orgId) return org;
+  if (!actor.actingUserId && actor.accountType === "organisation" && actor.userId === orgId) return org;
   const access = await fsGet("organisation_messaging_access", orgId, token);
-  return members(access).includes(actor.userId) ? org : null;
+  const uid = actor.actingUserId ?? actor.userId;
+  return members(access).includes(uid) || managerIds(access).includes(uid) ? org : null;
 }
 
 async function requireOwner(actor: AuthPayload, orgId: string, token: string) {
-  if (actor.accountType !== "organisation" || actor.userId !== orgId) throw unavailable();
+  if (actor.actingUserId || actor.accountType !== "organisation" || actor.userId !== orgId) throw unavailable();
   const org = await activeOrganisation(orgId, token);
   if (!org) throw unavailable();
   return org;
@@ -171,8 +174,9 @@ export async function listConversations(actor: AuthPayload, requestedOrgId?: str
 
 export async function messagingContext(actor: AuthPayload) {
   const token = await getServerToken();
-  const accessRows = await fsQuery("organisation_messaging_access", [{ field: "memberIds", op: "ARRAY_CONTAINS", value: actor.userId }], token);
-  const orgIds = new Set(accessRows.filter(row => members(row).includes(actor.userId)).map(row => str(row._id)).filter(Boolean));
+  const accessRows = actor.actingUserId ? [] : (await Promise.all(["memberIds", "managerIds"].map(field =>
+    fsQuery("organisation_messaging_access", [{ field, op: "ARRAY_CONTAINS", value: actor.userId }], token)))).flat();
+  const orgIds = new Set(accessRows.filter(row => members(row).includes(actor.userId) || managerIds(row).includes(actor.userId)).map(row => str(row._id)).filter(Boolean));
   if (actor.accountType === "organisation") orgIds.add(actor.userId);
   const organisations = [];
   for (const orgId of orgIds) {
@@ -180,7 +184,7 @@ export async function messagingContext(actor: AuthPayload) {
     if (!org) continue;
     const inbox = await listConversations(actor, orgId);
     organisations.push({ id: orgId, name: label(org.name, "Organisation"), logo: image(org.logo),
-      canManageTeam: actor.accountType === "organisation" && actor.userId === orgId, unreadCount: inbox.unreadCount });
+      canManageTeam: !actor.actingUserId && actor.accountType === "organisation" && actor.userId === orgId, unreadCount: inbox.unreadCount });
   }
   const personal = actor.accountType === "supporter";
   const personalUnreadCount = personal ? (await listConversations(actor)).unreadCount : 0;
@@ -249,11 +253,12 @@ export async function sendMessage(actor: AuthPayload, conversationId: string, te
   const sender = await activeParticipant(parts[side], token);
   const senderName = label(parts[side].kind === "organisation" ? sender?.name : (sender?.publicProfile as Doc)?.displayName, label(sender?.name, "Someone"));
   const recipient = parts[opposite(side)];
-  const messageId = id("m", conversationId, actor.userId, clientId);
+  const senderId = actor.actingUserId ?? actor.userId;
+  const messageId = id("m", conversationId, senderId, clientId);
   const sent = await fsMutateMessaging("conversations", conversationId, token, (current, existing) => {
     if (!current) throw unavailable();
     if (existing) {
-      if (existing.senderId !== actor.userId || existing.conversationId !== conversationId || existing.text !== text || existing.side !== side) {
+      if (existing.senderId !== senderId || existing.conversationId !== conversationId || existing.text !== text || existing.side !== side) {
         throw new MessagingError(409, "This send attempt was already used. Keep the original message and retry it.");
       }
       return { result: { view: messageView(messageId, existing), created: false } };
@@ -262,7 +267,7 @@ export async function sendMessage(actor: AuthPayload, conversationId: string, te
     const field = side === "supporter" ? "supporterSent" : "organisationSent";
     const incomingIndex = count(current[field]) + 1;
     const now = new Date().toISOString();
-    const message = { conversationId, senderId: actor.userId, side, text, createdAt: now, sequence, incomingIndex,
+    const message = { conversationId, senderId, side, text, createdAt: now, sequence, incomingIndex,
       supporterSent: side === "supporter" ? incomingIndex : count(current.supporterSent),
       organisationSent: side === "organisation" ? incomingIndex : count(current.organisationSent) };
     return {

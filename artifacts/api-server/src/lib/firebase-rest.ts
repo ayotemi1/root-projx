@@ -399,6 +399,7 @@ export async function fsMutateSupporterShowcase(
 export async function fsMutateSupporterAccount(
   uid: string, token: string,
   decide: (user: Record<string, unknown>) => Record<string, unknown>,
+  allowOrganisationPreferences = false,
 ): Promise<void> {
   if (!/^[A-Za-z0-9_-]{1,128}$/.test(uid)) throw new Error("Invalid account");
   const allowed = new Set(["name", "avatarInitials", "avatarUrl", "avatarPhotoId", "publicProfile", "profileShowcase", "notificationDelivery"]);
@@ -409,11 +410,14 @@ export async function fsMutateSupporterAccount(
     const raw = await response.json() as { fields: Record<string, FsValue>; updateTime: string };
     if (typeof raw.updateTime !== "string") throw new Error("Invalid account version");
     const user = fromFsDoc(raw.fields ?? {});
-    if (user.accountType !== "supporter") throw new Error("Account is not a supporter");
+    const organisation = user.accountType === "organisation" && allowOrganisationPreferences;
+    if (user.accountType !== "supporter" && !organisation) throw new Error("Account is not a supporter");
     const patch = decide(user);
     const keys = Object.keys(patch);
     if (!keys.length) return;
     if (keys.some(k => !allowed.has(k))) throw new Error("Invalid account field");
+    if (organisation && keys.some(k => !["profileShowcase", "notificationDelivery"].includes(k)))
+      throw new Error("Only organisation preferences can be changed here");
     const params = new URLSearchParams({ "currentDocument.updateTime": raw.updateTime });
     for (const key of keys) params.append("updateMask.fieldPaths", key);
     const saved = await fetch(`${FIRESTORE}/users/${uid}?${params}`, {

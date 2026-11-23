@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import healthRouter from "./health.js";
 import messagingRouter from "./messaging.js";
+import organisationTeamRouter from "./organisation-team.js";
 import authRouter from "./auth.js";
 import organisationsRouter from "./organisations.js";
 import feedRouter from "./feed.js";
@@ -42,6 +43,7 @@ router.use(payoutsRouter);
 router.use(campaignAssistRouter);
 router.use(organisationSelfServiceRouter);
 router.use(healthRouter);
+router.use(organisationTeamRouter);
 router.use(messagingRouter);
 router.use(authRouter);
 router.use(organisationsRouter);

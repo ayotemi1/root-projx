@@ -1,7 +1,8 @@
 import { useMemo, useState } from "react";
 import { Link } from "wouter";
-import { Heart, MessageCircle, Receipt, TrendingUp, Megaphone, Sparkles, X } from "lucide-react";
+import { Heart, MessageCircle, Receipt, TrendingUp, Megaphone, Sparkles, X, UserPlus } from "lucide-react";
 import type { SupporterNotification, SupporterNotificationType } from "@workspace/api-client-react";
+import { useAuth } from "@/context/AuthContext";
 import { useSupporterNotifications, useOpenNotification } from "./use-supporter-notifications";
 import "./notifications.css";
 
@@ -11,12 +12,21 @@ const filters = [
   { id: "comments", label: "Comments", types: ["comment"] },
   { id: "likes", label: "Likes", types: ["like"] },
 ] as const satisfies readonly { id: string; label: string; types: readonly SupporterNotificationType[] | null }[];
-type FilterId = typeof filters[number]["id"];
+/** Organisation configuration; same implementation. "follower" arrives with the extended enum. */
+const orgFilters: readonly { id: string; label: string; types: readonly string[] | null }[] = [
+  { id: "all", label: "All", types: null },
+  { id: "donations", label: "Donations", types: ["donation"] },
+  { id: "followers", label: "Followers", types: ["follower"] },
+  { id: "comments", label: "Comments", types: ["comment"] },
+  { id: "likes", label: "Likes", types: ["like"] },
+  { id: "campaigns", label: "Campaigns", types: ["campaign_milestone"] },
+];
+type FilterId = string;
 
 // Unknown/new types (e.g. "message") fall back to the message icon.
 const typeIcon: Partial<Record<string, typeof Heart>> = {
   organisation_post: Megaphone, story: Sparkles, comment: MessageCircle,
-  like: Heart, campaign_milestone: TrendingUp, donation: Receipt,
+  like: Heart, follower: UserPlus, campaign_milestone: TrendingUp, donation: Receipt,
 };
 
 function initials(name: string) {
@@ -57,14 +67,17 @@ export function NotificationsInbox({ variant, titleId, onClose, onNavigate }: {
   variant: "panel" | "page"; titleId: string; onClose?: () => void; onNavigate?: () => void;
 }) {
   const q = useSupporterNotifications();
+  const { user } = useAuth();
+  const activeFilters: readonly { id: string; label: string; types: readonly string[] | null }[] =
+    user?.accountType === "organisation" ? orgFilters : filters;
   const { open, pendingId, failedId } = useOpenNotification(onNavigate);
   const [filter, setFilter] = useState<FilterId>("all");
   const items = q.data?.items;
   const groups = useMemo(() => {
-    const f = filters.find(x => x.id === filter)!;
-    const list = (items ?? []).filter(n => !f.types || (f.types as readonly string[]).includes(n.type));
+    const f = activeFilters.find(x => x.id === filter) ?? activeFilters[0]!;
+    const list = (items ?? []).filter(n => !f.types || f.types.includes(n.type));
     return group(list);
-  }, [items, filter]);
+  }, [items, filter, activeFilters]);
 
   return (
     <div className={`rpn rpn-${variant}`} data-testid={`notifications-${variant}`}>
@@ -78,7 +91,7 @@ export function NotificationsInbox({ variant, titleId, onClose, onNavigate }: {
         )}
       </div>
       <div className="rpn-filters" role="tablist" aria-label="Filter notifications">
-        {filters.map(f => (
+        {activeFilters.map(f => (
           <button key={f.id} type="button" role="tab" aria-selected={filter === f.id} className="rpn-filter"
             onClick={() => setFilter(f.id)} data-testid={`button-notification-filter-${f.id}`}>{f.label}</button>
         ))}
