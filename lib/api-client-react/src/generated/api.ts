@@ -56,6 +56,7 @@ import type {
   ListOrganisationsParams,
   ListSupporterPostsParams,
   LoginRequest,
+  ManageOwnPostInput,
   ManagedOrganisation,
   ManagedOrganisations,
   ManagedPost,
@@ -74,6 +75,7 @@ import type {
   OrganisationManagerSession,
   OrganisationManagers,
   OrganisationRunningSummary,
+  OwnerPostDetails,
   PasswordResetActionInput,
   PasswordResetRequest,
   PayoutOverview,
@@ -134,6 +136,242 @@ type AwaitedInput<T> = PromiseLike<T> | T;
 type Awaited<O> = O extends AwaitedInput<infer T> ? T : never;
 
 type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
+
+export const getListArchivedPostsUrl = () => {
+  return `/api/post-management/archived`;
+};
+
+export const listArchivedPosts = async (
+  options?: RequestInit,
+): Promise<OwnerPostDetails[]> => {
+  return customFetch<OwnerPostDetails[]>(getListArchivedPostsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListArchivedPostsQueryKey = () => {
+  return [`/api/post-management/archived`] as const;
+};
+
+export const getListArchivedPostsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listArchivedPosts>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listArchivedPosts>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListArchivedPostsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listArchivedPosts>>
+  > = ({ signal }) => listArchivedPosts({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listArchivedPosts>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListArchivedPostsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listArchivedPosts>>
+>;
+export type ListArchivedPostsQueryError = ErrorType<unknown>;
+
+export function useListArchivedPosts<
+  TData = Awaited<ReturnType<typeof listArchivedPosts>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listArchivedPosts>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListArchivedPostsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getGetOwnerPostUrl = (kind: "update" | "post", id: string) => {
+  return `/api/post-management/${kind}/${id}`;
+};
+
+export const getOwnerPost = async (
+  kind: "update" | "post",
+  id: string,
+  options?: RequestInit,
+): Promise<OwnerPostDetails> => {
+  return customFetch<OwnerPostDetails>(getGetOwnerPostUrl(kind, id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetOwnerPostQueryKey = (
+  kind: "update" | "post",
+  id: string,
+) => {
+  return [`/api/post-management/${kind}/${id}`] as const;
+};
+
+export const getGetOwnerPostQueryOptions = <
+  TData = Awaited<ReturnType<typeof getOwnerPost>>,
+  TError = ErrorType<unknown>,
+>(
+  kind: "update" | "post",
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getOwnerPost>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetOwnerPostQueryKey(kind, id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getOwnerPost>>> = ({
+    signal,
+  }) => getOwnerPost(kind, id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!(kind && id),
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getOwnerPost>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetOwnerPostQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getOwnerPost>>
+>;
+export type GetOwnerPostQueryError = ErrorType<unknown>;
+
+export function useGetOwnerPost<
+  TData = Awaited<ReturnType<typeof getOwnerPost>>,
+  TError = ErrorType<unknown>,
+>(
+  kind: "update" | "post",
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getOwnerPost>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetOwnerPostQueryOptions(kind, id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getManageOwnPostUrl = (kind: "update" | "post", id: string) => {
+  return `/api/post-management/${kind}/${id}`;
+};
+
+export const manageOwnPost = async (
+  kind: "update" | "post",
+  id: string,
+  manageOwnPostInput: ManageOwnPostInput,
+  options?: RequestInit,
+): Promise<OwnerPostDetails> => {
+  return customFetch<OwnerPostDetails>(getManageOwnPostUrl(kind, id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(manageOwnPostInput),
+  });
+};
+
+export const getManageOwnPostMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof manageOwnPost>>,
+    TError,
+    { kind: "update" | "post"; id: string; data: BodyType<ManageOwnPostInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof manageOwnPost>>,
+  TError,
+  { kind: "update" | "post"; id: string; data: BodyType<ManageOwnPostInput> },
+  TContext
+> => {
+  const mutationKey = ["manageOwnPost"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof manageOwnPost>>,
+    { kind: "update" | "post"; id: string; data: BodyType<ManageOwnPostInput> }
+  > = (props) => {
+    const { kind, id, data } = props ?? {};
+
+    return manageOwnPost(kind, id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ManageOwnPostMutationResult = NonNullable<
+  Awaited<ReturnType<typeof manageOwnPost>>
+>;
+export type ManageOwnPostMutationBody = BodyType<ManageOwnPostInput>;
+export type ManageOwnPostMutationError = ErrorType<unknown>;
+
+export const useManageOwnPost = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof manageOwnPost>>,
+    TError,
+    { kind: "update" | "post"; id: string; data: BodyType<ManageOwnPostInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof manageOwnPost>>,
+  TError,
+  { kind: "update" | "post"; id: string; data: BodyType<ManageOwnPostInput> },
+  TContext
+> => {
+  return useMutation(getManageOwnPostMutationOptions(options));
+};
 
 export const getGetPostViewerUrl = (kind: "update" | "post", id: string) => {
   return `/api/post-viewer/${kind}/${id}`;

@@ -10,6 +10,8 @@ import type { PostViewerComment } from "./postViewerComment";
 export interface PostActivity {
   likes: number;
   liked: boolean;
+  likesHidden?: boolean;
+  commentsDisabled?: boolean;
   commentCount: number;
   comments: PostViewerComment[];
 }

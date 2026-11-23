@@ -39,6 +39,9 @@ export function parseManagerSession(token: string, now = Date.now()): { orgId: s
  * operations are deliberately excluded. */
 export function managerAccessAllows(orgId: string, method: string, originalUrl: string): boolean {
   if (!UID.test(orgId)) return false;
+  if (["/api/supporter-posts/uploads/request", "/api/supporter-posts/uploads/complete"].includes(originalUrl.split("?")[0]!)) return method === "POST";
+  if (originalUrl.split("?")[0] === "/api/post-management/archived") return method === "GET";
+  if (/^\/api\/post-management\/update\/[A-Za-z0-9_-]+$/.test(originalUrl.split("?")[0]!)) return method === "GET" || method === "PATCH";
   const bookmarkPath = originalUrl.split("?")[0];
   if (bookmarkPath === "/api/bookmarks") return method === "GET" || method === "POST";
   if (/^\/api\/bookmarks\/[A-Za-z0-9_-]+$/.test(bookmarkPath ?? "")) return method === "DELETE";

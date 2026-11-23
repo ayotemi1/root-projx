@@ -91,10 +91,11 @@ export interface ContentItemSummary {
 }
 
 /** Keep the uploader's slide order; grouping videos and photos changes a carousel. */
-export function orderedPostMedia(post: { mediaUrls?: string[] | null; imageUrl?: string | null }) {
+export function orderedPostMedia(post: { mediaUrls?: string[] | null; imageUrl?: string | null; coverUrl?: string | null; thumbnailUrl?: string | null }) {
   const urls = [...new Set(post.mediaUrls ?? [])];
   if (post.imageUrl && !urls.includes(post.imageUrl)) urls.unshift(post.imageUrl);
-  return urls.map(url => ({ url, type: mediaKind(url) }));
+  return urls.map(url => ({ url, type: mediaKind(url),
+    ...(mediaKind(url) === "video" && (post.coverUrl || post.thumbnailUrl) ? { thumbnailUrl: post.coverUrl || post.thumbnailUrl } : {}) }));
 }
 
 export function summarise(post: { mediaUrls?: string[] | null; imageUrl?: string | null; externalUrl?: string | null }): ContentItemSummary {

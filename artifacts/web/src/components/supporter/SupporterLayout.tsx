@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import {
-  Home, Compass, PlusSquare, Inbox, Bell, User, Bookmark, Heart, Menu, X, Pencil, Settings, LogOut, ArrowRight, MapPin, Landmark, Compass as CompassIcon,
+  Home, Compass, PlusSquare, Inbox, Bell, User, Bookmark, Heart, Menu, X, Pencil, Settings, LogOut, ArrowRight, MapPin, Landmark, Archive, Compass as CompassIcon,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { OrganisationLogo } from "@/components/organisation-logo";
@@ -191,6 +191,7 @@ export default function SupporterLayout({ children }: { children: ReactNode }) {
     </>
   ) : isAuthenticated ? (
     <>
+      <Link href="/profile/archived" className="rps-sub" aria-current={location === "/profile/archived" ? "page" : undefined} onClick={() => setMenuOpen(false)} data-testid="link-archived"><Archive size={16} aria-hidden /> Archived</Link>
       <Link href="/profile/edit" className="rps-sub" aria-current={location.split(/[?#]/)[0]!.replace(/\/+$/, "") === "/profile/edit" ? "page" : undefined} onClick={() => setMenuOpen(false)} data-testid="link-edit-profile"><Pencil size={16} aria-hidden /> Edit profile</Link>
       <Link href="/settings" className="rps-sub" aria-current={/^\/settings(\/|$|[?#])/.test(location) ? "page" : undefined} onClick={() => setMenuOpen(false)} data-testid="link-settings"><Settings size={16} aria-hidden /> Settings</Link>
       <button type="button" className="rps-sub" onClick={signOut} disabled={pending} data-testid="button-sign-out">

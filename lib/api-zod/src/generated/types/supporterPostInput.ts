@@ -25,6 +25,7 @@ export interface SupporterPostInput {
   organisation_id?: string | null;
   /** @nullable */
   campaign_id?: string | null;
+  coverMediaId?: string;
   /** @maxItems 5 */
   media: SupporterPostMediaInput[];
 }

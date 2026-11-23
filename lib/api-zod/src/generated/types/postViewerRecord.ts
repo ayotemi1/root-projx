@@ -19,4 +19,10 @@ export interface PostViewerRecord {
   media: PostViewerMedia[];
   /** @nullable */
   externalUrl: string | null;
+  isOwner?: boolean;
+  commentsDisabled?: boolean;
+  hideLikeCount?: boolean;
+  /** @nullable */
+  editedAt?: string | null;
+  pinned?: boolean;
 }

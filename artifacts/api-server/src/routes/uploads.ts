@@ -3,6 +3,7 @@ import multer from "multer";
 import { requireApprovedOrganisation, requireAuth } from "../lib/auth.js";
 import { objectStorageClient } from "../lib/objectStorage.js";
 import { mediaRange } from "../lib/media-range.js";
+import { pipeMediaResponse } from "../lib/pipe-media-response.js";
 
 const router = Router();
 
@@ -111,18 +112,14 @@ router.use("/uploads/object", async (req, res) => {
         res.set("Content-Length", String(range.end - range.start + 1));
         if (req.method === "HEAD") { res.end(); return; }
         const stream = file.createReadStream(range);
-        res.on("close", () => stream.destroy());
-        stream.on("error", () => res.destroy());
-        stream.pipe(res);
+        pipeMediaResponse(stream, res, () => res.destroy());
         return;
       }
       res.set("Content-Length", String(size));
     }
     if (req.method === "HEAD") { res.end(); return; }
     const stream = file.createReadStream();
-    res.on("close", () => stream.destroy());
-    stream.on("error", () => res.destroy());
-    stream.pipe(res);
+    pipeMediaResponse(stream, res, () => res.destroy());
   } catch (err) {
     res.status(500).json({ error: "Failed to serve file" });
   }

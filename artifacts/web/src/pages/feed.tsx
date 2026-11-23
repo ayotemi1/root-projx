@@ -7,6 +7,7 @@ import { GuestFeed } from "@/components/guest-feed/GuestFeed";
 import * as api from "@/lib/api";
 import type { FeedUpdate } from "@/lib/api";
 import { usePostViewer } from "@/components/post-viewer/PostViewerProvider";
+import { OwnPostActions } from "@/components/post-management/OwnPostActions";
 import { orderedPostMedia, summarise } from "@/lib/content-media";
 import { useToast } from "@/hooks/use-toast";
 import { userErrorMessage } from "@/lib/error-feedback";
@@ -35,6 +36,7 @@ function PostCard({ item, logo, onOpen, following, onFollow, followBusy }: {
   const count = s.images.length + s.videos.length;
   const kind = hasVideo ? "Video" : cover ? "Photo" : s.link ? s.link.label : "Update";
   const orgName = item.orgName || "Organisation";
+  const { user } = useAuth();
 
   return (
     <article className="rp-rise" data-testid={`card-content-${item._id}`}>
@@ -45,8 +47,9 @@ function PostCard({ item, logo, onOpen, following, onFollow, followBusy }: {
         </Link>
         <div className="min-w-0 flex-1">
           <Link href={`/organisations/${item.orgId}`} className="text-[18px] font-bold leading-tight hover:underline truncate block">{orgName}</Link>
-          <p className="rp-label !text-[12px] text-[#17100F]/60">{dateLabel(item.createdAt)}</p>
+          <p className="rp-label !text-[12px] text-[#17100F]/60">{dateLabel(item.createdAt)}{item.editedAt ? " · Edited" : ""}</p>
         </div>
+        <OwnPostActions postRef={{ kind: "update", id: item._id }} owner={user?.id === item.orgId} />
         {following !== true && (
           <button
             type="button"

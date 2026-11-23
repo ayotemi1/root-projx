@@ -1,0 +1,52 @@
+.opm-trigger{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border:0;background:transparent;color:inherit;cursor:pointer;transition:background-color .15s ease,transform .15s ease}
+.opm-trigger:hover{background:rgba(23,16,15,.08)}
+.opm-trigger:active{transform:scale(.94)}
+.opm-trigger:focus-visible{outline:2px solid #F3BF2C;outline-offset:2px}
+.opm-trigger svg{width:22px;height:22px}
+
+.opm-layer{position:fixed;inset:0;z-index:2147483000}
+.opm-scrim{position:absolute;inset:0;background:transparent}
+.opm-menu{position:fixed;width:310px;max-width:calc(100vw - 16px);background:#fff;border:2px solid #17100F;box-shadow:8px 8px 0 rgba(0,0,0,.35);color:#17100F;font-family:var(--app-font-sans);animation:opm-pop .16s cubic-bezier(.2,.7,.2,1) both;transform-origin:top left}
+.opm-menu button.opm-item{display:flex;align-items:center;gap:14px;width:100%;padding:14px 18px;border:0;border-bottom:1px solid rgba(23,16,15,.16);background:#fff;text-align:left;font-size:16px;font-weight:600;color:#17100F;cursor:pointer;transition:background-color .12s ease}
+.opm-menu button.opm-item:last-child{border-bottom:0}
+.opm-menu button.opm-item:hover,.opm-menu button.opm-item:focus-visible{background:#F4EFE6;outline:none}
+.opm-menu button.opm-item:focus-visible{box-shadow:inset 3px 0 0 #F3BF2C}
+.opm-menu button.opm-item:disabled{opacity:.5;cursor:progress}
+.opm-menu .opm-item svg{width:20px;height:20px;flex:none}
+.opm-menu .opm-dng{color:#CA0813 !important}
+.opm-menu small{display:block;font-weight:400;color:#5A4F4B;font-size:13px;margin-top:2px}
+.opm-spin{animation:opm-spin .8s linear infinite}
+.opm-err{margin:0;padding:10px 18px;border-top:1px solid rgba(23,16,15,.16);background:#FBF8F2;color:#CA0813;font-size:13px;font-weight:600}
+.opm-grab{display:none}
+
+@media (max-width:700px){
+  .opm-scrim{background:rgba(23,16,15,.45);animation:opm-fade .2s ease both}
+  .opm-menu{left:0 !important;right:0;top:auto !important;bottom:0;width:auto;max-width:none;box-shadow:none;border-width:2px 0 0;padding-bottom:env(safe-area-inset-bottom);animation:opm-up .26s cubic-bezier(.2,.8,.2,1) both;touch-action:pan-x}
+  .opm-menu.dragging{animation:none;transition:none}
+  .opm-menu.settling{transition:transform .2s ease}
+  .opm-grab{display:block;width:40px;height:4px;margin:8px auto 4px;background:rgba(23,16,15,.25)}
+}
+
+.opm-confirm-layer{position:fixed;inset:0;z-index:2147483001;display:grid;place-items:center;padding:20px;background:rgba(23,16,15,.55);animation:opm-fade .16s ease both}
+.opm-confirm{width:100%;max-width:380px;background:#fff;border:2px solid #17100F;box-shadow:8px 8px 0 rgba(0,0,0,.35);color:#17100F;animation:opm-pop .18s cubic-bezier(.2,.7,.2,1) both;font-family:var(--app-font-sans)}
+.opm-confirm h2{margin:0;padding:22px 22px 6px;font-size:28px;font-weight:900;text-transform:uppercase;line-height:.95}
+.opm-confirm p{margin:0;padding:0 22px 20px;color:#5A4F4B;font-size:15px}
+.opm-confirm .opm-err{border-top:0;padding:0 22px 14px;background:transparent}
+.opm-actions{display:flex;border-top:1px solid rgba(23,16,15,.16)}
+.opm-actions button{flex:1;min-height:52px;border:0;font-size:16px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.opm-actions button:focus-visible{outline:2px solid #F3BF2C;outline-offset:-4px}
+.opm-cancel{background:#fff;color:#17100F;border-right:1px solid rgba(23,16,15,.16) !important}
+.opm-cancel:hover{background:#F4EFE6}
+.opm-delete{background:#CA0813;color:#fff}
+.opm-delete:hover{background:#A9060F}
+.opm-actions button:disabled{opacity:.6;cursor:progress}
+
+.opm-toast{position:fixed;left:50%;bottom:28px;z-index:2147483002;transform:translateX(-50%);display:flex;align-items:center;gap:8px;padding:10px 16px;background:#17100F;color:#F4EFE6;border:2px solid #17100F;font-weight:700;font-size:14px;animation:opm-toast .2s ease both}
+.opm-toast svg{width:16px;height:16px;color:#F3BF2C}
+
+@keyframes opm-pop{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
+@keyframes opm-up{from{transform:translateY(100%)}to{transform:none}}
+@keyframes opm-fade{from{opacity:0}to{opacity:1}}
+@keyframes opm-spin{to{transform:rotate(360deg)}}
+@keyframes opm-toast{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translateX(-50%)}}
+@media (prefers-reduced-motion:reduce){.opm-menu,.opm-scrim,.opm-confirm,.opm-confirm-layer,.opm-toast{animation:none}.opm-spin{animation:none}}

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation, useSearch } from "wouter";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Lock, Play, Plus, Maximize2 } from "lucide-react";
+import { Lock, Play, Plus, Maximize2, Pin } from "lucide-react";
 import type { SupporterShowcase } from "@workspace/api-client-react";
 import { SupporterPostCard } from "@/components/supporter/SupporterPostCard";
 import { useToast } from "@/hooks/use-toast";
@@ -44,13 +44,14 @@ export function MediaTab({ posts }: { posts: SupporterPostRecord[] }) {
     <div className="grid grid-cols-3 gap-[3px]" data-testid="grid-media">
       {media.map((p, i) => {
         const lead = [...p.media].sort((a, b) => a.order - b.order)[0]!;
-        const thumb = lead.type === "video" ? lead.video_thumbnail_url : lead.url;
+        const thumb = p.coverUrl || (lead.type === "video" ? lead.video_thumbnail_url : lead.url);
         return (
-          <button key={p.id} type="button" onClick={e => viewer.open({ refs, index: i, label: p.author.name, trigger: e.currentTarget })} className="relative aspect-square overflow-hidden bg-[#17100F] group text-left"
+          <button key={p.id} type="button" onClick={e => viewer.open({ refs, index: i, label: p.author.name, trigger: e.currentTarget })} className="relative aspect-[4/5] overflow-hidden bg-[#17100F] group text-left"
             aria-label={`Open ${p.type} post${p.caption ? `: ${p.caption.slice(0, 60)}` : ""}`} data-testid={`tile-media-${p.id}`}>
             {thumb ? <img src={thumb} alt="" loading="lazy" className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.04]" />
               : <video src={`${lead.url}#t=0.1`} muted preload="metadata" playsInline className="absolute inset-0 w-full h-full object-cover pointer-events-none" aria-hidden />}
             {p.type === "video" && <Play className="absolute top-2 right-2 w-4 h-4 text-[#FBF8F2] fill-[#FBF8F2] drop-shadow" aria-hidden />}
+            {p.pinned && <span className="absolute top-2 left-2 bg-[#F3EFE5] p-1" aria-label="Pinned post"><Pin size={14} aria-hidden /></span>}
           </button>
         );
       })}
@@ -152,7 +153,7 @@ export function SavedTab() {
     const qs = p.toString();
     navigate(qs ? `${location}?${qs}` : location);
   };
-  const items = (q.data ?? []).filter(b => filter === "all" || (filter === "campaigns" ? b.kind === "campaign" : b.kind !== "campaign"));
+  const items = (q.data ?? []).filter(b => !b.archived && (filter === "all" || (filter === "campaigns" ? b.kind === "campaign" : b.kind !== "campaign")));
   const viewer = usePostViewer();
   const postItems = items.filter(b => b.available && b.kind !== "campaign");
   const postRefs = postItems.map(b => ({ kind: b.kind as "post" | "update", id: b.targetId }));

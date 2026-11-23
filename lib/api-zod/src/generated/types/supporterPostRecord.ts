@@ -7,6 +7,7 @@
  */
 import type { SupporterPostMedia } from "./supporterPostMedia";
 import type { SupporterPostRecordAuthor } from "./supporterPostRecordAuthor";
+import type { SupporterPostRecordStatus } from "./supporterPostRecordStatus";
 import type { SupporterPostRecordType } from "./supporterPostRecordType";
 import type { SupporterPostRecordVisibility } from "./supporterPostRecordVisibility";
 import type { SupporterPostTag } from "./supporterPostTag";
@@ -26,6 +27,12 @@ export interface SupporterPostRecord {
   /** @nullable */
   edited_at: string | null;
   removed: boolean;
+  pinned?: boolean;
+  commentsDisabled?: boolean;
+  hideLikeCount?: boolean;
+  /** @nullable */
+  coverUrl?: string | null;
+  status?: SupporterPostRecordStatus;
   visibility: SupporterPostRecordVisibility;
   media: SupporterPostMedia[];
   author: SupporterPostRecordAuthor;

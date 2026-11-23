@@ -15,8 +15,9 @@ import {
 import { STAGES, useSupporterPostDraft, type DraftItem, type DraftStage } from "./SupporterPostDraftProvider";
 import { EditedMedia } from "./EditedMedia";
 import "./supporter-post.css";
+import { ChangeCoverDialog } from "@/components/post-management/ChangeCoverDialog";
 
-const STAGE_LABEL: Record<DraftStage, string> = { pick: "Select", crop: "Crop", edit: "Edit", caption: "Caption" };
+const STAGE_LABEL: Record<DraftStage, string> = { pick: "Select", crop: "Crop", edit: "Edit", cover: "Cover", caption: "Details" };
 const ASPECT_LABEL: Record<CropAspect, string> = { original: "Original", "1:1": "Square", "4:5": "Portrait", "16:9": "Wide" };
 
 function Broken({ item }: { item: DraftItem }) {
@@ -62,6 +63,8 @@ export function SupporterPostDialog() {
   const d = useSupporterPostDraft();
   const { user, token } = useAuth();
   const inputRef = useRef<HTMLInputElement>(null);
+  const coverSaved = useRef(false);
+  useEffect(() => { if (d?.stage === "cover") coverSaved.current = false; }, [d?.stage]);
   const [dragging, setDragging] = useState(false);
   const [editTab, setEditTab] = useState<"filters" | "adjust">("filters");
   const [tagOpen, setTagOpen] = useState(false);
@@ -90,7 +93,19 @@ export function SupporterPostDialog() {
   const anyLoading = items.some(i => !i.ready && !i.broken);
   const nextBlocked = anyBroken || anyLoading;
   const nextTitle = anyBroken ? "Remove media that can’t be used first" : anyLoading ? "Checking your media…" : undefined;
-  const stageIdx = STAGES.indexOf(stage);
+  const stages = items.some(i => i.kind === "video") ? STAGES : STAGES.filter(s => s !== "cover");
+  const stageIdx = stages.indexOf(stage);
+  if (stage === "cover") {
+    const v = items.find(i => i.kind === "video");
+    if (!v) return null;
+    return <ChangeCoverDialog post={{ id: v.id, kind: "post", caption, communityTag: d.communityTag,
+      campaignId: null, status: "published", pinned: false, commentsDisabled: false, hideLikeCount: false,
+      coverUrl: null, editedAt: null, campaigns: [],
+      author: { id: user?.id || "", name: user?.name || "Supporter", avatarUrl: user?.avatarUrl || null, verified: false, href: null },
+      media: [{ url: v.url, type: "video" }] }}
+      onSave={async file => { d.setCover(v.id, file); coverSaved.current = true; }}
+      onClose={() => d.setStage(coverSaved.current ? "caption" : "edit")} />;
+  }
   const prof = profileQ.data as (api.ApiUser & { publicProfile?: { enabled?: boolean } }) | undefined;
   const isPublic: boolean | null = prof ? profileIsPublic(prof) : null;
   const edit = current?.edit ?? defaultEdit();
@@ -107,8 +122,8 @@ export function SupporterPostDialog() {
     touchX.current = null;
     if (dx < -40) next(); else if (dx > 40) prev();
   };
-  const goNext = () => { if (!nextBlocked && stageIdx < STAGES.length - 1) d.setStage(STAGES[stageIdx + 1]); };
-  const goBack = () => { if (stageIdx > 0) d.setStage(STAGES[stageIdx - 1]); };
+  const goNext = () => { if (!nextBlocked && stageIdx < stages.length - 1) d.setStage(stages[stageIdx + 1]); };
+  const goBack = () => { if (stageIdx > 0) d.setStage(stages[stageIdx - 1]); };
 
   // Crop panning: drag the media inside the frame; arrows nudge.
   const onPanDown = (e: PointerEvent<HTMLDivElement>) => {
@@ -326,7 +341,7 @@ export function SupporterPostDialog() {
           onCloseAutoFocus={e => { const el = d.returnFocusRef.current; if (el && document.contains(el)) { e.preventDefault(); el.focus(); } }}>
           <header className="rpp-head">
             {stage !== "pick" ? (
-              <button type="button" className="rpp-icon" onClick={goBack} disabled={sharing} aria-label={`Back to ${STAGE_LABEL[STAGES[stageIdx - 1]]}`} data-testid="button-post-back"><ArrowLeft size={20} aria-hidden /></button>
+              <button type="button" className="rpp-icon" onClick={goBack} disabled={sharing} aria-label={`Back to ${STAGE_LABEL[stages[stageIdx - 1]]}`} data-testid="button-post-back"><ArrowLeft size={20} aria-hidden /></button>
             ) : (
               <DialogPrimitive.Close className="rpp-icon rpp-close-m" aria-label="Close" data-testid="button-close-post-mobile"><X size={22} aria-hidden /></DialogPrimitive.Close>
             )}
@@ -347,7 +362,7 @@ export function SupporterPostDialog() {
 
           {items.length > 0 && (
             <ol className="rpp-steps" aria-label="Steps">
-              {STAGES.map((s, i) => (
+              {stages.map((s, i) => (
                 <li key={s} className={i < stageIdx ? "is-done" : i === stageIdx ? "is-on" : ""} aria-current={i === stageIdx ? "step" : undefined}>
                   <span>{i + 1}</span>{STAGE_LABEL[s]}
                 </li>

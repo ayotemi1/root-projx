@@ -33,16 +33,17 @@ export function createPostInteractions(store: InteractionStore = realStore) {
     ref(kind, id);
     if (kind === "update") {
       const post = await store.get("updates", id, token);
-      if (!post || ["deleted", "archived", "draft"].includes(String(post.status)) || post.removed === true || post.published === false) throw new PostError(404);
+      if (!post || ["deleted", "draft"].includes(String(post.status)) || post.status === "archived" && post.orgId !== viewer || post.removed === true || post.published === false) throw new PostError(404);
       const org = await store.get("organisations", String(post.orgId), token);
       if (!org || org.deletedAt) throw new PostError(404);
       const urls = [...new Set((Array.isArray(post.mediaUrls) ? post.mediaUrls : []).filter(mediaUrl))] as string[];
       if (mediaUrl(post.imageUrl) && !urls.includes(post.imageUrl)) urls.unshift(post.imageUrl);
       return { legacyLikes: Math.max(0, Number(post.likes) || 0), record: {
         id, kind: "update", title: String(post.title || ""), caption: String(post.content || ""), createdAt: String(post.createdAt || ""),
+        isOwner: post.orgId === viewer, commentsDisabled: post.commentsDisabled === true, hideLikeCount: post.hideLikeCount === true, editedAt: post.editedAt || null,
         author: { id: String(post.orgId), name: String(org.name || "Organisation"), avatarUrl: mediaUrl(org.logo) ? org.logo : null, verified: org.verified === true,
           href: `/organisations/${encodeURIComponent(String(post.orgId))}` },
-        media: urls.map(url => ({ url, type: isVideo(url) ? "video" as const : "photo" as const, thumbnailUrl: mediaUrl(post.thumbnailUrl) ? post.thumbnailUrl : null })),
+        media: urls.map(url => ({ url, type: isVideo(url) ? "video" as const : "photo" as const, thumbnailUrl: mediaUrl(post.coverUrl) ? post.coverUrl : mediaUrl(post.thumbnailUrl) ? post.thumbnailUrl : null })),
         externalUrl: typeof post.externalUrl === "string" && /^https?:\/\//.test(post.externalUrl) ? post.externalUrl : null,
       } };
     }
@@ -55,11 +56,12 @@ export function createPostInteractions(store: InteractionStore = realStore) {
     if (media.some(m => !m || m.post_id !== post.id || m.author_id !== post.author_id || !mediaUrl(m.url))) throw new PostError(503);
     return { legacyLikes: 0, record: {
       id, kind: "post", title: "", caption: String(post.caption || ""), createdAt: String(post.created_at || ""),
+      isOwner: post.author_id === viewer, commentsDisabled: post.commentsDisabled === true, hideLikeCount: post.hideLikeCount === true, editedAt: post.edited_at || null,
       author: { id: String(post.author_id), name: String(profile.displayName || author!.name || "Supporter"), avatarUrl: mediaUrl(author!.avatarUrl) ? author!.avatarUrl : null,
         verified: false, href: profile.enabled && profile.publicId ? `/supporters/${encodeURIComponent(profile.publicId)}` : null },
       media: media.sort((a, b) => Number(a!.order) - Number(b!.order)).map(m => ({
         url: m!.url, type: m!.type === "video" ? "video" as const : "photo" as const,
-        thumbnailUrl: mediaUrl(m!.video_thumbnail_url) ? m!.video_thumbnail_url : null,
+        thumbnailUrl: m!.type === "video" && mediaUrl(post.coverUrl) ? post.coverUrl : mediaUrl(m!.video_thumbnail_url) ? m!.video_thumbnail_url : null,
         ...(m!.crop && typeof m!.crop === "object" ? { crop: m!.crop } : {}),
         ...(typeof m!.filter === "string" ? { filter: m!.filter } : {}),
         ...(m!.adjustments && typeof m!.adjustments === "object" ? { adjustments: m!.adjustments } : {}),
@@ -82,11 +84,13 @@ export function createPostInteractions(store: InteractionStore = realStore) {
   }
 
   async function activity(kind: string, id: string, uid: string | null, token: string): Promise<PostActivity> {
-    const { legacyLikes } = await visible(kind, id, uid, token);
+    const { legacyLikes, record } = await visible(kind, id, uid, token);
     const rows = await store.query(ref(kind, id), token);
     const likes = rows.filter(r => r.type === "like");
     const comments = rows.filter(r => r.type === "comment" && !r.removed).sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)) || String(a.id).localeCompare(String(b.id)));
-    return { likes: legacyLikes + likes.length, liked: !!uid && likes.some(l => l.uid === uid), commentCount: comments.length,
+    return { likes: record.hideLikeCount && !record.isOwner ? 0 : legacyLikes + likes.length,
+      likesHidden: record.hideLikeCount === true && !record.isOwner, commentsDisabled: record.commentsDisabled === true,
+      liked: !!uid && likes.some(l => l.uid === uid), commentCount: comments.length,
       comments: comments.map(c => {
         const hearts = rows.filter(r => r.type === "comment_like" && r.commentId === c.id);
         return { id: c.id, parentId: c.parentId ?? null, text: String(c.text), author: c.author, createdAt: String(c.createdAt), likes: hearts.length, liked: !!uid && hearts.some(h => h.uid === uid) };
@@ -112,6 +116,7 @@ export function createPostInteractions(store: InteractionStore = realStore) {
 
   async function comment(kind: string, id: string, uid: string, input: { clientId: string; text: string; parentId?: string | null }, token: string): Promise<PostActivity> {
     const target = await visible(kind, id, uid, token);
+    if (target.record.commentsDisabled) throw new PostError(403);
     const author = await actor(uid, token), text = input.text.trim();
     if (!text || text.length > 2000 || !/^[0-9a-f-]{36}$/i.test(input.clientId)) throw new PostError(400);
     const postKey = ref(kind, id), commentId = keyOf("comment", uid, input.clientId);

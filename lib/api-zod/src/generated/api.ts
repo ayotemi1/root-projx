@@ -7,6 +7,157 @@
  */
 import * as zod from "zod";
 
+export const ListArchivedPostsResponseItem = zod.object({
+  id: zod.string(),
+  kind: zod.enum(["post", "update"]),
+  caption: zod.string(),
+  communityTag: zod.string().nullable(),
+  campaignId: zod.string().nullable(),
+  status: zod.enum(["published", "archived", "deleted"]),
+  pinned: zod.boolean(),
+  commentsDisabled: zod.boolean(),
+  hideLikeCount: zod.boolean(),
+  coverUrl: zod.string().nullable(),
+  editedAt: zod.string().nullable(),
+  media: zod.array(
+    zod.object({
+      url: zod.string(),
+      type: zod.enum(["photo", "video"]),
+      thumbnailUrl: zod.string().nullish(),
+      crop: zod.record(zod.string(), zod.unknown()).optional(),
+      filter: zod.string().optional(),
+      adjustments: zod.record(zod.string(), zod.unknown()).optional(),
+      width: zod.number().nullish(),
+      height: zod.number().nullish(),
+    }),
+  ),
+  author: zod.object({
+    id: zod.string(),
+    name: zod.string(),
+    avatarUrl: zod.string().nullable(),
+    verified: zod.boolean(),
+    href: zod.string().nullable(),
+  }),
+  campaigns: zod.array(
+    zod.object({
+      id: zod.string(),
+      name: zod.string(),
+    }),
+  ),
+});
+export const ListArchivedPostsResponse = zod.array(
+  ListArchivedPostsResponseItem,
+);
+
+export const getOwnerPostPathIdRegExp = new RegExp("^[A-Za-z0-9_-]{1,180}$");
+
+export const GetOwnerPostParams = zod.object({
+  kind: zod.enum(["update", "post"]),
+  id: zod.coerce.string().regex(getOwnerPostPathIdRegExp),
+});
+
+export const GetOwnerPostResponse = zod.object({
+  id: zod.string(),
+  kind: zod.enum(["post", "update"]),
+  caption: zod.string(),
+  communityTag: zod.string().nullable(),
+  campaignId: zod.string().nullable(),
+  status: zod.enum(["published", "archived", "deleted"]),
+  pinned: zod.boolean(),
+  commentsDisabled: zod.boolean(),
+  hideLikeCount: zod.boolean(),
+  coverUrl: zod.string().nullable(),
+  editedAt: zod.string().nullable(),
+  media: zod.array(
+    zod.object({
+      url: zod.string(),
+      type: zod.enum(["photo", "video"]),
+      thumbnailUrl: zod.string().nullish(),
+      crop: zod.record(zod.string(), zod.unknown()).optional(),
+      filter: zod.string().optional(),
+      adjustments: zod.record(zod.string(), zod.unknown()).optional(),
+      width: zod.number().nullish(),
+      height: zod.number().nullish(),
+    }),
+  ),
+  author: zod.object({
+    id: zod.string(),
+    name: zod.string(),
+    avatarUrl: zod.string().nullable(),
+    verified: zod.boolean(),
+    href: zod.string().nullable(),
+  }),
+  campaigns: zod.array(
+    zod.object({
+      id: zod.string(),
+      name: zod.string(),
+    }),
+  ),
+});
+
+export const manageOwnPostPathIdRegExp = new RegExp("^[A-Za-z0-9_-]{1,180}$");
+
+export const ManageOwnPostParams = zod.object({
+  kind: zod.enum(["update", "post"]),
+  id: zod.coerce.string().regex(manageOwnPostPathIdRegExp),
+});
+
+export const manageOwnPostBodyCaptionMax = 2200;
+
+export const manageOwnPostBodyCommunityTagMax = 120;
+
+export const manageOwnPostBodyCampaignIdMax = 180;
+
+export const ManageOwnPostBody = zod.object({
+  pinned: zod.boolean().optional(),
+  status: zod.enum(["published", "archived", "deleted"]).optional(),
+  commentsDisabled: zod.boolean().optional(),
+  hideLikeCount: zod.boolean().optional(),
+  caption: zod.string().max(manageOwnPostBodyCaptionMax).optional(),
+  communityTag: zod.string().max(manageOwnPostBodyCommunityTagMax).nullish(),
+  campaignId: zod.string().max(manageOwnPostBodyCampaignIdMax).nullish(),
+  coverMediaId: zod.string().uuid().optional(),
+});
+
+export const ManageOwnPostResponse = zod.object({
+  id: zod.string(),
+  kind: zod.enum(["post", "update"]),
+  caption: zod.string(),
+  communityTag: zod.string().nullable(),
+  campaignId: zod.string().nullable(),
+  status: zod.enum(["published", "archived", "deleted"]),
+  pinned: zod.boolean(),
+  commentsDisabled: zod.boolean(),
+  hideLikeCount: zod.boolean(),
+  coverUrl: zod.string().nullable(),
+  editedAt: zod.string().nullable(),
+  media: zod.array(
+    zod.object({
+      url: zod.string(),
+      type: zod.enum(["photo", "video"]),
+      thumbnailUrl: zod.string().nullish(),
+      crop: zod.record(zod.string(), zod.unknown()).optional(),
+      filter: zod.string().optional(),
+      adjustments: zod.record(zod.string(), zod.unknown()).optional(),
+      width: zod.number().nullish(),
+      height: zod.number().nullish(),
+    }),
+  ),
+  author: zod.object({
+    id: zod.string(),
+    name: zod.string(),
+    avatarUrl: zod.string().nullable(),
+    verified: zod.boolean(),
+    href: zod.string().nullable(),
+  }),
+  campaigns: zod.array(
+    zod.object({
+      id: zod.string(),
+      name: zod.string(),
+    }),
+  ),
+});
+
 export const GetPostViewerParams = zod.object({
   kind: zod.enum(["update", "post"]),
   id: zod.coerce.string(),
@@ -38,6 +189,11 @@ export const GetPostViewerResponse = zod.object({
     }),
   ),
   externalUrl: zod.string().nullable(),
+  isOwner: zod.boolean().optional(),
+  commentsDisabled: zod.boolean().optional(),
+  hideLikeCount: zod.boolean().optional(),
+  editedAt: zod.string().nullish(),
+  pinned: zod.boolean().optional(),
 });
 
 export const GetPostActivityParams = zod.object({
@@ -48,6 +204,8 @@ export const GetPostActivityParams = zod.object({
 export const GetPostActivityResponse = zod.object({
   likes: zod.number(),
   liked: zod.boolean(),
+  likesHidden: zod.boolean().optional(),
+  commentsDisabled: zod.boolean().optional(),
   commentCount: zod.number(),
   comments: zod.array(
     zod.object({
@@ -80,6 +238,8 @@ export const SetPostLikeBody = zod.object({
 export const SetPostLikeResponse = zod.object({
   likes: zod.number(),
   liked: zod.boolean(),
+  likesHidden: zod.boolean().optional(),
+  commentsDisabled: zod.boolean().optional(),
   commentCount: zod.number(),
   comments: zod.array(
     zod.object({
@@ -116,6 +276,8 @@ export const AddPostCommentBody = zod.object({
 export const AddPostCommentResponse = zod.object({
   likes: zod.number(),
   liked: zod.boolean(),
+  likesHidden: zod.boolean().optional(),
+  commentsDisabled: zod.boolean().optional(),
   commentCount: zod.number(),
   comments: zod.array(
     zod.object({
@@ -149,6 +311,8 @@ export const SetPostCommentLikeBody = zod.object({
 export const SetPostCommentLikeResponse = zod.object({
   likes: zod.number(),
   liked: zod.boolean(),
+  likesHidden: zod.boolean().optional(),
+  commentsDisabled: zod.boolean().optional(),
   commentCount: zod.number(),
   comments: zod.array(
     zod.object({
@@ -5563,6 +5727,8 @@ export const postUpdateBodyContentMax = 5000;
 
 export const PostUpdateBody = zod
   .object({
+    coverMediaId: zod.string().uuid().optional(),
+    clientId: zod.string().uuid().optional(),
     title: zod.string().optional(),
     body: zod.string().optional(),
     content: zod.string().max(postUpdateBodyContentMax).optional(),
@@ -6470,6 +6636,11 @@ export const ListSupporterPostsResponseItem = zod.object({
   created_at: zod.string(),
   edited_at: zod.string().nullable(),
   removed: zod.boolean(),
+  pinned: zod.boolean().optional(),
+  commentsDisabled: zod.boolean().optional(),
+  hideLikeCount: zod.boolean().optional(),
+  coverUrl: zod.string().nullish(),
+  status: zod.enum(["published", "archived", "deleted"]).optional(),
   visibility: zod.enum(["public", "private"]),
   media: zod.array(
     zod
@@ -6586,6 +6757,7 @@ export const PublishSupporterPostBody = zod.object({
     .optional(),
   organisation_id: zod.string().nullish(),
   campaign_id: zod.string().nullish(),
+  coverMediaId: zod.string().uuid().optional(),
   media: zod
     .array(
       zod.object({
@@ -6852,6 +7024,11 @@ export const GetMySupporterShowcaseResponse = zod.object({
       created_at: zod.string(),
       edited_at: zod.string().nullable(),
       removed: zod.boolean(),
+      pinned: zod.boolean().optional(),
+      commentsDisabled: zod.boolean().optional(),
+      hideLikeCount: zod.boolean().optional(),
+      coverUrl: zod.string().nullish(),
+      status: zod.enum(["published", "archived", "deleted"]).optional(),
       visibility: zod.enum(["public", "private"]),
       media: zod.array(
         zod
@@ -7050,6 +7227,11 @@ export const GetVisitorSupporterShowcaseResponse = zod.object({
       created_at: zod.string(),
       edited_at: zod.string().nullable(),
       removed: zod.boolean(),
+      pinned: zod.boolean().optional(),
+      commentsDisabled: zod.boolean().optional(),
+      hideLikeCount: zod.boolean().optional(),
+      coverUrl: zod.string().nullish(),
+      status: zod.enum(["published", "archived", "deleted"]).optional(),
       visibility: zod.enum(["public", "private"]),
       media: zod.array(
         zod
@@ -7366,6 +7548,7 @@ export const DiscardSupporterAccountPhotoParams = zod.object({
 });
 
 export const ListBookmarksResponseItem = zod.object({
+  archived: zod.boolean().optional(),
   id: zod.string(),
   kind: zod.enum(["post", "update", "campaign"]),
   targetId: zod.string(),
@@ -7396,6 +7579,7 @@ export const SaveBookmarkBody = zod.object({
 });
 
 export const SaveBookmarkResponse = zod.object({
+  archived: zod.boolean().optional(),
   id: zod.string(),
   kind: zod.enum(["post", "update", "campaign"]),
   targetId: zod.string(),

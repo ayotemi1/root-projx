@@ -52,6 +52,7 @@ import ProfileEditPage from "@/pages/profile-edit";
 import OnboardingFollowsPage from "@/pages/onboarding-follows";
 import SupporterProfilePage from "@/pages/supporter-profile";
 import MyProfilePage from "@/pages/my-profile";
+import ArchivedPostsPage from "@/pages/archived-posts";
 import CampaignLandingPage from "@/pages/campaign-landing";
 import CampaignThankYouPage from "@/pages/campaign-thank-you";
 import CampaignShareGiftPage from "@/pages/campaign-share-gift";
@@ -167,6 +168,7 @@ function AppRoutes() {
               <Route path="/profile/edit">
                 {() => <ProtectedRoute component={ProfileEditPage} />}
               </Route>
+              <Route path="/profile/archived">{() => <ProtectedRoute component={ArchivedPostsPage} />}</Route>
               <Route path="/profile" component={MyProfilePage} />
               <Route path="/giving-history" component={GivingHistoryPage} />
               <Route path="/shop/success" component={ShopSuccessPage} />

@@ -28,3 +28,14 @@ model; choosing files must not silently publish or upload them.
 **How to apply:** Reuse storage and validation patterns, not organisation access
 guards. Keep selection distinct from publication and enforce supporter-scoped
 ownership for persistent uploads and publishing.
+
+Post covers inherit the post's visibility, including owner-only access when it
+is archived. They are not public organisation branding.
+
+**Why:** Reusing a public branding upload for a cover would leave private or
+archived post imagery publicly accessible. Upload completion alone must not
+make a partly saved post look published.
+
+**How to apply:** Derive ownership from the authenticated identity, verify the
+inspected image belongs to it, and confirm attachment to the intended post.
+Commit a new post and its cover attachment together; retain uploads for retry.

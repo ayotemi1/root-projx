@@ -1,15 +1,23 @@
 ---
 name: Post viewer scope
-description: Shared profile and Saved viewing must not replace Home's inline reading and video behaviour.
+description: Shared viewer entry points preserve inline Home playback and give nested management layers keyboard priority.
 ---
-Use the shared post viewer for organisation profile grids, supporter profile
-Posts and Media, and Saved post tiles. Keep Home's existing card layout and
-inline video playback; explicit comment controls may open the viewer.
+Use the shared post viewer for profile grids, supporter Posts and Media, Saved,
+explicit feed caption/More/comments actions and post notifications. Keep Home's
+card media inline: tapping its video changes playback rather than opening a
+viewer. Viewer videos intentionally autoplay with sound after an explicit open;
+feed autoplay starts muted and respects the person's speaker preference.
 
-**Why:** The user explicitly asked for large profile-post viewing while keeping
-Home/feed behaviour and layout unchanged. Reusing a viewer does not mean every
-video click should become a modal.
+**Why:** The user expanded the shared viewer's entry points but explicitly kept
+inline feed playback and distinguished its sound policy from a chosen viewer.
 
-**How to apply:** Preserve the source page, its scroll position and its ordered
-post set when opening from a grid. Treat the viewer as a shared reading surface,
-not a replacement for management controls on archived posts.
+**How to apply:** Preserve the source page, scroll position and ordered post set.
+Archived posts still use owner-authorised management, not public visibility.
+
+Nested menus, editors and cover pickers must own the keyboard while open.
+
+**Why:** Window capture listeners run in registration order. A later-mounted
+menu's stopPropagation cannot undo an earlier viewer listener closing the page.
+
+**How to apply:** Make the underlying viewer explicitly yield keyboard handling
+to an active management layer; test Escape from inside a viewer, not just a card.

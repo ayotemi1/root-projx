@@ -59,7 +59,7 @@ export function PostComments({ postRef, activity, loading, error, onRetry, onClo
         <div className="pv-cm">
           <span>{shortAgo(c.createdAt)}</span>
           <span aria-hidden>·</span>
-          <button type="button" disabled={comment.isPending} onClick={() => { if (!isAuthenticated) { onGuest("reply to comments"); return; } setReplyTo(c); inputRef.current?.focus(); }}
+          <button type="button" disabled={comment.isPending || activity?.commentsDisabled} onClick={() => { if (!isAuthenticated) { onGuest("reply to comments"); return; } setReplyTo(c); inputRef.current?.focus(); }}
             data-testid={`button-reply-${c.id}`}>Reply</button>
         </div>
       </div>
@@ -89,7 +89,7 @@ export function PostComments({ postRef, activity, loading, error, onRetry, onClo
           <p className="pv-empty">No comments yet. Start the conversation.</p>
         ) : tops.map(c => [row(c), ...repliesOf(c.id).map(r => row(r, true))])}
       </div>
-      {isAuthenticated ? (
+      {activity?.commentsDisabled ? <p className="pv-empty" data-testid="text-comments-disabled">Comments are turned off for this post.</p> : isAuthenticated ? (
         <form className="pv-add" onSubmit={submit}>
           {replyTo && <div className="pv-replying"><span>Replying to {replyTo.author.name}</span><button type="button" disabled={comment.isPending} onClick={() => setReplyTo(null)}>Cancel</button></div>}
           <Avatar author={{ name: user?.name ?? "", avatarUrl: user?.avatarUrl ?? null }} />

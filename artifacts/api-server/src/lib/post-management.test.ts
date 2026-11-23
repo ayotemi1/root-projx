@@ -17,7 +17,7 @@ const compiled = await build({
         path: new URL("../../../../lib/api-zod/node_modules/zod/index.cjs", import.meta.url).pathname,
       }));
       b.onResolve({ filter: /^posts:state$/ }, () => ({ path: "state", namespace: "posts" }));
-      b.onResolve({ filter: /\/lib\/(auth|firebase-rest)\.js$/ }, (a) => ({
+      b.onResolve({ filter: /(?:^|\/)(auth|firebase-rest)\.js$/ }, (a) => ({
         path: a.path.includes("firebase-rest") ? "firebase" : "auth", namespace: "posts",
       }));
       b.onLoad({ filter: /.*/, namespace: "posts" }, (a) => ({
@@ -31,9 +31,11 @@ const compiled = await build({
         ` : `
           import {state} from "posts:state";
           export const getServerToken=async()=>"server";
-          export const fsGet=async(c,id)=>c==="organisations"?(state.hiddenOrg?null:{_id:id}):state.posts.find(p=>p._id===id)??null;
+          export const fsGet=async(c,id)=>c==="users"?{accountType:"organisation",approvalStatus:"approved"}:c==="organisations"?(state.hiddenOrg?null:{_id:id}):state.posts.find(p=>p._id===id)??null;
           export const fsQuery=async(c,filters)=>c==="follows"?[{orgId:"org"}]:state.posts.filter(p=>filters.every(f=>p[f.field]===f.value));
           export const fsCreate=async()=>{throw Error("Not used")};
+          export const fsPublishSupporterPost=async()=>{throw Error("Not used")};
+          export const fsMutateSupporterShowcase=async(uid,token,decide)=>decide({accountType:"organisation",profileShowcase:{}});
           export const fsPatch=async(c,id,patch)=>{
             if(state.fail)throw Error("Synthetic write failure");
             state.writes.push({c,id,patch});Object.assign(state.posts.find(p=>p._id===id),patch);

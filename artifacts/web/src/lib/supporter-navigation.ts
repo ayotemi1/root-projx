@@ -63,12 +63,12 @@ export function isOrganisationDetailPath(location: string) {
 
 export function isSupporterPath(location: string) {
   const path = pathname(location);
-  return isOrganisationDetailPath(path) || path === "/account" || path === "/profile/edit" || path === "/settings" || path === "/settings/interests" || path === "/onboarding/interests" || path === "/onboarding/follows" || supporterNavigation.some(item => item.href === path);
+  return isOrganisationDetailPath(path) || path === "/account" || path === "/profile/edit" || path === "/profile/archived" || path === "/settings" || path === "/settings/interests" || path === "/onboarding/interests" || path === "/onboarding/follows" || supporterNavigation.some(item => item.href === path);
 }
 
-const organisationShellPaths = ["/feed", "/discover", "/inbox", "/notifications", "/settings", "/dashboard"];
+const organisationShellPaths = ["/feed", "/discover", "/inbox", "/notifications", "/settings", "/dashboard", "/saved"];
 export function isOrganisationShellPath(location: string) {
-  return organisationShellPaths.includes(pathname(location)) || isOrganisationDetailPath(location) ||
+  return organisationShellPaths.includes(pathname(location)) || isOrganisationDetailPath(location) || /^\/posts\/[^/]+$/.test(pathname(location)) ||
     /^\/admin\/organisations\/[\w-]+\/manage$/.test(pathname(location));
 }
 

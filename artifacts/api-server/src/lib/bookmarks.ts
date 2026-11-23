@@ -36,12 +36,13 @@ export async function resolveBookmark(ref: Reference, uid: string, token: string
   if (ref.kind === "post") {
     const post = await fsGet(POSTS, ref.targetId, token);
     if (!post) return empty;
+    if (post.status === "archived") return { ...empty, archived: true };
     const author = await fsGet("users", String(post.author_id), token);
     if (!canSeePost(post, author, uid)) return empty;
     const dto = await postDto(post, uid, token, author!);
     const lead = dto.media[0];
     return { ...empty, available: true, title: dto.caption, authorName: dto.author.name,
-      imageUrl: lead ? safeImage(lead.type === "video" ? lead.video_thumbnail_url : lead.url) : null,
+      imageUrl: safeImage(dto.coverUrl) || (lead ? safeImage(lead.type === "video" ? lead.video_thumbnail_url : lead.url) : null),
       videoUrl: lead?.type === "video" && !lead.video_thumbnail_url ? safeImage(lead.url) : null,
       isVideo: lead?.type === "video",
       href: post.author_id === uid ? `/profile?post=${encodeURIComponent(ref.targetId)}` :
@@ -49,13 +50,14 @@ export async function resolveBookmark(ref: Reference, uid: string, token: string
   }
   if (ref.kind === "update") {
     const update = await fsGet("updates", ref.targetId, token);
+    if (update?.status === "archived") return { ...empty, archived: true };
     if (!update || ["deleted", "archived"].includes(String(update.status))) return empty;
     const org = await fsGet("organisations", String(update.orgId), token);
     if (!org) return empty;
     const media = Array.isArray(update.mediaUrls) ? update.mediaUrls : [];
     const lead = safeImage(media[0]);
     return { ...empty, available: true, title: String(update.content || update.title || ""),
-      authorName: String(org.name || "Organisation"), imageUrl: lead && !video(lead) ? lead : safeImage(update.thumbnailUrl),
+      authorName: String(org.name || "Organisation"), imageUrl: safeImage(update.coverUrl) || (lead && !video(lead) ? lead : safeImage(update.thumbnailUrl)),
       videoUrl: lead && video(lead) && !safeImage(update.thumbnailUrl) ? lead : null,
       isVideo: !!lead && video(lead), href: `/feed?post=${encodeURIComponent(ref.targetId)}` };
   }

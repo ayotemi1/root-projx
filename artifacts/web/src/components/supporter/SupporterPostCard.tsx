@@ -2,7 +2,7 @@ import { SupporterAvatar } from "./SupporterAvatar";
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Lock, Plus, Trash2, Play } from "lucide-react";
+import { Check, Lock, Plus, Trash2, Play, Pin } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import * as api from "@/lib/api";
@@ -15,6 +15,7 @@ import { PostActivityRow } from "@/components/post-viewer/PostActivityRow";
 import { DonationAmountDialog } from "@/components/donation-amount-dialog";
 import { CampaignSymbol } from "@/components/campaign-symbol";
 import { PostMediaCarousel } from "@/components/post-media/PostMediaCarousel";
+import { OwnPostActions } from "@/components/post-management/OwnPostActions";
 import "./supporter-post.css";
 
 const dateLabel = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
@@ -41,7 +42,8 @@ function Carousel({ post, onOpen, inlineMedia }: { post: SupporterPostRecord; on
   if (onOpen && !inlineMedia) {
     const lead = media[0]!;
     return (
-      <button type="button" onClick={e => onOpen(e.currentTarget)} className="spc-media block w-full text-left" aria-label={`Open ${post.type} post by ${post.author.name}`} data-testid={`button-profile-media-${post.id}`}>
+      <button type="button" onClick={e => onOpen(e.currentTarget)} className="spc-media relative block w-full text-left" aria-label={`Open ${post.type} post by ${post.author.name}`} data-testid={`button-profile-media-${post.id}`}>
+        {post.pinned && <span className="absolute right-2 top-2 z-10 bg-[#F3EFE5] p-1" aria-label="Pinned post"><Pin size={14} aria-hidden /></span>}
         <EditedMedia src={lead.url} kind={lead.type} poster={lead.video_thumbnail_url} muted
           natural={lead.width && lead.height ? lead.width / lead.height : null}
           edit={normaliseEdit({ crop: lead.crop, filter: lead.filter, adjustments: lead.adjustments })} alt={post.caption || `Post by ${post.author.name}`} />
@@ -95,6 +97,7 @@ export function SupporterPostCard({ post, onOpen, inlineMedia = false }: { post:
         campaignPath={camp.sharePath || (camp.publicId ? `/campaigns/${camp.publicId}` : null)}
         currency={camp.currency} />}
       <header className="flex items-center gap-3 mb-3">
+        {a.isOwner && <OwnPostActions postRef={{ kind: "post", id: post.id }} owner className="order-last ml-auto" />}
         {a.avatarUrl ? <SupporterAvatar avatarUrl={a.avatarUrl} initials={a.initials} size={36} /> : <span className="w-9 h-9 shrink-0 rounded-full bg-[#CA0813] text-[#FBF8F2] grid place-items-center text-[13px] font-extrabold" aria-hidden>{a.initials}</span>}
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 min-w-0">

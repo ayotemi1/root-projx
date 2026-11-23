@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { OrganisationBanner } from "@/components/organisation/OrganisationBanner";
+import { ChangeCoverDialog } from "@/components/post-management/ChangeCoverDialog";
+import { uploadPostCover } from "@/lib/post-cover";
 import { usePostViewer } from "@/components/post-viewer/PostViewerProvider";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSearch, useLocation } from "wouter";
@@ -58,6 +60,12 @@ export default function DashboardPage() {
   const [postContent, setPostContent] = useState("");
   const postType = "update" as const; // Legacy storage value; posts need no category.
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [coverVideo, setCoverVideo] = useState<string | null>(null);
+  const [coverOpen, setCoverOpen] = useState(false);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverMediaId, setCoverMediaId] = useState<string | undefined>();
+  const clientId = useRef<string>(crypto.randomUUID());
+  useEffect(() => () => { if (coverVideo?.startsWith("blob:")) URL.revokeObjectURL(coverVideo); }, [coverVideo]);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [uploadProgress, setUploadProgress] = useState<"idle" | "uploading" | "done">("idle");
   const [formError, setFormError] = useState("");
@@ -119,12 +127,18 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!orgId || uploadedUrls.length === 0) return;
-    savePendingPost(orgId, { urls: uploadedUrls, title: postTitle, content: postContent,
+    savePendingPost(orgId, { urls: uploadedUrls, title: postTitle, content: postContent, coverMediaId, clientId: clientId.current,
       type: postType, externalUrl, savedAt: new Date().toISOString() });
-  }, [orgId, uploadedUrls, postTitle, postContent, postType, externalUrl]);
+  }, [orgId, uploadedUrls, postTitle, postContent, postType, externalUrl, coverMediaId]);
 
   const postMut = useMutation({
     mutationFn: async () => {
+      let savedCover = coverMediaId;
+      if (coverFile && !savedCover) {
+        const uploadedCover = await uploadPostCover(coverFile, token!);
+        savedCover = uploadedCover.id;
+        setCoverMediaId(savedCover);
+      }
       let mediaUrls = uploadedUrls;
       if (selectedFiles.length > 0) {
         setUploadProgress("uploading");
@@ -138,17 +152,20 @@ export default function DashboardPage() {
           setUploadedUrls(mediaUrls);
           setSelectedFiles(previous => previous.filter(candidate => candidate !== file));
           setPreviewUrls(previous => previous.slice(1));
-          savePendingPost(orgId, { urls: mediaUrls, title: postTitle, content: postContent, type: postType, externalUrl, savedAt: new Date().toISOString() });
+          savePendingPost(orgId, { urls: mediaUrls, title: postTitle, content: postContent, type: postType, externalUrl,
+            coverMediaId: savedCover, clientId: clientId.current, savedAt: new Date().toISOString() });
         }
       }
       setUploadProgress("done");
       const link = externalUrl.trim();
       return api.postUpdate(
-        { title: postTitle.trim(), content: postContent.trim(), type: postType, mediaUrls, ...(link ? { externalUrl: link } : {}) },
+        { title: postTitle.trim(), content: postContent.trim(), type: postType, mediaUrls, ...(link ? { externalUrl: link } : {}),
+          ...(savedCover ? { coverMediaId: savedCover, clientId: clientId.current } : {}) },
         token!,
       );
     },
     onSuccess: () => {
+      setCoverFile(null); setCoverMediaId(undefined); setCoverVideo(null); clientId.current = crypto.randomUUID();
       clearPendingPost(orgId); setRecoverable(null);
       setPostTitle(""); setPostContent(""); setExternalUrl(""); setUploadedUrls([]);
       setSelectedFiles([]); setPreviewUrls([]); setUploadProgress("idle");
@@ -185,12 +202,21 @@ export default function DashboardPage() {
     const newFiles = [...selectedFiles, ...files].slice(0, 5);
     setSelectedFiles(newFiles);
     setPreviewUrls(newFiles.map((f) => f.type.startsWith("video/") ? "" : URL.createObjectURL(f)));
+    const video = newFiles.find(f => f.type.startsWith("video/"));
+    if (video && !selectedFiles.includes(video)) {
+      setCoverVideo(URL.createObjectURL(video)); setCoverFile(null); setCoverMediaId(undefined); setCoverOpen(true);
+    }
   }
 
   function removeFile(index: number) {
     const newFiles = selectedFiles.filter((_, i) => i !== index);
     setSelectedFiles(newFiles);
     setPreviewUrls(newFiles.map((f) => f.type.startsWith("video/") ? "" : URL.createObjectURL(f)));
+    if (selectedFiles.find(f => f.type.startsWith("video/")) !== newFiles.find(f => f.type.startsWith("video/"))) {
+      const video = newFiles.find(f => f.type.startsWith("video/"));
+      setCoverVideo(video ? URL.createObjectURL(video) : null); setCoverFile(null); setCoverMediaId(undefined);
+      if (video) setCoverOpen(true);
+    }
   }
 
   function handlePost(e: React.FormEvent) {
@@ -200,11 +226,13 @@ export default function DashboardPage() {
     }
     const linkErr = externalLinkError(externalUrl);
     if (linkErr) { setFormError(linkErr); return; }
+    if (coverVideo && !coverFile && !coverMediaId) { setCoverOpen(true); return; }
     setFormError("");
     postMut.mutate();
   }
 
   function resetForm() {
+    setCoverVideo(null); setCoverFile(null); setCoverMediaId(undefined); clientId.current = crypto.randomUUID();
     setRecoverable(loadPendingPost(orgId));
     setUploadedUrls([]);
     setShowForm(false); setPostTitle(""); setPostContent("");
@@ -217,6 +245,8 @@ export default function DashboardPage() {
     setUploadedUrls(recoverable.urls);
     setPostTitle(recoverable.title); setPostContent(recoverable.content);
     setExternalUrl(recoverable.externalUrl ?? "");
+    setCoverMediaId(recoverable.coverMediaId); clientId.current = recoverable.clientId || crypto.randomUUID();
+    setCoverVideo(recoverable.urls.find(u => /\.(mp4|mov|webm|m4v)(?:[?#]|$)/i.test(u)) || null);
     setRecoverable(null);
   }
 
@@ -646,6 +676,14 @@ export default function DashboardPage() {
         </div>
       </Tabs>
       )}
+      {coverOpen && coverVideo && <ChangeCoverDialog post={{
+        id: clientId.current, kind: "update", caption: postContent, communityTag: null, campaignId: null,
+        status: "published", pinned: false, commentsDisabled: false, hideLikeCount: false, coverUrl: null, editedAt: null,
+        campaigns: [], author: { id: orgId, name: orgQ.data?.name || user?.name || "Organisation",
+          avatarUrl: orgQ.data?.logo || null, verified: !!orgQ.data?.verified, href: `/organisations/${orgId}` },
+        media: [{ url: coverVideo, type: "video" }],
+      }} neighbours={updatesQ.data?.filter(p => p.status !== "archived").map(p => ({ url: p.coverUrl || p.imageUrl || "" })).filter(p => p.url)}
+        onClose={() => setCoverOpen(false)} onSave={async file => { setCoverFile(file); setCoverMediaId(undefined); }} />}
     </div>
   );
 

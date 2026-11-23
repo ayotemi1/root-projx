@@ -18,3 +18,14 @@ closing or moving to another post.
 **How to apply:** Pause the captured element and release its registry entry on
 unmount or source changes. Opening comments must resize the existing player,
 not replace or reload it.
+
+Cancel lazy Google Cloud Storage read streams only after their response setup
+has finished, not immediately when the browser disconnects.
+
+**Why:** The installed SDK emits `response` before installing its internal
+pipeline. Destroying the stream first can make that later pipeline throw outside
+the stream's error listener and terminate the API process.
+
+**How to apply:** Unpipe a disconnected response immediately; defer source
+destruction until its response/first-data event and the next event-loop turn.
+Keep error handling attached and avoid draining the entire abandoned video.

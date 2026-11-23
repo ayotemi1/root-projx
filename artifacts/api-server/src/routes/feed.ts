@@ -1,6 +1,9 @@
 import { Router } from "express";
+import { randomUUID } from "node:crypto";
 import { emailOrganisationUpdate } from "../lib/supporter-notification-events.js";
-import { fsQuery, fsCreate, fsGet, fsPatch, getServerToken } from "../lib/firebase-rest.js";
+import { fsQuery, fsCreate, fsGet, fsPatch, fsPublishSupporterPost, getServerToken } from "../lib/firebase-rest.js";
+import { fingerprint, setMediaSession } from "../lib/supporter-posts.js";
+import { postManagement } from "../lib/post-management.js";
 import { requireApprovedOrganisation, requireAuth, optionalAuth } from "../lib/auth.js";
 import { normaliseContentLink } from "../lib/feed-content.js";
 import { SetPostStatusBody, SetPostStatusParams } from "@workspace/api-zod";
@@ -12,8 +15,12 @@ async function visiblePosts(posts: Record<string, unknown>[], token: string) {
   const ids = [...new Set(posts.map((post) => String(post.orgId ?? "")))];
   const visible = new Set((await Promise.all(ids.map(async (id) =>
     id && await fsGet("organisations", id, token) ? id : null,
-  ))).filter(Boolean));
-  return posts.filter((post) => visible.has(String(post.orgId ?? "")));
+  ))).filter((id): id is string => !!id));
+  const owners = new Map(await Promise.all([...visible].map(async id => [id, await fsGet("users", id, token)] as const)));
+  return posts.filter((post) => visible.has(String(post.orgId ?? ""))).map(post => {
+    const pins = (owners.get(String(post.orgId))?.profileShowcase as Record<string, any> | undefined)?.pinnedPosts;
+    return { ...post, pinned: Array.isArray(pins) && pins.includes(`update:${post._id}`) };
+  });
 }
 
 // Includes archived posts only for the owning organisation or its delegated admin.
@@ -26,6 +33,9 @@ router.get("/feed/managed", requireAuth, requireApprovedOrganisation, async (req
       { field: "orgId", op: "EQUAL", value: req.user!.userId },
     ], await getServerToken());
     res.setHeader("Cache-Control", "no-store");
+    // Archived cover images must work on the first dashboard render, before
+    // individual card-management queries have established their media session.
+    setMediaSession(req, res, req.user!.userId);
     res.json(posts.filter((post) => post.status !== "deleted").sort((a, b) =>
       String(b.createdAt ?? "").localeCompare(String(a.createdAt ?? ""))));
   } catch (err) {
@@ -50,7 +60,7 @@ router.patch("/feed/:postId/status", requireAuth, requireApprovedOrganisation, a
       res.status(403).json({ error: "You can only manage posts belonging to your organisation." }); return;
     }
     const patch = { status: body.data.status, statusChangedAt: new Date().toISOString() };
-    await fsPatch("updates", params.data.postId, patch, token);
+    await postManagement.change("update", params.data.postId, req.user!.userId, { status: body.data.status }, token);
     res.setHeader("Cache-Control", "no-store");
     res.json({ ...post, ...patch });
   } catch (err) {
@@ -132,7 +142,8 @@ router.get("/feed/org/:id", optionalAuth, async (req, res) => {
     updates.sort((a, b) =>
       ((b["createdAt"] as string) ?? "").localeCompare((a["createdAt"] as string) ?? ""),
     );
-    res.json(await visiblePosts(updates, await getServerToken()));
+    const visible = await visiblePosts(updates, await getServerToken());
+    res.json(visible.sort((a, b) => Number(b.pinned) - Number(a.pinned)));
   } catch (err) {
     req.log.error({ err }, "GET /feed/org/:id error");
     res.status(500).json({ error: "Failed to fetch org feed" });
@@ -149,7 +160,11 @@ router.post("/feed", requireAuth, requireApprovedOrganisation, async (req, res) 
     const uid = req.user!.userId;
     const serverToken = await getServerToken();
 
-    const { title, content, type, mediaUrls, externalUrl } = req.body as Record<string, unknown>;
+    const { title, content, type, mediaUrls, externalUrl, coverMediaId, clientId } = req.body as Record<string, unknown>;
+    if (coverMediaId != null && (typeof coverMediaId !== "string" || !/^[a-f0-9-]{36}$/i.test(coverMediaId)) ||
+      clientId != null && (typeof clientId !== "string" || !/^[a-f0-9-]{36}$/i.test(clientId))) {
+      res.status(400).json({ error: "Choose a valid uploaded cover." }); return;
+    }
     let contentLink: string | null;
     try {
       contentLink = normaliseContentLink(externalUrl);
@@ -197,7 +212,27 @@ router.post("/feed", requireAuth, requireApprovedOrganisation, async (req, res) 
       createdAt: new Date().toISOString(),
     };
 
-    const newId = await fsCreate("updates", data, serverToken);
+    let newId: string;
+    if (typeof coverMediaId === "string") {
+      newId = typeof clientId === "string" ? clientId : randomUUID();
+      const hash = fingerprint({ title: postTitle, content: caption, mediaUrls: urls, externalUrl: contentLink, coverMediaId });
+      const existing = await fsGet("updates", newId, serverToken);
+      if (existing) {
+        if (existing.orgId !== uid || existing.creationFingerprint !== hash || existing.status === "deleted") {
+          res.status(409).json({ error: "This draft was already posted with different details." }); return;
+        }
+        res.status(201).json({ ...existing, _id: newId }); return;
+      }
+      const cover = await fsGet("supporter_post_media", coverMediaId, serverToken);
+      if (!cover || cover.author_id !== uid || cover.state !== "ready" || cover.type !== "photo" || cover.post_id ||
+        !(Number(cover.width) >= 1080 && Number(cover.height) >= 1350) ||
+        !urls.some(u => /\.(mp4|mov|webm|m4v)(?:[?#]|$)/i.test(u))) {
+        res.status(400).json({ error: "Choose a ready JPG or PNG cover of at least 1080 × 1350 for your video." }); return;
+      }
+      Object.assign(data, { id: newId, cover_media_id: coverMediaId,
+        coverUrl: `/api/supporter-posts/media/${coverMediaId}`, creationFingerprint: hash });
+      await fsPublishSupporterPost(data, [{ id: coverMediaId, order: 0, crop: cover.crop, filter: "original", adjustments: cover.adjustments }], serverToken, "update");
+    } else newId = await fsCreate("updates", data, serverToken);
 
     // Keep lastPostAt on the org doc so profile pages don't need a separate
     // feed query just to show "last active" — best-effort, non-blocking.

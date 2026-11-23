@@ -66,6 +66,18 @@ test("new organisation reactions carry trusted identity, recipient and immutable
   assert.equal(comment.author.verified, true);
 });
 
+test("commenting and hidden-like preferences are enforced on the server, with counts retained for the owner", async () => {
+  const f = fixture();
+  await f.service.like("update", "update", "alice", true, "t");
+  Object.assign(f.docs.get("updates/update")!, { hideLikeCount: true, commentsDisabled: true });
+  const guest = await f.service.activity("update", "update", null, "t");
+  assert.equal(guest.likesHidden, true); assert.equal(guest.likes, 0); assert.equal(guest.commentsDisabled, true);
+  const owner = await f.service.activity("update", "update", "org", "t");
+  assert.equal(owner.likesHidden, false); assert.equal(owner.likes, 1);
+  await assert.rejects(f.service.comment("update", "update", "alice", { clientId: uuid(92), text: "Not allowed" }, "t"), status(403));
+  assert.equal((await f.service.activity("update", "update", "org", "t")).commentCount, 0);
+});
+
 test("comment retry is idempotent, trims text and cannot overwrite the first payload", async () => {
   const { service } = fixture(), input = { clientId: uuid(1), text: " Hello " };
   const a = await service.comment("update", "update", "alice", input, "t");
@@ -111,10 +123,11 @@ test("removing a post or making its author private hides existing reactions too"
   await assert.rejects(f.service.visible("post", "post", "alice", "t"), status(404));
 });
 
-test("unpublished, archived and deleted organisation posts never expose a viewer or interactions", async () => {
+test("unpublished/deleted posts stay hidden and archived posts are visible only to their owner", async () => {
   for (const state of ["draft", "archived", "deleted"]) {
     const f = fixture(); f.docs.get("updates/update")!.status = state;
-    await assert.rejects(f.service.visible("update", "update", "org", "t"), status(404));
+    if (state === "archived") assert.equal((await f.service.visible("update", "update", "org", "t")).record.isOwner, true);
+    else await assert.rejects(f.service.visible("update", "update", "org", "t"), status(404));
     await assert.rejects(f.service.like("update", "update", "alice", true, "t"), status(404));
   }
   const f = fixture(); f.docs.get("organisations/org")!.deletedAt = "2026-11-23";
@@ -134,7 +147,7 @@ test("guest activity exposes no reacting account IDs or private account metadata
   const f = fixture();
   await f.service.like("update", "update", "alice", true, "t");
   const dto = await f.service.activity("update", "update", null, "t");
-  assert.deepEqual(dto, { likes: 1, liked: false, commentCount: 0, comments: [] });
+  assert.deepEqual(dto, { likes: 1, liked: false, commentCount: 0, comments: [], likesHidden: false, commentsDisabled: false });
   assert.doesNotMatch(JSON.stringify(dto), /uid|email|alice/);
 });
 

@@ -115,6 +115,11 @@ export interface WiseStatus {
 }
 
 export interface FeedUpdate {
+  pinned?: boolean;
+  commentsDisabled?: boolean;
+  hideLikeCount?: boolean;
+  editedAt?: string | null;
+  coverUrl?: string | null;
   status?: "published" | "archived" | "deleted";
   _id: string;
   orgId: string;
@@ -298,7 +303,7 @@ export const getManagedPosts = (token: string) => req<FeedUpdate[]>("/feed/manag
 export const setPostStatus = (postId: string, status: "published" | "archived" | "deleted", token: string) =>
   req<FeedUpdate>(`/feed/${encodeURIComponent(postId)}/status`, { method: "PATCH", body: JSON.stringify({ status }) }, token);
 export const postUpdate = (
-  data: { title: string; content: string; type: string; mediaUrls?: string[]; externalUrl?: string },
+  data: { title: string; content: string; type: string; mediaUrls?: string[]; externalUrl?: string; coverMediaId?: string; clientId?: string },
   token: string,
 ) =>
   req<FeedUpdate>("/feed", { method: "POST", body: JSON.stringify(data) }, token);

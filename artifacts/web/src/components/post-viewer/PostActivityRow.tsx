@@ -33,14 +33,14 @@ export function PostActivityRow({ postRef, label, className = "" }: { postRef: P
   return (
     <span className={`inline-flex items-center ${className}`} data-testid={`row-activity-${postRef.id}`}>
       <button type="button" aria-pressed={!!a?.liked} disabled={isAuthenticated && (!a || like.isPending)}
-        aria-label={a ? `${a.liked ? "Unlike" : "Like"} · ${a.likes} likes` : "Like"}
+        aria-label={a ? `${a.liked ? "Unlike" : "Like"}${a.likesHidden ? "" : ` · ${a.likes} likes`}` : "Like"}
         onClick={() => {
           if (!isAuthenticated) { setGuest("like posts"); return; }
           if (a) like.mutate(!a.liked, { onError: () => toast({ title: POST_GENERIC_ERROR, variant: "destructive" }) });
         }}
         className={`min-h-11 px-2 inline-flex items-center gap-1.5 text-[14px] font-semibold disabled:opacity-60 ${a?.liked ? "text-[#E0242F]" : "text-[#17100F]/80 hover:text-[#17100F]"}`}
         data-testid={`button-like-${postRef.id}`}>
-        <Heart className={`w-[18px] h-[18px] ${a?.liked ? "fill-current" : ""}`} aria-hidden />{n(a?.likes)}
+        <Heart className={`w-[18px] h-[18px] ${a?.liked ? "fill-current" : ""}`} aria-hidden />{!a?.likesHidden && n(a?.likes)}
       </button>
       <button type="button" aria-label={a ? `Comments · ${a.commentCount}` : "Comments"}
         onClick={e => viewer.open({ refs: [postRef], index: 0, label, comments: true, trigger: e.currentTarget })}

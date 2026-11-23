@@ -21,7 +21,7 @@ router.get("/bookmarks", async (req, res) => {
   try {
     const token = await getServerToken(), uid = req.user!.userId;
     const user = await fsGet("users", uid, token);
-    if (!user || !["supporter", "organisation"].includes(user.accountType)) throw new PostError(403);
+    if (!user || !["supporter", "organisation"].includes(String(user.accountType))) throw new PostError(403);
     setMediaSession(req, res);
     const refs = bookmarkReferences(user);
     // Small batches bound simultaneous provider requests even for large lists.

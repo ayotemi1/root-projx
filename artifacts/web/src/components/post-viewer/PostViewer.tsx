@@ -6,6 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import { useBookmarks } from "@/lib/bookmarks";
 import { BookmarkButton } from "@/components/bookmarks/BookmarkButton";
+import { OwnPostActions } from "@/components/post-management/OwnPostActions";
 import { GuestJoinPrompt } from "@/components/guest-feed/GuestJoinPrompt";
 import { InlineVideoPlayer, holdFeedPlayback } from "@/components/inline-video-player";
 import { EditedMedia } from "@/components/supporter/EditedMedia";
@@ -35,10 +36,11 @@ function MediaItem({ m, label, autoPlay }: { m: PostViewerMedia; label: string; 
   return <img className="pv-cover" src={m.url} alt={label} draggable={false} />;
 }
 
-function Slide({ postRef, commentsOpen, onComments, onGuest, onSwipe, slideNavigation }: {
+function Slide({ postRef, commentsOpen, onComments, onGuest, onSwipe, slideNavigation, onRemoved }: {
   postRef: PostRef; commentsOpen: boolean; onComments: (v: boolean) => void;
   onGuest: (action: string) => void; onSwipe: (dir: 1 | -1) => void;
   slideNavigation: { current: ((dir: 1 | -1) => boolean) | null };
+  onRemoved: () => void;
 }) {
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
@@ -123,7 +125,8 @@ function Slide({ postRef, commentsOpen, onComments, onGuest, onSwipe, slideNavig
                 <span className="pv-av">{r.author.avatarUrl ? <img src={r.author.avatarUrl} alt="" /> : initialsFrom(r.author.name)}</span>
                 {r.author.href ? <Link href={r.author.href} data-testid="link-viewer-author">{r.author.name}</Link> : <span>{r.author.name}</span>}
                 {r.author.verified && <VerifiedTick />}
-                <time className="pv-time" dateTime={r.createdAt}>{shortAgo(r.createdAt)}</time>
+                <time className="pv-time" dateTime={r.createdAt}>{shortAgo(r.createdAt)}{r.editedAt ? " · Edited" : ""}</time>
+                <OwnPostActions postRef={postRef} owner={r.isOwner === true} onRemoved={onRemoved} />
               </div>
               {!isText && (r.caption || r.title) && (
                 <p className={`pv-cap ${expanded ? "" : "clamp"}`} data-testid="text-viewer-caption">
@@ -136,8 +139,8 @@ function Slide({ postRef, commentsOpen, onComments, onGuest, onSwipe, slideNavig
               {r.externalUrl && <a className="pv-ext" href={r.externalUrl} target="_blank" rel="noopener noreferrer nofollow"><ExternalLink size={13} aria-hidden />Open original</a>}
               <div className="pv-row">
                 <button type="button" className={`pv-i ${a?.liked ? "liked" : ""}`} onClick={toggleLike} aria-pressed={!!a?.liked}
-                  disabled={isAuthenticated && (!a || like.isPending)} aria-label={a ? `${a.liked ? "Unlike" : "Like"} · ${a.likes} likes` : "Like"} data-testid="button-viewer-like">
-                  <Heart aria-hidden />{count(a?.likes)}
+                  disabled={isAuthenticated && (!a || like.isPending)} aria-label={a ? `${a.liked ? "Unlike" : "Like"}${a.likesHidden ? "" : ` · ${a.likes} likes`}` : "Like"} data-testid="button-viewer-like">
+                  <Heart aria-hidden />{!a?.likesHidden && count(a?.likes)}
                 </button>
                 <button type="button" className={`pv-i ${commentsOpen ? "on" : ""}`} onClick={() => onComments(!commentsOpen)} aria-expanded={commentsOpen}
                   aria-label={a ? `Comments · ${a.commentCount}` : "Comments"} data-testid="button-viewer-comments">
@@ -202,6 +205,9 @@ export function PostViewer({ refs, index, label, commentsOpen, onClose, onGo, on
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Window capture listeners run in registration order. A later menu cannot
+      // stop the viewer's earlier listener: yield explicitly to the upper layer.
+      if (e.defaultPrevented || document.querySelector('[data-post-management-open], .opm-trigger[aria-expanded="true"]')) return;
       const s = state.current;
       if (s.guest) return; // the join dialog owns the keyboard
       const root = rootRef.current;
@@ -244,7 +250,7 @@ export function PostViewer({ refs, index, label, commentsOpen, onClose, onGo, on
       {hasPrev && <button type="button" className="pv-arr l" onClick={() => onGo(index - 1)} aria-label="Previous post" data-testid="button-viewer-prev"><ChevronLeft size={24} /></button>}
       {hasNext && <button type="button" className="pv-arr r" onClick={() => onGo(index + 1)} aria-label="Next post" data-testid="button-viewer-next"><ChevronRight size={24} /></button>}
       <div className={`pv-col ${commentsOpen ? "open" : ""}`}>
-        <Slide key={postRefKey(ref)} postRef={ref} commentsOpen={commentsOpen} onComments={onComments} onGuest={setGuest} slideNavigation={slideNavigation}
+        <Slide key={postRefKey(ref)} postRef={ref} commentsOpen={commentsOpen} onComments={onComments} onGuest={setGuest} slideNavigation={slideNavigation} onRemoved={onClose}
           onSwipe={dir => { const n = index + dir; if (n >= 0 && n < refs.length) onGo(n); }} />
       </div>
       <GuestJoinPrompt action={guest} onClose={() => setGuest(null)} aboveViewer />

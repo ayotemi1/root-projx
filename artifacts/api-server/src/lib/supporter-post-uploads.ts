@@ -162,7 +162,7 @@ async function inspectAndComplete(author: string, id: string, path: string) {
     if (video) {
       thumbnail = `${base}/thumbnail.jpg`;
       const thumb = join(dir, "thumbnail.jpg");
-      await exec("ffmpeg", ["-v", "error", "-y", "-i", mediaFile, "-frames:v", "1", "-vf", "scale='min(960,iw)':-2", thumb],
+      await exec("ffmpeg", ["-v", "error", "-y", "-ss", String(Math.min(1, Math.max(0, (duration || 1) - 0.05))), "-i", mediaFile, "-frames:v", "1", "-vf", "scale='min(960,iw)':-2", thumb],
         { timeout: 30_000, maxBuffer: 1024 * 1024 });
       await b.upload(thumb, { destination: thumbnail, metadata: { contentType: "image/jpeg", cacheControl: "private, no-store" } });
     }

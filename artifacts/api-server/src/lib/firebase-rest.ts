@@ -649,15 +649,16 @@ export async function fsPublishSupporterPost(
   post: Record<string, unknown>,
   edits: Array<Record<string, unknown>>,
   token: string,
+  kind: "post" | "update" = "post",
 ): Promise<void> {
   const id = String(post.id);
-  const author = String(post.author_id);
+  const author = String(kind === "post" ? post.author_id : post.orgId);
   const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
   const base = `projects/${PROJECT_ID}/databases/(default)/documents`;
   const fields = (data: Record<string, unknown>) =>
     Object.fromEntries(Object.entries(data).map(([k, v]) => [k, toFsVal(v)]));
   const writes: Record<string, unknown>[] = [{
-    update: { name: `${base}/supporter_posts/${id}`, fields: fields(post) },
+    update: { name: `${base}/${kind === "post" ? "supporter_posts" : "updates"}/${id}`, fields: fields(post) },
     currentDocument: { exists: false },
   }];
   for (const edit of edits) {
@@ -667,7 +668,8 @@ export async function fsPublishSupporterPost(
     const media = fromFsDoc(doc.fields);
     if (media.author_id !== author || media.state !== "ready" || media.post_id)
       throw new Error("Supporter media cannot be attached");
-    const data = { post_id: id, order: edit.order, crop: edit.crop, filter: edit.filter, adjustments: edit.adjustments };
+    const data = { post_id: id, order: edit.order, crop: edit.crop, filter: edit.filter, adjustments: edit.adjustments,
+      ...(kind === "update" ? { post_kind: "update" } : {}) };
     writes.push({
       update: { name: `${base}/supporter_post_media/${edit.id}`, fields: fields(data) },
       updateMask: { fieldPaths: Object.keys(data) },

@@ -5,6 +5,8 @@ export interface PendingPost {
   content: string;
   type: "update" | "milestone" | "campaign";
   externalUrl?: string;
+  coverMediaId?: string;
+  clientId?: string;
   savedAt: string;
 }
 

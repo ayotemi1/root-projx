@@ -25,6 +25,43 @@ tags:
   - name: profile
     description: User profile
 paths:
+  /post-management/archived:
+    get:
+      operationId: listArchivedPosts
+      tags: [posts]
+      responses:
+        '200':
+          description: Only the signed-in account's archived posts
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: '#/components/schemas/OwnerPostDetails'}}
+  /post-management/{kind}/{id}:
+    parameters:
+      - {in: path, name: kind, required: true, schema: {type: string, enum: [update, post]}}
+      - {in: path, name: id, required: true, schema: {type: string, pattern: '^[A-Za-z0-9_-]{1,180}$'}}
+    get:
+      operationId: getOwnerPost
+      tags: [posts]
+      responses:
+        '200':
+          description: Authorised owner editing details
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/OwnerPostDetails'}
+    patch:
+      operationId: manageOwnPost
+      tags: [posts]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ManageOwnPostInput'}
+      responses:
+        '200':
+          description: Saved owner post details
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/OwnerPostDetails'}
   /post-viewer/{kind}/{id}:
     parameters: &postViewerParams
       - {name: kind, in: path, required: true, schema: {type: string, enum: [update, post]}}
@@ -1785,6 +1822,43 @@ components:
       bearerFormat: JWT
 
   schemas:
+    ManageOwnPostInput:
+      type: object
+      additionalProperties: false
+      properties:
+        pinned: {type: boolean}
+        status: {type: string, enum: [published, archived, deleted]}
+        commentsDisabled: {type: boolean}
+        hideLikeCount: {type: boolean}
+        caption: {type: string, maxLength: 2200}
+        communityTag: {type: [string, 'null'], maxLength: 120}
+        campaignId: {type: [string, 'null'], maxLength: 180}
+        coverMediaId: {type: string, format: uuid}
+    OwnerPostDetails:
+      type: object
+      required: [id, kind, caption, communityTag, campaignId, status, pinned, commentsDisabled, hideLikeCount, coverUrl, editedAt, media, author, campaigns]
+      properties:
+        id: {type: string}
+        kind: {type: string, enum: [post, update]}
+        caption: {type: string}
+        communityTag: {type: [string, 'null']}
+        campaignId: {type: [string, 'null']}
+        status: {type: string, enum: [published, archived, deleted]}
+        pinned: {type: boolean}
+        commentsDisabled: {type: boolean}
+        hideLikeCount: {type: boolean}
+        coverUrl: {type: [string, 'null']}
+        editedAt: {type: [string, 'null']}
+        media: {type: array, items: {$ref: '#/components/schemas/PostViewerMedia'}}
+        author: {$ref: '#/components/schemas/PostViewerAuthor'}
+        campaigns:
+          type: array
+          items:
+            type: object
+            required: [id, name]
+            properties:
+              id: {type: string}
+              name: {type: string}
     PostViewerAuthor:
       type: object
       required: [id, name, avatarUrl, verified, href]
@@ -1818,6 +1892,11 @@ components:
         createdAt: {type: string}
         media: {type: array, items: {$ref: '#/components/schemas/PostViewerMedia'}}
         externalUrl: {type: [string, 'null']}
+        isOwner: {type: boolean}
+        commentsDisabled: {type: boolean}
+        hideLikeCount: {type: boolean}
+        editedAt: {type: [string, 'null']}
+        pinned: {type: boolean}
     PostViewerComment:
       type: object
       required: [id, parentId, text, author, createdAt, likes, liked]
@@ -1835,6 +1914,8 @@ components:
       properties:
         likes: {type: integer}
         liked: {type: boolean}
+        likesHidden: {type: boolean}
+        commentsDisabled: {type: boolean}
         commentCount: {type: integer}
         comments: {type: array, items: {$ref: '#/components/schemas/PostViewerComment'}}
     PostReactionInput:
@@ -1913,6 +1994,7 @@ components:
       type: object
       required: [id, kind, targetId, orgId, createdAt, available, title, authorName, imageUrl, isVideo, href]
       properties:
+        archived: {type: boolean}
         id: {type: string}
         kind: {type: string, enum: [post, update, campaign]}
         targetId: {type: string}
@@ -2163,6 +2245,7 @@ components:
             - { type: "null" }
         organisation_id: { type: [string, "null"] }
         campaign_id: { type: [string, "null"] }
+        coverMediaId: {type: string, format: uuid}
         media: { type: array, maxItems: 5, items: { $ref: "#/components/schemas/SupporterPostMediaInput" } }
     SupporterPostRecord:
       type: object
@@ -2181,6 +2264,11 @@ components:
         created_at: { type: string }
         edited_at: { type: [string, "null"] }
         removed: { type: boolean }
+        pinned: {type: boolean}
+        commentsDisabled: {type: boolean}
+        hideLikeCount: {type: boolean}
+        coverUrl: {type: [string, 'null']}
+        status: {type: string, enum: [published, archived, deleted]}
         visibility: { type: string, enum: [public, private] }
         media: { type: array, items: { $ref: "#/components/schemas/SupporterPostMedia" } }
         author:
@@ -3172,6 +3260,8 @@ components:
       type: object
       description: Add at least one photo/video, externalUrl, title or content. No progress-update category is required.
       properties:
+        coverMediaId: {type: string, format: uuid}
+        clientId: {type: string, format: uuid}
         title:
           type: string
         body:

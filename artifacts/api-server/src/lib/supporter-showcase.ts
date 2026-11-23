@@ -21,8 +21,9 @@ export async function supporterShowcase(user: Doc, uid: string, token: string, o
     fsQuery("follows", [{ field: "userId", op: "EQUAL", value: uid }], token),
   ]);
   const viewer = owner ? uid : null;
-  const visibleRows = rows.filter(p => canSeePost(p, user, viewer))
-    .sort((a, b) => text(b.created_at).localeCompare(text(a.created_at)));
+  const pins = Array.isArray(user.profileShowcase?.pinnedPosts) ? user.profileShowcase.pinnedPosts : [];
+  const visibleRows = rows.filter(p => p.status !== "archived" && canSeePost(p, user, viewer))
+    .sort((a, b) => Number(pins.includes(`post:${b.id}`)) - Number(pins.includes(`post:${a.id}`)) || text(b.created_at).localeCompare(text(a.created_at)));
   const posts = await Promise.all(visibleRows.map(p => postDto(p, viewer, token, user)));
   const orgCache = new Map<string, Promise<Doc | null>>();
   const org = (id: string) => {

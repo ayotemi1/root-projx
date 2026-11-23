@@ -5,15 +5,56 @@
  * Root ProjX API — community giving platform
  * OpenAPI spec version: 0.1.0
  */
-export interface PostViewerAuthor {
+export type ManageOwnPostInputStatus =
+  (typeof ManageOwnPostInputStatus)[keyof typeof ManageOwnPostInputStatus];
+
+export const ManageOwnPostInputStatus = {
+  published: "published",
+  archived: "archived",
+  deleted: "deleted",
+} as const;
+
+export interface ManageOwnPostInput {
+  pinned?: boolean;
+  status?: ManageOwnPostInputStatus;
+  commentsDisabled?: boolean;
+  hideLikeCount?: boolean;
+  /** @maxLength 2200 */
+  caption?: string;
+  /**
+   * @maxLength 120
+   * @nullable
+   */
+  communityTag?: string | null;
+  /**
+   * @maxLength 180
+   * @nullable
+   */
+  campaignId?: string | null;
+  coverMediaId?: string;
+}
+
+export type OwnerPostDetailsKind =
+  (typeof OwnerPostDetailsKind)[keyof typeof OwnerPostDetailsKind];
+
+export const OwnerPostDetailsKind = {
+  post: "post",
+  update: "update",
+} as const;
+
+export type OwnerPostDetailsStatus =
+  (typeof OwnerPostDetailsStatus)[keyof typeof OwnerPostDetailsStatus];
+
+export const OwnerPostDetailsStatus = {
+  published: "published",
+  archived: "archived",
+  deleted: "deleted",
+} as const;
+
+export type OwnerPostDetailsCampaignsItem = {
   id: string;
   name: string;
-  /** @nullable */
-  avatarUrl: string | null;
-  verified: boolean;
-  /** @nullable */
-  href: string | null;
-}
+};
 
 export type PostViewerMediaType =
   (typeof PostViewerMediaType)[keyof typeof PostViewerMediaType];
@@ -41,6 +82,37 @@ export interface PostViewerMedia {
   height?: number | null;
 }
 
+export interface PostViewerAuthor {
+  id: string;
+  name: string;
+  /** @nullable */
+  avatarUrl: string | null;
+  verified: boolean;
+  /** @nullable */
+  href: string | null;
+}
+
+export interface OwnerPostDetails {
+  id: string;
+  kind: OwnerPostDetailsKind;
+  caption: string;
+  /** @nullable */
+  communityTag: string | null;
+  /** @nullable */
+  campaignId: string | null;
+  status: OwnerPostDetailsStatus;
+  pinned: boolean;
+  commentsDisabled: boolean;
+  hideLikeCount: boolean;
+  /** @nullable */
+  coverUrl: string | null;
+  /** @nullable */
+  editedAt: string | null;
+  media: PostViewerMedia[];
+  author: PostViewerAuthor;
+  campaigns: OwnerPostDetailsCampaignsItem[];
+}
+
 export type PostViewerRecordKind =
   (typeof PostViewerRecordKind)[keyof typeof PostViewerRecordKind];
 
@@ -59,6 +131,12 @@ export interface PostViewerRecord {
   media: PostViewerMedia[];
   /** @nullable */
   externalUrl: string | null;
+  isOwner?: boolean;
+  commentsDisabled?: boolean;
+  hideLikeCount?: boolean;
+  /** @nullable */
+  editedAt?: string | null;
+  pinned?: boolean;
 }
 
 export interface PostViewerComment {
@@ -75,6 +153,8 @@ export interface PostViewerComment {
 export interface PostActivity {
   likes: number;
   liked: boolean;
+  likesHidden?: boolean;
+  commentsDisabled?: boolean;
   commentCount: number;
   comments: PostViewerComment[];
 }
@@ -224,6 +304,7 @@ export const BookmarkViewKind = {
 } as const;
 
 export interface BookmarkView {
+  archived?: boolean;
   id: string;
   kind: BookmarkViewKind;
   targetId: string;
@@ -610,6 +691,7 @@ export interface SupporterPostInput {
   organisation_id?: string | null;
   /** @nullable */
   campaign_id?: string | null;
+  coverMediaId?: string;
   /** @maxItems 5 */
   media: SupporterPostMediaInput[];
 }
@@ -621,6 +703,15 @@ export const SupporterPostRecordType = {
   photo: "photo",
   video: "video",
   text: "text",
+} as const;
+
+export type SupporterPostRecordStatus =
+  (typeof SupporterPostRecordStatus)[keyof typeof SupporterPostRecordStatus];
+
+export const SupporterPostRecordStatus = {
+  published: "published",
+  archived: "archived",
+  deleted: "deleted",
 } as const;
 
 export type SupporterPostRecordVisibility =
@@ -657,6 +748,12 @@ export interface SupporterPostRecord {
   /** @nullable */
   edited_at: string | null;
   removed: boolean;
+  pinned?: boolean;
+  commentsDisabled?: boolean;
+  hideLikeCount?: boolean;
+  /** @nullable */
+  coverUrl?: string | null;
+  status?: SupporterPostRecordStatus;
   visibility: SupporterPostRecordVisibility;
   media: SupporterPostMedia[];
   author: SupporterPostRecordAuthor;
@@ -1755,6 +1852,8 @@ export const CreateUpdateRequestTag = {
  * Add at least one photo/video, externalUrl, title or content. No progress-update category is required.
  */
 export interface CreateUpdateRequest {
+  coverMediaId?: string;
+  clientId?: string;
   title?: string;
   /** @deprecated */
   body?: string;

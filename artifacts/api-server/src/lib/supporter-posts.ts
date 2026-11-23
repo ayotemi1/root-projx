@@ -62,7 +62,7 @@ export function mediaViewer(req: Request): string | null {
   } catch { return null; }
 }
 export function canSeePost(post: Doc, author: Doc | null, viewer?: string | null) {
-  return !post.removed && author?.accountType === "supporter" &&
+  return !post.removed && post.status !== "deleted" && (post.status !== "archived" || post.author_id === viewer) && author?.accountType === "supporter" &&
     (post.author_id === viewer || author.publicProfile?.enabled === true);
 }
 export function matchesPostInterests(post: Doc, interests: string[], organisation: Doc | null) {
@@ -99,6 +99,9 @@ export async function postDto(post: Doc, viewer: string | null, token: string, a
     organisation_id: post.organisation_id ?? null, campaign_id: post.campaign_id ?? null,
     donation_post: post.donation_post === true,
     created_at: post.created_at, edited_at: post.edited_at ?? null, removed: !!post.removed,
+    status: post.status === "archived" ? "archived" : "published",
+    pinned: Array.isArray(author?.profileShowcase?.pinnedPosts) && author.profileShowcase.pinnedPosts.includes(`post:${post.id}`),
+    commentsDisabled: post.commentsDisabled === true, hideLikeCount: post.hideLikeCount === true, coverUrl: post.coverUrl || null,
     visibility: pp.enabled === true ? "public" : "private",
     author: {
       avatarUrl: typeof author?.avatarUrl === "string" ? author.avatarUrl : null,
@@ -106,7 +109,7 @@ export async function postDto(post: Doc, viewer: string | null, token: string, a
       publicId: pp.enabled === true ? pp.publicId ?? null : null,
       isOwner: post.author_id === viewer, following,
     },
-    media: media.filter(Boolean).map(m => mediaDto(m!)).sort((a, b) => Number(a.order) - Number(b.order)),
+    media: media.filter(Boolean).map(m => mediaDto(m!.type === "video" && post.coverUrl ? { ...m!, video_thumbnail_url: post.coverUrl } : m!)).sort((a, b) => Number(a.order) - Number(b.order)),
   };
 }
 export async function publicSupporter(publicId: string, token?: string): Promise<Doc | null> {

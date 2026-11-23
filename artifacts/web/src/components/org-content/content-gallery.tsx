@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Play, Image as ImageIcon, ExternalLink, Link2, Film, Images } from "lucide-react";
+import { Play, Image as ImageIcon, ExternalLink, Link2, Film, Images, Pin } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -106,22 +106,23 @@ export function ContentDialog({ item, onClose }: { item: FeedUpdate | null; onCl
 
 function Card({ item, onOpen, feed = false }: { item: FeedUpdate; onOpen: (trigger: HTMLElement) => void; feed?: boolean }) {
   const s = summarise(item);
-  const cover = s.images[0];
+  const cover = item.coverUrl || s.images[0];
   const hasVideo = s.videos.length > 0 || !!s.link?.embedUrl;
   const count = s.images.length + s.videos.length;
   return (
     <div
       onClick={e => { if (!(e.target as HTMLElement).closest("button,a,input")) onOpen(e.currentTarget); }}
       className={`group text-left bg-white border border-border overflow-hidden flex flex-col hover:shadow-md transition-all focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 ${feed ? "rounded-xl" : "rounded-sm"}`}
-      style={{ ["--tw-ring-color" as string]: RED }}
+      style={{ position: "relative", ["--tw-ring-color" as string]: RED }}
       data-testid={`card-content-${item._id}`}
     >
+      {item.pinned && <span className="absolute right-2 top-2 z-10 bg-[#F3EFE5] p-1" aria-label="Pinned post"><Pin size={14} aria-hidden /></span>}
       {feed && <p className="px-3 py-2 text-sm font-bold truncate">{item.orgName}</p>}
-      {s.videos[0] && feed ? <div className={`relative ${feed ? "aspect-[4/3]" : "aspect-square"} w-full bg-secondary overflow-hidden`}>
+      {s.videos[0] && feed ? <div className={`relative ${feed ? "aspect-[4/3]" : "aspect-[4/5]"} w-full bg-secondary overflow-hidden`}>
         <InlineVideoPlayer src={s.videos[0]} poster={cover} label={`${item.orgName || "Organisation"} video`} />
         {count > 1 && <span className="absolute top-2 left-2 z-10 text-[10px] font-bold px-1.5 py-0.5 rounded bg-black/60 text-white pointer-events-none">{count} items</span>}
       </div> : <button type="button" onClick={e => onOpen(e.currentTarget)} aria-label={`Open ${item.title || "post"}`}
-        className={`relative ${feed ? "aspect-[4/3]" : "aspect-square"} w-full bg-secondary overflow-hidden`}>
+        className={`relative ${feed ? "aspect-[4/3]" : "aspect-[4/5]"} w-full bg-secondary overflow-hidden`}>
         {cover ? (
           <img src={cover} alt="" loading="lazy" className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500" />
         ) : s.videos[0] ? (

@@ -3,7 +3,7 @@ import { rateLimit } from "express-rate-limit";
 import {
   PublishSupporterPostBody, RequestSupporterPostUploadBody, CompleteSupporterPostUploadBody,
 } from "@workspace/api-zod";
-import { optionalAuth, requireAuth } from "../lib/auth.js";
+import { optionalAuth, requireAuth, requireApprovedOrganisation } from "../lib/auth.js";
 import { fsGet, fsPatch, fsQuery, fsDelete, fsPublishSupporterPost, getServerToken } from "../lib/firebase-rest.js";
 import {
   POSTS, MEDIA, FOLLOWERS, UUID, POST_ERROR, PostError, fingerprint, canSeePost,
@@ -12,6 +12,7 @@ import {
 import { requestPostUpload, completePostUpload, mediaObject } from "../lib/supporter-post-uploads.js";
 import { isCampaignPublished } from "../lib/campaign-publication.js";
 import { communityChoices, matchesStructuredTag, postTagOptions, resolvePostTag, type PostAudience } from "../lib/supporter-post-tags.js";
+import { pipeMediaResponse } from "../lib/pipe-media-response.js";
 
 const router = Router();
 const noStore = (_req: Request, res: Response, next: () => void) => {
@@ -24,6 +25,10 @@ router.use("/supporter-posts", noStore);
 const supporter = (req: Request, res: Response, next: () => void) => {
   if (req.user?.accountType !== "supporter") { res.status(403).json({ error: POST_ERROR }); return; }
   next();
+};
+const mediaAccount = (req: Request, res: Response, next: () => void) => {
+  if (req.user?.accountType === "organisation") { void requireApprovedOrganisation(req, res, next); return; }
+  supporter(req, res, next);
 };
 const uploadLimit = rateLimit({
   windowMs: 3600_000, limit: 60, keyGenerator: req => req.user!.userId,
@@ -47,7 +52,7 @@ router.get("/supporter-posts/tags", requireAuth, supporter, async (req, res) => 
   try { res.json(await postTagOptions(req.user!.userId, await getServerToken())); }
   catch (error) { fail(req, res, error); }
 });
-router.post("/supporter-posts/uploads/request", requireAuth, supporter, uploadLimit, async (req, res) => {
+router.post("/supporter-posts/uploads/request", requireAuth, mediaAccount, uploadLimit, async (req, res) => {
   const body = RequestSupporterPostUploadBody.strict().safeParse(req.body);
   if (!body.success) {
     res.status(400).json({ error: "Choose a JPG, PNG or HEIC photo up to 20 MB, or an MP4 or MOV video up to 500 MB and 10 minutes." }); return;
@@ -55,7 +60,7 @@ router.post("/supporter-posts/uploads/request", requireAuth, supporter, uploadLi
   try { res.json(await requestPostUpload(req.user!.userId, body.data)); }
   catch (error) { fail(req, res, error); }
 });
-router.post("/supporter-posts/uploads/complete", requireAuth, supporter, completionLimit, async (req, res) => {
+router.post("/supporter-posts/uploads/complete", requireAuth, mediaAccount, completionLimit, async (req, res) => {
   const body = CompleteSupporterPostUploadBody.strict().safeParse(req.body);
   if (!body.success) { res.status(400).json({ error: POST_ERROR }); return; }
   try {
@@ -114,6 +119,7 @@ router.get("/supporter-posts", optionalAuth, async (req, res) => {
     }
     const output = [];
     for (const post of rows) {
+      if (post.status === "archived") continue;
       const uid = String(post.author_id);
       if (!authorCache.has(uid)) authorCache.set(uid, await fsGet("users", uid, token));
       const author = authorCache.get(uid)!;
@@ -128,7 +134,7 @@ router.get("/supporter-posts", optionalAuth, async (req, res) => {
       }
       output.push(await postDto(post, viewer, token, author!));
     }
-    res.json(output.sort((a, b) => String(b.created_at).localeCompare(String(a.created_at))).slice(0, 100));
+    res.json(output.sort((a, b) => (authorId ? Number(b.pinned) - Number(a.pinned) : 0) || String(b.created_at).localeCompare(String(a.created_at))).slice(0, 100));
   } catch (error) { fail(req, res, error); }
 });
 
@@ -166,14 +172,21 @@ router.post("/supporter-posts", requireAuth, supporter, async (req, res) => {
     const media = await Promise.all(input.media.map(m => fsGet(MEDIA, m.id, token)));
     if (media.some(m => !m || m.author_id !== uid || m.state !== "ready" || m.post_id)) throw new PostError(400);
     if (media.length && media[0]?.type !== input.type) throw new PostError(400);
+    const cover = input.coverMediaId ? await fsGet(MEDIA, input.coverMediaId, token) : null;
+    if (input.coverMediaId && (!cover || cover.author_id !== uid || cover.state !== "ready" || cover.type !== "photo" ||
+      cover.post_id || !media.some(m => m?.type === "video") || input.media.some(m => m.id === input.coverMediaId) ||
+      !(Number(cover.width) >= 1080 && Number(cover.height) >= 1350))) throw new PostError(400);
     const post = {
       id: input.id, author_id: uid, type: input.type, caption: input.caption,
       community_tag: tag?.label || input.community_tag?.trim() || null, tag,
       organisation_id: organisationId,
       campaign_id: input.campaign_id || null, created_at: new Date().toISOString(),
       edited_at: null, removed: false, media_ids: input.media.map(m => m.id), fingerprint: hash,
+      ...(cover ? { cover_media_id: input.coverMediaId, coverUrl: `/api/supporter-posts/media/${input.coverMediaId}` } : {}),
     };
-    try { await fsPublishSupporterPost(post, input.media, token); }
+    try { await fsPublishSupporterPost(post, cover ? [...input.media, {
+      id: String(input.coverMediaId), order: 0, crop: cover.crop, filter: "original", adjustments: cover.adjustments,
+    }] : input.media, token); }
     catch (error) {
       // A concurrent identical retry can have committed while this request was
       // awaiting its write. Return that record; never create another post ID.
@@ -226,10 +239,15 @@ const serveMedia = async (req: Request, res: Response) => {
     const media = await fsGet(MEDIA, id, token);
     if (!media || media.state !== "ready") throw new PostError(404);
     const viewer = mediaViewer(req);
-    const post = media.post_id ? await fsGet(POSTS, String(media.post_id), token) : null;
+    const post = media.post_id ? await fsGet(media.post_kind === "update" ? "updates" : POSTS, String(media.post_id), token) : null;
     const author = await fsGet("users", String(media.author_id), token);
-    if (!author || author.accountType !== "supporter") throw new PostError(404);
-    if (post ? post.author_id !== media.author_id || !canSeePost(post, author, viewer) || !(post.media_ids as string[])?.includes(id)
+    if (!author || author.deleted || !["supporter", "organisation"].includes(String(author.accountType))) throw new PostError(404);
+    if (media.post_kind === "update") {
+      const org = await fsGet("organisations", String(media.author_id), token);
+      if (!org || org.deleted || org.deletedAt || !post || post.orgId !== media.author_id || post.cover_media_id !== id ||
+        post.removed || ["deleted", "draft"].includes(String(post.status)) || post.status === "archived" && viewer !== media.author_id) throw new PostError(404);
+    } else if (post ? post.author_id !== media.author_id || !canSeePost(post, author, viewer) ||
+      !(post.media_ids as string[])?.includes(id) && post.cover_media_id !== id
       : viewer !== media.author_id) throw new PostError(404);
     const thumbnail = req.path.endsWith("/thumbnail");
     const path = thumbnail ? media.thumbnail_path : media.storage_path;
@@ -253,9 +271,7 @@ const serveMedia = async (req: Request, res: Response) => {
     }
     res.setHeader("Content-Length", end - start + 1);
     const stream = file.createReadStream({ start, end });
-    res.on("close", () => stream.destroy());
-    stream.on("error", error => fail(req, res, error));
-    stream.pipe(res);
+    pipeMediaResponse(stream, res, error => fail(req, res, error));
   } catch (error) { fail(req, res, error); }
 };
 router.get("/supporter-posts/media/:id/thumbnail", optionalAuth, serveMedia);

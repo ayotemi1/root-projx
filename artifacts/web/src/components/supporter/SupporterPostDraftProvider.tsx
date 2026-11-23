@@ -13,13 +13,16 @@ import {
 } from "@/lib/supporter-publishing";
 import { clearDraft, loadDraft, saveDraft, type StoredDraft } from "@/lib/supporter-post-drafts";
 import { SupporterPostDialog } from "./SupporterPostDialog";
+import { uploadPostCover } from "@/lib/post-cover";
+import { holdFeedPlayback } from "@/components/inline-video-player";
 
 export type DraftItem = {
   id: string; file: File; url: string; kind: PostMediaKind; broken: boolean; brokenReason?: string; ready: boolean; previewUnsupported: boolean;
   natural: number | null; edit: MediaEdit; objectPath: string | null; media: SupporterPostMedia | null;
+  coverFile?: File | null; coverMedia?: SupporterPostMedia | null;
 };
-export type DraftStage = "pick" | "crop" | "edit" | "caption";
-export const STAGES: DraftStage[] = ["pick", "crop", "edit", "caption"];
+export type DraftStage = "pick" | "crop" | "edit" | "cover" | "caption";
+export const STAGES: DraftStage[] = ["pick", "crop", "edit", "cover", "caption"];
 
 type Ctx = {
   open: boolean; stage: DraftStage; items: DraftItem[]; active: number; caption: string; errors: string[];
@@ -32,6 +35,7 @@ type Ctx = {
   move: (i: number, dir: -1 | 1) => void;
   setActive: (i: number) => void;
   setStage: (s: DraftStage) => void;
+  setCover: (id: string, file: File) => void;
   setCaption: (c: string) => void;
   setCommunityTag: (t: string | null) => void;
   setOrganisation: (id: string | null) => void;
@@ -73,6 +77,7 @@ export function SupporterPostDraftProvider({ children }: { children: ReactNode }
   const qc = useQueryClient();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
+  useEffect(() => open ? holdFeedPlayback() : undefined, [open]);
   const [stage, setStageRaw] = useState<DraftStage>("pick");
   const [items, setItems] = useState<DraftItem[]>([]);
   const [active, setActiveRaw] = useState(0);
@@ -102,7 +107,7 @@ export function SupporterPostDraftProvider({ children }: { children: ReactNode }
 
   const snapshot = useCallback((key: string): StoredDraft => ({
     userKey: key, postId: postIdRef.current, ...fieldsRef.current, savedAt: Date.now(),
-    items: itemsRef.current.map(i => ({ id: i.id, file: i.file, edit: i.edit, objectPath: i.objectPath, media: i.media })),
+    items: itemsRef.current.map(i => ({ id: i.id, file: i.file, edit: i.edit, objectPath: i.objectPath, media: i.media, coverFile: i.coverFile, coverMedia: i.coverMedia })),
   }), []);
 
   const clear = useCallback(() => {
@@ -125,11 +130,12 @@ export function SupporterPostDraftProvider({ children }: { children: ReactNode }
 
   const close = useCallback(() => { if (!sharingRef.current) closeKeeping(ownerKeyRef.current); }, [closeKeeping]);
 
-  const hydrate = useCallback((files: Array<{ file: File; edit?: MediaEdit; objectPath?: string | null; media?: SupporterPostMedia | null }>) => {
+  const hydrate = useCallback((files: Array<{ file: File; edit?: MediaEdit; objectPath?: string | null; media?: SupporterPostMedia | null; coverFile?: File | null; coverMedia?: SupporterPostMedia | null }>) => {
     const fresh: DraftItem[] = files.map(f => ({
       id: `pm-${++seq}`, file: f.file, url: isHeic(f.file) ? "" : URL.createObjectURL(f.file),
       kind: postMediaKind(f.file) ?? "image", broken: false, ready: false, previewUnsupported: false, natural: null,
       edit: normaliseEdit(f.edit ?? defaultEdit()), objectPath: f.objectPath ?? null, media: f.media ?? null,
+      coverFile: f.coverFile, coverMedia: f.coverMedia,
     }));
     for (const it of fresh) {
       if (it.url) continue;
@@ -269,6 +275,11 @@ export function SupporterPostDraftProvider({ children }: { children: ReactNode }
         patchItem(it.id, { media });
         setProgress(p => ({ ...p, [it.id]: 1 }));
       }
+      const coverItem = itemsRef.current.find(i => i.kind === "video" && i.coverFile);
+      if (coverItem?.coverFile && !coverItem.coverMedia) {
+        const coverMedia = await uploadPostCover(coverItem.coverFile, token);
+        patchItem(coverItem.id, { coverMedia });
+      }
       const list = itemsRef.current;
       const f = fieldsRef.current;
       const saved = await publishPost({
@@ -278,6 +289,7 @@ export function SupporterPostDraftProvider({ children }: { children: ReactNode }
         community_tag: f.communityTag,
         organisation_id: f.organisationId,
         campaign_id: f.organisationId ? f.campaignId : null,
+        ...(list.find(i => i.coverMedia)?.coverMedia ? { coverMediaId: list.find(i => i.coverMedia)!.coverMedia!.id } : {}),
         media: list.map((it, order) => ({ id: it.media!.id, order, crop: it.edit.crop, filter: it.edit.filter, adjustments: it.edit.adjustments })),
       }, token);
       void clearDraft(key);
@@ -299,7 +311,9 @@ export function SupporterPostDraftProvider({ children }: { children: ReactNode }
 
   const value: Ctx = {
     open, stage, items, active, caption, errors, communityTag, organisationId, campaignId, sharing, shareError, progress, processing, recovered,
-    openPicker, close, addFiles, removeAt, move, setActive, setStage, setCaption, setCommunityTag, setOrganisation, setCampaign,
+    openPicker, close, addFiles, removeAt, move, setActive, setStage,
+    setCover: (id, file) => patchItem(id, { coverFile: file, coverMedia: null }),
+    setCaption, setCommunityTag, setOrganisation, setCampaign,
     updateEdit, applyEditToAll, markBroken, markReady, share, restoreDraft, discardRecovered, returnFocusRef,
   };
 

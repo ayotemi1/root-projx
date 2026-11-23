@@ -8,6 +8,7 @@
 import type { BookmarkViewKind } from "./bookmarkViewKind";
 
 export interface BookmarkView {
+  archived?: boolean;
   id: string;
   kind: BookmarkViewKind;
   targetId: string;

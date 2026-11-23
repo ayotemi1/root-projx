@@ -11,6 +11,8 @@ import type { CreateUpdateRequestTag } from "./createUpdateRequestTag";
  * Add at least one photo/video, externalUrl, title or content. No progress-update category is required.
  */
 export interface CreateUpdateRequest {
+  coverMediaId?: string;
+  clientId?: string;
   title?: string;
   /** @deprecated */
   body?: string;

@@ -4,6 +4,7 @@ import type { MediaEdit } from "./supporter-post-media";
 /** Local, per-account draft recovery. Holds the original files plus finished upload references. */
 export type StoredDraftItem = {
   id: string; file: File; edit: MediaEdit; objectPath: string | null; media: SupporterPostMedia | null;
+  coverFile?: File | null; coverMedia?: SupporterPostMedia | null;
 };
 export type StoredDraft = {
   userKey: string; postId: string; caption: string; communityTag: string | null;
