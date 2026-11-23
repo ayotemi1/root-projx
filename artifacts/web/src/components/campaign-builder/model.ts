@@ -1,10 +1,12 @@
 import { currencyName, currencySymbol } from "@/lib/currency";
 import type {
   Campaign, CampaignBreakdownItem, CampaignEditorPatch, CampaignGate, CampaignLocation,
-  CampaignTheme, CampaignUnit, CampaignVideo, DrumExperience, DrumUpdate, Org,
+  CampaignPageDesign, CampaignTheme, CampaignUnit, CampaignVideo, DrumExperience, DrumUpdate, Org,
 } from "@/lib/api";
+import { PD, isStructured, narrativeLength, pageDesignProblem } from "./story-design";
 
 export const TAGLINE_MAX = 140;
+export const TITLE_MAX = PD.title;
 export const STORY_MIN = 200;
 export const MAX_LOCATIONS = 3;
 export const MAX_VIDEOS = 10;
@@ -79,6 +81,12 @@ export interface CampaignDraft {
   unitChosen: boolean;
   assistUsed: boolean;
   drumExperience: DrumExperience;
+  /** Editorial sections. Only sections the organiser has edited are present; the rest stay legacy. */
+  pageDesign: CampaignPageDesign;
+}
+
+function pageDesignOf(x: unknown): CampaignPageDesign {
+  return x && typeof x === "object" && !Array.isArray(x) ? (x as CampaignPageDesign) : {};
 }
 
 export const MAX_DRUM_UPDATES = 20;
@@ -136,6 +144,7 @@ export function draftFromCampaign(c: Campaign): CampaignDraft {
     unitChosen: c.unitChosen === true,
     assistUsed: !!c.assistUsed,
     drumExperience: drumExperienceOf(c.drumExperience),
+    pageDesign: pageDesignOf(c.pageDesign),
   };
 }
 
@@ -147,6 +156,7 @@ function num(s: string): number | null {
 
 /** Returns a plain-words message when the draft cannot be saved as-is. */
 export function validateDraft(d: CampaignDraft): string | null {
+  if (d.name.length > TITLE_MAX) return `Shorten the campaign title to ${TITLE_MAX} characters before saving. Your changes are kept on this device.`;
   const unit = currencyName(d.currency);
   const sym = currencySymbol(d.currency);
   if (d.tagline.length > TAGLINE_MAX) return `The one-line ask is ${d.tagline.length - TAGLINE_MAX} characters too long. Shorten it to ${TAGLINE_MAX}.`;
@@ -166,6 +176,8 @@ export function validateDraft(d: CampaignDraft): string | null {
   }
   if (d.locations.length > MAX_LOCATIONS) return `Add up to ${MAX_LOCATIONS} locations.`;
   if (d.videos.length > MAX_VIDEOS) return `Add up to ${MAX_VIDEOS} videos.`;
+  const pdProblem = pageDesignProblem(d.pageDesign);
+  if (pdProblem) return pdProblem;
   if (d.drumExperience?.enabled) {
     const why = drumBlockReason(d);
     if (why) return why;
@@ -178,7 +190,7 @@ export function validateDraft(d: CampaignDraft): string | null {
 export function migrateLegacyVideoDraft(v: CampaignDraft): CampaignDraft {
   const old = v as CampaignDraft & { videoOn?: boolean; videoUrl?: string; videoPoster?: string | null; videoCaptions?: string | null };
   const hasOld = "videoOn" in old || "videoUrl" in old || "videoPoster" in old || "videoCaptions" in old;
-  const { videoOn, videoUrl, videoPoster, videoCaptions, ...rest } = old;
+  const { videoOn, videoUrl, videoPoster, videoCaptions, pageDesign, ...rest } = old;
   const videos = Array.isArray(rest.videos)
     ? rest.videos.map(videoDraftOf)
     : hasOld && videoOn ? [videoDraftOf({ url: videoUrl ?? "", posterUrl: videoPoster ?? null, captionsUrl: videoCaptions ?? null })] : undefined;
@@ -187,6 +199,8 @@ export function migrateLegacyVideoDraft(v: CampaignDraft): CampaignDraft {
     ...(videos ? { videos: videos.slice(0, MAX_VIDEOS) } : {}),
     ...(rest.currency ? { currency: rest.currency === "usd" ? "usd" : "gbp" } : {}),
     drumExperience: drumExperienceOf((rest as Partial<CampaignDraft>).drumExperience),
+    // Older local drafts have no pageDesign: drop the key so the server copy is kept.
+    ...(pageDesign && typeof pageDesign === "object" && !Array.isArray(pageDesign) ? { pageDesign: pageDesignOf(pageDesign) } : {}),
   } as CampaignDraft;
 }
 
@@ -236,6 +250,7 @@ export function draftToPatch(d: CampaignDraft, prevTheme?: CampaignTheme): Campa
     drumExperience: d.drumExperience
       ? { enabled: d.drumExperience.enabled, updates: d.drumExperience.updates.slice(0, MAX_DRUM_UPDATES).map((u) => ({ ...u })) }
       : null,
+    pageDesign: d.pageDesign ?? {},
   };
 }
 
@@ -244,14 +259,14 @@ export function draftToPreviewCampaign(d: CampaignDraft, c: Campaign): Campaign 
   const p = draftToPatch(d, c.theme);
   return {
     ...c,
-    name: p.name || "Your campaign name",
+    name: p.name ?? "",
     tagline: p.tagline,
     type: d.type,
     goal: p.goal ?? 0,
     volunteersNeeded: p.volunteersNeeded ?? 0,
     partnerFunding: p.partnerFunding ?? null,
     deadline: p.deadline ?? null,
-    description: p.description || "Your story will appear here.",
+    description: p.description ?? "",
     breakdown: p.breakdown,
     locations: p.locations,
     imageUrl: p.imageUrl ?? null,
@@ -260,6 +275,7 @@ export function draftToPreviewCampaign(d: CampaignDraft, c: Campaign): Campaign 
     videos: p.videos ?? [],
     theme: p.theme,
     drumExperience: p.drumExperience ?? null,
+    pageDesign: d.pageDesign ?? {},
     enabled: true,
   };
 }
@@ -277,9 +293,18 @@ export function computeGates(d: CampaignDraft, org: Org | null | undefined): Cli
     out.push({ id: "campaign_name", message: "Add a campaign name and a one-line ask.", step: 1 });
   const g = Number(d.goal);
   if (!(g > 0)) out.push({ id: "goal", message: "Set a goal above zero.", step: 2 });
-  const len = d.description.trim().length;
+  if (d.name.trim().length > TITLE_MAX)
+    out.push({ id: "campaign_name_length", message: `Shorten the campaign title to ${TITLE_MAX} characters (${d.name.trim().length} now).`, step: 1 });
+  const len = isStructured(d.pageDesign) ? narrativeLength(d.description, d.pageDesign) : d.description.trim().length;
   if (len < STORY_MIN)
     out.push({ id: "story", message: `Write at least ${STORY_MIN} characters of story (${STORY_MIN - len} to go).`, step: 3 });
+  const pd = d.pageDesign;
+  if (pd?.programme?.boxes.some((b) => !b.title.trim()))
+    out.push({ id: "programme_titles", message: "Give every programme box a title.", step: 3 });
+  if (pd?.outcomes?.boxes.some((b) => !b.title.trim()))
+    out.push({ id: "outcome_titles", message: "Give every outcome box a title.", step: 3 });
+  if (pd?.team?.people.some((p) => !p.name.trim()))
+    out.push({ id: "team_names", message: "Add a name for every person in Who's running it.", step: 3 });
   if (!d.imageUrl) out.push({ id: "hero", message: "Add a hero image.", step: 4 });
   if (org) {
     const short = (org.shortDescription ?? "").trim().length;

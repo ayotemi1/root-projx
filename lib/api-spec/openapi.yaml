@@ -2275,6 +2275,108 @@ components:
         field: {type: string, enum: [tagline, description, breakdown.detail, locations.description]}
         instruction: {type: string, maxLength: 1000}
       required: [campaignId, field, instruction]
+    CampaignEditableSection:
+      type: string
+      enum: [need, programme, outcomes, team, money, wall]
+    CampaignColourScheme:
+      type: string
+      enum: [cream, white, red, ink, yellow]
+    CampaignSectionCopy:
+      type: object
+      additionalProperties: false
+      required: [headline, intro]
+      properties:
+        headline: {type: string, maxLength: 60}
+        intro: {type: string, maxLength: 250}
+    CampaignProgrammeBox:
+      type: object
+      additionalProperties: false
+      required: [id, title, text]
+      properties:
+        id: {type: string, minLength: 1, maxLength: 80}
+        title: {type: string, maxLength: 30}
+        text: {type: string, maxLength: 160}
+    CampaignOutcomeBox:
+      type: object
+      additionalProperties: false
+      required: [id, title, text]
+      properties:
+        id: {type: string, minLength: 1, maxLength: 80}
+        title: {type: string, maxLength: 40}
+        text: {type: string, maxLength: 80}
+    CampaignProgrammeSection:
+      type: object
+      additionalProperties: false
+      required: [headline, intro, boxes]
+      properties:
+        headline: {type: string, maxLength: 60}
+        intro: {type: string, maxLength: 250}
+        boxes:
+          type: array
+          minItems: 2
+          maxItems: 4
+          items: {$ref: "#/components/schemas/CampaignProgrammeBox"}
+    CampaignOutcomesSection:
+      type: object
+      additionalProperties: false
+      required: [headline, intro, boxes]
+      properties:
+        headline: {type: string, maxLength: 60}
+        intro: {type: string, maxLength: 250}
+        boxes:
+          type: array
+          minItems: 3
+          maxItems: 6
+          items: {$ref: "#/components/schemas/CampaignOutcomeBox"}
+    CampaignPerson:
+      type: object
+      additionalProperties: false
+      required: [id, name, role]
+      properties:
+        id: {type: string, minLength: 1, maxLength: 80}
+        name: {type: string, maxLength: 40}
+        role: {type: string, maxLength: 50}
+        photoUrl: {type: [string, "null"], maxLength: 2048}
+    CampaignPeopleSection:
+      type: object
+      additionalProperties: false
+      required: [headline, intro, people]
+      properties:
+        headline: {type: string, maxLength: 60}
+        intro: {type: string, maxLength: 250}
+        people:
+          type: array
+          minItems: 1
+          maxItems: 8
+          items: {$ref: "#/components/schemas/CampaignPerson"}
+    CampaignSectionSchemes:
+      type: object
+      additionalProperties: false
+      properties:
+        need: {$ref: "#/components/schemas/CampaignColourScheme"}
+        programme: {$ref: "#/components/schemas/CampaignColourScheme"}
+        outcomes: {$ref: "#/components/schemas/CampaignColourScheme"}
+        team: {$ref: "#/components/schemas/CampaignColourScheme"}
+        money: {$ref: "#/components/schemas/CampaignColourScheme"}
+        wall: {$ref: "#/components/schemas/CampaignColourScheme"}
+    CampaignPageDesign:
+      type: object
+      additionalProperties: false
+      description: Optional editorial sections and presentation only. Never totals, donation settings, member permissions or public/published state. Omitted sections retain legacy content.
+      properties:
+        need: {$ref: "#/components/schemas/CampaignSectionCopy"}
+        programme: {$ref: "#/components/schemas/CampaignProgrammeSection"}
+        outcomes: {$ref: "#/components/schemas/CampaignOutcomesSection"}
+        team: {$ref: "#/components/schemas/CampaignPeopleSection"}
+        money: {$ref: "#/components/schemas/CampaignSectionCopy"}
+        wall: {$ref: "#/components/schemas/CampaignSectionCopy"}
+        order:
+          type: array
+          minItems: 6
+          maxItems: 6
+          uniqueItems: true
+          items: {$ref: "#/components/schemas/CampaignEditableSection"}
+        schemes: {$ref: "#/components/schemas/CampaignSectionSchemes"}
     CampaignEditorRequest:
       type: object
       properties:
@@ -2287,7 +2389,11 @@ components:
           enum: [gbp, usd]
           default: gbp
           description: "Campaign goals and donations use this currency. Locked once checkout has started."
-        name: {type: string, maxLength: 200}
+        name: {type: string, maxLength: 30}
+        pageDesign:
+          anyOf:
+            - {$ref: "#/components/schemas/CampaignPageDesign"}
+            - {type: "null"}
         tagline: {type: string, maxLength: 140}
         description: {type: string, maxLength: 20000}
         pageContent:

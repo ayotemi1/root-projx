@@ -848,7 +848,62 @@ export const getOwnerCampaignPreviewResponseCampaignOneDrumExperienceOneUpdatesI
 export const getOwnerCampaignPreviewResponseCampaignOneDrumExperienceOneUpdatesMax = 20;
 
 export const getOwnerCampaignPreviewResponseCampaignOneCurrencyDefault = `gbp`;
-export const getOwnerCampaignPreviewResponseCampaignOneNameMax = 200;
+export const getOwnerCampaignPreviewResponseCampaignOneNameMax = 30;
+
+export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneNeedHeadlineMax = 60;
+
+export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneNeedIntroMax = 250;
+
+export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneProgrammeHeadlineMax = 60;
+
+export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneProgrammeIntroMax = 250;
+
+export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneProgrammeBoxesItemIdMax = 80;
+
+export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneProgrammeBoxesItemTitleMax = 30;
+
+export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneProgrammeBoxesItemTextMax = 160;
+
+export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneProgrammeBoxesMin = 2;
+export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneProgrammeBoxesMax = 4;
+
+export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneOutcomesHeadlineMax = 60;
+
+export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneOutcomesIntroMax = 250;
+
+export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneOutcomesBoxesItemIdMax = 80;
+
+export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneOutcomesBoxesItemTitleMax = 40;
+
+export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneOutcomesBoxesItemTextMax = 80;
+
+export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneOutcomesBoxesMin = 3;
+export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneOutcomesBoxesMax = 6;
+
+export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneTeamHeadlineMax = 60;
+
+export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneTeamIntroMax = 250;
+
+export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneTeamPeopleItemIdMax = 80;
+
+export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneTeamPeopleItemNameMax = 40;
+
+export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneTeamPeopleItemRoleMax = 50;
+
+export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneTeamPeopleItemPhotoUrlMax = 2048;
+
+export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneTeamPeopleMax = 8;
+
+export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneMoneyHeadlineMax = 60;
+
+export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneMoneyIntroMax = 250;
+
+export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneWallHeadlineMax = 60;
+
+export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneWallIntroMax = 250;
+
+export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneOrderMin = 6;
+export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneOrderMax = 6;
 
 export const getOwnerCampaignPreviewResponseCampaignOneTaglineMax = 140;
 
@@ -948,6 +1003,226 @@ export const GetOwnerCampaignPreviewResponse = zod.object({
       name: zod
         .string()
         .max(getOwnerCampaignPreviewResponseCampaignOneNameMax)
+        .optional(),
+      pageDesign: zod
+        .union([
+          zod
+            .object({
+              need: zod
+                .object({
+                  headline: zod
+                    .string()
+                    .max(
+                      getOwnerCampaignPreviewResponseCampaignOnePageDesignOneNeedHeadlineMax,
+                    ),
+                  intro: zod
+                    .string()
+                    .max(
+                      getOwnerCampaignPreviewResponseCampaignOnePageDesignOneNeedIntroMax,
+                    ),
+                })
+                .optional(),
+              programme: zod
+                .object({
+                  headline: zod
+                    .string()
+                    .max(
+                      getOwnerCampaignPreviewResponseCampaignOnePageDesignOneProgrammeHeadlineMax,
+                    ),
+                  intro: zod
+                    .string()
+                    .max(
+                      getOwnerCampaignPreviewResponseCampaignOnePageDesignOneProgrammeIntroMax,
+                    ),
+                  boxes: zod
+                    .array(
+                      zod.object({
+                        id: zod
+                          .string()
+                          .min(1)
+                          .max(
+                            getOwnerCampaignPreviewResponseCampaignOnePageDesignOneProgrammeBoxesItemIdMax,
+                          ),
+                        title: zod
+                          .string()
+                          .max(
+                            getOwnerCampaignPreviewResponseCampaignOnePageDesignOneProgrammeBoxesItemTitleMax,
+                          ),
+                        text: zod
+                          .string()
+                          .max(
+                            getOwnerCampaignPreviewResponseCampaignOnePageDesignOneProgrammeBoxesItemTextMax,
+                          ),
+                      }),
+                    )
+                    .min(
+                      getOwnerCampaignPreviewResponseCampaignOnePageDesignOneProgrammeBoxesMin,
+                    )
+                    .max(
+                      getOwnerCampaignPreviewResponseCampaignOnePageDesignOneProgrammeBoxesMax,
+                    ),
+                })
+                .optional(),
+              outcomes: zod
+                .object({
+                  headline: zod
+                    .string()
+                    .max(
+                      getOwnerCampaignPreviewResponseCampaignOnePageDesignOneOutcomesHeadlineMax,
+                    ),
+                  intro: zod
+                    .string()
+                    .max(
+                      getOwnerCampaignPreviewResponseCampaignOnePageDesignOneOutcomesIntroMax,
+                    ),
+                  boxes: zod
+                    .array(
+                      zod.object({
+                        id: zod
+                          .string()
+                          .min(1)
+                          .max(
+                            getOwnerCampaignPreviewResponseCampaignOnePageDesignOneOutcomesBoxesItemIdMax,
+                          ),
+                        title: zod
+                          .string()
+                          .max(
+                            getOwnerCampaignPreviewResponseCampaignOnePageDesignOneOutcomesBoxesItemTitleMax,
+                          ),
+                        text: zod
+                          .string()
+                          .max(
+                            getOwnerCampaignPreviewResponseCampaignOnePageDesignOneOutcomesBoxesItemTextMax,
+                          ),
+                      }),
+                    )
+                    .min(
+                      getOwnerCampaignPreviewResponseCampaignOnePageDesignOneOutcomesBoxesMin,
+                    )
+                    .max(
+                      getOwnerCampaignPreviewResponseCampaignOnePageDesignOneOutcomesBoxesMax,
+                    ),
+                })
+                .optional(),
+              team: zod
+                .object({
+                  headline: zod
+                    .string()
+                    .max(
+                      getOwnerCampaignPreviewResponseCampaignOnePageDesignOneTeamHeadlineMax,
+                    ),
+                  intro: zod
+                    .string()
+                    .max(
+                      getOwnerCampaignPreviewResponseCampaignOnePageDesignOneTeamIntroMax,
+                    ),
+                  people: zod
+                    .array(
+                      zod.object({
+                        id: zod
+                          .string()
+                          .min(1)
+                          .max(
+                            getOwnerCampaignPreviewResponseCampaignOnePageDesignOneTeamPeopleItemIdMax,
+                          ),
+                        name: zod
+                          .string()
+                          .max(
+                            getOwnerCampaignPreviewResponseCampaignOnePageDesignOneTeamPeopleItemNameMax,
+                          ),
+                        role: zod
+                          .string()
+                          .max(
+                            getOwnerCampaignPreviewResponseCampaignOnePageDesignOneTeamPeopleItemRoleMax,
+                          ),
+                        photoUrl: zod
+                          .string()
+                          .max(
+                            getOwnerCampaignPreviewResponseCampaignOnePageDesignOneTeamPeopleItemPhotoUrlMax,
+                          )
+                          .nullish(),
+                      }),
+                    )
+                    .min(1)
+                    .max(
+                      getOwnerCampaignPreviewResponseCampaignOnePageDesignOneTeamPeopleMax,
+                    ),
+                })
+                .optional(),
+              money: zod
+                .object({
+                  headline: zod
+                    .string()
+                    .max(
+                      getOwnerCampaignPreviewResponseCampaignOnePageDesignOneMoneyHeadlineMax,
+                    ),
+                  intro: zod
+                    .string()
+                    .max(
+                      getOwnerCampaignPreviewResponseCampaignOnePageDesignOneMoneyIntroMax,
+                    ),
+                })
+                .optional(),
+              wall: zod
+                .object({
+                  headline: zod
+                    .string()
+                    .max(
+                      getOwnerCampaignPreviewResponseCampaignOnePageDesignOneWallHeadlineMax,
+                    ),
+                  intro: zod
+                    .string()
+                    .max(
+                      getOwnerCampaignPreviewResponseCampaignOnePageDesignOneWallIntroMax,
+                    ),
+                })
+                .optional(),
+              order: zod
+                .array(
+                  zod.enum([
+                    "need",
+                    "programme",
+                    "outcomes",
+                    "team",
+                    "money",
+                    "wall",
+                  ]),
+                )
+                .min(
+                  getOwnerCampaignPreviewResponseCampaignOnePageDesignOneOrderMin,
+                )
+                .max(
+                  getOwnerCampaignPreviewResponseCampaignOnePageDesignOneOrderMax,
+                )
+                .optional(),
+              schemes: zod
+                .object({
+                  need: zod
+                    .enum(["cream", "white", "red", "ink", "yellow"])
+                    .optional(),
+                  programme: zod
+                    .enum(["cream", "white", "red", "ink", "yellow"])
+                    .optional(),
+                  outcomes: zod
+                    .enum(["cream", "white", "red", "ink", "yellow"])
+                    .optional(),
+                  team: zod
+                    .enum(["cream", "white", "red", "ink", "yellow"])
+                    .optional(),
+                  money: zod
+                    .enum(["cream", "white", "red", "ink", "yellow"])
+                    .optional(),
+                  wall: zod
+                    .enum(["cream", "white", "red", "ink", "yellow"])
+                    .optional(),
+                })
+                .optional(),
+            })
+            .describe(
+              "Optional editorial sections and presentation only. Never totals, donation settings, member permissions or public\/published state. Omitted sections retain legacy content.",
+            ),
+          zod.null(),
+        ])
         .optional(),
       tagline: zod
         .string()
@@ -1320,7 +1595,62 @@ export const getPublicCampaignsResponseOneDrumExperienceOneUpdatesItemCaptionMax
 export const getPublicCampaignsResponseOneDrumExperienceOneUpdatesMax = 20;
 
 export const getPublicCampaignsResponseOneCurrencyDefault = `gbp`;
-export const getPublicCampaignsResponseOneNameMax = 200;
+export const getPublicCampaignsResponseOneNameMax = 30;
+
+export const getPublicCampaignsResponseOnePageDesignOneNeedHeadlineMax = 60;
+
+export const getPublicCampaignsResponseOnePageDesignOneNeedIntroMax = 250;
+
+export const getPublicCampaignsResponseOnePageDesignOneProgrammeHeadlineMax = 60;
+
+export const getPublicCampaignsResponseOnePageDesignOneProgrammeIntroMax = 250;
+
+export const getPublicCampaignsResponseOnePageDesignOneProgrammeBoxesItemIdMax = 80;
+
+export const getPublicCampaignsResponseOnePageDesignOneProgrammeBoxesItemTitleMax = 30;
+
+export const getPublicCampaignsResponseOnePageDesignOneProgrammeBoxesItemTextMax = 160;
+
+export const getPublicCampaignsResponseOnePageDesignOneProgrammeBoxesMin = 2;
+export const getPublicCampaignsResponseOnePageDesignOneProgrammeBoxesMax = 4;
+
+export const getPublicCampaignsResponseOnePageDesignOneOutcomesHeadlineMax = 60;
+
+export const getPublicCampaignsResponseOnePageDesignOneOutcomesIntroMax = 250;
+
+export const getPublicCampaignsResponseOnePageDesignOneOutcomesBoxesItemIdMax = 80;
+
+export const getPublicCampaignsResponseOnePageDesignOneOutcomesBoxesItemTitleMax = 40;
+
+export const getPublicCampaignsResponseOnePageDesignOneOutcomesBoxesItemTextMax = 80;
+
+export const getPublicCampaignsResponseOnePageDesignOneOutcomesBoxesMin = 3;
+export const getPublicCampaignsResponseOnePageDesignOneOutcomesBoxesMax = 6;
+
+export const getPublicCampaignsResponseOnePageDesignOneTeamHeadlineMax = 60;
+
+export const getPublicCampaignsResponseOnePageDesignOneTeamIntroMax = 250;
+
+export const getPublicCampaignsResponseOnePageDesignOneTeamPeopleItemIdMax = 80;
+
+export const getPublicCampaignsResponseOnePageDesignOneTeamPeopleItemNameMax = 40;
+
+export const getPublicCampaignsResponseOnePageDesignOneTeamPeopleItemRoleMax = 50;
+
+export const getPublicCampaignsResponseOnePageDesignOneTeamPeopleItemPhotoUrlMax = 2048;
+
+export const getPublicCampaignsResponseOnePageDesignOneTeamPeopleMax = 8;
+
+export const getPublicCampaignsResponseOnePageDesignOneMoneyHeadlineMax = 60;
+
+export const getPublicCampaignsResponseOnePageDesignOneMoneyIntroMax = 250;
+
+export const getPublicCampaignsResponseOnePageDesignOneWallHeadlineMax = 60;
+
+export const getPublicCampaignsResponseOnePageDesignOneWallIntroMax = 250;
+
+export const getPublicCampaignsResponseOnePageDesignOneOrderMin = 6;
+export const getPublicCampaignsResponseOnePageDesignOneOrderMax = 6;
 
 export const getPublicCampaignsResponseOneTaglineMax = 140;
 
@@ -1415,6 +1745,212 @@ export const GetPublicCampaignsResponseItem = zod
         "Campaign goals and donations use this currency. Locked once checkout has started.",
       ),
     name: zod.string().max(getPublicCampaignsResponseOneNameMax).optional(),
+    pageDesign: zod
+      .union([
+        zod
+          .object({
+            need: zod
+              .object({
+                headline: zod
+                  .string()
+                  .max(
+                    getPublicCampaignsResponseOnePageDesignOneNeedHeadlineMax,
+                  ),
+                intro: zod
+                  .string()
+                  .max(getPublicCampaignsResponseOnePageDesignOneNeedIntroMax),
+              })
+              .optional(),
+            programme: zod
+              .object({
+                headline: zod
+                  .string()
+                  .max(
+                    getPublicCampaignsResponseOnePageDesignOneProgrammeHeadlineMax,
+                  ),
+                intro: zod
+                  .string()
+                  .max(
+                    getPublicCampaignsResponseOnePageDesignOneProgrammeIntroMax,
+                  ),
+                boxes: zod
+                  .array(
+                    zod.object({
+                      id: zod
+                        .string()
+                        .min(1)
+                        .max(
+                          getPublicCampaignsResponseOnePageDesignOneProgrammeBoxesItemIdMax,
+                        ),
+                      title: zod
+                        .string()
+                        .max(
+                          getPublicCampaignsResponseOnePageDesignOneProgrammeBoxesItemTitleMax,
+                        ),
+                      text: zod
+                        .string()
+                        .max(
+                          getPublicCampaignsResponseOnePageDesignOneProgrammeBoxesItemTextMax,
+                        ),
+                    }),
+                  )
+                  .min(
+                    getPublicCampaignsResponseOnePageDesignOneProgrammeBoxesMin,
+                  )
+                  .max(
+                    getPublicCampaignsResponseOnePageDesignOneProgrammeBoxesMax,
+                  ),
+              })
+              .optional(),
+            outcomes: zod
+              .object({
+                headline: zod
+                  .string()
+                  .max(
+                    getPublicCampaignsResponseOnePageDesignOneOutcomesHeadlineMax,
+                  ),
+                intro: zod
+                  .string()
+                  .max(
+                    getPublicCampaignsResponseOnePageDesignOneOutcomesIntroMax,
+                  ),
+                boxes: zod
+                  .array(
+                    zod.object({
+                      id: zod
+                        .string()
+                        .min(1)
+                        .max(
+                          getPublicCampaignsResponseOnePageDesignOneOutcomesBoxesItemIdMax,
+                        ),
+                      title: zod
+                        .string()
+                        .max(
+                          getPublicCampaignsResponseOnePageDesignOneOutcomesBoxesItemTitleMax,
+                        ),
+                      text: zod
+                        .string()
+                        .max(
+                          getPublicCampaignsResponseOnePageDesignOneOutcomesBoxesItemTextMax,
+                        ),
+                    }),
+                  )
+                  .min(
+                    getPublicCampaignsResponseOnePageDesignOneOutcomesBoxesMin,
+                  )
+                  .max(
+                    getPublicCampaignsResponseOnePageDesignOneOutcomesBoxesMax,
+                  ),
+              })
+              .optional(),
+            team: zod
+              .object({
+                headline: zod
+                  .string()
+                  .max(
+                    getPublicCampaignsResponseOnePageDesignOneTeamHeadlineMax,
+                  ),
+                intro: zod
+                  .string()
+                  .max(getPublicCampaignsResponseOnePageDesignOneTeamIntroMax),
+                people: zod
+                  .array(
+                    zod.object({
+                      id: zod
+                        .string()
+                        .min(1)
+                        .max(
+                          getPublicCampaignsResponseOnePageDesignOneTeamPeopleItemIdMax,
+                        ),
+                      name: zod
+                        .string()
+                        .max(
+                          getPublicCampaignsResponseOnePageDesignOneTeamPeopleItemNameMax,
+                        ),
+                      role: zod
+                        .string()
+                        .max(
+                          getPublicCampaignsResponseOnePageDesignOneTeamPeopleItemRoleMax,
+                        ),
+                      photoUrl: zod
+                        .string()
+                        .max(
+                          getPublicCampaignsResponseOnePageDesignOneTeamPeopleItemPhotoUrlMax,
+                        )
+                        .nullish(),
+                    }),
+                  )
+                  .min(1)
+                  .max(getPublicCampaignsResponseOnePageDesignOneTeamPeopleMax),
+              })
+              .optional(),
+            money: zod
+              .object({
+                headline: zod
+                  .string()
+                  .max(
+                    getPublicCampaignsResponseOnePageDesignOneMoneyHeadlineMax,
+                  ),
+                intro: zod
+                  .string()
+                  .max(getPublicCampaignsResponseOnePageDesignOneMoneyIntroMax),
+              })
+              .optional(),
+            wall: zod
+              .object({
+                headline: zod
+                  .string()
+                  .max(
+                    getPublicCampaignsResponseOnePageDesignOneWallHeadlineMax,
+                  ),
+                intro: zod
+                  .string()
+                  .max(getPublicCampaignsResponseOnePageDesignOneWallIntroMax),
+              })
+              .optional(),
+            order: zod
+              .array(
+                zod.enum([
+                  "need",
+                  "programme",
+                  "outcomes",
+                  "team",
+                  "money",
+                  "wall",
+                ]),
+              )
+              .min(getPublicCampaignsResponseOnePageDesignOneOrderMin)
+              .max(getPublicCampaignsResponseOnePageDesignOneOrderMax)
+              .optional(),
+            schemes: zod
+              .object({
+                need: zod
+                  .enum(["cream", "white", "red", "ink", "yellow"])
+                  .optional(),
+                programme: zod
+                  .enum(["cream", "white", "red", "ink", "yellow"])
+                  .optional(),
+                outcomes: zod
+                  .enum(["cream", "white", "red", "ink", "yellow"])
+                  .optional(),
+                team: zod
+                  .enum(["cream", "white", "red", "ink", "yellow"])
+                  .optional(),
+                money: zod
+                  .enum(["cream", "white", "red", "ink", "yellow"])
+                  .optional(),
+                wall: zod
+                  .enum(["cream", "white", "red", "ink", "yellow"])
+                  .optional(),
+              })
+              .optional(),
+          })
+          .describe(
+            "Optional editorial sections and presentation only. Never totals, donation settings, member permissions or public\/published state. Omitted sections retain legacy content.",
+          ),
+        zod.null(),
+      ])
+      .optional(),
     tagline: zod
       .string()
       .max(getPublicCampaignsResponseOneTaglineMax)
@@ -1608,7 +2144,62 @@ export const createCampaignDraftBodyDrumExperienceOneUpdatesItemCaptionMax = 500
 export const createCampaignDraftBodyDrumExperienceOneUpdatesMax = 20;
 
 export const createCampaignDraftBodyCurrencyDefault = `gbp`;
-export const createCampaignDraftBodyNameMax = 200;
+export const createCampaignDraftBodyNameMax = 30;
+
+export const createCampaignDraftBodyPageDesignOneNeedHeadlineMax = 60;
+
+export const createCampaignDraftBodyPageDesignOneNeedIntroMax = 250;
+
+export const createCampaignDraftBodyPageDesignOneProgrammeHeadlineMax = 60;
+
+export const createCampaignDraftBodyPageDesignOneProgrammeIntroMax = 250;
+
+export const createCampaignDraftBodyPageDesignOneProgrammeBoxesItemIdMax = 80;
+
+export const createCampaignDraftBodyPageDesignOneProgrammeBoxesItemTitleMax = 30;
+
+export const createCampaignDraftBodyPageDesignOneProgrammeBoxesItemTextMax = 160;
+
+export const createCampaignDraftBodyPageDesignOneProgrammeBoxesMin = 2;
+export const createCampaignDraftBodyPageDesignOneProgrammeBoxesMax = 4;
+
+export const createCampaignDraftBodyPageDesignOneOutcomesHeadlineMax = 60;
+
+export const createCampaignDraftBodyPageDesignOneOutcomesIntroMax = 250;
+
+export const createCampaignDraftBodyPageDesignOneOutcomesBoxesItemIdMax = 80;
+
+export const createCampaignDraftBodyPageDesignOneOutcomesBoxesItemTitleMax = 40;
+
+export const createCampaignDraftBodyPageDesignOneOutcomesBoxesItemTextMax = 80;
+
+export const createCampaignDraftBodyPageDesignOneOutcomesBoxesMin = 3;
+export const createCampaignDraftBodyPageDesignOneOutcomesBoxesMax = 6;
+
+export const createCampaignDraftBodyPageDesignOneTeamHeadlineMax = 60;
+
+export const createCampaignDraftBodyPageDesignOneTeamIntroMax = 250;
+
+export const createCampaignDraftBodyPageDesignOneTeamPeopleItemIdMax = 80;
+
+export const createCampaignDraftBodyPageDesignOneTeamPeopleItemNameMax = 40;
+
+export const createCampaignDraftBodyPageDesignOneTeamPeopleItemRoleMax = 50;
+
+export const createCampaignDraftBodyPageDesignOneTeamPeopleItemPhotoUrlMax = 2048;
+
+export const createCampaignDraftBodyPageDesignOneTeamPeopleMax = 8;
+
+export const createCampaignDraftBodyPageDesignOneMoneyHeadlineMax = 60;
+
+export const createCampaignDraftBodyPageDesignOneMoneyIntroMax = 250;
+
+export const createCampaignDraftBodyPageDesignOneWallHeadlineMax = 60;
+
+export const createCampaignDraftBodyPageDesignOneWallIntroMax = 250;
+
+export const createCampaignDraftBodyPageDesignOneOrderMin = 6;
+export const createCampaignDraftBodyPageDesignOneOrderMax = 6;
 
 export const createCampaignDraftBodyTaglineMax = 140;
 
@@ -1694,6 +2285,188 @@ export const CreateCampaignDraftBody = zod.object({
       "Campaign goals and donations use this currency. Locked once checkout has started.",
     ),
   name: zod.string().max(createCampaignDraftBodyNameMax).optional(),
+  pageDesign: zod
+    .union([
+      zod
+        .object({
+          need: zod
+            .object({
+              headline: zod
+                .string()
+                .max(createCampaignDraftBodyPageDesignOneNeedHeadlineMax),
+              intro: zod
+                .string()
+                .max(createCampaignDraftBodyPageDesignOneNeedIntroMax),
+            })
+            .optional(),
+          programme: zod
+            .object({
+              headline: zod
+                .string()
+                .max(createCampaignDraftBodyPageDesignOneProgrammeHeadlineMax),
+              intro: zod
+                .string()
+                .max(createCampaignDraftBodyPageDesignOneProgrammeIntroMax),
+              boxes: zod
+                .array(
+                  zod.object({
+                    id: zod
+                      .string()
+                      .min(1)
+                      .max(
+                        createCampaignDraftBodyPageDesignOneProgrammeBoxesItemIdMax,
+                      ),
+                    title: zod
+                      .string()
+                      .max(
+                        createCampaignDraftBodyPageDesignOneProgrammeBoxesItemTitleMax,
+                      ),
+                    text: zod
+                      .string()
+                      .max(
+                        createCampaignDraftBodyPageDesignOneProgrammeBoxesItemTextMax,
+                      ),
+                  }),
+                )
+                .min(createCampaignDraftBodyPageDesignOneProgrammeBoxesMin)
+                .max(createCampaignDraftBodyPageDesignOneProgrammeBoxesMax),
+            })
+            .optional(),
+          outcomes: zod
+            .object({
+              headline: zod
+                .string()
+                .max(createCampaignDraftBodyPageDesignOneOutcomesHeadlineMax),
+              intro: zod
+                .string()
+                .max(createCampaignDraftBodyPageDesignOneOutcomesIntroMax),
+              boxes: zod
+                .array(
+                  zod.object({
+                    id: zod
+                      .string()
+                      .min(1)
+                      .max(
+                        createCampaignDraftBodyPageDesignOneOutcomesBoxesItemIdMax,
+                      ),
+                    title: zod
+                      .string()
+                      .max(
+                        createCampaignDraftBodyPageDesignOneOutcomesBoxesItemTitleMax,
+                      ),
+                    text: zod
+                      .string()
+                      .max(
+                        createCampaignDraftBodyPageDesignOneOutcomesBoxesItemTextMax,
+                      ),
+                  }),
+                )
+                .min(createCampaignDraftBodyPageDesignOneOutcomesBoxesMin)
+                .max(createCampaignDraftBodyPageDesignOneOutcomesBoxesMax),
+            })
+            .optional(),
+          team: zod
+            .object({
+              headline: zod
+                .string()
+                .max(createCampaignDraftBodyPageDesignOneTeamHeadlineMax),
+              intro: zod
+                .string()
+                .max(createCampaignDraftBodyPageDesignOneTeamIntroMax),
+              people: zod
+                .array(
+                  zod.object({
+                    id: zod
+                      .string()
+                      .min(1)
+                      .max(
+                        createCampaignDraftBodyPageDesignOneTeamPeopleItemIdMax,
+                      ),
+                    name: zod
+                      .string()
+                      .max(
+                        createCampaignDraftBodyPageDesignOneTeamPeopleItemNameMax,
+                      ),
+                    role: zod
+                      .string()
+                      .max(
+                        createCampaignDraftBodyPageDesignOneTeamPeopleItemRoleMax,
+                      ),
+                    photoUrl: zod
+                      .string()
+                      .max(
+                        createCampaignDraftBodyPageDesignOneTeamPeopleItemPhotoUrlMax,
+                      )
+                      .nullish(),
+                  }),
+                )
+                .min(1)
+                .max(createCampaignDraftBodyPageDesignOneTeamPeopleMax),
+            })
+            .optional(),
+          money: zod
+            .object({
+              headline: zod
+                .string()
+                .max(createCampaignDraftBodyPageDesignOneMoneyHeadlineMax),
+              intro: zod
+                .string()
+                .max(createCampaignDraftBodyPageDesignOneMoneyIntroMax),
+            })
+            .optional(),
+          wall: zod
+            .object({
+              headline: zod
+                .string()
+                .max(createCampaignDraftBodyPageDesignOneWallHeadlineMax),
+              intro: zod
+                .string()
+                .max(createCampaignDraftBodyPageDesignOneWallIntroMax),
+            })
+            .optional(),
+          order: zod
+            .array(
+              zod.enum([
+                "need",
+                "programme",
+                "outcomes",
+                "team",
+                "money",
+                "wall",
+              ]),
+            )
+            .min(createCampaignDraftBodyPageDesignOneOrderMin)
+            .max(createCampaignDraftBodyPageDesignOneOrderMax)
+            .optional(),
+          schemes: zod
+            .object({
+              need: zod
+                .enum(["cream", "white", "red", "ink", "yellow"])
+                .optional(),
+              programme: zod
+                .enum(["cream", "white", "red", "ink", "yellow"])
+                .optional(),
+              outcomes: zod
+                .enum(["cream", "white", "red", "ink", "yellow"])
+                .optional(),
+              team: zod
+                .enum(["cream", "white", "red", "ink", "yellow"])
+                .optional(),
+              money: zod
+                .enum(["cream", "white", "red", "ink", "yellow"])
+                .optional(),
+              wall: zod
+                .enum(["cream", "white", "red", "ink", "yellow"])
+                .optional(),
+            })
+            .optional(),
+        })
+        .describe(
+          "Optional editorial sections and presentation only. Never totals, donation settings, member permissions or public\/published state. Omitted sections retain legacy content.",
+        ),
+      zod.null(),
+    ])
+    .optional(),
   tagline: zod.string().max(createCampaignDraftBodyTaglineMax).optional(),
   description: zod
     .string()
@@ -1830,7 +2603,62 @@ export const getManagedCampaignDraftsResponseOneDrumExperienceOneUpdatesItemCapt
 export const getManagedCampaignDraftsResponseOneDrumExperienceOneUpdatesMax = 20;
 
 export const getManagedCampaignDraftsResponseOneCurrencyDefault = `gbp`;
-export const getManagedCampaignDraftsResponseOneNameMax = 200;
+export const getManagedCampaignDraftsResponseOneNameMax = 30;
+
+export const getManagedCampaignDraftsResponseOnePageDesignOneNeedHeadlineMax = 60;
+
+export const getManagedCampaignDraftsResponseOnePageDesignOneNeedIntroMax = 250;
+
+export const getManagedCampaignDraftsResponseOnePageDesignOneProgrammeHeadlineMax = 60;
+
+export const getManagedCampaignDraftsResponseOnePageDesignOneProgrammeIntroMax = 250;
+
+export const getManagedCampaignDraftsResponseOnePageDesignOneProgrammeBoxesItemIdMax = 80;
+
+export const getManagedCampaignDraftsResponseOnePageDesignOneProgrammeBoxesItemTitleMax = 30;
+
+export const getManagedCampaignDraftsResponseOnePageDesignOneProgrammeBoxesItemTextMax = 160;
+
+export const getManagedCampaignDraftsResponseOnePageDesignOneProgrammeBoxesMin = 2;
+export const getManagedCampaignDraftsResponseOnePageDesignOneProgrammeBoxesMax = 4;
+
+export const getManagedCampaignDraftsResponseOnePageDesignOneOutcomesHeadlineMax = 60;
+
+export const getManagedCampaignDraftsResponseOnePageDesignOneOutcomesIntroMax = 250;
+
+export const getManagedCampaignDraftsResponseOnePageDesignOneOutcomesBoxesItemIdMax = 80;
+
+export const getManagedCampaignDraftsResponseOnePageDesignOneOutcomesBoxesItemTitleMax = 40;
+
+export const getManagedCampaignDraftsResponseOnePageDesignOneOutcomesBoxesItemTextMax = 80;
+
+export const getManagedCampaignDraftsResponseOnePageDesignOneOutcomesBoxesMin = 3;
+export const getManagedCampaignDraftsResponseOnePageDesignOneOutcomesBoxesMax = 6;
+
+export const getManagedCampaignDraftsResponseOnePageDesignOneTeamHeadlineMax = 60;
+
+export const getManagedCampaignDraftsResponseOnePageDesignOneTeamIntroMax = 250;
+
+export const getManagedCampaignDraftsResponseOnePageDesignOneTeamPeopleItemIdMax = 80;
+
+export const getManagedCampaignDraftsResponseOnePageDesignOneTeamPeopleItemNameMax = 40;
+
+export const getManagedCampaignDraftsResponseOnePageDesignOneTeamPeopleItemRoleMax = 50;
+
+export const getManagedCampaignDraftsResponseOnePageDesignOneTeamPeopleItemPhotoUrlMax = 2048;
+
+export const getManagedCampaignDraftsResponseOnePageDesignOneTeamPeopleMax = 8;
+
+export const getManagedCampaignDraftsResponseOnePageDesignOneMoneyHeadlineMax = 60;
+
+export const getManagedCampaignDraftsResponseOnePageDesignOneMoneyIntroMax = 250;
+
+export const getManagedCampaignDraftsResponseOnePageDesignOneWallHeadlineMax = 60;
+
+export const getManagedCampaignDraftsResponseOnePageDesignOneWallIntroMax = 250;
+
+export const getManagedCampaignDraftsResponseOnePageDesignOneOrderMin = 6;
+export const getManagedCampaignDraftsResponseOnePageDesignOneOrderMax = 6;
 
 export const getManagedCampaignDraftsResponseOneTaglineMax = 140;
 
@@ -1929,6 +2757,222 @@ export const GetManagedCampaignDraftsResponseItem = zod
     name: zod
       .string()
       .max(getManagedCampaignDraftsResponseOneNameMax)
+      .optional(),
+    pageDesign: zod
+      .union([
+        zod
+          .object({
+            need: zod
+              .object({
+                headline: zod
+                  .string()
+                  .max(
+                    getManagedCampaignDraftsResponseOnePageDesignOneNeedHeadlineMax,
+                  ),
+                intro: zod
+                  .string()
+                  .max(
+                    getManagedCampaignDraftsResponseOnePageDesignOneNeedIntroMax,
+                  ),
+              })
+              .optional(),
+            programme: zod
+              .object({
+                headline: zod
+                  .string()
+                  .max(
+                    getManagedCampaignDraftsResponseOnePageDesignOneProgrammeHeadlineMax,
+                  ),
+                intro: zod
+                  .string()
+                  .max(
+                    getManagedCampaignDraftsResponseOnePageDesignOneProgrammeIntroMax,
+                  ),
+                boxes: zod
+                  .array(
+                    zod.object({
+                      id: zod
+                        .string()
+                        .min(1)
+                        .max(
+                          getManagedCampaignDraftsResponseOnePageDesignOneProgrammeBoxesItemIdMax,
+                        ),
+                      title: zod
+                        .string()
+                        .max(
+                          getManagedCampaignDraftsResponseOnePageDesignOneProgrammeBoxesItemTitleMax,
+                        ),
+                      text: zod
+                        .string()
+                        .max(
+                          getManagedCampaignDraftsResponseOnePageDesignOneProgrammeBoxesItemTextMax,
+                        ),
+                    }),
+                  )
+                  .min(
+                    getManagedCampaignDraftsResponseOnePageDesignOneProgrammeBoxesMin,
+                  )
+                  .max(
+                    getManagedCampaignDraftsResponseOnePageDesignOneProgrammeBoxesMax,
+                  ),
+              })
+              .optional(),
+            outcomes: zod
+              .object({
+                headline: zod
+                  .string()
+                  .max(
+                    getManagedCampaignDraftsResponseOnePageDesignOneOutcomesHeadlineMax,
+                  ),
+                intro: zod
+                  .string()
+                  .max(
+                    getManagedCampaignDraftsResponseOnePageDesignOneOutcomesIntroMax,
+                  ),
+                boxes: zod
+                  .array(
+                    zod.object({
+                      id: zod
+                        .string()
+                        .min(1)
+                        .max(
+                          getManagedCampaignDraftsResponseOnePageDesignOneOutcomesBoxesItemIdMax,
+                        ),
+                      title: zod
+                        .string()
+                        .max(
+                          getManagedCampaignDraftsResponseOnePageDesignOneOutcomesBoxesItemTitleMax,
+                        ),
+                      text: zod
+                        .string()
+                        .max(
+                          getManagedCampaignDraftsResponseOnePageDesignOneOutcomesBoxesItemTextMax,
+                        ),
+                    }),
+                  )
+                  .min(
+                    getManagedCampaignDraftsResponseOnePageDesignOneOutcomesBoxesMin,
+                  )
+                  .max(
+                    getManagedCampaignDraftsResponseOnePageDesignOneOutcomesBoxesMax,
+                  ),
+              })
+              .optional(),
+            team: zod
+              .object({
+                headline: zod
+                  .string()
+                  .max(
+                    getManagedCampaignDraftsResponseOnePageDesignOneTeamHeadlineMax,
+                  ),
+                intro: zod
+                  .string()
+                  .max(
+                    getManagedCampaignDraftsResponseOnePageDesignOneTeamIntroMax,
+                  ),
+                people: zod
+                  .array(
+                    zod.object({
+                      id: zod
+                        .string()
+                        .min(1)
+                        .max(
+                          getManagedCampaignDraftsResponseOnePageDesignOneTeamPeopleItemIdMax,
+                        ),
+                      name: zod
+                        .string()
+                        .max(
+                          getManagedCampaignDraftsResponseOnePageDesignOneTeamPeopleItemNameMax,
+                        ),
+                      role: zod
+                        .string()
+                        .max(
+                          getManagedCampaignDraftsResponseOnePageDesignOneTeamPeopleItemRoleMax,
+                        ),
+                      photoUrl: zod
+                        .string()
+                        .max(
+                          getManagedCampaignDraftsResponseOnePageDesignOneTeamPeopleItemPhotoUrlMax,
+                        )
+                        .nullish(),
+                    }),
+                  )
+                  .min(1)
+                  .max(
+                    getManagedCampaignDraftsResponseOnePageDesignOneTeamPeopleMax,
+                  ),
+              })
+              .optional(),
+            money: zod
+              .object({
+                headline: zod
+                  .string()
+                  .max(
+                    getManagedCampaignDraftsResponseOnePageDesignOneMoneyHeadlineMax,
+                  ),
+                intro: zod
+                  .string()
+                  .max(
+                    getManagedCampaignDraftsResponseOnePageDesignOneMoneyIntroMax,
+                  ),
+              })
+              .optional(),
+            wall: zod
+              .object({
+                headline: zod
+                  .string()
+                  .max(
+                    getManagedCampaignDraftsResponseOnePageDesignOneWallHeadlineMax,
+                  ),
+                intro: zod
+                  .string()
+                  .max(
+                    getManagedCampaignDraftsResponseOnePageDesignOneWallIntroMax,
+                  ),
+              })
+              .optional(),
+            order: zod
+              .array(
+                zod.enum([
+                  "need",
+                  "programme",
+                  "outcomes",
+                  "team",
+                  "money",
+                  "wall",
+                ]),
+              )
+              .min(getManagedCampaignDraftsResponseOnePageDesignOneOrderMin)
+              .max(getManagedCampaignDraftsResponseOnePageDesignOneOrderMax)
+              .optional(),
+            schemes: zod
+              .object({
+                need: zod
+                  .enum(["cream", "white", "red", "ink", "yellow"])
+                  .optional(),
+                programme: zod
+                  .enum(["cream", "white", "red", "ink", "yellow"])
+                  .optional(),
+                outcomes: zod
+                  .enum(["cream", "white", "red", "ink", "yellow"])
+                  .optional(),
+                team: zod
+                  .enum(["cream", "white", "red", "ink", "yellow"])
+                  .optional(),
+                money: zod
+                  .enum(["cream", "white", "red", "ink", "yellow"])
+                  .optional(),
+                wall: zod
+                  .enum(["cream", "white", "red", "ink", "yellow"])
+                  .optional(),
+              })
+              .optional(),
+          })
+          .describe(
+            "Optional editorial sections and presentation only. Never totals, donation settings, member permissions or public\/published state. Omitted sections retain legacy content.",
+          ),
+        zod.null(),
+      ])
       .optional(),
     tagline: zod
       .string()
@@ -2131,7 +3175,62 @@ export const saveCampaignDraftBodyDrumExperienceOneUpdatesItemCaptionMax = 500;
 export const saveCampaignDraftBodyDrumExperienceOneUpdatesMax = 20;
 
 export const saveCampaignDraftBodyCurrencyDefault = `gbp`;
-export const saveCampaignDraftBodyNameMax = 200;
+export const saveCampaignDraftBodyNameMax = 30;
+
+export const saveCampaignDraftBodyPageDesignOneNeedHeadlineMax = 60;
+
+export const saveCampaignDraftBodyPageDesignOneNeedIntroMax = 250;
+
+export const saveCampaignDraftBodyPageDesignOneProgrammeHeadlineMax = 60;
+
+export const saveCampaignDraftBodyPageDesignOneProgrammeIntroMax = 250;
+
+export const saveCampaignDraftBodyPageDesignOneProgrammeBoxesItemIdMax = 80;
+
+export const saveCampaignDraftBodyPageDesignOneProgrammeBoxesItemTitleMax = 30;
+
+export const saveCampaignDraftBodyPageDesignOneProgrammeBoxesItemTextMax = 160;
+
+export const saveCampaignDraftBodyPageDesignOneProgrammeBoxesMin = 2;
+export const saveCampaignDraftBodyPageDesignOneProgrammeBoxesMax = 4;
+
+export const saveCampaignDraftBodyPageDesignOneOutcomesHeadlineMax = 60;
+
+export const saveCampaignDraftBodyPageDesignOneOutcomesIntroMax = 250;
+
+export const saveCampaignDraftBodyPageDesignOneOutcomesBoxesItemIdMax = 80;
+
+export const saveCampaignDraftBodyPageDesignOneOutcomesBoxesItemTitleMax = 40;
+
+export const saveCampaignDraftBodyPageDesignOneOutcomesBoxesItemTextMax = 80;
+
+export const saveCampaignDraftBodyPageDesignOneOutcomesBoxesMin = 3;
+export const saveCampaignDraftBodyPageDesignOneOutcomesBoxesMax = 6;
+
+export const saveCampaignDraftBodyPageDesignOneTeamHeadlineMax = 60;
+
+export const saveCampaignDraftBodyPageDesignOneTeamIntroMax = 250;
+
+export const saveCampaignDraftBodyPageDesignOneTeamPeopleItemIdMax = 80;
+
+export const saveCampaignDraftBodyPageDesignOneTeamPeopleItemNameMax = 40;
+
+export const saveCampaignDraftBodyPageDesignOneTeamPeopleItemRoleMax = 50;
+
+export const saveCampaignDraftBodyPageDesignOneTeamPeopleItemPhotoUrlMax = 2048;
+
+export const saveCampaignDraftBodyPageDesignOneTeamPeopleMax = 8;
+
+export const saveCampaignDraftBodyPageDesignOneMoneyHeadlineMax = 60;
+
+export const saveCampaignDraftBodyPageDesignOneMoneyIntroMax = 250;
+
+export const saveCampaignDraftBodyPageDesignOneWallHeadlineMax = 60;
+
+export const saveCampaignDraftBodyPageDesignOneWallIntroMax = 250;
+
+export const saveCampaignDraftBodyPageDesignOneOrderMin = 6;
+export const saveCampaignDraftBodyPageDesignOneOrderMax = 6;
 
 export const saveCampaignDraftBodyTaglineMax = 140;
 
@@ -2215,6 +3314,188 @@ export const SaveCampaignDraftBody = zod.object({
       "Campaign goals and donations use this currency. Locked once checkout has started.",
     ),
   name: zod.string().max(saveCampaignDraftBodyNameMax).optional(),
+  pageDesign: zod
+    .union([
+      zod
+        .object({
+          need: zod
+            .object({
+              headline: zod
+                .string()
+                .max(saveCampaignDraftBodyPageDesignOneNeedHeadlineMax),
+              intro: zod
+                .string()
+                .max(saveCampaignDraftBodyPageDesignOneNeedIntroMax),
+            })
+            .optional(),
+          programme: zod
+            .object({
+              headline: zod
+                .string()
+                .max(saveCampaignDraftBodyPageDesignOneProgrammeHeadlineMax),
+              intro: zod
+                .string()
+                .max(saveCampaignDraftBodyPageDesignOneProgrammeIntroMax),
+              boxes: zod
+                .array(
+                  zod.object({
+                    id: zod
+                      .string()
+                      .min(1)
+                      .max(
+                        saveCampaignDraftBodyPageDesignOneProgrammeBoxesItemIdMax,
+                      ),
+                    title: zod
+                      .string()
+                      .max(
+                        saveCampaignDraftBodyPageDesignOneProgrammeBoxesItemTitleMax,
+                      ),
+                    text: zod
+                      .string()
+                      .max(
+                        saveCampaignDraftBodyPageDesignOneProgrammeBoxesItemTextMax,
+                      ),
+                  }),
+                )
+                .min(saveCampaignDraftBodyPageDesignOneProgrammeBoxesMin)
+                .max(saveCampaignDraftBodyPageDesignOneProgrammeBoxesMax),
+            })
+            .optional(),
+          outcomes: zod
+            .object({
+              headline: zod
+                .string()
+                .max(saveCampaignDraftBodyPageDesignOneOutcomesHeadlineMax),
+              intro: zod
+                .string()
+                .max(saveCampaignDraftBodyPageDesignOneOutcomesIntroMax),
+              boxes: zod
+                .array(
+                  zod.object({
+                    id: zod
+                      .string()
+                      .min(1)
+                      .max(
+                        saveCampaignDraftBodyPageDesignOneOutcomesBoxesItemIdMax,
+                      ),
+                    title: zod
+                      .string()
+                      .max(
+                        saveCampaignDraftBodyPageDesignOneOutcomesBoxesItemTitleMax,
+                      ),
+                    text: zod
+                      .string()
+                      .max(
+                        saveCampaignDraftBodyPageDesignOneOutcomesBoxesItemTextMax,
+                      ),
+                  }),
+                )
+                .min(saveCampaignDraftBodyPageDesignOneOutcomesBoxesMin)
+                .max(saveCampaignDraftBodyPageDesignOneOutcomesBoxesMax),
+            })
+            .optional(),
+          team: zod
+            .object({
+              headline: zod
+                .string()
+                .max(saveCampaignDraftBodyPageDesignOneTeamHeadlineMax),
+              intro: zod
+                .string()
+                .max(saveCampaignDraftBodyPageDesignOneTeamIntroMax),
+              people: zod
+                .array(
+                  zod.object({
+                    id: zod
+                      .string()
+                      .min(1)
+                      .max(
+                        saveCampaignDraftBodyPageDesignOneTeamPeopleItemIdMax,
+                      ),
+                    name: zod
+                      .string()
+                      .max(
+                        saveCampaignDraftBodyPageDesignOneTeamPeopleItemNameMax,
+                      ),
+                    role: zod
+                      .string()
+                      .max(
+                        saveCampaignDraftBodyPageDesignOneTeamPeopleItemRoleMax,
+                      ),
+                    photoUrl: zod
+                      .string()
+                      .max(
+                        saveCampaignDraftBodyPageDesignOneTeamPeopleItemPhotoUrlMax,
+                      )
+                      .nullish(),
+                  }),
+                )
+                .min(1)
+                .max(saveCampaignDraftBodyPageDesignOneTeamPeopleMax),
+            })
+            .optional(),
+          money: zod
+            .object({
+              headline: zod
+                .string()
+                .max(saveCampaignDraftBodyPageDesignOneMoneyHeadlineMax),
+              intro: zod
+                .string()
+                .max(saveCampaignDraftBodyPageDesignOneMoneyIntroMax),
+            })
+            .optional(),
+          wall: zod
+            .object({
+              headline: zod
+                .string()
+                .max(saveCampaignDraftBodyPageDesignOneWallHeadlineMax),
+              intro: zod
+                .string()
+                .max(saveCampaignDraftBodyPageDesignOneWallIntroMax),
+            })
+            .optional(),
+          order: zod
+            .array(
+              zod.enum([
+                "need",
+                "programme",
+                "outcomes",
+                "team",
+                "money",
+                "wall",
+              ]),
+            )
+            .min(saveCampaignDraftBodyPageDesignOneOrderMin)
+            .max(saveCampaignDraftBodyPageDesignOneOrderMax)
+            .optional(),
+          schemes: zod
+            .object({
+              need: zod
+                .enum(["cream", "white", "red", "ink", "yellow"])
+                .optional(),
+              programme: zod
+                .enum(["cream", "white", "red", "ink", "yellow"])
+                .optional(),
+              outcomes: zod
+                .enum(["cream", "white", "red", "ink", "yellow"])
+                .optional(),
+              team: zod
+                .enum(["cream", "white", "red", "ink", "yellow"])
+                .optional(),
+              money: zod
+                .enum(["cream", "white", "red", "ink", "yellow"])
+                .optional(),
+              wall: zod
+                .enum(["cream", "white", "red", "ink", "yellow"])
+                .optional(),
+            })
+            .optional(),
+        })
+        .describe(
+          "Optional editorial sections and presentation only. Never totals, donation settings, member permissions or public\/published state. Omitted sections retain legacy content.",
+        ),
+      zod.null(),
+    ])
+    .optional(),
   tagline: zod.string().max(saveCampaignDraftBodyTaglineMax).optional(),
   description: zod.string().max(saveCampaignDraftBodyDescriptionMax).optional(),
   pageContent: zod
@@ -2342,7 +3623,62 @@ export const saveCampaignDraftResponseOneDrumExperienceOneUpdatesItemCaptionMax 
 export const saveCampaignDraftResponseOneDrumExperienceOneUpdatesMax = 20;
 
 export const saveCampaignDraftResponseOneCurrencyDefault = `gbp`;
-export const saveCampaignDraftResponseOneNameMax = 200;
+export const saveCampaignDraftResponseOneNameMax = 30;
+
+export const saveCampaignDraftResponseOnePageDesignOneNeedHeadlineMax = 60;
+
+export const saveCampaignDraftResponseOnePageDesignOneNeedIntroMax = 250;
+
+export const saveCampaignDraftResponseOnePageDesignOneProgrammeHeadlineMax = 60;
+
+export const saveCampaignDraftResponseOnePageDesignOneProgrammeIntroMax = 250;
+
+export const saveCampaignDraftResponseOnePageDesignOneProgrammeBoxesItemIdMax = 80;
+
+export const saveCampaignDraftResponseOnePageDesignOneProgrammeBoxesItemTitleMax = 30;
+
+export const saveCampaignDraftResponseOnePageDesignOneProgrammeBoxesItemTextMax = 160;
+
+export const saveCampaignDraftResponseOnePageDesignOneProgrammeBoxesMin = 2;
+export const saveCampaignDraftResponseOnePageDesignOneProgrammeBoxesMax = 4;
+
+export const saveCampaignDraftResponseOnePageDesignOneOutcomesHeadlineMax = 60;
+
+export const saveCampaignDraftResponseOnePageDesignOneOutcomesIntroMax = 250;
+
+export const saveCampaignDraftResponseOnePageDesignOneOutcomesBoxesItemIdMax = 80;
+
+export const saveCampaignDraftResponseOnePageDesignOneOutcomesBoxesItemTitleMax = 40;
+
+export const saveCampaignDraftResponseOnePageDesignOneOutcomesBoxesItemTextMax = 80;
+
+export const saveCampaignDraftResponseOnePageDesignOneOutcomesBoxesMin = 3;
+export const saveCampaignDraftResponseOnePageDesignOneOutcomesBoxesMax = 6;
+
+export const saveCampaignDraftResponseOnePageDesignOneTeamHeadlineMax = 60;
+
+export const saveCampaignDraftResponseOnePageDesignOneTeamIntroMax = 250;
+
+export const saveCampaignDraftResponseOnePageDesignOneTeamPeopleItemIdMax = 80;
+
+export const saveCampaignDraftResponseOnePageDesignOneTeamPeopleItemNameMax = 40;
+
+export const saveCampaignDraftResponseOnePageDesignOneTeamPeopleItemRoleMax = 50;
+
+export const saveCampaignDraftResponseOnePageDesignOneTeamPeopleItemPhotoUrlMax = 2048;
+
+export const saveCampaignDraftResponseOnePageDesignOneTeamPeopleMax = 8;
+
+export const saveCampaignDraftResponseOnePageDesignOneMoneyHeadlineMax = 60;
+
+export const saveCampaignDraftResponseOnePageDesignOneMoneyIntroMax = 250;
+
+export const saveCampaignDraftResponseOnePageDesignOneWallHeadlineMax = 60;
+
+export const saveCampaignDraftResponseOnePageDesignOneWallIntroMax = 250;
+
+export const saveCampaignDraftResponseOnePageDesignOneOrderMin = 6;
+export const saveCampaignDraftResponseOnePageDesignOneOrderMax = 6;
 
 export const saveCampaignDraftResponseOneTaglineMax = 140;
 
@@ -2437,6 +3773,212 @@ export const SaveCampaignDraftResponse = zod
         "Campaign goals and donations use this currency. Locked once checkout has started.",
       ),
     name: zod.string().max(saveCampaignDraftResponseOneNameMax).optional(),
+    pageDesign: zod
+      .union([
+        zod
+          .object({
+            need: zod
+              .object({
+                headline: zod
+                  .string()
+                  .max(
+                    saveCampaignDraftResponseOnePageDesignOneNeedHeadlineMax,
+                  ),
+                intro: zod
+                  .string()
+                  .max(saveCampaignDraftResponseOnePageDesignOneNeedIntroMax),
+              })
+              .optional(),
+            programme: zod
+              .object({
+                headline: zod
+                  .string()
+                  .max(
+                    saveCampaignDraftResponseOnePageDesignOneProgrammeHeadlineMax,
+                  ),
+                intro: zod
+                  .string()
+                  .max(
+                    saveCampaignDraftResponseOnePageDesignOneProgrammeIntroMax,
+                  ),
+                boxes: zod
+                  .array(
+                    zod.object({
+                      id: zod
+                        .string()
+                        .min(1)
+                        .max(
+                          saveCampaignDraftResponseOnePageDesignOneProgrammeBoxesItemIdMax,
+                        ),
+                      title: zod
+                        .string()
+                        .max(
+                          saveCampaignDraftResponseOnePageDesignOneProgrammeBoxesItemTitleMax,
+                        ),
+                      text: zod
+                        .string()
+                        .max(
+                          saveCampaignDraftResponseOnePageDesignOneProgrammeBoxesItemTextMax,
+                        ),
+                    }),
+                  )
+                  .min(
+                    saveCampaignDraftResponseOnePageDesignOneProgrammeBoxesMin,
+                  )
+                  .max(
+                    saveCampaignDraftResponseOnePageDesignOneProgrammeBoxesMax,
+                  ),
+              })
+              .optional(),
+            outcomes: zod
+              .object({
+                headline: zod
+                  .string()
+                  .max(
+                    saveCampaignDraftResponseOnePageDesignOneOutcomesHeadlineMax,
+                  ),
+                intro: zod
+                  .string()
+                  .max(
+                    saveCampaignDraftResponseOnePageDesignOneOutcomesIntroMax,
+                  ),
+                boxes: zod
+                  .array(
+                    zod.object({
+                      id: zod
+                        .string()
+                        .min(1)
+                        .max(
+                          saveCampaignDraftResponseOnePageDesignOneOutcomesBoxesItemIdMax,
+                        ),
+                      title: zod
+                        .string()
+                        .max(
+                          saveCampaignDraftResponseOnePageDesignOneOutcomesBoxesItemTitleMax,
+                        ),
+                      text: zod
+                        .string()
+                        .max(
+                          saveCampaignDraftResponseOnePageDesignOneOutcomesBoxesItemTextMax,
+                        ),
+                    }),
+                  )
+                  .min(
+                    saveCampaignDraftResponseOnePageDesignOneOutcomesBoxesMin,
+                  )
+                  .max(
+                    saveCampaignDraftResponseOnePageDesignOneOutcomesBoxesMax,
+                  ),
+              })
+              .optional(),
+            team: zod
+              .object({
+                headline: zod
+                  .string()
+                  .max(
+                    saveCampaignDraftResponseOnePageDesignOneTeamHeadlineMax,
+                  ),
+                intro: zod
+                  .string()
+                  .max(saveCampaignDraftResponseOnePageDesignOneTeamIntroMax),
+                people: zod
+                  .array(
+                    zod.object({
+                      id: zod
+                        .string()
+                        .min(1)
+                        .max(
+                          saveCampaignDraftResponseOnePageDesignOneTeamPeopleItemIdMax,
+                        ),
+                      name: zod
+                        .string()
+                        .max(
+                          saveCampaignDraftResponseOnePageDesignOneTeamPeopleItemNameMax,
+                        ),
+                      role: zod
+                        .string()
+                        .max(
+                          saveCampaignDraftResponseOnePageDesignOneTeamPeopleItemRoleMax,
+                        ),
+                      photoUrl: zod
+                        .string()
+                        .max(
+                          saveCampaignDraftResponseOnePageDesignOneTeamPeopleItemPhotoUrlMax,
+                        )
+                        .nullish(),
+                    }),
+                  )
+                  .min(1)
+                  .max(saveCampaignDraftResponseOnePageDesignOneTeamPeopleMax),
+              })
+              .optional(),
+            money: zod
+              .object({
+                headline: zod
+                  .string()
+                  .max(
+                    saveCampaignDraftResponseOnePageDesignOneMoneyHeadlineMax,
+                  ),
+                intro: zod
+                  .string()
+                  .max(saveCampaignDraftResponseOnePageDesignOneMoneyIntroMax),
+              })
+              .optional(),
+            wall: zod
+              .object({
+                headline: zod
+                  .string()
+                  .max(
+                    saveCampaignDraftResponseOnePageDesignOneWallHeadlineMax,
+                  ),
+                intro: zod
+                  .string()
+                  .max(saveCampaignDraftResponseOnePageDesignOneWallIntroMax),
+              })
+              .optional(),
+            order: zod
+              .array(
+                zod.enum([
+                  "need",
+                  "programme",
+                  "outcomes",
+                  "team",
+                  "money",
+                  "wall",
+                ]),
+              )
+              .min(saveCampaignDraftResponseOnePageDesignOneOrderMin)
+              .max(saveCampaignDraftResponseOnePageDesignOneOrderMax)
+              .optional(),
+            schemes: zod
+              .object({
+                need: zod
+                  .enum(["cream", "white", "red", "ink", "yellow"])
+                  .optional(),
+                programme: zod
+                  .enum(["cream", "white", "red", "ink", "yellow"])
+                  .optional(),
+                outcomes: zod
+                  .enum(["cream", "white", "red", "ink", "yellow"])
+                  .optional(),
+                team: zod
+                  .enum(["cream", "white", "red", "ink", "yellow"])
+                  .optional(),
+                money: zod
+                  .enum(["cream", "white", "red", "ink", "yellow"])
+                  .optional(),
+                wall: zod
+                  .enum(["cream", "white", "red", "ink", "yellow"])
+                  .optional(),
+              })
+              .optional(),
+          })
+          .describe(
+            "Optional editorial sections and presentation only. Never totals, donation settings, member permissions or public\/published state. Omitted sections retain legacy content.",
+          ),
+        zod.null(),
+      ])
+      .optional(),
     tagline: zod
       .string()
       .max(saveCampaignDraftResponseOneTaglineMax)

@@ -15,14 +15,16 @@ import type { CampaignEditorRequestTheme } from "./campaignEditorRequestTheme";
 import type { CampaignEditorRequestType } from "./campaignEditorRequestType";
 import type { CampaignEditorRequestVideo } from "./campaignEditorRequestVideo";
 import type { CampaignEditorRequestVideosItem } from "./campaignEditorRequestVideosItem";
+import type { CampaignPageDesign } from "./campaignPageDesign";
 import type { DrumExperience } from "./drumExperience";
 
 export interface CampaignEditorRequest {
   drumExperience?: DrumExperience | null;
   /** Campaign goals and donations use this currency. Locked once checkout has started. */
   currency?: CampaignEditorRequestCurrency;
-  /** @maxLength 200 */
+  /** @maxLength 30 */
   name?: string;
+  pageDesign?: CampaignPageDesign | null;
   /** @maxLength 140 */
   tagline?: string;
   /** @maxLength 20000 */

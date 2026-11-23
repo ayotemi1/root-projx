@@ -3,11 +3,11 @@ name: Campaign template reference
 description: User-selected design reference and its intended scope for public campaign pages.
 ---
 
-Use the user-supplied PDF titled “Out of Many Hands — Campaign Page” as the visual template for campaign pages generally, not only for the example campaign.
+Use the user's three HTML references supplied on 2026-11-23 for the shared campaign page and the editor's Story and Look steps. They supersede the earlier PDF where they differ.
 
-**Why:** The user explicitly asked to use that design as the campaign-page template. The example’s particular campaign, funder, stories and figures are not default content for other organisations.
+**Why:** The user explicitly required the editor preview to be the real donor page, not a separate approximation. The example's campaign, funder, stories and figures are not defaults for other organisations.
 
-**How to apply:** Keep its red editorial opening, accumulation artwork, giving/funding sidebar, white and cream content sections and red share close while rendering each campaign’s own content. Apply visual changes through the shared public/owner-preview template rather than creating a separate example-only page.
+**How to apply:** Keep the reference's editorial opening, accumulation artwork, giving/funding sidebar, section schemes and black closing Give section while rendering each campaign's own content. Apply changes to the shared donor/owner-preview template. The HTML contains demo donation JavaScript: never copy its fake totals or hand-stamping payment action into the live app.
 
 Campaign unit artwork (hands and the other built-in icons) normally appears without
 surrounding circular backgrounds or borders.
@@ -21,11 +21,13 @@ circled, centred marker after the donor's confirmed payment. This is the sole
 exception, not permission to circle the other icons. Do not attribute that
 acknowledgement to another donor's named unit just because theirs is newest.
 
-The same amendments specify Inter for campaign typography and Dancing Script
-Bold only for the centred campaign title, plus inline amount selection and an
-itemised giving breakdown before checkout.
+The current campaign typography is Archivo headings, JetBrains Mono labels and
+Familjen Grotesk body text. Keep inline amount selection and the itemised giving
+breakdown before checkout.
 
-**Why:** The user supplied these amendments to correct the live campaign page.
+**Why:** The user explicitly retained these fonts in the 2026-11-23 brief,
+superseding the older Inter/Dancing Script typography instruction. Financial
+behaviour was expressly outside the requested Story/Look changes.
 
 **How to apply:** Keep the shared template, but use each campaign's own editorial
 labels, currency, funder and cohort data. HOV's “Support the training” is not a
@@ -40,3 +42,15 @@ private donor details. Anonymous historical gifts cannot safely identify a perso
 
 **How to apply:** Attribute only real, deduplicated counted supporters to icons,
 keep non-consenting donors anonymous, and keep aggregate artwork unattributed.
+
+Text fitting in scaled previews must compare text and available space in the
+same coordinate system, with rounding room rather than positive overflow
+tolerance. Do not let emergency mid-word wrapping conceal a fit error.
+
+**Why:** A word that appeared to fit numerically in a scaled preview still
+split its final letter onto another line, including ordinary campaign titles.
+The public page alone did not expose this boundary case.
+
+**How to apply:** Check both public and scaled Phone/Desktop views after fonts
+load. Include normal titles and maximum-length unbroken words, leave a small
+physical/logical pixel margin, and keep headline words intact.

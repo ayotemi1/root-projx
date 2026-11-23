@@ -140,7 +140,7 @@ async function fixture(assistSetting = "true") {
       "import.meta.env.BASE_URL": '"/"' },
     stdin: { contents: `export {default as router,publicCampaignFields} from "./routes/organisations.ts";
       export {campaignPatch,campaignPublishGates,campaignForEditor} from "./lib/campaign-editor.ts";
-      export {draftFromCampaign,draftToPatch} from "../../web/src/components/campaign-builder/model.ts";
+      export {draftFromCampaign,draftToPatch,draftToPreviewCampaign,migrateLegacyVideoDraft,validateDraft,computeGates} from "../../web/src/components/campaign-builder/model.ts";
       export {suggest} from "./lib/campaign-assist.ts";
       export {default as selfServiceRouter} from "./routes/organisation-self-service.ts";
       export {default as assistRouter} from "./routes/campaign-assist.ts";
@@ -150,6 +150,8 @@ async function fixture(assistSetting = "true") {
       resolveDir: new URL("../", import.meta.url).pathname, loader: "ts" },
     bundle: true, write: false, platform: "node", format: "cjs", packages: "external",
     plugins: [{ name: "synthetic-profile-services", setup(b) {
+      b.onResolve({ filter: /^@workspace\/api-zod$/ }, () => ({ path: new URL("../../../../lib/api-zod/src/generated/api.ts", import.meta.url).pathname }));
+      b.onResolve({ filter: /^zod$/ }, () => ({ path: new URL("../../../../lib/api-zod/node_modules/zod/index.cjs", import.meta.url).pathname }));
       b.onResolve({ filter: /^profile-test:state$|\/(firebase-rest|objectStorage|campaign-assist)\.js$/ },
         args => ({ path: args.path === "profile-test:state" ? "state" : args.path.split("/").at(-1)!, namespace: "profile-test" }));
       b.onLoad({ filter: /.*/, namespace: "profile-test" }, args => ({ contents: mocks[args.path]!, loader: "js" }));
@@ -238,6 +240,133 @@ function readyCampaignFixture(f: any, enabled = false) {
   });
   return org;
 }
+
+function referencePageDesign() {
+  return {
+    programme: { headline: "Learning a trade", intro: "Real programme details. ".repeat(9),
+      boxes: [{ id: "trade-one", title: "Construction", text: "Learn to build." }, { id: "trade-two", title: "Garment making", text: "Learn to sew." }] },
+    outcomes: { headline: "What your support makes possible", intro: "Real outcomes.",
+      boxes: ["Skills", "Paid work", "Childcare"].map((title, i) => ({ id: `outcome-${i}`, title, text: "Practical support." })) },
+    team: { headline: "Who's running it", intro: "", people: [{ id: "person-1", name: "Programme lead", role: "Coordinator", photoUrl: null }] },
+    order: ["need", "programme", "outcomes", "team", "money", "wall"],
+    schemes: { programme: "ink", outcomes: "yellow" },
+  };
+}
+
+test("Story and Look validate the reference limits, stable identities, plain text and locked sections", async () => {
+  const f = await fixture();
+  const good = referencePageDesign();
+  assert.deepEqual(f.campaignPatch({ pageDesign: good }).pageDesign, good);
+  for (const [section, min, max] of [["programme", 2, 4], ["outcomes", 3, 6]] as const) {
+    for (const n of [min, max]) {
+      const d: any = structuredClone(good);
+      d[section].boxes = Array.from({ length: n }, (_, i) => ({ id: `b-${i}`, title: "Title", text: "Text" }));
+      assert.equal(f.campaignPatch({ pageDesign: d }).pageDesign[section].boxes.length, n);
+    }
+    for (const n of [min - 1, max + 1]) {
+      const d: any = structuredClone(good);
+      d[section].boxes = Array.from({ length: n }, (_, i) => ({ id: `b-${i}`, title: "", text: "" }));
+      assert.throws(() => f.campaignPatch({ pageDesign: d }));
+    }
+  }
+  const cases = [
+    (d: any) => { d.programme.boxes[0].title = "x".repeat(31); },
+    (d: any) => { d.programme.boxes[0].text = "x".repeat(161); },
+    (d: any) => { d.outcomes.boxes[0].title = "x".repeat(41); },
+    (d: any) => { d.outcomes.boxes[0].text = "x".repeat(81); },
+    (d: any) => { d.programme.headline = "x".repeat(61); },
+    (d: any) => { d.programme.intro = "x".repeat(251); },
+    (d: any) => { d.team.people[0].name = "x".repeat(41); },
+    (d: any) => { d.team.people[0].role = "x".repeat(51); },
+    (d: any) => { d.team.people = []; },
+    (d: any) => { d.team.people = Array.from({ length: 9 }, (_, i) => ({ id: `p${i}`, name: "", role: "" })); },
+    (d: any) => { d.programme.boxes[1].id = d.programme.boxes[0].id; },
+    (d: any) => { d.programme.boxes[0].text = "<script>bad</script>"; },
+    (d: any) => { d.team.people[0].userId = "another-account"; },
+    (d: any) => { d.amountRaised = 999; },
+    (d: any) => { d.schemes.programme = "blue"; },
+    (d: any) => { d.order[0] = "give"; },
+    (d: any) => { d.order[1] = d.order[0]; },
+    (d: any) => { d.team.people[0].photoUrl = "javascript:alert(1)"; },
+  ];
+  for (const mutate of cases) {
+    const d = structuredClone(good); mutate(d);
+    assert.throws(() => f.campaignPatch({ pageDesign: d }));
+  }
+  assert.throws(() => f.campaignPatch({ name: "x".repeat(31) }), /30/);
+});
+
+test("Story drafts persist privately, survive reopening, and only explicit publication changes the donor page", async () => {
+  const f = await fixture();
+  const org = readyCampaignFixture(f, true);
+  const before = structuredClone(org.campaigns[0]);
+  const pageDesign = referencePageDesign();
+  const saved = await invoke(f.router, "patch", "org", { pageDesign, saveAsDraft: true, amountRaised: 0 },
+    "org", "/organisations/:id/campaigns/:campId");
+  assert.equal(saved.status, 200);
+  assert.deepEqual(saved.body.pageDesign, pageDesign);
+  let stored = f.state.docs.get("organisations/org").campaigns[0];
+  assert.equal(stored.amountRaised, before.amountRaised);
+  assert.equal(f.publicCampaignFields(stored, "org").pageDesign, null);
+  const reopened = await invoke(f.router, "get", "org", {}, "org", "/organisations/:id/campaigns/manage");
+  assert.equal(reopened.status, 200);
+  assert.deepEqual(reopened.body[0].pageDesign, pageDesign);
+  for (const token of ["other", "supporter", "pending"]) {
+    assert.equal((await invoke(f.router, "patch", token, { pageDesign, saveAsDraft: true },
+      "org", "/organisations/:id/campaigns/:campId")).status, 403);
+  }
+  const published = await invoke(f.router, "patch", "org", { enabled: true },
+    "org", "/organisations/:id/campaigns/:campId");
+  assert.equal(published.status, 200);
+  stored = f.state.docs.get("organisations/org").campaigns[0];
+  assert.deepEqual(f.publicCampaignFields(stored, "org").pageDesign, pageDesign);
+  assert.equal(stored.amountRaised, before.amountRaised);
+  assert.equal(f.state.docs.get("organisations/org").totalRaised, org.totalRaised);
+});
+
+test("structured narrative counts toward Story readiness without fake text; empty box titles still block publication", async () => {
+  const f = await fixture();
+  const org = readyCampaignFixture(f);
+  const campaign = { ...org.campaigns[0], description: "", pageDesign: referencePageDesign() };
+  assert.equal(f.campaignPublishGates(org, campaign).some((g: any) => g.id === "story"), false);
+  campaign.pageDesign.programme.boxes[0].title = "";
+  assert.equal(f.campaignPublishGates(org, campaign).some((g: any) => g.id === "programme-titles"), true);
+});
+
+test("editor draft round-trips keep structured copy and real totals, and older local drafts preserve server overrides", async () => {
+  const f = await fixture();
+  const org = readyCampaignFixture(f);
+  const c = { ...org.campaigns[0], supporterCount: 8, pageDesign: referencePageDesign() };
+  const draft = f.draftFromCampaign(c);
+  assert.deepEqual(f.draftToPatch(draft, c.theme).pageDesign, c.pageDesign);
+  const preview = f.draftToPreviewCampaign(draft, c);
+  assert.deepEqual(preview.pageDesign, c.pageDesign);
+  assert.equal(preview.amountRaised, 123);
+  assert.equal(preview.supporterCount, 8);
+  const oldLocal = { ...draft };
+  delete oldLocal.pageDesign;
+  const recovered = f.migrateLegacyVideoDraft(oldLocal);
+  assert.equal(Object.hasOwn(recovered, "pageDesign"), false);
+  assert.deepEqual({ ...draft, ...recovered }.pageDesign, c.pageDesign);
+  for (const pageDesign of [null, [], "damaged local value"]) {
+    const recovered = f.migrateLegacyVideoDraft({ ...draft, pageDesign });
+    assert.equal(Object.hasOwn(recovered, "pageDesign"), false);
+    assert.deepEqual({ ...draft, ...recovered }.pageDesign, c.pageDesign);
+  }
+  const legacy = { ...c, pageDesign: undefined, breakdown: Array.from({ length: 5 }, (_, i) => ({ label: `Legacy ${i}`, detail: "Unchanged" })) };
+  const legacyDraft = f.draftFromCampaign(legacy);
+  const legacyPatch = f.draftToPatch(legacyDraft, legacy.theme);
+  assert.deepEqual(legacyPatch.pageDesign, {});
+  assert.deepEqual(legacyPatch.breakdown, legacy.breakdown);
+  for (const length of [199, 200]) {
+    const pageDesign = { need: { headline: "Need", intro: "a".repeat(length) } };
+    const candidate = { ...c, description: "", pageDesign };
+    const d = f.draftFromCampaign(candidate);
+    assert.equal(f.computeGates(d, org).some((g: any) => g.id === "story"), length < 200);
+    assert.equal(f.campaignPublishGates(org, candidate).some((g: any) => g.id === "story"), length < 200);
+  }
+  assert.match(f.validateDraft({ ...draft, name: "a".repeat(31) }), /30/);
+});
 
 test("campaign creation accepts empty private drafts and initialises structured optional content", async () => {
   const f = await fixture();

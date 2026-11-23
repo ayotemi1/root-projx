@@ -4,9 +4,9 @@ import { Plus, Trash2, Info, Captions, Lock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import type { CampaignUnit } from "@/lib/api";
+import type { Campaign, CampaignUnit, Org } from "@/lib/api";
 import { AssistButton, Counter, FieldBlock, MediaUpload } from "./fields";
-import { BUILTIN_UNITS, MAX_LOCATIONS, MAX_VIDEOS, STORY_MIN, TAGLINE_MAX, emptyVideo, type CampaignDraft, type VideoDraft } from "./model";
+import { BUILTIN_UNITS, MAX_LOCATIONS, MAX_VIDEOS, STORY_MIN, TAGLINE_MAX, TITLE_MAX, emptyVideo, type CampaignDraft, type VideoDraft } from "./model";
 import { currencyName, currencySymbol } from "@/lib/currency";
 import { AppearanceSelector, DrumUpdatesEditor } from "./drum-editor";
 import { canUseDrumExperience } from "@/lib/drum-experience";
@@ -22,6 +22,10 @@ export interface StepProps {
   beforeAssist?: () => Promise<boolean>;
   /** True once the campaign has received a donation: currency can no longer change. */
   currencyLocked?: boolean;
+  /** Parent organisation: Team defaults in Story. Optional for older callers. */
+  org?: Org | null;
+  /** Latest saved campaign: legacy phases/pageContent and the live preview. */
+  campaign?: Campaign;
 }
 
 const IMAGE_ACCEPT = "image/jpeg,image/png,image/webp,image/gif";
@@ -38,11 +42,18 @@ function Choice({ active, onClick, title, body, testId }: { active: boolean; onC
   );
 }
 
+function TitleCounter({ n }: { n: number }) {
+  const tone = n >= TITLE_MAX ? "text-destructive font-bold" : n >= TITLE_MAX * 0.85 ? "text-amber-700" : "text-muted-foreground";
+  return <span id="cb-name-count" className={`text-[11px] font-semibold tabular-nums ${tone}`} aria-live="polite">{n}/{TITLE_MAX}</span>;
+}
+
 export function StepBasics({ d, update, token, campaignId, assistEnabled, beforeAssist }: StepProps) {
   return (
     <div className="space-y-6">
-      <FieldBlock label="Campaign name" htmlFor="cb-name">
-        <Input id="cb-name" value={d.name} onChange={(e) => update({ name: e.target.value })} placeholder="e.g. A roof for the Kibera reading room" data-testid="input-campaign-name" data-tour-id="campaign-name" />
+      <FieldBlock label="Campaign name" htmlFor="cb-name"
+        counter={<TitleCounter n={d.name.length} />}
+        error={d.name.length > TITLE_MAX ? `Shorten by ${d.name.length - TITLE_MAX} characters. Nothing has been cut.` : null}>
+        <Input id="cb-name" aria-describedby="cb-name-count" aria-invalid={d.name.length > TITLE_MAX} value={d.name} onChange={(e) => update({ name: e.target.value })} placeholder="e.g. A roof for the Kibera reading room" data-testid="input-campaign-name" data-tour-id="campaign-name" />
       </FieldBlock>
       <FieldBlock
         label="One-line ask" htmlFor="cb-tagline"
@@ -174,7 +185,7 @@ export function StepMoney({ d, update, currencyLocked = false }: StepProps) {
   );
 }
 
-export function StepStory({ d, update, token, campaignId, assistEnabled, beforeAssist }: StepProps) {
+export function LegacyStoryFields({ d, update, token, campaignId, assistEnabled, beforeAssist }: StepProps) {
   const len = d.description.trim().length;
   const sym = currencySymbol(d.currency);
   const setBreak = (i: number, patch: Partial<CampaignDraft["breakdown"][number]>) =>

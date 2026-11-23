@@ -77,13 +77,14 @@ test("all imported sections render through the shared campaign component in publ
       createElement(mod.exports.CampaignPageView, { campaign, organisation, preview, layout: "phone" })));
     const text = html.replace(/<[^>]*>/g, " ").replace(/&#x27;/g, "'").replace(/&amp;/g, "&").replace(/\s+/g, " ");
     for (const key of ["storyHeading", "programmeHeading", "programmeIntro", "programmeSummary", "programmeAfterword",
-      "outcomesIntro", "outcomesNote", "outcomesStatus", "supportHeading", "supportBody",
+      "outcomesIntro", "outcomesStatus", "supportHeading", "supportBody",
       "cohortHeading", "cohortBody", "cohortNote", "fundingNote", "organisationNote",
       "supportersHeading", "shareHeading", "shareBody", "donateLabel"]) {
       assert.ok(text.includes(source.pageContent[key].replace(/\s+/g, " ")), `Missing ${key} in ${preview ? "preview" : "public"}`);
     }
     for (const trade of source.breakdown) assert.ok(text.includes(trade.label));
     for (const outcome of source.phases) assert.ok(text.includes(outcome.title));
+    assert.doesNotMatch(html, /text-outcomes-note/);
     assert.match(html, /campaign-fee-breakdown/);
     assert.match(text, /£2\.85/);
     assert.match(text, /£2\.60/);

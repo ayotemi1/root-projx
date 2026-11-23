@@ -354,6 +354,7 @@ export function publicCampaignFields(campaign: Record<string, unknown>, orgId?: 
     theme: parseCampaignTheme(campaign["theme"]),
     tagline: campaign.tagline ?? "",
     pageContent: campaign.pageContent ?? null,
+    pageDesign: campaign.pageDesign ?? null,
     drumExperience: canUseDrumExperience(orgId, campaign._id)
       ? publicDrumExperience(campaign.drumExperience, campaign.currency, campaign.type) : null,
     partnerFunding: partnerFundingFor(campaign),

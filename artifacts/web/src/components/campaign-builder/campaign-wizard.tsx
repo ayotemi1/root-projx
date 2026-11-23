@@ -10,7 +10,9 @@ import { ApiError, type Campaign, type CampaignEditorStep, type CampaignGate, ty
 import { useCampaignDraft, type DraftSaveStatus } from "./use-campaign-draft";
 import { computeGates, validateDraft, type CampaignDraft } from "./model";
 import { useAssistEnabled } from "./fields";
-import { StepBasics, StepLook, StepMoney, StepStory } from "./steps";
+import { StepBasics, StepMoney } from "./steps";
+import { StepLookSections } from "./look-step";
+import { StepStory } from "./story-step";
 import { PublishStep } from "./publish-step";
 
 const STEPS: Array<{ n: CampaignEditorStep; title: string; short: string }> = [
@@ -156,7 +158,7 @@ export function CampaignWizard({ campaign, org, orgId, userId, token, onClose }:
 
   // Server locks currency after the first donation; mirror that here.
   const currencyLocked = !!current.currencyLockedAt || (current.amountRaised ?? 0) > 0 || (current.supporterCount ?? 0) > 0;
-  const stepProps = { d, update, token, orgId, campaignId: campaign._id, assistEnabled, beforeAssist: draft.flush, currencyLocked };
+  const stepProps = { d, update, token, orgId, campaignId: campaign._id, assistEnabled, beforeAssist: draft.flush, currencyLocked, org, campaign: current };
 
   // Preview as donor: save the latest draft first; never navigate on a save error.
   const [, navigate] = useLocation();
@@ -242,7 +244,7 @@ export function CampaignWizard({ campaign, org, orgId, userId, token, onClose }:
         {step === 1 && <StepBasics {...stepProps} />}
         {step === 2 && <StepMoney {...stepProps} />}
         {step === 3 && <StepStory {...stepProps} />}
-        {step === 4 && <StepLook {...stepProps} />}
+        {step === 4 && <StepLookSections {...stepProps} />}
         {step === 5 && (
           <PublishStep d={d} campaign={current} org={org} gates={gates} serverGates={serverGates}
             publishing={publishing} publishError={publishError} onPublish={publish} onUnpublish={unpublish}

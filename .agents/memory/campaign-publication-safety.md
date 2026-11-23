@@ -15,6 +15,18 @@ existing donor links.
 edits when unpublishing, and keep previously published links stable after renames.
 Blank drafts should acquire readable links from the final name at first publish.
 
+Treat editorial/layout additions as partial overrides of existing campaign
+content. Opening a new control or changing a colour must not silently rewrite
+older story, outcome or team content to fit the new limits.
+
+**Why:** Existing campaigns can contain longer copy or more legacy rows than
+new controls permit. Copying and trimming every section during a style-only
+save would destroy content the organisation did not choose to change.
+
+**How to apply:** Materialise a section when it is edited, retain untouched
+legacy data, and flag over-limit entries instead of truncating them. Campaign
+team presentation never changes organisation membership or messaging access.
+
 Keep two distinct partner-funding types. **Committed** money is secured
 regardless of donations and never multiplies a donor's gift. **Matching**
 money is triggered by gifts, with an explicit ratio and cap; stop showing a

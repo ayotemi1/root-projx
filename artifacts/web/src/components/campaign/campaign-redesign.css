@@ -335,3 +335,71 @@
 @media (prefers-reduced-motion: reduce) {
   .rc *, .rc *::before, .rc *::after { transition: none !important; animation: none !important; }
 }
+
+/* Box sections (reference .boxes/data-n): equal boxes, rows always filled.
+   Six columns; spans 1→6, 2/4→3, 3/6→2, 5→2,2,2,3,3. Seams come from .rc-bento-grid.
+   Stacks below 700px of the .rc-body container (phone preview included), not the host window. */
+.rc .rc-bento-grid.rc-boxes { grid-template-columns: repeat(6, minmax(0,1fr)); gap: 1px; border-width: 1px; }
+.rc .rc-boxes > * { grid-column: span 2; }
+.rc .rc-boxes[data-n="1"] > * { grid-column: span 6; }
+.rc .rc-boxes[data-n="2"] > *, .rc .rc-boxes[data-n="4"] > * { grid-column: span 3; }
+.rc .rc-boxes[data-n="5"] > :nth-child(n+4) { grid-column: span 3; }
+@container rc (max-width: 699.98px) { .rc .rc-boxes > *, .rc .rc-boxes[data-n] > * { grid-column: span 6; } }
+.rc[data-layout="phone"] .rc-boxes > *, .rc[data-layout="phone"] .rc-boxes[data-n] > * { grid-column: span 6; }
+.rc[data-layout="desktop"] .rc-boxes > * { grid-column: span 2; }
+.rc[data-layout="desktop"] .rc-boxes[data-n="1"] > * { grid-column: span 6; }
+.rc[data-layout="desktop"] .rc-boxes[data-n="2"] > *, .rc[data-layout="desktop"] .rc-boxes[data-n="4"] > * { grid-column: span 3; }
+.rc[data-layout="desktop"] .rc-boxes[data-n="5"] > :nth-child(n+4) { grid-column: span 3; }
+
+/* Jigsaw headers (reference .fit-split): heading 55 / intro 45, both end level.
+   Heading size is set by useFitSplit; phones stack. */
+.rc .rc-fit-split { display: grid; grid-template-columns: minmax(0,1fr); gap: 20px; margin-top: 36px; align-items: end; }
+.rc .rc-fit-split > * { min-width: 0; }
+.rc .rc-fit-split > .rc-h2 { margin-top: 0; line-height: .86; }
+.rc .rc-fit-intro { display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start; gap: 16px; }
+.rc .rc-fit-intro .rc-pill { margin-top: 0; }
+.rc .rc-fit-intro .rc-prose { font-size: 17px; line-height: 1.42; color: var(--muted-dark); }
+.rc .rc-on-dark .rc-fit-intro .rc-prose { color: var(--body-on-ink); }
+@container rc (min-width: 820px) {
+  .rc .rc-fit-split.has-intro { grid-template-columns: minmax(0,55fr) minmax(0,45fr); gap: 0 56px; }
+  .rc .rc-fit-split.has-intro .rc-fit-intro .rc-prose { font-size: 20px; }
+}
+.rc[data-layout="desktop"] .rc-fit-split.has-intro { grid-template-columns: minmax(0,55fr) minmax(0,45fr); gap: 0 56px; }
+.rc[data-layout="desktop"] .rc-fit-split.has-intro .rc-fit-intro .rc-prose { font-size: 20px; }
+.rc[data-layout="phone"] .rc-fit-split.has-intro { grid-template-columns: minmax(0,1fr); gap: 20px; }
+.rc[data-layout="phone"] .rc-fit-split.has-intro .rc-fit-intro .rc-prose { font-size: 17px; }
+
+/* Outcome boxes: same weight as the programme boxes */
+.rc .rc-outcome { padding: 28px; gap: 12px; justify-content: flex-start; }
+.rc .rc-outcome b { font-family: 'Archivo', sans-serif; font-weight: 900; font-stretch: 72%; font-variation-settings: "wdth" 72; text-transform: uppercase; font-size: 28px; line-height: .92; margin: 0; overflow-wrap: anywhere; }
+.rc .rc-outcome span.d { font-size: 16px; line-height: 1.4; }
+.rc .rc-trade { padding: 28px; min-height: 240px; }
+.rc .rc-trade p { font-size: 16px; line-height: 1.45; }
+
+/* Section colour schemes (pageDesign.schemes). Scoped to one section:
+   variables are re-pointed so headings, ledes, seams and tiles stay readable. */
+.rc .rc-s-light { --body-on-ink: var(--muted-dark); --on-ink: var(--muted); --seam-ink: var(--ink); color: var(--ink); }
+.rc .rc-s-light .rc-strip { border-color: var(--ink); }
+.rc .rc-s-light .rc-strip .rc-num { background: var(--ink); color: var(--cream); }
+.rc .rc-s-yellow .rc-lede, .rc .rc-s-yellow .rc-muted { color: var(--ink); }
+.rc .rc-s-yellow .rc-t-cream, .rc .rc-s-yellow .rc-t-paper { color: var(--ink); }
+.rc .rc-s-dark { color: var(--cream); --muted: #DCD3C8; --muted-dark: #EDE4D6; }
+.rc .rc-s-dark .rc-strip { border-color: var(--cream); }
+.rc .rc-s-dark .rc-strip .rc-num { background: var(--cream); color: var(--ink); }
+.rc .rc-s-dark .rc-lede, .rc .rc-s-dark .rc-prose { color: var(--body-on-ink); }
+.rc .rc-s-red { background: var(--rc-accent); color: #FFFDF9; --body-on-ink: rgba(255,253,249,.92); --on-ink: rgba(255,253,249,.85); --seam-ink: var(--ink); }
+.rc .rc-s-red .rc-bento, .rc .rc-s-red .rc-bento-grid { background: var(--ink); border-color: var(--ink); }
+.rc .rc-s-red .rc-hi { color: var(--rc-hi); }
+/* Light child tiles inside dark/red sections keep dark text. */
+.rc .rc-s-dark .rc-t-cream, .rc .rc-s-dark .rc-t-paper, .rc .rc-s-dark .rc-giver {
+  color: var(--ink); --muted: #5A4F4B; --muted-dark: #4A403C; --body-on-ink: #4A403C; --on-ink: #5A4F4B;
+}
+.rc .rc-s-dark .rc-t-cream .rc-prose, .rc .rc-s-dark .rc-t-paper .rc-prose, .rc .rc-s-dark .rc-t-cream p, .rc .rc-s-dark .rc-t-paper p { color: var(--muted-dark); }
+/* Ink programme tiles stay ink-on-cream text inside light schemes. */
+.rc .rc-s-light .rc-trade { --body-on-ink: #DCD3C8; --on-ink: #CFC6BB; color: var(--cream); }
+.rc .rc-s-light .rc-trade p { color: #DCD3C8; }
+.rc .rc-s-light.rc-t-cream .rc-outcome { background: var(--paper); }
+/* Fit the word, never rescue an over-tight measurement by splitting its letters. */
+.rc .rc-hero-copy .rc-h1, .rc .rc-hero-copy .rc-h1 span, .rc .rc-fit-split > .rc-h2 {
+  overflow-wrap: normal; word-break: normal; hyphens: none;
+}

@@ -930,6 +930,140 @@ export interface CampaignAssistRequest {
   instruction: string;
 }
 
+export type CampaignEditableSection =
+  (typeof CampaignEditableSection)[keyof typeof CampaignEditableSection];
+
+export const CampaignEditableSection = {
+  need: "need",
+  programme: "programme",
+  outcomes: "outcomes",
+  team: "team",
+  money: "money",
+  wall: "wall",
+} as const;
+
+export type CampaignColourScheme =
+  (typeof CampaignColourScheme)[keyof typeof CampaignColourScheme];
+
+export const CampaignColourScheme = {
+  cream: "cream",
+  white: "white",
+  red: "red",
+  ink: "ink",
+  yellow: "yellow",
+} as const;
+
+export interface CampaignSectionCopy {
+  /** @maxLength 60 */
+  headline: string;
+  /** @maxLength 250 */
+  intro: string;
+}
+
+export interface CampaignProgrammeBox {
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  id: string;
+  /** @maxLength 30 */
+  title: string;
+  /** @maxLength 160 */
+  text: string;
+}
+
+export interface CampaignOutcomeBox {
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  id: string;
+  /** @maxLength 40 */
+  title: string;
+  /** @maxLength 80 */
+  text: string;
+}
+
+export interface CampaignProgrammeSection {
+  /** @maxLength 60 */
+  headline: string;
+  /** @maxLength 250 */
+  intro: string;
+  /**
+   * @minItems 2
+   * @maxItems 4
+   */
+  boxes: CampaignProgrammeBox[];
+}
+
+export interface CampaignOutcomesSection {
+  /** @maxLength 60 */
+  headline: string;
+  /** @maxLength 250 */
+  intro: string;
+  /**
+   * @minItems 3
+   * @maxItems 6
+   */
+  boxes: CampaignOutcomeBox[];
+}
+
+export interface CampaignPerson {
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  id: string;
+  /** @maxLength 40 */
+  name: string;
+  /** @maxLength 50 */
+  role: string;
+  /**
+   * @maxLength 2048
+   * @nullable
+   */
+  photoUrl?: string | null;
+}
+
+export interface CampaignPeopleSection {
+  /** @maxLength 60 */
+  headline: string;
+  /** @maxLength 250 */
+  intro: string;
+  /**
+   * @minItems 1
+   * @maxItems 8
+   */
+  people: CampaignPerson[];
+}
+
+export interface CampaignSectionSchemes {
+  need?: CampaignColourScheme;
+  programme?: CampaignColourScheme;
+  outcomes?: CampaignColourScheme;
+  team?: CampaignColourScheme;
+  money?: CampaignColourScheme;
+  wall?: CampaignColourScheme;
+}
+
+/**
+ * Optional editorial sections and presentation only. Never totals, donation settings, member permissions or public/published state. Omitted sections retain legacy content.
+ */
+export interface CampaignPageDesign {
+  need?: CampaignSectionCopy;
+  programme?: CampaignProgrammeSection;
+  outcomes?: CampaignOutcomesSection;
+  team?: CampaignPeopleSection;
+  money?: CampaignSectionCopy;
+  wall?: CampaignSectionCopy;
+  /**
+   * @minItems 6
+   * @maxItems 6
+   */
+  order?: CampaignEditableSection[];
+  schemes?: CampaignSectionSchemes;
+}
+
 /**
  * Campaign goals and donations use this currency. Locked once checkout has started.
  */
@@ -1061,8 +1195,9 @@ export interface CampaignEditorRequest {
   drumExperience?: DrumExperience | null;
   /** Campaign goals and donations use this currency. Locked once checkout has started. */
   currency?: CampaignEditorRequestCurrency;
-  /** @maxLength 200 */
+  /** @maxLength 30 */
   name?: string;
+  pageDesign?: CampaignPageDesign | null;
   /** @maxLength 140 */
   tagline?: string;
   /** @maxLength 20000 */

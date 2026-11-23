@@ -3,6 +3,7 @@ import { PROFILE_SECTORS } from "./organisation-profile.js";
 import { migrateCampaignPartnerFunding, partnerFundingFor } from "./campaign-matching.js";
 import { campaignPageContent } from "./campaign-page-content.js";
 import { parseDrumExperience } from "./drum-experience.js";
+import { campaignPageDesign, campaignStoryLength } from "./campaign-page-design.js";
 
 export class CampaignInputError extends Error {}
 export type PublishGate = { id: string; message: string; step: number };
@@ -35,6 +36,10 @@ function url(value: unknown, label: string) {
 export function campaignPatch(input: unknown, previous: Record<string, unknown> = {}) {
   const body = record(input, "campaign");
   const patch: Record<string, unknown> = {};
+  if ("pageDesign" in body) {
+    try { patch.pageDesign = campaignPageDesign(body.pageDesign); }
+    catch (err) { invalid((err as Error).message); }
+  }
   if ("currency" in body) {
     if (body.currency !== "gbp" && body.currency !== "usd") invalid("Choose pounds (GBP) or US dollars (USD).");
     if (body.currency !== (previous.currency ?? "gbp") &&
@@ -47,7 +52,7 @@ export function campaignPatch(input: unknown, previous: Record<string, unknown> 
     try { patch.pageContent = campaignPageContent(body.pageContent); }
     catch (err) { invalid((err as Error).message); }
   }
-  for (const [key, max] of Object.entries({ name: 200, tagline: 140, description: 20000 })) {
+  for (const [key, max] of Object.entries({ name: 30, tagline: 140, description: 20000 })) {
     if (!(key in body)) continue;
     const result = text(body[key], key === "description" ? "your campaign story" : key, max);
     if (/<\/?[a-z][^>]*>/i.test(result)) invalid("Remove HTML tags and use plain text or Markdown, then save again.");
@@ -175,7 +180,13 @@ export function campaignPublishGates(org: Record<string, unknown>, campaign: Rec
   const content = (v: unknown) => typeof v === "string" ? v.trim() : "";
   if (!content(campaign.name) || !content(campaign.tagline)) gates.push({ id: "name", message: "Add a campaign name and one-line ask.", step: 1 });
   if (typeof campaign.goal !== "number" || campaign.goal <= 0) gates.push({ id: "goal", message: "Set a goal above zero.", step: 2 });
-  if (content(campaign.description).length < 200) gates.push({ id: "story", message: "Write a campaign story of at least 200 characters.", step: 3 });
+  if (campaignStoryLength(campaign) < 200) gates.push({ id: "story", message: "Write at least 200 characters across your campaign Story.", step: 3 });
+  if (content(campaign.name).length > 30) gates.push({ id: "title-length", message: "Shorten the campaign title to 30 characters.", step: 1 });
+  const design = campaign.pageDesign as ReturnType<typeof campaignPageDesign> | undefined;
+  for (const key of ["programme", "outcomes"] as const) {
+    if (design?.[key]?.boxes.some(box => !box.title.trim())) gates.push({ id: `${key}-titles`, message: `Add a title to every ${key} box.`, step: 3 });
+  }
+  if (design?.team?.people.some(person => !person.name.trim())) gates.push({ id: "team-names", message: "Add a name for each person.", step: 3 });
   if (!content(campaign.imageUrl)) gates.push({ id: "hero", message: "Upload a hero image.", step: 4 });
   const sectors = Array.isArray(org.categories) ? org.categories : [org.category];
   const short = content(org.shortDescription).length;

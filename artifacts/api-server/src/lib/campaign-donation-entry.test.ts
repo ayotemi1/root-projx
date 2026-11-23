@@ -31,6 +31,122 @@ async function loadComponent(path: string) {
   return mod.exports;
 }
 
+test("outcomes show only their saved titles and descriptions in public and preview, without stat numbers or footnotes", async () => {
+  const { CampaignPageView } = await loadComponent("src/components/campaign/campaign-page-view.tsx");
+  const campaign = { _id: "outcomes-check", name: "Real campaign", type: "fundraising",
+    goal: 1200, amountRaised: 75, supporterCount: 2, description: "", enabled: true,
+    phases: [{ id: "one", title: "Participants in training", description: "Real training places", completed: false }],
+    pageContent: { outcomesNote: "These are intended outcomes, not results already achieved." } };
+  for (const preview of [false, true]) {
+    const html = renderToStaticMarkup(createElement(Router, { hook: () => ["/", () => {}] },
+      createElement(CampaignPageView, { campaign, organisation: { _id: "org-check", name: "Real organisation" }, preview })));
+    const outcomes = html.match(/<ol[^>]*data-testid="list-campaign-milestones"[\s\S]*?<\/ol>/)?.[0] ?? "";
+    assert.match(outcomes, /Participants in training/);
+    assert.match(outcomes, /Real training places/);
+    assert.doesNotMatch(outcomes, /rc-v|rc-state|TBC|To come|Completed/);
+    assert.doesNotMatch(html, /These are intended outcomes|text-outcomes-note/);
+    assert.match(html, /text-campaign-progress/);
+  }
+});
+
+test("Programme and Outcomes grids use their actual item count for every reference layout", async () => {
+  const { CampaignPageView } = await loadComponent("src/components/campaign/campaign-page-view.tsx");
+  for (let count = 1; count <= 6; count++) {
+    const campaign = { _id: "grid-check", name: "Grid check", type: "fundraising", description: "Real saved story",
+      breakdown: Array.from({ length: count }, (_, i) => ({ label: `Trade ${i}`, detail: "Saved detail" })),
+      phases: Array.from({ length: count }, (_, i) => ({ id: `p${i}`, title: `Outcome ${i}`, description: "Saved line" })) };
+    const html = renderToStaticMarkup(createElement(Router, { hook: () => ["/", () => {}] },
+      createElement(CampaignPageView, { campaign, organisation: { _id: "grid-org", name: "Grid organisation" }, preview: true })));
+    assert.equal((html.match(new RegExp(`class="[^"]*rc-boxes[^"]*" data-n="${count}"`, "g")) ?? []).length, 2);
+  }
+  const css = await readFile(new URL("src/components/campaign/campaign-redesign.css", webRoot), "utf8");
+  assert.match(css, /repeat\(6,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /rc-boxes\[data-n="5"\]\s*>\s*:nth-child\(n\+4\)/);
+  assert.match(css, /@container rc \(max-width: 699\.98px\)/);
+});
+
+test("the shared page reads Story overrides in public and preview without changing legacy records or donation totals", async () => {
+  const { CampaignPageView } = await loadComponent("src/components/campaign/campaign-page-view.tsx");
+  const campaign = { _id: "story-overrides", name: "Story check", type: "fundraising", enabled: true,
+    goal: 1200, amountRaised: 75, supporterCount: 2, description: "Legacy first paragraph\n\nKeep this second paragraph.",
+    breakdown: [{ label: "Legacy trade", detail: "Old trade description" }],
+    phases: [{ id: "legacy", title: "Legacy outcome", description: "Old outcome description", targetAmount: 800, completed: true }],
+    pageDesign: {
+      need: { headline: "Actual need", intro: "New first paragraph." },
+      programme: { headline: "Actual programme", intro: "Real programme intro.",
+        boxes: [{ id: "p1", title: "Build", text: "Learn building." }, { id: "p2", title: "Sew", text: "Learn sewing." }] },
+      outcomes: { headline: "Actual outcomes", intro: "Real outcome intro.",
+        boxes: ["Skills", "Trade", "Childcare"].map((title, i) => ({ id: `o${i}`, title, text: "Real outcome text." })) },
+      team: { headline: "Actual team", intro: "Real people.", people: [{ id: "person", name: "Campaign coordinator", role: "Lead" }] },
+    } };
+  const before = JSON.stringify(campaign);
+  for (const preview of [false, true]) {
+    const html = renderToStaticMarkup(createElement(Router, { hook: () => ["/", () => {}] },
+      createElement(CampaignPageView, { campaign, organisation: { _id: "story-org", name: "Organisation", team: [{ name: "Original teammate" }] }, preview })));
+    for (const text of ["Actual need", "New first paragraph.", "Keep this second paragraph.", "Actual programme", "Learn sewing.", "Actual outcomes", "Campaign coordinator"]) {
+      assert.ok(html.includes(text), `${text} was not rendered`);
+    }
+    assert.doesNotMatch(html, /Legacy first paragraph|Legacy trade|Legacy outcome|Original teammate/);
+    assert.match(html, /£75/);
+    assert.match(html, /rc-boxes[^>]*data-n="2"/);
+    assert.match(html, /rc-boxes[^>]*data-n="3"/);
+    assert.equal(JSON.stringify(campaign), before);
+  }
+});
+
+test("Look reorders real sections and numbers in public and preview, scopes all five schemes and fixes the opening and close", async () => {
+  const { CampaignPageView } = await loadComponent("src/components/campaign/campaign-page-view.tsx");
+  const order = ["wall", "money", "team", "outcomes", "programme", "need"];
+  const campaign = { _id: "look-order", name: "Look order", type: "fundraising", enabled: true,
+    description: "Actual story", goal: 1000, amountRaised: 25, supporterCount: 1,
+    breakdown: [{ label: "First trade", detail: "Actual detail" }, { label: "Second trade", detail: "Actual detail" }],
+    phases: [{ id: "p", title: "Outcome", description: "Actual result" }], pageDesign: { order, schemes: {} } };
+  const render = (preview: boolean) => renderToStaticMarkup(createElement(Router, { hook: () => ["/", () => {}] },
+    createElement(CampaignPageView, { campaign, organisation: { _id: "look-org", name: "Organisation" }, preview })));
+  for (const preview of [false, true]) {
+    const html = render(preview);
+    assert.deepEqual([...html.matchAll(/data-section="([^"]+)"/g)].map(m => m[1]), order);
+    assert.deepEqual([...html.matchAll(/class="rc-num">(\d+)</g)].map(m => Number(m[1])), [1, 2, 3, 4, 5, 6, 7, 8]);
+    assert.ok(html.indexOf('data-testid="text-campaign-progress"') < html.indexOf('data-section="wall"'));
+    assert.ok(html.indexOf('data-testid="block-share"') > html.indexOf('data-section="need"'));
+    assert.match(html, /class="rc-hero rc-on-dark" data-testid="block-share"/);
+    assert.match(html, /£25/);
+  }
+  for (const [scheme, token] of [["cream", "rc-t-cream"], ["white", "rc-t-paper"], ["red", "rc-s-red"], ["ink", "rc-on-dark"], ["yellow", "rc-on-hi"]]) {
+    campaign.pageDesign.schemes = { programme: scheme };
+    assert.match(render(true), new RegExp(`<section class="[^"]*${token}[^"]*" data-section="programme"`));
+  }
+  campaign.pageDesign.order = ["need", "need", "outcomes", "team", "money", "wall"];
+  assert.deepEqual([...render(true).matchAll(/data-section="([^"]+)"/g)].map(m => m[1]), ["need", "programme", "outcomes", "team", "money", "wall"]);
+});
+
+test("new blank draft boxes still determine the real preview grid without fabricated text", async () => {
+  const { CampaignPageView } = await loadComponent("src/components/campaign/campaign-page-view.tsx");
+  const boxes = [0, 1].map(i => ({ id: `box-${i}`, title: "", text: "" }));
+  const campaign = { _id: "blank-grid", name: "Blank grid", type: "fundraising", pageDesign: {
+    programme: { headline: "Programme", intro: "", boxes },
+    team: { headline: "Team", intro: "", people: [{ id: "p", name: "", role: "" }] },
+  } };
+  const html = renderToStaticMarkup(createElement(Router, { hook: () => ["/", () => {}] },
+    createElement(CampaignPageView, { campaign, organisation: { _id: "org", name: "Organisation" }, preview: true })));
+  assert.match(html, /rc-boxes[^>]*data-n="2"/);
+  assert.match(html, /data-testid="card-team-0"/);
+  assert.doesNotMatch(html, /Your campaign name|Your story will appear|Box title/);
+});
+
+test("fitted words leave rounding space at both actual and scaled preview widths", async () => {
+  const { availableTextWidth } = await loadComponent("src/components/campaign/fit-metrics.ts");
+  for (const scale of [1, 0.9, 0.65, 0.4, 0.23]) {
+    const width = 354 * scale;
+    const el = { offsetWidth: 354, clientWidth: 354, getBoundingClientRect: () => ({ width }) };
+    const safeWidth = availableTextWidth(el);
+    assert.ok(safeWidth <= width - 1, "Allow at least a screen pixel for rounding");
+    assert.ok(safeWidth < width + 0.5, "The former overflowing candidate must not fit");
+  }
+  const css = await readFile(new URL("src/components/campaign/campaign-redesign.css", webRoot), "utf8");
+  assert.match(css, /rc-hero-copy \.rc-h1 span,[\s\S]*?overflow-wrap: normal; word-break: normal; hyphens: none;/);
+});
+
 test("Drum Life renders 50 drums from money in public and preview; other campaigns retain the supporter wall", async () => {
   const { CampaignPageView } = await loadComponent("src/components/campaign/campaign-page-view.tsx");
   const { DRUM_SPOTS, fundedDrums } = await loadComponent("src/lib/drum-experience.ts");

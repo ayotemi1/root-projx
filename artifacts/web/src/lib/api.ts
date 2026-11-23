@@ -1,5 +1,7 @@
 import { uploadVideo } from "./video-upload";
 import { appFetch, userErrorMessage, responseError } from "./error-feedback";
+import type { CampaignPageDesign } from "@workspace/api-client-react";
+export type { CampaignPageDesign, CampaignEditableSection, CampaignColourScheme } from "@workspace/api-client-react";
 export const API_BASE = "/api";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -514,6 +516,7 @@ export interface DrumExperience {
 }
 
 export interface Campaign {
+  pageDesign?: CampaignPageDesign | null;
   drumExperience?: DrumExperience | null;
   currency?: "gbp" | "usd";
   currencyLockedAt?: string | null;
@@ -570,6 +573,7 @@ export interface PublicSupporter {
 
 /** Editable fields accepted by PATCH, plus editor flags. Never includes amountRaised. */
 export interface CampaignEditorPatch {
+  pageDesign?: CampaignPageDesign | null;
   drumExperience?: DrumExperience | null;
   currency?: "gbp" | "usd";
   videos?: CampaignVideo[];
