@@ -128,7 +128,7 @@ router.get("/profile", requireAuth, async (req, res) => {
         ...userData,
         publicProfile: { ...storedPublicProfile, publicId },
       };
-      await fsPatch("users", uid, userData, token);
+      await fsPatch("users", uid, { publicProfile: userData.publicProfile }, token);
       storedPublicProfile = userData["publicProfile"] as StoredPublicProfile;
     }
 
@@ -173,7 +173,7 @@ router.patch("/profile", requireAuth, async (req, res) => {
     updates["avatarInitials"] = avatarInitials(newName);
 
     const merged = { ...existing, ...updates };
-    await fsPatch("users", uid, merged, token);
+    await fsPatch("users", uid, updates, token);
     res.json({ id: uid, ...merged });
   } catch (err) {
     req.log.error({ err }, "PATCH /profile error");
@@ -301,7 +301,7 @@ router.patch("/profile/public", requireAuth, async (req, res) => {
     const serverToken = await getServerToken();
     const publicId = await ensurePublicProfileId(storedPublicProfile?.publicId, uid, serverToken);
     const publicProfile = { enabled: body["enabled"], displayName, bio, publicId };
-    await fsPatch("users", uid, { ...existing, publicProfile }, token);
+    await fsPatch("users", uid, { publicProfile }, token);
     res.json(publicProfile);
   } catch (err) {
     req.log.error({ err }, "PATCH /profile/public error");

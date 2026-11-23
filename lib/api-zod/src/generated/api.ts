@@ -4910,3 +4910,421 @@ export const UnfollowSupporterResponse = zod.object({
 export const RemoveSupporterPostParams = zod.object({
   id: zod.coerce.string(),
 });
+
+export const getMySupporterShowcaseResponsePostsItemTagOneOneValueMax = 160;
+
+export const getMySupporterShowcaseResponsePostsItemMediaItemOneOrderMin = 0;
+export const getMySupporterShowcaseResponsePostsItemMediaItemOneOrderMax = 4;
+
+export const getMySupporterShowcaseResponsePostsItemMediaItemOneCropZoomMax = 3;
+
+export const getMySupporterShowcaseResponsePostsItemMediaItemOneCropXMin = -50;
+export const getMySupporterShowcaseResponsePostsItemMediaItemOneCropXMax = 50;
+
+export const getMySupporterShowcaseResponsePostsItemMediaItemOneCropYMin = -50;
+export const getMySupporterShowcaseResponsePostsItemMediaItemOneCropYMax = 50;
+
+export const getMySupporterShowcaseResponsePostsItemMediaItemOneAdjustmentsBrightnessMin = 0.5;
+export const getMySupporterShowcaseResponsePostsItemMediaItemOneAdjustmentsBrightnessMax = 1.5;
+
+export const getMySupporterShowcaseResponsePostsItemMediaItemOneAdjustmentsContrastMin = 0.5;
+export const getMySupporterShowcaseResponsePostsItemMediaItemOneAdjustmentsContrastMax = 1.5;
+
+export const getMySupporterShowcaseResponsePostsItemMediaItemOneAdjustmentsSaturationMin = 0;
+export const getMySupporterShowcaseResponsePostsItemMediaItemOneAdjustmentsSaturationMax = 2;
+
+export const GetMySupporterShowcaseResponse = zod.object({
+  displayName: zod.string(),
+  bio: zod.string(),
+  avatarInitials: zod.string(),
+  location: zod.string(),
+  visibleInterests: zod.array(zod.string()),
+  availableInterests: zod
+    .array(zod.string())
+    .describe(
+      "Owner-only interest editing choices; empty in public projection",
+    ),
+  createdAt: zod.string().nullable(),
+  publicId: zod.string().nullable(),
+  isPublic: zod.boolean(),
+  isOwner: zod.boolean(),
+  counts: zod.object({
+    posts: zod.number(),
+    following: zod.number(),
+    organisations: zod.number(),
+  }),
+  posts: zod.array(
+    zod.object({
+      id: zod.string(),
+      type: zod.enum(["photo", "video", "text"]),
+      caption: zod.string(),
+      community_tag: zod.string().nullish(),
+      tag: zod
+        .union([
+          zod
+            .object({
+              type: zod.enum(["community", "cause", "place", "organisation"]),
+              value: zod
+                .string()
+                .min(1)
+                .max(getMySupporterShowcaseResponsePostsItemTagOneOneValueMax),
+            })
+            .and(
+              zod.object({
+                label: zod.string(),
+                description: zod.string().nullish(),
+              }),
+            ),
+          zod.null(),
+        ])
+        .optional(),
+      organisation_id: zod.string().nullish(),
+      campaign_id: zod.string().nullish(),
+      created_at: zod.string(),
+      edited_at: zod.string().nullable(),
+      removed: zod.boolean(),
+      visibility: zod.enum(["public", "private"]),
+      media: zod.array(
+        zod
+          .object({
+            id: zod.string(),
+            order: zod
+              .number()
+              .min(getMySupporterShowcaseResponsePostsItemMediaItemOneOrderMin)
+              .max(getMySupporterShowcaseResponsePostsItemMediaItemOneOrderMax),
+            crop: zod.object({
+              aspect: zod.enum(["original", "1:1", "4:5", "16:9"]),
+              zoom: zod
+                .number()
+                .min(1)
+                .max(
+                  getMySupporterShowcaseResponsePostsItemMediaItemOneCropZoomMax,
+                ),
+              x: zod
+                .number()
+                .min(
+                  getMySupporterShowcaseResponsePostsItemMediaItemOneCropXMin,
+                )
+                .max(
+                  getMySupporterShowcaseResponsePostsItemMediaItemOneCropXMax,
+                ),
+              y: zod
+                .number()
+                .min(
+                  getMySupporterShowcaseResponsePostsItemMediaItemOneCropYMin,
+                )
+                .max(
+                  getMySupporterShowcaseResponsePostsItemMediaItemOneCropYMax,
+                ),
+            }),
+            filter: zod.enum(["original", "warm", "cool", "mono"]),
+            adjustments: zod.object({
+              brightness: zod
+                .number()
+                .min(
+                  getMySupporterShowcaseResponsePostsItemMediaItemOneAdjustmentsBrightnessMin,
+                )
+                .max(
+                  getMySupporterShowcaseResponsePostsItemMediaItemOneAdjustmentsBrightnessMax,
+                ),
+              contrast: zod
+                .number()
+                .min(
+                  getMySupporterShowcaseResponsePostsItemMediaItemOneAdjustmentsContrastMin,
+                )
+                .max(
+                  getMySupporterShowcaseResponsePostsItemMediaItemOneAdjustmentsContrastMax,
+                ),
+              saturation: zod
+                .number()
+                .min(
+                  getMySupporterShowcaseResponsePostsItemMediaItemOneAdjustmentsSaturationMin,
+                )
+                .max(
+                  getMySupporterShowcaseResponsePostsItemMediaItemOneAdjustmentsSaturationMax,
+                ),
+            }),
+          })
+          .and(
+            zod.object({
+              post_id: zod.string().nullish(),
+              url: zod.string(),
+              type: zod.enum(["photo", "video"]),
+              width: zod.number(),
+              height: zod.number(),
+              duration: zod.number().nullish(),
+              video_thumbnail_url: zod.string().nullish(),
+            }),
+          ),
+      ),
+      author: zod.object({
+        name: zod.string(),
+        initials: zod.string(),
+        publicId: zod.string().nullable(),
+        isOwner: zod.boolean(),
+        following: zod.boolean(),
+      }),
+    }),
+  ),
+  involvement: zod.array(
+    zod.object({
+      id: zod.string(),
+      source: zod.enum(["manual", "post", "repost", "gift"]),
+      organisationId: zod.string().nullable(),
+      projectName: zod.string(),
+      logo: zod.string().nullable(),
+      sector: zod.string().nullable(),
+      location: zod.string().nullable(),
+      activity: zod.string(),
+      details: zod.string(),
+      when: zod.string(),
+      shared: zod.boolean(),
+      href: zod.string().nullable(),
+    }),
+  ),
+  sources: zod.object({
+    saved: zod.boolean(),
+    reposts: zod.boolean(),
+    sharedGifts: zod.boolean(),
+  }),
+});
+
+export const GetVisitorSupporterShowcaseParams = zod.object({
+  publicId: zod.coerce.string(),
+});
+
+export const getVisitorSupporterShowcaseResponsePostsItemTagOneOneValueMax = 160;
+
+export const getVisitorSupporterShowcaseResponsePostsItemMediaItemOneOrderMin = 0;
+export const getVisitorSupporterShowcaseResponsePostsItemMediaItemOneOrderMax = 4;
+
+export const getVisitorSupporterShowcaseResponsePostsItemMediaItemOneCropZoomMax = 3;
+
+export const getVisitorSupporterShowcaseResponsePostsItemMediaItemOneCropXMin =
+  -50;
+export const getVisitorSupporterShowcaseResponsePostsItemMediaItemOneCropXMax = 50;
+
+export const getVisitorSupporterShowcaseResponsePostsItemMediaItemOneCropYMin =
+  -50;
+export const getVisitorSupporterShowcaseResponsePostsItemMediaItemOneCropYMax = 50;
+
+export const getVisitorSupporterShowcaseResponsePostsItemMediaItemOneAdjustmentsBrightnessMin = 0.5;
+export const getVisitorSupporterShowcaseResponsePostsItemMediaItemOneAdjustmentsBrightnessMax = 1.5;
+
+export const getVisitorSupporterShowcaseResponsePostsItemMediaItemOneAdjustmentsContrastMin = 0.5;
+export const getVisitorSupporterShowcaseResponsePostsItemMediaItemOneAdjustmentsContrastMax = 1.5;
+
+export const getVisitorSupporterShowcaseResponsePostsItemMediaItemOneAdjustmentsSaturationMin = 0;
+export const getVisitorSupporterShowcaseResponsePostsItemMediaItemOneAdjustmentsSaturationMax = 2;
+
+export const GetVisitorSupporterShowcaseResponse = zod.object({
+  displayName: zod.string(),
+  bio: zod.string(),
+  avatarInitials: zod.string(),
+  location: zod.string(),
+  visibleInterests: zod.array(zod.string()),
+  availableInterests: zod
+    .array(zod.string())
+    .describe(
+      "Owner-only interest editing choices; empty in public projection",
+    ),
+  createdAt: zod.string().nullable(),
+  publicId: zod.string().nullable(),
+  isPublic: zod.boolean(),
+  isOwner: zod.boolean(),
+  counts: zod.object({
+    posts: zod.number(),
+    following: zod.number(),
+    organisations: zod.number(),
+  }),
+  posts: zod.array(
+    zod.object({
+      id: zod.string(),
+      type: zod.enum(["photo", "video", "text"]),
+      caption: zod.string(),
+      community_tag: zod.string().nullish(),
+      tag: zod
+        .union([
+          zod
+            .object({
+              type: zod.enum(["community", "cause", "place", "organisation"]),
+              value: zod
+                .string()
+                .min(1)
+                .max(
+                  getVisitorSupporterShowcaseResponsePostsItemTagOneOneValueMax,
+                ),
+            })
+            .and(
+              zod.object({
+                label: zod.string(),
+                description: zod.string().nullish(),
+              }),
+            ),
+          zod.null(),
+        ])
+        .optional(),
+      organisation_id: zod.string().nullish(),
+      campaign_id: zod.string().nullish(),
+      created_at: zod.string(),
+      edited_at: zod.string().nullable(),
+      removed: zod.boolean(),
+      visibility: zod.enum(["public", "private"]),
+      media: zod.array(
+        zod
+          .object({
+            id: zod.string(),
+            order: zod
+              .number()
+              .min(
+                getVisitorSupporterShowcaseResponsePostsItemMediaItemOneOrderMin,
+              )
+              .max(
+                getVisitorSupporterShowcaseResponsePostsItemMediaItemOneOrderMax,
+              ),
+            crop: zod.object({
+              aspect: zod.enum(["original", "1:1", "4:5", "16:9"]),
+              zoom: zod
+                .number()
+                .min(1)
+                .max(
+                  getVisitorSupporterShowcaseResponsePostsItemMediaItemOneCropZoomMax,
+                ),
+              x: zod
+                .number()
+                .min(
+                  getVisitorSupporterShowcaseResponsePostsItemMediaItemOneCropXMin,
+                )
+                .max(
+                  getVisitorSupporterShowcaseResponsePostsItemMediaItemOneCropXMax,
+                ),
+              y: zod
+                .number()
+                .min(
+                  getVisitorSupporterShowcaseResponsePostsItemMediaItemOneCropYMin,
+                )
+                .max(
+                  getVisitorSupporterShowcaseResponsePostsItemMediaItemOneCropYMax,
+                ),
+            }),
+            filter: zod.enum(["original", "warm", "cool", "mono"]),
+            adjustments: zod.object({
+              brightness: zod
+                .number()
+                .min(
+                  getVisitorSupporterShowcaseResponsePostsItemMediaItemOneAdjustmentsBrightnessMin,
+                )
+                .max(
+                  getVisitorSupporterShowcaseResponsePostsItemMediaItemOneAdjustmentsBrightnessMax,
+                ),
+              contrast: zod
+                .number()
+                .min(
+                  getVisitorSupporterShowcaseResponsePostsItemMediaItemOneAdjustmentsContrastMin,
+                )
+                .max(
+                  getVisitorSupporterShowcaseResponsePostsItemMediaItemOneAdjustmentsContrastMax,
+                ),
+              saturation: zod
+                .number()
+                .min(
+                  getVisitorSupporterShowcaseResponsePostsItemMediaItemOneAdjustmentsSaturationMin,
+                )
+                .max(
+                  getVisitorSupporterShowcaseResponsePostsItemMediaItemOneAdjustmentsSaturationMax,
+                ),
+            }),
+          })
+          .and(
+            zod.object({
+              post_id: zod.string().nullish(),
+              url: zod.string(),
+              type: zod.enum(["photo", "video"]),
+              width: zod.number(),
+              height: zod.number(),
+              duration: zod.number().nullish(),
+              video_thumbnail_url: zod.string().nullish(),
+            }),
+          ),
+      ),
+      author: zod.object({
+        name: zod.string(),
+        initials: zod.string(),
+        publicId: zod.string().nullable(),
+        isOwner: zod.boolean(),
+        following: zod.boolean(),
+      }),
+    }),
+  ),
+  involvement: zod.array(
+    zod.object({
+      id: zod.string(),
+      source: zod.enum(["manual", "post", "repost", "gift"]),
+      organisationId: zod.string().nullable(),
+      projectName: zod.string(),
+      logo: zod.string().nullable(),
+      sector: zod.string().nullable(),
+      location: zod.string().nullable(),
+      activity: zod.string(),
+      details: zod.string(),
+      when: zod.string(),
+      shared: zod.boolean(),
+      href: zod.string().nullable(),
+    }),
+  ),
+  sources: zod.object({
+    saved: zod.boolean(),
+    reposts: zod.boolean(),
+    sharedGifts: zod.boolean(),
+  }),
+});
+
+export const saveSupporterShowcaseDetailsBodyLocationMax = 120;
+
+export const saveSupporterShowcaseDetailsBodyVisibleInterestsItemMax = 100;
+
+export const saveSupporterShowcaseDetailsBodyVisibleInterestsMax = 30;
+
+export const SaveSupporterShowcaseDetailsBody = zod.object({
+  location: zod.string().max(saveSupporterShowcaseDetailsBodyLocationMax),
+  visibleInterests: zod
+    .array(
+      zod.string().max(saveSupporterShowcaseDetailsBodyVisibleInterestsItemMax),
+    )
+    .max(saveSupporterShowcaseDetailsBodyVisibleInterestsMax),
+});
+
+export const addSupporterInvolvementBodyOrganisationIdMax = 128;
+
+export const addSupporterInvolvementBodyProjectNameMax = 120;
+
+export const addSupporterInvolvementBodyDetailsMax = 500;
+
+export const addSupporterInvolvementBodyWhenMax = 80;
+
+export const AddSupporterInvolvementBody = zod.object({
+  id: zod.string().uuid(),
+  organisationId: zod
+    .string()
+    .max(addSupporterInvolvementBodyOrganisationIdMax)
+    .nullish(),
+  projectName: zod
+    .string()
+    .min(1)
+    .max(addSupporterInvolvementBodyProjectNameMax),
+  activity: zod.enum([
+    "Volunteered",
+    "Visited",
+    "Went to an event",
+    "Fundraised",
+    "Gave",
+    "Other",
+  ]),
+  details: zod.string().max(addSupporterInvolvementBodyDetailsMax),
+  when: zod.string().min(1).max(addSupporterInvolvementBodyWhenMax),
+  shared: zod.boolean(),
+});
+
+export const RemoveSupporterInvolvementParams = zod.object({
+  id: zod.coerce.string(),
+});

@@ -1473,6 +1473,64 @@ paths:
       responses:
         "204": { description: Owner removed the post }
 
+  /supporter-showcase/me:
+    get:
+      operationId: getMySupporterShowcase
+      tags: [supporterProfiles]
+      security: [{ bearerAuth: [] }]
+      responses:
+        "200":
+          description: Owner-only profile with private activity
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupporterShowcase" }
+  /supporter-showcase/public/{publicId}:
+    get:
+      operationId: getVisitorSupporterShowcase
+      tags: [supporterProfiles]
+      parameters:
+        - { name: publicId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Public-only projection, identical for the owner preview and a visitor
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SupporterShowcase" }
+        "404": { description: Profile hidden or missing }
+  /supporter-showcase/details:
+    patch:
+      operationId: saveSupporterShowcaseDetails
+      tags: [supporterProfiles]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupporterShowcaseDetailsInput" }
+      responses:
+        "204": { description: Presentation details saved without changing privacy settings }
+  /supporter-showcase/involvement:
+    post:
+      operationId: addSupporterInvolvement
+      tags: [supporterProfiles]
+      security: [{ bearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SupporterInvolvementInput" }
+      responses:
+        "201": { description: Entry saved; stable ID makes retries idempotent }
+  /supporter-showcase/involvement/{id}:
+    delete:
+      operationId: removeSupporterInvolvement
+      tags: [supporterProfiles]
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "204": { description: Own manual entry removed }
+
 components:
   securitySchemes:
     adminSecret:
@@ -2696,6 +2754,69 @@ components:
         - totalDonated
         - followCount
 
+    SupporterShowcaseDetailsInput:
+      type: object
+      required: [location, visibleInterests]
+      properties:
+        location: { type: string, maxLength: 120 }
+        visibleInterests: { type: array, maxItems: 30, items: { type: string, maxLength: 100 } }
+    SupporterInvolvementInput:
+      type: object
+      required: [id, projectName, activity, details, when, shared]
+      properties:
+        id: { type: string, format: uuid }
+        organisationId: { type: [string, "null"], maxLength: 128 }
+        projectName: { type: string, minLength: 1, maxLength: 120 }
+        activity: { type: string, enum: [Volunteered, Visited, Went to an event, Fundraised, Gave, Other] }
+        details: { type: string, maxLength: 500 }
+        when: { type: string, minLength: 1, maxLength: 80 }
+        shared: { type: boolean }
+    SupporterProfileActivity:
+      type: object
+      required: [id, source, organisationId, projectName, logo, sector, location, activity, details, when, shared, href]
+      properties:
+        id: { type: string }
+        source: { type: string, enum: [manual, post, repost, gift] }
+        organisationId: { type: [string, "null"] }
+        projectName: { type: string }
+        logo: { type: [string, "null"] }
+        sector: { type: [string, "null"] }
+        location: { type: [string, "null"] }
+        activity: { type: string }
+        details: { type: string }
+        when: { type: string }
+        shared: { type: boolean }
+        href: { type: [string, "null"] }
+    SupporterShowcase:
+      type: object
+      required: [displayName, bio, avatarInitials, location, visibleInterests, availableInterests, createdAt, publicId, isPublic, isOwner, counts, posts, involvement, sources]
+      properties:
+        displayName: { type: string }
+        bio: { type: string }
+        avatarInitials: { type: string }
+        location: { type: string }
+        visibleInterests: { type: array, items: { type: string } }
+        availableInterests: { type: array, items: { type: string }, description: Owner-only interest editing choices; empty in public projection }
+        createdAt: { type: [string, "null"] }
+        publicId: { type: [string, "null"] }
+        isPublic: { type: boolean }
+        isOwner: { type: boolean }
+        counts:
+          type: object
+          required: [posts, following, organisations]
+          properties:
+            posts: { type: integer }
+            following: { type: integer }
+            organisations: { type: integer }
+        posts: { type: array, items: { $ref: "#/components/schemas/SupporterPostRecord" } }
+        involvement: { type: array, items: { $ref: "#/components/schemas/SupporterProfileActivity" } }
+        sources:
+          type: object
+          required: [saved, reposts, sharedGifts]
+          properties:
+            saved: { type: boolean }
+            reposts: { type: boolean }
+            sharedGifts: { type: boolean }
     UpdateProfileRequest:
       type: object
       properties:

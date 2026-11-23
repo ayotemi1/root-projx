@@ -365,6 +365,34 @@ export async function fsMutateBankDetails<T>(
   throw new Error("Bank details changed while saving. Reload and review again.");
 }
 
+/** Compare-and-write only the supporter's showcase field, preserving all
+ * account, interests, giving and concurrent profile edits. Retried decisions
+ * must be pure; caller supplies stable entry IDs for response-loss retries. */
+export async function fsMutateSupporterShowcase(
+  uid: string, token: string,
+  decide: (user: Record<string, unknown>) => Record<string, unknown>,
+): Promise<void> {
+  if (!/^[A-Za-z0-9_-]{1,128}$/.test(uid)) throw new Error("Invalid profile");
+  const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const response = await fetch(`${FIRESTORE}/users/${uid}`, { headers });
+    if (!response.ok) throw new Error("Profile could not be loaded");
+    const raw = await response.json() as { fields: Record<string, FsValue>; updateTime: string };
+    if (typeof raw.updateTime !== "string") throw new Error("Invalid profile version");
+    const showcase = decide(fromFsDoc(raw.fields ?? {}));
+    const params = new URLSearchParams({ "updateMask.fieldPaths": "profileShowcase", "currentDocument.updateTime": raw.updateTime });
+    const saved = await fetch(`${FIRESTORE}/users/${uid}?${params}`, {
+      method: "PATCH", headers,
+      body: JSON.stringify({ fields: { profileShowcase: toFsVal(showcase) } }),
+    });
+    if (saved.ok) return;
+    if (saved.status === 409 || saved.status === 412 ||
+        saved.status === 400 && (await saved.text()).includes("FAILED_PRECONDITION")) continue;
+    throw new Error("Profile could not be saved");
+  }
+  throw new Error("Profile changed while saving");
+}
+
 export async function fsPatch(
   collection: string,
   docId: string,

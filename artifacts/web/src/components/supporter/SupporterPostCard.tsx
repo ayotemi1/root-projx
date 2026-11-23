@@ -6,7 +6,8 @@ import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/hooks/use-toast";
 import * as api from "@/lib/api";
 import { normaliseEdit } from "@/lib/supporter-post-media";
-import { SP_KEY, deletePost, followAuthor, unfollowAuthor, type SupporterPostRecord } from "@/lib/supporter-publishing";
+import { deletePost, followAuthor, unfollowAuthor, type SupporterPostRecord } from "@/lib/supporter-publishing";
+import { myShowcaseKey, refreshShowcase } from "@/lib/supporter-showcase";
 import { EditedMedia } from "./EditedMedia";
 import "./supporter-post.css";
 
@@ -20,7 +21,7 @@ export function useSupporterFollow() {
     mutationFn: ({ publicId, follow }: { publicId: string; follow: boolean }) =>
       follow ? followAuthor(publicId, token!) : unfollowAuthor(publicId, token!),
     onSuccess: (_r, v) => {
-      void qc.invalidateQueries({ queryKey: [SP_KEY] });
+      refreshShowcase(qc);
       void qc.invalidateQueries({ queryKey: ["supporter-follow", v.publicId] });
       toast({ title: v.follow ? "Following" : "Unfollowed", description: v.follow ? "Their posts will appear in your Following tab." : undefined });
     },
@@ -70,14 +71,19 @@ export function SupporterPostCard({ post }: { post: SupporterPostRecord }) {
   const follow = useSupporterFollow();
   const [confirm, setConfirm] = useState(false);
   const a = post.author;
-  const canFollow = !a.isOwner && !!a.publicId && user?.accountType !== "organisation";
+  // Preview intentionally has no owner privileges in its public DTO. Still
+  // suppress self-follow, including immediately after enabling a public link
+  // when the older auth snapshot hasn't refreshed yet.
+  const ownPublicId = user?.publicProfileSettings?.publicId ||
+    qc.getQueryData<{ publicId: string | null }>(myShowcaseKey(token))?.publicId;
+  const canFollow = !a.isOwner && !!a.publicId && a.publicId !== ownPublicId && user?.accountType !== "organisation";
   const orgs = useQuery({ queryKey: ["organisations", "post-link"], queryFn: () => api.getOrganisations(), enabled: !!post.organisation_id, staleTime: 5 * 60_000 });
   const camps = useQuery({ queryKey: ["campaigns", "post-link", post.organisation_id], queryFn: () => api.getCampaigns(post.organisation_id!), enabled: !!post.organisation_id && !!post.campaign_id, staleTime: 5 * 60_000 });
   const org = orgs.data?.find(o => o._id === post.organisation_id);
   const camp = camps.data?.find(c => c._id === post.campaign_id);
   const remove = useMutation({
     mutationFn: () => deletePost(post.id, token!),
-    onSuccess: () => { void qc.invalidateQueries({ queryKey: [SP_KEY] }); toast({ title: "Post deleted" }); },
+    onSuccess: () => { refreshShowcase(qc); toast({ title: "Post deleted" }); },
     onError: () => toast({ title: "Something went wrong, please try again", variant: "destructive" }),
   });
   const name = a.publicId

@@ -77,6 +77,7 @@ function FollowingPanel() {
 
 export default function SupporterLayout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
+  const profilePage = location === "/profile" || /^\/supporters\/[^/?#]+\/?$/.test(location);
   const { user, isAuthenticated } = useAuth();
   const { signOut, error, pending } = useSignOut();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -166,7 +167,7 @@ export default function SupporterLayout({ children }: { children: ReactNode }) {
   return (
     <SupporterPostDraftProvider>
     <TextPostProvider>
-    <div className="rps-shell">
+    <div className={`rps-shell${profilePage ? " rps-profile" : ""}`}>
       <a href="#rps-main" className="rps-skip">Skip to content</a>
 
       <header className="rps-mhead">
@@ -263,7 +264,7 @@ export default function SupporterLayout({ children }: { children: ReactNode }) {
 
       <main id="rps-main" className="rps-main" tabIndex={-1}>{children}</main>
 
-      <FollowingPanel />
+      {!profilePage && <FollowingPanel />}
 
       <nav className="rps-bottom" aria-label="Primary">
         <ul>

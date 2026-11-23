@@ -87,6 +87,7 @@ import type {
   SendAdminTestEmail200,
   SubmitHelpReviewRequest,
   SupporterInterests,
+  SupporterInvolvementInput,
   SupporterMediaCompletionInput,
   SupporterMediaUploadInput,
   SupporterNotificationInbox,
@@ -94,6 +95,8 @@ import type {
   SupporterPostMedia,
   SupporterPostRecord,
   SupporterPostTag,
+  SupporterShowcase,
+  SupporterShowcaseDetailsInput,
   UnfollowSupporter200,
   Update,
   UpdateOrganisationRequest,
@@ -6807,4 +6810,401 @@ export const useRemoveSupporterPost = <
   TContext
 > => {
   return useMutation(getRemoveSupporterPostMutationOptions(options));
+};
+
+export const getGetMySupporterShowcaseUrl = () => {
+  return `/api/supporter-showcase/me`;
+};
+
+export const getMySupporterShowcase = async (
+  options?: RequestInit,
+): Promise<SupporterShowcase> => {
+  return customFetch<SupporterShowcase>(getGetMySupporterShowcaseUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetMySupporterShowcaseQueryKey = () => {
+  return [`/api/supporter-showcase/me`] as const;
+};
+
+export const getGetMySupporterShowcaseQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMySupporterShowcase>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getMySupporterShowcase>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetMySupporterShowcaseQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getMySupporterShowcase>>
+  > = ({ signal }) => getMySupporterShowcase({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMySupporterShowcase>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetMySupporterShowcaseQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getMySupporterShowcase>>
+>;
+export type GetMySupporterShowcaseQueryError = ErrorType<unknown>;
+
+export function useGetMySupporterShowcase<
+  TData = Awaited<ReturnType<typeof getMySupporterShowcase>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getMySupporterShowcase>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMySupporterShowcaseQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getGetVisitorSupporterShowcaseUrl = (publicId: string) => {
+  return `/api/supporter-showcase/public/${publicId}`;
+};
+
+export const getVisitorSupporterShowcase = async (
+  publicId: string,
+  options?: RequestInit,
+): Promise<SupporterShowcase> => {
+  return customFetch<SupporterShowcase>(
+    getGetVisitorSupporterShowcaseUrl(publicId),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetVisitorSupporterShowcaseQueryKey = (publicId: string) => {
+  return [`/api/supporter-showcase/public/${publicId}`] as const;
+};
+
+export const getGetVisitorSupporterShowcaseQueryOptions = <
+  TData = Awaited<ReturnType<typeof getVisitorSupporterShowcase>>,
+  TError = ErrorType<void>,
+>(
+  publicId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getVisitorSupporterShowcase>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetVisitorSupporterShowcaseQueryKey(publicId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getVisitorSupporterShowcase>>
+  > = ({ signal }) =>
+    getVisitorSupporterShowcase(publicId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!publicId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getVisitorSupporterShowcase>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetVisitorSupporterShowcaseQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getVisitorSupporterShowcase>>
+>;
+export type GetVisitorSupporterShowcaseQueryError = ErrorType<void>;
+
+export function useGetVisitorSupporterShowcase<
+  TData = Awaited<ReturnType<typeof getVisitorSupporterShowcase>>,
+  TError = ErrorType<void>,
+>(
+  publicId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getVisitorSupporterShowcase>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetVisitorSupporterShowcaseQueryOptions(
+    publicId,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getSaveSupporterShowcaseDetailsUrl = () => {
+  return `/api/supporter-showcase/details`;
+};
+
+export const saveSupporterShowcaseDetails = async (
+  supporterShowcaseDetailsInput: SupporterShowcaseDetailsInput,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getSaveSupporterShowcaseDetailsUrl(), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(supporterShowcaseDetailsInput),
+  });
+};
+
+export const getSaveSupporterShowcaseDetailsMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveSupporterShowcaseDetails>>,
+    TError,
+    { data: BodyType<SupporterShowcaseDetailsInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof saveSupporterShowcaseDetails>>,
+  TError,
+  { data: BodyType<SupporterShowcaseDetailsInput> },
+  TContext
+> => {
+  const mutationKey = ["saveSupporterShowcaseDetails"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof saveSupporterShowcaseDetails>>,
+    { data: BodyType<SupporterShowcaseDetailsInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return saveSupporterShowcaseDetails(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SaveSupporterShowcaseDetailsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof saveSupporterShowcaseDetails>>
+>;
+export type SaveSupporterShowcaseDetailsMutationBody =
+  BodyType<SupporterShowcaseDetailsInput>;
+export type SaveSupporterShowcaseDetailsMutationError = ErrorType<unknown>;
+
+export const useSaveSupporterShowcaseDetails = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof saveSupporterShowcaseDetails>>,
+    TError,
+    { data: BodyType<SupporterShowcaseDetailsInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof saveSupporterShowcaseDetails>>,
+  TError,
+  { data: BodyType<SupporterShowcaseDetailsInput> },
+  TContext
+> => {
+  return useMutation(getSaveSupporterShowcaseDetailsMutationOptions(options));
+};
+
+export const getAddSupporterInvolvementUrl = () => {
+  return `/api/supporter-showcase/involvement`;
+};
+
+export const addSupporterInvolvement = async (
+  supporterInvolvementInput: SupporterInvolvementInput,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getAddSupporterInvolvementUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(supporterInvolvementInput),
+  });
+};
+
+export const getAddSupporterInvolvementMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof addSupporterInvolvement>>,
+    TError,
+    { data: BodyType<SupporterInvolvementInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof addSupporterInvolvement>>,
+  TError,
+  { data: BodyType<SupporterInvolvementInput> },
+  TContext
+> => {
+  const mutationKey = ["addSupporterInvolvement"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof addSupporterInvolvement>>,
+    { data: BodyType<SupporterInvolvementInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return addSupporterInvolvement(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AddSupporterInvolvementMutationResult = NonNullable<
+  Awaited<ReturnType<typeof addSupporterInvolvement>>
+>;
+export type AddSupporterInvolvementMutationBody =
+  BodyType<SupporterInvolvementInput>;
+export type AddSupporterInvolvementMutationError = ErrorType<unknown>;
+
+export const useAddSupporterInvolvement = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof addSupporterInvolvement>>,
+    TError,
+    { data: BodyType<SupporterInvolvementInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof addSupporterInvolvement>>,
+  TError,
+  { data: BodyType<SupporterInvolvementInput> },
+  TContext
+> => {
+  return useMutation(getAddSupporterInvolvementMutationOptions(options));
+};
+
+export const getRemoveSupporterInvolvementUrl = (id: string) => {
+  return `/api/supporter-showcase/involvement/${id}`;
+};
+
+export const removeSupporterInvolvement = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getRemoveSupporterInvolvementUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getRemoveSupporterInvolvementMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof removeSupporterInvolvement>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof removeSupporterInvolvement>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["removeSupporterInvolvement"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof removeSupporterInvolvement>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return removeSupporterInvolvement(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RemoveSupporterInvolvementMutationResult = NonNullable<
+  Awaited<ReturnType<typeof removeSupporterInvolvement>>
+>;
+
+export type RemoveSupporterInvolvementMutationError = ErrorType<unknown>;
+
+export const useRemoveSupporterInvolvement = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof removeSupporterInvolvement>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof removeSupporterInvolvement>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getRemoveSupporterInvolvementMutationOptions(options));
 };

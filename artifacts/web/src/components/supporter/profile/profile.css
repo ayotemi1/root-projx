@@ -1,0 +1,13 @@
+/* The profile supplies its own About column, rather than nesting it inside
+   Home's feed column alongside an unrelated Following rail. */
+.rps-profile .rps-main { padding: 0; max-width: none; }
+@media (min-width: 1024px) {
+  .rps-shell.rps-profile { grid-template-columns: var(--rps-side) minmax(0, 1fr); }
+}
+/* Keep the existing shared footer from imposing its intrinsic newsletter
+   width on narrow public-profile pages. Other visitor pages are untouched. */
+@media (max-width: 767px) {
+  .rp-supporter-public-page [data-testid="footer-visitor"] > div:first-child { grid-template-columns: minmax(0, 1fr); }
+  .rp-supporter-public-page [data-testid="footer-visitor"] > div:first-child > div { min-width: 0; }
+  .rp-supporter-public-page [data-testid="footer-visitor"] form { width: 100%; min-width: 0; max-width: 100%; }
+}

@@ -48,6 +48,7 @@ import NotFound from "@/pages/not-found";
 import { OnboardingInterestsPage, SettingsInterestsPage, SettingsPage, ONBOARDING_INTERESTS_FLAG } from "@/pages/interests";
 import OnboardingFollowsPage from "@/pages/onboarding-follows";
 import SupporterProfilePage from "@/pages/supporter-profile";
+import MyProfilePage from "@/pages/my-profile";
 import CampaignLandingPage from "@/pages/campaign-landing";
 import CampaignPreviewPage from "@/pages/campaign-preview";
 
@@ -104,7 +105,7 @@ function SitePageLayout({ children }: { children: ReactNode }) {
     return <SupporterLayout>{children}</SupporterLayout>;
   }
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className={`min-h-screen flex flex-col bg-background${/^\/supporters\/[^/]+\/?$/.test(location) ? " rp-supporter-public-page" : ""}`}>
       <Navbar visitorFeed={visitorFeed} />
       <main className="flex-1">{children}</main>
       {visitorFeed ? <VisitorFooter /> : <Footer />}
@@ -148,7 +149,7 @@ function AppRoutes() {
               <Route path="/inbox" component={InboxPage} />
               <Route path="/notifications" component={NotificationsPage} />
               <Route path="/saved">{() => <SupporterPlaceholder section="saved" />}</Route>
-              <Route path="/profile">{() => <AccountPage />}</Route>
+              <Route path="/profile" component={MyProfilePage} />
               <Route path="/giving-history" component={GivingHistoryPage} />
               <Route path="/shop/success" component={ShopSuccessPage} />
               <Route path="/shop/cancel" component={ShopCancelPage} />

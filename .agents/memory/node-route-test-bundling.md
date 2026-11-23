@@ -27,3 +27,12 @@ root-directory, Vite-environment and web-alias errors even when Node tests pass.
 **How to apply:** Check API types as well as runtime tests after adding
 cross-artifact tests. Do not broaden the API compiler scope or add frontend
 ambient types to hide a test-harness boundary problem.
+
+Virtual fixture modules that re-export real files need a real `resolveDir`,
+even when the re-export uses an absolute path.
+
+**Why:** esbuild does not resolve filesystem imports from a custom namespace
+without the fixture declaring its filesystem resolution context.
+
+**How to apply:** Set `resolveDir` on the virtual module's load result when
+partially mocking a module while retaining its actual security functions.

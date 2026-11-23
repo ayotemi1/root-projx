@@ -1369,6 +1369,110 @@ export interface ProfileResponse {
   followCount: number;
 }
 
+export interface SupporterShowcaseDetailsInput {
+  /** @maxLength 120 */
+  location: string;
+  /** @maxItems 30 */
+  visibleInterests: string[];
+}
+
+export type SupporterInvolvementInputActivity =
+  (typeof SupporterInvolvementInputActivity)[keyof typeof SupporterInvolvementInputActivity];
+
+export const SupporterInvolvementInputActivity = {
+  Volunteered: "Volunteered",
+  Visited: "Visited",
+  Went_to_an_event: "Went to an event",
+  Fundraised: "Fundraised",
+  Gave: "Gave",
+  Other: "Other",
+} as const;
+
+export interface SupporterInvolvementInput {
+  id: string;
+  /**
+   * @maxLength 128
+   * @nullable
+   */
+  organisationId?: string | null;
+  /**
+   * @minLength 1
+   * @maxLength 120
+   */
+  projectName: string;
+  activity: SupporterInvolvementInputActivity;
+  /** @maxLength 500 */
+  details: string;
+  /**
+   * @minLength 1
+   * @maxLength 80
+   */
+  when: string;
+  shared: boolean;
+}
+
+export type SupporterProfileActivitySource =
+  (typeof SupporterProfileActivitySource)[keyof typeof SupporterProfileActivitySource];
+
+export const SupporterProfileActivitySource = {
+  manual: "manual",
+  post: "post",
+  repost: "repost",
+  gift: "gift",
+} as const;
+
+export interface SupporterProfileActivity {
+  id: string;
+  source: SupporterProfileActivitySource;
+  /** @nullable */
+  organisationId: string | null;
+  projectName: string;
+  /** @nullable */
+  logo: string | null;
+  /** @nullable */
+  sector: string | null;
+  /** @nullable */
+  location: string | null;
+  activity: string;
+  details: string;
+  when: string;
+  shared: boolean;
+  /** @nullable */
+  href: string | null;
+}
+
+export type SupporterShowcaseCounts = {
+  posts: number;
+  following: number;
+  organisations: number;
+};
+
+export type SupporterShowcaseSources = {
+  saved: boolean;
+  reposts: boolean;
+  sharedGifts: boolean;
+};
+
+export interface SupporterShowcase {
+  displayName: string;
+  bio: string;
+  avatarInitials: string;
+  location: string;
+  visibleInterests: string[];
+  /** Owner-only interest editing choices; empty in public projection */
+  availableInterests: string[];
+  /** @nullable */
+  createdAt: string | null;
+  /** @nullable */
+  publicId: string | null;
+  isPublic: boolean;
+  isOwner: boolean;
+  counts: SupporterShowcaseCounts;
+  posts: SupporterPostRecord[];
+  involvement: SupporterProfileActivity[];
+  sources: SupporterShowcaseSources;
+}
+
 export interface UpdateProfileRequest {
   name?: string;
   email?: string;

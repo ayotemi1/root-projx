@@ -21,6 +21,12 @@ test("confirmed posts immediately update only the owner's lists and survive an o
   const otherProfile = [root, null, "someone-else-public-profile", token];
   qc.setQueryData(otherAccount, []);
   qc.setQueryData(otherProfile, []);
+  const ownShowcase = ["/api/supporter-showcase/me", token];
+  const otherShowcase = ["/api/supporter-showcase/me", "another-owner"];
+  const publicShowcase = ["supporter-showcase-public", "public-profile"];
+  qc.setQueryData(ownShowcase, { posts: [], counts: { posts: 0, following: 2, organisations: 3 } });
+  qc.setQueryData(otherShowcase, { posts: [], counts: { posts: 0 } });
+  qc.setQueryData(publicShowcase, { posts: [] });
   let release!: (rows: unknown[]) => void;
   const earlierRead = qc.fetchQuery({ queryKey: keys[2], queryFn: () => new Promise(resolve => { release = resolve; }) }).catch(() => null);
   await Promise.resolve();
@@ -32,5 +38,10 @@ test("confirmed posts immediately update only the owner's lists and survive an o
   for (const key of keys) assert.deepEqual(qc.getQueryData(key), [post]);
   assert.deepEqual(qc.getQueryData(otherAccount), [], "must not put this account's private post into another account's cache");
   assert.deepEqual(qc.getQueryData(otherProfile), [], "must not put an author into another public profile");
+  assert.deepEqual(qc.getQueryData(ownShowcase), { posts: [post], counts: { posts: 1, following: 2, organisations: 3 } },
+    "publishing while already on Profile updates posts and count without a remount or duplicate");
+  assert.deepEqual(qc.getQueryData(otherShowcase), { posts: [], counts: { posts: 0 } });
+  assert.deepEqual(qc.getQueryData(publicShowcase), { posts: [] }, "never insert a possibly private post in a public cache");
+  assert.equal(qc.getQueryState(publicShowcase)?.isInvalidated, true, "public views refresh through visibility-enforcing API");
   qc.clear();
 });

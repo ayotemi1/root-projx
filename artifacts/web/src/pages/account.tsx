@@ -31,6 +31,8 @@ import { SupporterPostCard } from "@/components/supporter/SupporterPostCard";
 import { useSupporterPostDraft } from "@/components/supporter/SupporterPostDraftProvider";
 import { SP_KEY, listPosts, spKey } from "@/lib/supporter-publishing";
 import { profileIsPublic } from "@/lib/supporter-post-media";
+import { refreshShowcase } from "@/lib/supporter-showcase";
+import { ShowcaseDetailsCard } from "@/components/supporter/profile/ShowcaseDetailsCard";
 
 function MyPostsSection({ token, isPublic }: { token: string; isPublic: boolean }) {
   const draft = useSupporterPostDraft();
@@ -171,14 +173,18 @@ function PublicProfileCard({ profile, token }: { profile: api.ApiUser, token: st
       const updated = await api.updatePublicProfile({ enabled, displayName, bio }, token);
 
       // Update cache in-place
-      queryClient.setQueryData<api.ApiUser>(["profile"], (old) => {
+      queryClient.setQueryData<api.ApiUser & { publicProfile?: api.PublicProfileSettings }>(["profile"], (old) => {
         if (!old) return old;
         return {
           ...old,
           publicProfileSettings: updated,
+          // The media visibility helper deliberately trusts the raw server
+          // field first. Keep both cached representations in sync after Save.
+          publicProfile: updated,
         };
       });
       void queryClient.invalidateQueries({ queryKey: [SP_KEY] });
+      refreshShowcase(queryClient);
 
       toast({ title: "Public profile updated" });
     } catch (e: unknown) {
@@ -444,6 +450,10 @@ export default function AccountPage({ view = "all" }: { view?: "all" | "giving" 
       {/* Public Profile Settings */}
       {profile && profile.accountType !== "organisation" && token && (
         <PublicProfileCard profile={profile} token={token} />
+      )}
+
+      {profile && profile.accountType === "supporter" && token && (
+        <ShowcaseDetailsCard token={token} />
       )}
 
       {profile && profile.accountType === "supporter" && token && (
