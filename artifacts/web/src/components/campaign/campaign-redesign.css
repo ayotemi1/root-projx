@@ -360,14 +360,38 @@
 .rc .rc-fit-intro .rc-pill { margin-top: 0; }
 .rc .rc-fit-intro .rc-prose { font-size: 17px; line-height: 1.42; color: var(--muted-dark); }
 .rc .rc-on-dark .rc-fit-intro .rc-prose { color: var(--body-on-ink); }
-@container rc (min-width: 820px) {
+@container rc (min-width: 700px) {
   .rc .rc-fit-split.has-intro { grid-template-columns: minmax(0,55fr) minmax(0,45fr); gap: 0 56px; }
-  .rc .rc-fit-split.has-intro .rc-fit-intro .rc-prose { font-size: 20px; }
 }
 .rc[data-layout="desktop"] .rc-fit-split.has-intro { grid-template-columns: minmax(0,55fr) minmax(0,45fr); gap: 0 56px; }
-.rc[data-layout="desktop"] .rc-fit-split.has-intro .rc-fit-intro .rc-prose { font-size: 20px; }
 .rc[data-layout="phone"] .rc-fit-split.has-intro { grid-template-columns: minmax(0,1fr); gap: 20px; }
-.rc[data-layout="phone"] .rc-fit-split.has-intro .rc-fit-intro .rc-prose { font-size: 17px; }
+
+/* One readable split for Story, programme, outcomes, team, money and wall.
+   The first paragraph is the lead; subsequent paragraphs stay in the right column. */
+.rc .rc-fit-split, .rc .rc-fit-intro { text-align: left; }
+.rc .rc-fit-split .rc-story-readable { margin: 0; max-width: none; width: 100%; }
+.rc .rc-fit-intro .rc-lede { margin: 0; max-width: none; font-size: 20px; line-height: 1.42; }
+.rc .rc-fit-intro .rc-lede.rc-following { font-size: 17px; line-height: 1.55; color: var(--muted-dark); }
+.rc .rc-fit-intro .rc-prose { font-size: 17px; line-height: 1.55; }
+.rc .rc-fit-intro .rc-prose p:first-child { font-size: 20px; line-height: 1.42; }
+.rc .rc-fit-intro .rc-story-body { font-size: 17px; line-height: 1.55; }
+.rc .rc-fit-intro .rc-story-body .rc-lead { font-size: 20px; line-height: 1.42; }
+.rc .rc-s-dark .rc-fit-intro .rc-story-body .rc-lead { color: var(--cream); }
+
+/* More than six boxes: complete the final row without an empty grid cell. */
+@container rc (min-width: 700px) {
+  .rc:not([data-layout="phone"]) .rc-boxes > :last-child:nth-child(n+7):nth-child(3n + 1) { grid-column: span 6; }
+  .rc:not([data-layout="phone"]) .rc-boxes > :nth-last-child(2):nth-child(n+7):nth-child(3n + 1),
+  .rc:not([data-layout="phone"]) .rc-boxes > :last-child:nth-child(n+8):nth-child(3n + 2) { grid-column: span 3; }
+}
+.rc[data-layout="desktop"] .rc-boxes > :last-child:nth-child(n+7):nth-child(3n + 1) { grid-column: span 6; }
+.rc[data-layout="desktop"] .rc-boxes > :nth-last-child(2):nth-child(n+7):nth-child(3n + 1),
+.rc[data-layout="desktop"] .rc-boxes > :last-child:nth-child(n+8):nth-child(3n + 2) { grid-column: span 3; }
+.rc[data-layout="phone"] .rc-boxes[data-n="5"] > :nth-child(n+4) { grid-column: span 6; }
+@container rc (max-width: 699.98px) {
+  .rc:not([data-layout="desktop"]) .rc-boxes[data-n="5"] > :nth-child(n+4) { grid-column: span 6; }
+}
+.rc .rc-boxes .rc-trade-amount { margin-top: 0; }
 
 /* Outcome boxes: same weight as the programme boxes */
 .rc .rc-outcome { padding: 28px; gap: 12px; justify-content: flex-start; }

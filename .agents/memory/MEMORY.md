@@ -29,5 +29,6 @@
 - [Organisation deletion](organisation-deletion.md) — remove public presence and owner access while retaining financial history and settlement capability.
 - [Drum Life campaign](drum-life-campaign.md) — Lifeyard-only bespoke theme; 50 drums at US$150 each, including the HOV centre drum. First-cohort themes are commissioned per campaign.
 - [Campaign symbols](campaign-symbols.md) — hands belong only to Out of Many Hands; Drum Life uses drums; other campaigns default to a heart and neutral wording.
+- [Campaign section layout](campaign-section-layout.md) — all campaigns share left-aligned split headings and full box rows, with phone stacking.
 - [Inline video playback](inline-video-playback.md) — avoid competing React and imperative source loads; seek needs byte ranges on the actual media origin.
 - [Website redesign reference](website-redesign-reference.md) — supplied nine-page HTML preview pack guides appearance; prototypes must not replace live data, auth or financial rules.

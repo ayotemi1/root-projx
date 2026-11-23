@@ -200,7 +200,7 @@ test("Drum Life builder is invisible to HOV and other campaigns, including USD c
   assert.match(render("LTMwjXVEgxNideK0XtIQudxZXjc2", "9d5e9d29323a434f8706"), /button-appearance-drum/);
 });
 
-test("Lifeyard's centred Story and purpose-led budget preserve saved copy without changing other campaigns", async () => {
+test("Lifeyard's split Story and purpose-led budget preserve saved copy without changing other campaigns", async () => {
   const { CampaignPageView } = await loadComponent("src/components/campaign/campaign-page-view.tsx");
   const campaign = { _id: "9d5e9d29323a434f8706", name: "Drum Life", type: "fundraising", currency: "usd",
     goal: 18000, amountRaised: 0, supporterCount: 0, status: "active", enabled: false,
@@ -220,10 +220,11 @@ test("Lifeyard's centred Story and purpose-led budget preserve saved copy withou
   for (const layout of ["phone", "desktop", "responsive"]) {
     const html = render(campaign, organisation, layout);
     assert.match(html, /data-testid="block-lifeyard-story"/);
-    assert.match(html, /rc-story-centered/);
+    assert.match(html, /data-testid="block-lifeyard-story" class="rc-fit-split has-intro"/);
+    assert.doesNotMatch(html, /rc-story-centered/);
     assert.match(html, /Our saved opening paragraph/);
     assert.match(html, /Our saved second paragraph/);
-    assert.match(html, /aria-label="Programme costs"/);
+    assert.match(html, /class="rc-bento-grid rc-boxes[^"]*" data-n="4" aria-label="Programme costs"/);
     assert.match(html, /50 drums for hands-on learning, practice and performance/);
     assert.match(html, /Drumming tuition/);
     assert.match(html, /Locally donated space/);
@@ -244,7 +245,21 @@ test("Lifeyard's centred Story and purpose-led budget preserve saved copy withou
   }
 });
 
-test("Who's running it sits centred above Lifeyard's details without changing other campaigns", async () => {
+test("campaign headings and box grids share the same responsive section rules", async () => {
+  const css = await readFile(new URL("src/components/campaign/campaign-redesign.css", webRoot), "utf8");
+  const page = await readFile(new URL("src/components/campaign/campaign-page-view.tsx", webRoot), "utf8");
+  const bespoke = await readFile(new URL("src/components/campaign/lifeyard-sections.tsx", webRoot), "utf8");
+  for (const name of ["storyFitRef", "programmeFitRef", "outcomesFitRef", "teamFitRef", "moneyFitRef", "wallFitRef"])
+    assert.match(page, new RegExp(`ref=\\{${name}\\}[^>]*className=.*rc-fit-split`));
+  assert.match(bespoke, /block-lifeyard-story" className="rc-fit-split has-intro"/);
+  assert.match(bespoke, /className="rc-bento-grid rc-boxes[^"]*" data-n=\{rows.length\}/);
+  assert.match(css, /@container rc \(min-width: 700px\)/);
+  assert.match(css, /rc-boxes\[data-n="5"\] > :nth-child\(n\+4\).*span 3/);
+  assert.match(css, /:last-child:nth-child\(n\+7\):nth-child\(3n \+ 1\).*span 6/);
+  assert.match(css, /rc\[data-layout="phone"\] \.rc-boxes.*span 6/);
+});
+
+test("Who's running it retains Lifeyard's details without changing other campaigns", async () => {
   const { CampaignPageView } = await loadComponent("src/components/campaign/campaign-page-view.tsx");
   const render = (orgId: string, layout: string) => renderToStaticMarkup(createElement(Router, { hook: () => ["/", () => {}] },
     createElement(CampaignPageView, {

@@ -224,6 +224,10 @@ export function CampaignPageView({
   const outcomesHeading = pd.outcomes?.headline ?? "What your support makes possible";
   const programmeFitRef = useFitSplit<HTMLDivElement>([programmeHeading, t("programmeSummary"), programmeIntroText, layout].join("\u0000"));
   const outcomesFitRef = useFitSplit<HTMLDivElement>([outcomesHeading, outcomesIntroText, layout].join("\u0000"));
+  const storyFitRef = useFitSplit<HTMLDivElement>([storyHeading, lead, ...rest, layout].join("\u0000"));
+  const teamFitRef = useFitSplit<HTMLDivElement>([pd.team?.headline, pd.team?.intro, layout].join("\u0000"));
+  const moneyFitRef = useFitSplit<HTMLDivElement>([moneyHeading, pd.money?.intro, money.sentence, layout].join("\u0000"));
+  const wallFitRef = useFitSplit<HTMLDivElement>([wallHeading, pd.wall?.intro, layout].join("\u0000"));
   const heroFitRef = useFitTitle<HTMLDivElement>([campaign.name, campaign.tagline ?? "", campaign.imageUrl ?? "", org.verified && !drumMode ? "v" : "", drumMode ? "d" : "", layout].join("\u0000"));
   const pctOf = (n: number) => (goal > 0 ? ` · ${Math.round((n / goal) * 100)}%` : "");
 
@@ -295,10 +299,14 @@ export function CampaignPageView({
               )}
               {lead && !lifeyard && (
                 <>
-                  {(pd.need ? storyHeading : true) && <h2 className="rc-display rc-h2">{pd.need ? storyHeading : (storyHeading || "The story")}</h2>}
-                  <div data-testid="text-campaign-description" className="rc-story-body rc-story-readable">
-                    <p className="rc-lead">{lead}</p>
-                    {rest.map((p, i) => <p key={i}>{p}</p>)}
+                  <div ref={storyFitRef} className="rc-fit-split has-intro">
+                    {(pd.need ? storyHeading : true) && <h2 className="rc-display rc-h2">{pd.need ? storyHeading : (storyHeading || "The story")}</h2>}
+                    <div className="rc-fit-intro">
+                      <div data-testid="text-campaign-description" className="rc-story-body rc-story-readable">
+                        <p className="rc-lead">{lead}</p>
+                        {rest.map((p, i) => <p key={i}>{p}</p>)}
+                      </div>
+                    </div>
                   </div>
                 </>
               )}
@@ -480,8 +488,10 @@ export function CampaignPageView({
         <section className={schemeClass("team", "rc-t-cream")} data-section="team">
           <div className={`rc-wrap rc-section${lifeyard ? " rc-organiser-centered" : ""}`} data-testid="block-organisation">
             <Strip n={next()} label="Who's running it" />
-            {(pd.team ? pd.team.headline : "Who's running it") && <h2 className="rc-display rc-h2">{pd.team ? pd.team.headline : "Who's running it"}</h2>}
-            {pd.team?.intro && <p className="rc-lede" data-testid="text-team-intro">{pd.team.intro}</p>}
+            <div ref={teamFitRef} className={`rc-fit-split ${pd.team?.intro ? "has-intro" : ""}`}>
+              {(pd.team ? pd.team.headline : "Who's running it") && <h2 className="rc-display rc-h2">{pd.team ? pd.team.headline : "Who's running it"}</h2>}
+              {pd.team?.intro && <div className="rc-fit-intro"><p className="rc-lede" data-testid="text-team-intro">{pd.team.intro}</p></div>}
+            </div>
             <div className="rc-bento mt-12">
               <div className="rc-tile rc-t-paper flex flex-col gap-4" style={{ flex: "1 1 340px" }}>
                 <div className="rc-person">
@@ -535,9 +545,13 @@ export function CampaignPageView({
           <section className={schemeClass("money", "rc-t-paper")} data-section="money">
             <div className="rc-wrap rc-section" data-testid="block-money-disclosure">
               <Strip n={next()} label="Where your money goes" />
-              {moneyHeading && <h2 className="rc-display rc-h2">{moneyHeading}</h2>}
-              {pd.money?.intro && <p className="rc-lede" data-testid="text-money-intro">{pd.money.intro}</p>}
-              <p className="rc-lede" data-testid="text-money-disclosure">{money.sentence}</p>
+              <div ref={moneyFitRef} className="rc-fit-split has-intro">
+                {moneyHeading && <h2 className="rc-display rc-h2">{moneyHeading}</h2>}
+                <div className="rc-fit-intro">
+                  {pd.money?.intro && <p className="rc-lede" data-testid="text-money-intro">{pd.money.intro}</p>}
+                  <p className={`rc-lede ${pd.money?.intro ? "rc-following" : ""}`} data-testid="text-money-disclosure">{money.sentence}</p>
+                </div>
+              </div>
               {(campaign.pageContent || (isMatching && matchLeft > 0)) && (
                 <div className="rc-money-box">
                   {campaign.pageContent && <CampaignFeeBreakdown orgName={org.name} colour={red} highlight={gold} currency={currency} />}
@@ -561,8 +575,10 @@ export function CampaignPageView({
           <section className={schemeClass("wall", "rc-t-cream")} data-section="wall">
             <div className="rc-wrap rc-section" data-testid="block-recent-supporters">
               <Strip n={next()} label={wallHeading || "Recent supporters"} />
-              {wallHeading && <h2 className="rc-display rc-h2">{wallHeading}</h2>}
-              {pd.wall?.intro && <p className="rc-lede" data-testid="text-wall-intro">{pd.wall.intro}</p>}
+              <div ref={wallFitRef} className={`rc-fit-split ${pd.wall?.intro ? "has-intro" : ""}`}>
+                {wallHeading && <h2 className="rc-display rc-h2">{wallHeading}</h2>}
+                {pd.wall?.intro && <div className="rc-fit-intro"><p className="rc-lede" data-testid="text-wall-intro">{pd.wall.intro}</p></div>}
+              </div>
               {recent.length === 0 && anon === 0 ? (
                 <p className="rc-display rc-first" data-testid="text-be-first">Be the first.</p>
               ) : (

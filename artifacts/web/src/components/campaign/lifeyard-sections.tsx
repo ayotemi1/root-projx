@@ -1,4 +1,5 @@
 import { DRUM_LIFE_COPY, drumBudgetPurpose } from "@/lib/drum-life-copy";
+import { useFitSplit } from "./use-fit-split";
 
 export type LifeyardLayout = "responsive" | "phone" | "desktop";
 type Row = { label?: string; detail?: string };
@@ -12,14 +13,17 @@ export function formatCostLabel(label: string, currency?: string): string {
   return `US$${Number(m[1].replace(/,/g, "")).toLocaleString("en-US")}`;
 }
 
-/** Lifeyard (Drum Life): full-width heading, then a lead and the saved paragraphs. */
+/** Lifeyard uses the same fitted headline-and-copy row as other campaigns. */
 export function LifeyardStory({ heading, lead, rest }: { heading: string; lead: string; rest: string[]; red?: string; layout?: LifeyardLayout }) {
+  const fitRef = useFitSplit<HTMLDivElement>([heading, lead, ...rest].join("\u0000"));
   return (
-    <div data-testid="block-lifeyard-story" className="rc-story-centered">
+    <div ref={fitRef} data-testid="block-lifeyard-story" className="rc-fit-split has-intro">
       <h2 className="rc-display rc-h2">{heading}</h2>
-      <div data-testid="text-campaign-description" className="rc-story-body rc-story-readable">
-        <p className="rc-lead">{lead}</p>
-        {rest.map((p, i) => <p key={i}>{p}</p>)}
+      <div className="rc-fit-intro">
+        <div data-testid="text-campaign-description" className="rc-story-body rc-story-readable">
+          <p className="rc-lead">{lead}</p>
+          {rest.map((p, i) => <p key={i}>{p}</p>)}
+        </div>
       </div>
     </div>
   );
@@ -30,32 +34,30 @@ export function LifeyardBreakdown({ heading, summary, intro, afterword, rows, cu
   heading: string; summary: string; intro: string[]; afterword: string[]; rows: Row[]; red?: string; gold?: string; currency?: string; layout?: LifeyardLayout;
 }) {
   const isUsd = (currency ?? "").toLowerCase() === "usd";
+  const body = intro.length ? intro : DRUM_LIFE_COPY.budgetIntro ? [DRUM_LIFE_COPY.budgetIntro] : [];
+  const fitRef = useFitSplit<HTMLDivElement>([heading, summary, ...body].join("\u0000"));
   return (
     <div data-testid="list-campaign-breakdown">
-      <div className="rc-programme-heading">
-        <div className="min-w-0">
-          <h2 className="rc-display rc-h2" style={{ marginTop: 0 }}>{heading}</h2>
+      <div ref={fitRef} className={`rc-fit-split ${body.length || summary ? "has-intro" : ""}`}>
+        <h2 className="rc-display rc-h2">{heading}</h2>
+        {(body.length > 0 || summary) && <div className="rc-fit-intro">
           {summary && <p className="rc-pill rc-mono" data-testid="text-programme-summary">{summary}</p>}
-        </div>
-        {intro.length > 0 ? (
-          <div className="rc-prose rc-lede" style={{ marginTop: 0 }} data-testid="text-programme-intro">
-            {intro.map((p, i) => <p key={i}>{p}</p>)}
-          </div>
-        ) : DRUM_LIFE_COPY.budgetIntro ? (
-          <p className="rc-lede" style={{ marginTop: 0 }} data-testid="text-budget-intro">{DRUM_LIFE_COPY.budgetIntro}</p>
-        ) : null}
+          {body.length > 0 && <div className="rc-prose" data-testid={intro.length ? "text-programme-intro" : "text-budget-intro"}>
+            {body.map((p, i) => <p key={i}>{p}</p>)}
+          </div>}
+        </div>}
       </div>
-      <ul className="rc-bento-grid list-none p-0 mt-12 mb-0" aria-label="Programme costs">
+      <ul className="rc-bento-grid rc-boxes list-none p-0 mt-12 mb-0" data-n={rows.length} aria-label="Programme costs">
         {rows.map((b, i) => {
           const label = b.label?.trim() ? formatCostLabel(b.label, currency) : "";
           const detail = b.detail?.trim() ?? "";
           const purpose = detail ? drumBudgetPurpose(detail) : null;
           return (
             <li key={i} className="rc-trade" data-testid={`row-breakdown-${i}`}>
-              <span className="rc-mono rc-trade-code">B—{String(i + 1).padStart(2, "0")}</span>
               {label && <span className="rc-display rc-trade-amount" data-testid={`text-breakdown-amount-${i}`}><span className="rc-sr">Cost: </span>{label}</span>}
               {purpose && <h3>{purpose}</h3>}
               {detail && <p><span className="rc-sr">Pays for: </span>{detail}</p>}
+              <span className="rc-mono rc-trade-code">B—{String(i + 1).padStart(2, "0")}</span>
             </li>
           );
         })}
