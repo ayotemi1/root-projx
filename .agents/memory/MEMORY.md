@@ -19,6 +19,7 @@
 - [Payment return origins](payment-return-origins.md) — live payment callbacks must ignore inherited preview domains; a failed return does not mean a failed charge.
 - [Donation event authority](donation-event-authority.md) — Checkout owns one-off recording; PI success is a donation no-op; preserve verified fee/payout logic.
 - [Donation notifications](donation-notification-policy.md) — notify the receiving organisation and Root ProjX for each successful donation, retaining donor privacy.
+- [Transactional email policy](transactional-email-policy.md) — exact supplied templates, Brevo sender identity, essential/optional email boundaries and event-safe delivery.
 - [Supporter notifications](supporter-notification-meaning.md) — use real events and private recipient data; only opening an item marks it read.
 - [Web UI SSR tests](web-ui-ssr-tests.md) — Wouter components need a static Router hook in raw Node React SSR tests.
 - [Campaign template reference](campaign-template-reference.md) — use the supplied “Out of Many Hands — Campaign Page” PDF as the shared campaign-page design.
