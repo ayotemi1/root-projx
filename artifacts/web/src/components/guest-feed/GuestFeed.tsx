@@ -7,6 +7,7 @@ import type { FeedUpdate, Org } from "@/lib/api";
 import { ContentDialog } from "@/components/org-content/content-gallery";
 import { summarise } from "@/lib/content-media";
 import { GuestJoinPrompt } from "./GuestJoinPrompt";
+import { VisitorHeading } from "@/components/visitor/VisitorHeading";
 
 function ago(iso: string) {
   const s = Math.max(0, (Date.now() - Date.parse(iso)) / 1000);
@@ -107,12 +108,10 @@ export function GuestFeed() {
   const close = () => { setOpen(null); if (linked) navigate("/feed", { replace: true }); };
 
   return (
-    <div className="max-w-[836px] mx-auto px-4 sm:px-6 py-12 sm:py-14 grid lg:grid-cols-[minmax(0,512px)_242px] gap-x-[34px]" data-testid="page-guest-feed">
+    <div className="max-w-[1240px] mx-auto px-5 md:px-8 py-12 md:py-16 grid lg:grid-cols-[minmax(0,680px)_340px] justify-between gap-x-12" data-testid="page-guest-feed">
       <div className="min-w-0">
         <JoinBox className="lg:hidden mb-12" />
-        <p className="rp-label !text-[11px] text-[#CA0813]">Live from the ground</p>
-        <h1 className="rp-display text-[44px] sm:text-[48px] text-[#17100F] mt-2">Live feed</h1>
-        <p className="mt-4 text-[16px] sm:text-[14px] leading-relaxed text-[#17100F]/80">Real updates from grassroots organisations on Root ProjX, newest first.</p>
+        <VisitorHeading label="Live from the ground" title="Live feed" intro="Real updates from grassroots organisations on Root ProjX, newest first." />
         <section className="mt-8 space-y-8" aria-label="Posts">
           {feedQ.isLoading ? [0, 1].map(i => (
             <div key={i} className="animate-pulse" data-testid="status-guest-loading"><div className="flex gap-3 mb-3"><div className="w-9 h-9 rounded-full bg-[#17100F]/10" /><div className="h-4 w-40 bg-[#17100F]/10 mt-2" /></div><div className="aspect-square bg-[#17100F]/10" /></div>

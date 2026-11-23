@@ -8,6 +8,7 @@ import { CartProvider } from "@/context/CartContext";
 
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { VisitorFooter } from "@/components/visitor/VisitorFooter";
 import SplashScreen from "@/components/SplashScreen";
 import LandingPage from "@/pages/landing";
 import FeedPage from "@/pages/feed";
@@ -98,7 +99,7 @@ function AuthRoute({ component: Component, registration = false }: { component: 
 function SitePageLayout({ children }: { children: ReactNode }) {
   const [location] = useLocation();
   const { user, isAuthenticated } = useAuth();
-  const visitorFeed = !isAuthenticated && (location.split(/[?#]/)[0]!.replace(/\/+$/, "") === "/feed");
+  const visitorFeed = !isAuthenticated;
   if (!visitorFeed && shouldUseSupporterLayout(location, user?.accountType)) {
     return <SupporterLayout>{children}</SupporterLayout>;
   }
@@ -106,7 +107,7 @@ function SitePageLayout({ children }: { children: ReactNode }) {
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar visitorFeed={visitorFeed} />
       <main className="flex-1">{children}</main>
-      <Footer />
+      {visitorFeed ? <VisitorFooter /> : <Footer />}
     </div>
   );
 }

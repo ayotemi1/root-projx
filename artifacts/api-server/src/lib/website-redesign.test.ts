@@ -13,7 +13,7 @@ const { renderToStaticMarkup } = webRequire("react-dom/server");
 const { Router } = webRequire("wouter");
 const { QueryClient, QueryClientProvider } = webRequire("@tanstack/react-query");
 
-async function page(path: string, options: { route?: string; seeds?: Array<[unknown[], unknown]> } = {}) {
+async function page(path: string, options: { route?: string; signedIn?: boolean; seeds?: Array<[unknown[], unknown]> } = {}) {
   const result = await build({
     entryPoints: [new URL(path, webRoot).pathname],
     bundle: true, write: false, format: "cjs", platform: "node",
@@ -28,7 +28,7 @@ async function page(path: string, options: { route?: string; seeds?: Array<[unkn
         }));
         b.onResolve({ filter: /context\/AuthContext$/ }, () => ({ path: "auth", namespace: "isolated" }));
         b.onLoad({ filter: /.*/, namespace: "isolated" }, () => ({
-          contents: "export const useAuth=()=>({user:null,token:null,isAuthenticated:false,isLoading:false,login:async()=>{throw new Error('Not called during rendering')}});",
+          contents: `export const useAuth=()=>({user:${options.signedIn ? '{id:"fixture",name:"Fixture Supporter",accountType:"supporter"}' : "null"},token:${options.signedIn ? '"fixture-token"' : "null"},isAuthenticated:${!!options.signedIn},isLoading:false,login:async()=>{throw new Error('Not called during rendering')}});`,
         }));
       },
     }],
@@ -80,14 +80,34 @@ test("signed-out feed shows the public organisation feed without supporter modes
   assert.doesNotMatch(html, /based on (?:the causes|your giving)|14 hands|12,485|12,260/);
 });
 
-test("redesigned About retains original founder assets without unverified Gift Aid promises", async () => {
-  const html = await page("src/pages/about.tsx");
+test("signed-in About retains original founder assets without unverified Gift Aid promises", async () => {
+  const html = await page("src/pages/about.tsx", { signedIn: true });
   assert.match(html, /visaka\.jpeg/);
   assert.match(html, /ayotemi\.jpeg/);
   assert.match(html, /Hurricane Melissa/);
   assert.match(html, /href="\/register"/);
   assert.match(html, /href="\/discover"/);
   assert.doesNotMatch(html, /Gift Aid|in full alignment with UK fundraising regulation/);
+});
+
+test("visitor About and Shop match the shared heading and retain real signup destinations", async () => {
+  const about = await page("src/pages/about.tsx");
+  assert.match(about, /About Root ProjX/);
+  assert.match(about, /Follow/);
+  assert.match(about, /See it happen/);
+  assert.match(about, /Give/);
+  assert.match(about, /text-\[48px\] md:text-\[88px\]/);
+  assert.match(about, /href="\/register"/);
+  assert.match(about, /href="\/onboarding"/);
+  assert.doesNotMatch(about, /visaka\.jpeg|ayotemi\.jpeg/);
+  const shop = await page("src/pages/shop.tsx");
+  assert.match(shop, /Merch is coming\. Tees, totes and prints/);
+  assert.match(shop, /Notify me/);
+  assert.match(shop, /type="email"/);
+  assert.doesNotMatch(shop, /ShoppingBag|rounded-full/);
+  const signedInShop = await page("src/pages/shop.tsx", { signedIn: true });
+  assert.match(signedInShop, /Coming soon/);
+  assert.doesNotMatch(signedInShop, /Notify me/);
 });
 
 test("website loads the supplied typography and preserves accessible viewport zoom", async () => {
@@ -136,7 +156,7 @@ test("public organisation profile uses the redesign with real data and preserves
 test("public-page sizing keeps the wide feed, readable captions and model-sized sign-in form", async () => {
   const html = await page("src/pages/feed.tsx");
   assert.match(html, /page-guest-feed/);
-  assert.match(html, /max-w-\[836px\]/);
+  assert.match(html, /max-w-\[1240px\]/);
   assert.doesNotMatch(html, /max-w-\[560px\]/);
   const feed = await readFile(new URL("src/pages/feed.tsx", webRoot), "utf8");
   assert.match(feed, /text-\[18px\] leading-relaxed/);

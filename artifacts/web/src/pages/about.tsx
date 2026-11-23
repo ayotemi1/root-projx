@@ -1,5 +1,36 @@
 import { Link } from "wouter";
 import { ArrowRight } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { VisitorHeading } from "@/components/visitor/VisitorHeading";
+
+const STEPS = [
+  { t: "Follow", d: "Find verified grassroots organisations and follow their work." },
+  { t: "See it happen", d: "Read real updates, stories and photos, straight from the ground." },
+  { t: "Give", d: "Donate to live campaigns, with every fee shown upfront." },
+];
+
+function VisitorAbout() {
+  return (
+    <div className="max-w-[1240px] mx-auto px-5 md:px-8 py-12 md:py-16" data-testid="page-visitor-about">
+      <VisitorHeading label="About" title="About Root ProjX" intro="Connecting the diaspora with grassroots change, starting in Jamaica." />
+      <div className="mt-12 grid md:grid-cols-[1.1fr_1fr] gap-10 md:gap-16 items-start">
+        <p className="text-[20px] leading-relaxed text-[#17100F]">Root ProjX is a giving platform for people who want to support the places they come from, and the people still there. We work with verified grassroots organisations so every update you read and every gift you make reaches work on the ground.</p>
+        <ol className="border-t-2 border-[#17100F]">
+          {STEPS.map((s, i) => (
+            <li key={s.t} className="grid grid-cols-[56px_1fr] gap-4 py-5 border-b border-[#17100F]/20" data-testid={`step-about-${i + 1}`}>
+              <span className="rp-label !text-[13px] text-[#CA0813] pt-1">{String(i + 1).padStart(2, "0")}</span>
+              <span><b className="rp-display block text-[28px] mb-2">{s.t}</b><span className="text-[16px] text-[#17100F]/75">{s.d}</span></span>
+            </li>
+          ))}
+        </ol>
+      </div>
+      <div className="mt-8 flex flex-wrap gap-3">
+        <Link href="/register" className="rp-btn rp-btn-yellow" data-testid="button-about-visitor-join">Join the movement</Link>
+        <Link href="/onboarding" className="rp-btn rp-btn-ghost" data-testid="button-about-visitor-apply">Apply as an organisation</Link>
+      </div>
+    </div>
+  );
+}
 
 /*
  * Copy follows the supplied About model verbatim, with one deliberate change:
@@ -51,6 +82,8 @@ function Founder({ img, alt, name, role, children, testId }: {
 }
 
 export default function AboutPage() {
+  const { isAuthenticated } = useAuth();
+  if (!isAuthenticated) return <VisitorAbout />;
   return (
     <div className="-mb-20">
       <div className="rp-page-shell">

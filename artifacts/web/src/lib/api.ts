@@ -146,6 +146,8 @@ export interface Resource {
   contact: { phone?: string; email?: string; website?: string };
   tags: string[];
   createdAt: string;
+  howToAccess?: string;
+  city?: string;
 }
 
 export interface Donation {

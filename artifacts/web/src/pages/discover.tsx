@@ -13,6 +13,9 @@ import type { Org } from "@/lib/api";
 import { DISCOVER_COUNTRIES } from "@/lib/countries";
 import { OrganisationLogo } from "@/components/organisation-logo";
 import SupporterDiscoverPage from "@/components/supporter/SupporterDiscoverPage";
+import { VisitorHeading } from "@/components/visitor/VisitorHeading";
+import { VisitorFilterBar } from "@/components/visitor/VisitorFilterBar";
+import { GuestJoinPrompt } from "@/components/guest-feed/GuestJoinPrompt";
 
 const CATEGORIES = [
   "All Causes",
@@ -225,7 +228,7 @@ function LegacyDiscoverPage() {
   const [category, setCategory] = useState("All Causes");
   const [locationFilter, setLocationFilter] = useState("All");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
-  const [, navigateTo] = useLocation();
+  const [gate, setGate] = useState<string | null>(null);
   const { isAuthenticated, token, user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -250,7 +253,7 @@ function LegacyDiscoverPage() {
     mode: !isAuthenticated ? "guest" : isSupporter ? "supporter" : "organisation",
     following: isSupporter && followedIds.has(orgId),
     busy: (followM.isPending && followM.variables === orgId) || (isSupporter && followsQ.isLoading),
-    onFollow: () => (isAuthenticated ? followM.mutate(orgId) : navigateTo("/login")),
+    onFollow: () => (isAuthenticated ? followM.mutate(orgId) : setGate("follow organisations")),
   });
 
   const { data: orgs = [], isLoading, isError, refetch } = useQuery({
@@ -282,7 +285,18 @@ function LegacyDiscoverPage() {
     }`;
 
   return (
-    <div className="rp-page-shell py-10 sm:py-14">
+    <div className={isAuthenticated ? "rp-page-shell py-10 sm:py-14" : "max-w-[1240px] mx-auto px-5 md:px-8 py-12 md:py-16"}>
+      {!isAuthenticated ? (<>
+      <VisitorHeading label="Discover" title="Discover organisations" intro="Find and support verified grassroots organisations in Jamaica, the UK and beyond." />
+      <div className="mb-10">
+        <VisitorFilterBar search={search} onSearch={setSearch} placeholder="Search by name or location"
+          country={locationFilter} onCountry={setLocationFilter} countries={DISCOVER_COUNTRIES}
+          category={category} onCategory={setCategory} categoryLabel="Cause"
+          categories={CATEGORIES.map((c) => ({ value: c, label: c === "All Causes" ? "All causes" : c }))}
+          view={viewMode} onView={setViewMode} />
+      </div>
+      <GuestJoinPrompt action={gate} onClose={() => setGate(null)} />
+      </>) : (<>
       <h1 className="rp-display rp-rise text-[clamp(38px,11vw,54px)] sm:text-[96px] lg:text-[124px] text-[#17100F]">Discover<br />organisations</h1>
       <p className="rp-label mt-6 sm:mt-8 text-[#17100F]/85">
         Find and support verified grassroots organisations in Jamaica, the UK, and beyond.
@@ -322,7 +336,9 @@ function LegacyDiscoverPage() {
           <MapPin className="w-4 h-4" /> Map
         </button>
       </div>
+      </>)}
 
+      {!isAuthenticated && <h2 className="rp-display text-[36px] md:text-[48px] text-[#17100F] mb-8" data-testid="heading-all-organisations">All organisations</h2>}
       {viewMode === "map" ? (
         <div className="border border-[#17100F]"><OrgMap orgs={filtered} country={locationFilter} /></div>
       ) : isError ? (

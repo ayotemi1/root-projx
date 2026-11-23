@@ -4,20 +4,22 @@ import { requireAuth, optionalAuth } from "../lib/auth.js";
 
 const router = Router();
 
-// GET /help/orgs — directory listing from "resources" collection
+// GET /help/orgs — public directory stored in help_entries.
 // Optional ?category= &country= filters
 router.get("/help/orgs", optionalAuth, async (req, res) => {
   try {
     const { category, country } = req.query as Record<string, string | undefined>;
-    const token = req.headers.authorization?.slice(7) ?? await getServerToken();
+    // This is a public directory. Use the API's identity consistently, including
+    // for signed-in callers; browser credentials must not select another source.
+    const token = await getServerToken();
     let resources: Array<Record<string, unknown>>;
     if (category || country) {
       const filters: Array<{ field: string; op: string; value: unknown }> = [];
       if (category) filters.push({ field: "category", op: "EQUAL", value: category });
       if (country) filters.push({ field: "country", op: "EQUAL", value: country });
-      resources = await fsQuery("resources", filters, token);
+      resources = await fsQuery("help_entries", filters, token);
     } else {
-      resources = await fsList("resources", token);
+      resources = await fsList("help_entries", token);
     }
     res.json(resources);
   } catch (err) {

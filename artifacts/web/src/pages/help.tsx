@@ -1,6 +1,10 @@
 import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Phone, Mail, Globe, LayoutGrid, MapPin } from "lucide-react";
+import { Phone, Mail, Globe, LayoutGrid, MapPin, X } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { VisitorHeading } from "@/components/visitor/VisitorHeading";
+import { VisitorFilterBar } from "@/components/visitor/VisitorFilterBar";
+import { Dialog, DialogContent, DialogTitle, DialogDescription, DialogClose } from "@/components/ui/dialog";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -375,7 +379,7 @@ function MapController({ country }: { country: string }) {
   return null;
 }
 
-function ResourceMap({ resources, country }: { resources: Resource[]; country: string }) {
+function ResourceMap({ resources, country, approximate = false }: { resources: Resource[]; country: string; approximate?: boolean }) {
   return (
     <MapContainer
       center={DEFAULT_CENTER}
@@ -391,7 +395,7 @@ function ResourceMap({ resources, country }: { resources: Resource[]; country: s
       {resources.map((item) => {
         const coords = COUNTRY_COORDS[item.country];
         if (!coords) return null;
-        const jitter: [number, number] = [
+        const jitter: [number, number] = approximate ? coords.center : [
           coords.center[0] + (Math.random() - 0.5) * 0.6,
           coords.center[1] + (Math.random() - 0.5) * 0.6,
         ];
@@ -403,7 +407,7 @@ function ResourceMap({ resources, country }: { resources: Resource[]; country: s
                   {item.title}
                 </div>
                 <div style={{ fontSize: "12px", color: "#666", marginBottom: "6px" }}>
-                  {item.category} · {item.country}
+                  {item.category} · {approximate ? `Country: ${item.country} (approximate)` : item.country}
                 </div>
                 <div style={{ fontSize: "12px", marginBottom: "10px", overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" }}>
                   {item.description}
@@ -518,6 +522,134 @@ function ResourceSkeleton() {
 type ViewMode = "grid" | "map";
 
 export default function HelpPage() {
+  const { isAuthenticated } = useAuth();
+  return isAuthenticated ? <SignedInHelpPage /> : <VisitorHelpPage />;
+}
+
+/* Quick chips map onto real directory categories/keywords — no listings are invented. */
+const QUICK: { label: string; terms: RegExp }[] = [
+  { label: "Housing", terms: /housing|homeless|shelter/i },
+  { label: "Legal", terms: /legal|law|justice|rights/i },
+  { label: "Health", terms: /health|medical|clinic/i },
+  { label: "Food", terms: /food|nutrition|meal|hunger/i },
+  { label: "Money and debt", terms: /money|debt|financ|benefit|livelihood/i },
+  { label: "Mental health", terms: /mental|counsel|wellbeing/i },
+  { label: "Immigration advice", terms: /immigra|refugee|migrant|asylum|visa/i },
+  { label: "Family and children", terms: /family|child|parent|youth/i },
+];
+const cleanLabel = (l: string) => l.replace(/\s*[\u{1F1E6}-\u{1F1FF}]{2}$/u, "");
+
+function hasContact(r: Resource) { return !!(r.contact?.phone || r.contact?.email || r.contact?.website); }
+
+function VisitorResourceCard({ item, onContact }: { item: Resource & { howToAccess?: string; city?: string }; onContact: () => void }) {
+  const place = [item.city, item.country].filter(Boolean).join(", ");
+  return (
+    <article className="border-t-2 border-[#17100F] pt-4 flex flex-col rp-rise" data-testid={`card-help-${item._id}`}>
+      <p className="rp-label !text-[12px] text-[#17100F]/75 inline-flex items-center gap-1.5"><MapPin className="w-3.5 h-3.5" />{place || "Location to come"}</p>
+      {item.category && <span className="mt-4 w-fit rp-label !text-[11px] bg-[#F3BF2C] text-[#17100F] px-2 py-1">{item.category}</span>}
+      <h3 className="rp-display text-[30px] text-[#17100F] mt-3">{item.title}</h3>
+      <p className="mt-3 text-[16px] leading-relaxed text-[#17100F]/80">{item.description}</p>
+      {item.howToAccess && <p className="mt-3 text-[14px] text-[#17100F]/75"><b className="text-[#17100F]">How to access: </b>{item.howToAccess}</p>}
+      {hasContact(item) && (
+        <button type="button" onClick={onContact} className="rp-btn rp-btn-ghost mt-5 w-fit" data-testid={`button-contact-${item._id}`}>Contact details</button>
+      )}
+    </article>
+  );
+}
+
+function VisitorHelpPage() {
+  const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("All Categories");
+  const [country, setCountry] = useState("All Countries");
+  const [chip, setChip] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [contact, setContact] = useState<Resource | null>(null);
+  const q = useQuery({ queryKey: ["resources", "visitor-all"], queryFn: () => api.getResources({}) });
+  const all = q.data ?? [];
+  const terms = QUICK.find((c) => c.label === chip)?.terms;
+  const needle = search.trim().toLowerCase();
+  const filtered = all.filter((r) => {
+    const hay = [r.title, r.category, r.description, r.country, ...(r.tags ?? [])].join(" ");
+    return (category === "All Categories" || r.category === category)
+      && (country === "All Countries" || r.country === country)
+      && (!needle || hay.toLowerCase().includes(needle))
+      && (!terms || terms.test(hay));
+  });
+  const clear = () => { setSearch(""); setCategory("All Categories"); setCountry("All Countries"); setChip(null); };
+
+  return (
+    <div className="max-w-[1240px] mx-auto px-5 md:px-8 py-12 md:py-16" data-testid="page-visitor-help">
+      <VisitorHeading label="Get help" title="Get help" intro="Find grassroots organisations offering support with housing, legal problems, health and more." />
+      <VisitorFilterBar search={search} onSearch={setSearch} placeholder="Search by need, name or place"
+        country={country} onCountry={setCountry} countries={COUNTRIES.map((c) => ({ value: c.value, label: cleanLabel(c.label) }))}
+        category={category} onCategory={setCategory} categoryLabel="Category"
+        categories={CATEGORIES.map((c) => ({ value: c, label: c === "All Categories" ? "All categories" : c }))}
+        view={viewMode} onView={setViewMode} />
+      <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Quick categories">
+        {QUICK.map((c) => {
+          const on = chip === c.label;
+          return (
+            <button key={c.label} type="button" aria-pressed={on} onClick={() => setChip(on ? null : c.label)}
+              className={`h-10 px-4 border border-[#17100F] text-[14px] font-bold transition-colors ${on ? "bg-[#17100F] text-[#F4EFE6]" : "bg-transparent hover:bg-[#17100F]/5"}`}
+              data-testid={`chip-help-${c.label.toLowerCase().replace(/\s+/g, "-")}`}>{c.label}</button>
+          );
+        })}
+      </div>
+
+      <div className="mt-10">
+        {q.isError ? (
+          <div className="border border-[#17100F] bg-[#FBF8F2] p-8 md:p-10 text-center" role="alert" data-testid="status-help-error">
+            <p className="rp-display text-[30px]">We couldn't load the directory</p>
+            <p className="mt-2 text-[15px] text-[#17100F]/70">Check your connection and try again</p>
+            <button type="button" onClick={() => q.refetch()} className="rp-btn rp-btn-yellow mt-5" data-testid="button-retry-help">Try again</button>
+          </div>
+        ) : viewMode === "map" ? (
+          <div className="border border-[#17100F]"><ResourceMap resources={filtered} country={country} approximate /><p className="rp-label !text-[11px] text-[#17100F]/70 px-4 py-3 border-t border-[#17100F]" data-testid="text-help-map-note">Pins mark the country only, not a street address.</p></div>
+        ) : q.isLoading ? (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="border-t-2 border-[#17100F]/20 pt-4 space-y-4 animate-pulse"><div className="h-3 w-28 bg-[#17100F]/10" /><div className="h-5 w-24 bg-[#17100F]/10" /><div className="h-8 w-3/4 bg-[#17100F]/10" /><div className="h-14 bg-[#17100F]/10" /></div>
+            ))}
+          </div>
+        ) : all.length === 0 ? (
+          <div className="border border-dashed border-[#17100F]/40 py-14 px-6 text-center" data-testid="status-help-empty">
+            <p className="rp-display text-[30px]">The directory is being built</p>
+            <p className="mt-2 text-[15px] text-[#17100F]/70">No organisations are listed yet. Please check back soon.</p>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="border border-dashed border-[#17100F]/40 py-14 px-6 text-center" data-testid="status-help-no-match">
+            <p className="rp-display text-[30px]">Nothing matches yet</p>
+            <p className="mt-2 text-[15px] text-[#17100F]/70">Try a different search, country or category.</p>
+            <button type="button" onClick={clear} className="rp-btn rp-btn-ghost mt-5" data-testid="button-help-clear">Clear filters</button>
+          </div>
+        ) : (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-12">
+            {filtered.map((r) => <VisitorResourceCard key={r._id} item={r} onContact={() => setContact(r)} />)}
+          </div>
+        )}
+      </div>
+
+      <div className="mt-12 border-l-4 border-[#CA0813] bg-[#FBF8F2] px-5 py-4 text-[15px]" data-testid="text-help-emergency">
+        <b>In an emergency, call 999 in the UK or 119 in Jamaica.</b> Root ProjX lists organisations but doesn’t give advice itself.
+      </div>
+
+      <Dialog open={!!contact} onOpenChange={(o) => { if (!o) setContact(null); }}>
+        <DialogContent className="max-w-[380px] w-[calc(100vw-2rem)] rounded-none border border-[#17100F] bg-[#F4EFE6] p-6 [&>button:last-child]:hidden" data-testid="dialog-help-contact">
+          <DialogClose className="absolute right-4 top-4 p-1" aria-label="Close"><X className="w-4 h-4" /></DialogClose>
+          <DialogTitle className="rp-display text-[30px] pr-6">{contact?.title}</DialogTitle>
+          <DialogDescription className="rp-label !text-[11px] text-[#CA0813]">Contact details</DialogDescription>
+          <div className="mt-3 flex flex-col gap-3 text-[16px]">
+            {contact?.contact?.phone && <a href={`tel:${contact.contact.phone}`} className="inline-flex items-center gap-2 font-bold"><Phone className="w-4 h-4" />{contact.contact.phone}</a>}
+            {contact?.contact?.email && <a href={`mailto:${contact.contact.email}`} className="inline-flex items-center gap-2 font-bold break-all"><Mail className="w-4 h-4" />{contact.contact.email}</a>}
+            {contact?.contact?.website && <a href={contact.contact.website} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 font-bold"><Globe className="w-4 h-4" /><span className="rp-link-u">Visit website</span></a>}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function SignedInHelpPage() {
   const [category, setCategory] = useState("All Categories");
   const [country, setCountry] = useState("All Countries");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
