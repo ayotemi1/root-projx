@@ -13,8 +13,8 @@ export interface CampaignOutcomesSection {
   /** @maxLength 250 */
   intro: string;
   /**
-   * @minItems 3
-   * @maxItems 6
+   * @minItems 1
+   * @maxItems 9
    */
   boxes: CampaignOutcomeBox[];
 }

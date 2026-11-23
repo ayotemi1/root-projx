@@ -1129,8 +1129,7 @@ export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneProgrammeBox
 
 export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneProgrammeBoxesItemTextMax = 160;
 
-export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneProgrammeBoxesMin = 2;
-export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneProgrammeBoxesMax = 4;
+export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneProgrammeBoxesMax = 9;
 
 export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneOutcomesHeadlineMax = 60;
 
@@ -1142,8 +1141,7 @@ export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneOutcomesBoxe
 
 export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneOutcomesBoxesItemTextMax = 80;
 
-export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneOutcomesBoxesMin = 3;
-export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneOutcomesBoxesMax = 6;
+export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneOutcomesBoxesMax = 9;
 
 export const getOwnerCampaignPreviewResponseCampaignOnePageDesignOneTeamHeadlineMax = 60;
 
@@ -1329,9 +1327,7 @@ export const GetOwnerCampaignPreviewResponse = zod.object({
                           ),
                       }),
                     )
-                    .min(
-                      getOwnerCampaignPreviewResponseCampaignOnePageDesignOneProgrammeBoxesMin,
-                    )
+                    .min(1)
                     .max(
                       getOwnerCampaignPreviewResponseCampaignOnePageDesignOneProgrammeBoxesMax,
                     ),
@@ -1370,9 +1366,7 @@ export const GetOwnerCampaignPreviewResponse = zod.object({
                           ),
                       }),
                     )
-                    .min(
-                      getOwnerCampaignPreviewResponseCampaignOnePageDesignOneOutcomesBoxesMin,
-                    )
+                    .min(1)
                     .max(
                       getOwnerCampaignPreviewResponseCampaignOnePageDesignOneOutcomesBoxesMax,
                     ),
@@ -1885,8 +1879,7 @@ export const getPublicCampaignsResponseOnePageDesignOneProgrammeBoxesItemTitleMa
 
 export const getPublicCampaignsResponseOnePageDesignOneProgrammeBoxesItemTextMax = 160;
 
-export const getPublicCampaignsResponseOnePageDesignOneProgrammeBoxesMin = 2;
-export const getPublicCampaignsResponseOnePageDesignOneProgrammeBoxesMax = 4;
+export const getPublicCampaignsResponseOnePageDesignOneProgrammeBoxesMax = 9;
 
 export const getPublicCampaignsResponseOnePageDesignOneOutcomesHeadlineMax = 60;
 
@@ -1898,8 +1891,7 @@ export const getPublicCampaignsResponseOnePageDesignOneOutcomesBoxesItemTitleMax
 
 export const getPublicCampaignsResponseOnePageDesignOneOutcomesBoxesItemTextMax = 80;
 
-export const getPublicCampaignsResponseOnePageDesignOneOutcomesBoxesMin = 3;
-export const getPublicCampaignsResponseOnePageDesignOneOutcomesBoxesMax = 6;
+export const getPublicCampaignsResponseOnePageDesignOneOutcomesBoxesMax = 9;
 
 export const getPublicCampaignsResponseOnePageDesignOneTeamHeadlineMax = 60;
 
@@ -2077,9 +2069,7 @@ export const GetPublicCampaignsResponseItem = zod
                         ),
                     }),
                   )
-                  .min(
-                    getPublicCampaignsResponseOnePageDesignOneProgrammeBoxesMin,
-                  )
+                  .min(1)
                   .max(
                     getPublicCampaignsResponseOnePageDesignOneProgrammeBoxesMax,
                   ),
@@ -2118,9 +2108,7 @@ export const GetPublicCampaignsResponseItem = zod
                         ),
                     }),
                   )
-                  .min(
-                    getPublicCampaignsResponseOnePageDesignOneOutcomesBoxesMin,
-                  )
+                  .min(1)
                   .max(
                     getPublicCampaignsResponseOnePageDesignOneOutcomesBoxesMax,
                   ),
@@ -2443,8 +2431,7 @@ export const createCampaignDraftBodyPageDesignOneProgrammeBoxesItemTitleMax = 30
 
 export const createCampaignDraftBodyPageDesignOneProgrammeBoxesItemTextMax = 160;
 
-export const createCampaignDraftBodyPageDesignOneProgrammeBoxesMin = 2;
-export const createCampaignDraftBodyPageDesignOneProgrammeBoxesMax = 4;
+export const createCampaignDraftBodyPageDesignOneProgrammeBoxesMax = 9;
 
 export const createCampaignDraftBodyPageDesignOneOutcomesHeadlineMax = 60;
 
@@ -2456,8 +2443,7 @@ export const createCampaignDraftBodyPageDesignOneOutcomesBoxesItemTitleMax = 40;
 
 export const createCampaignDraftBodyPageDesignOneOutcomesBoxesItemTextMax = 80;
 
-export const createCampaignDraftBodyPageDesignOneOutcomesBoxesMin = 3;
-export const createCampaignDraftBodyPageDesignOneOutcomesBoxesMax = 6;
+export const createCampaignDraftBodyPageDesignOneOutcomesBoxesMax = 9;
 
 export const createCampaignDraftBodyPageDesignOneTeamHeadlineMax = 60;
 
@@ -2620,7 +2606,7 @@ export const CreateCampaignDraftBody = zod.object({
                       ),
                   }),
                 )
-                .min(createCampaignDraftBodyPageDesignOneProgrammeBoxesMin)
+                .min(1)
                 .max(createCampaignDraftBodyPageDesignOneProgrammeBoxesMax),
             })
             .optional(),
@@ -2653,7 +2639,7 @@ export const CreateCampaignDraftBody = zod.object({
                       ),
                   }),
                 )
-                .min(createCampaignDraftBodyPageDesignOneOutcomesBoxesMin)
+                .min(1)
                 .max(createCampaignDraftBodyPageDesignOneOutcomesBoxesMax),
             })
             .optional(),
@@ -2911,8 +2897,7 @@ export const getManagedCampaignDraftsResponseOnePageDesignOneProgrammeBoxesItemT
 
 export const getManagedCampaignDraftsResponseOnePageDesignOneProgrammeBoxesItemTextMax = 160;
 
-export const getManagedCampaignDraftsResponseOnePageDesignOneProgrammeBoxesMin = 2;
-export const getManagedCampaignDraftsResponseOnePageDesignOneProgrammeBoxesMax = 4;
+export const getManagedCampaignDraftsResponseOnePageDesignOneProgrammeBoxesMax = 9;
 
 export const getManagedCampaignDraftsResponseOnePageDesignOneOutcomesHeadlineMax = 60;
 
@@ -2924,8 +2909,7 @@ export const getManagedCampaignDraftsResponseOnePageDesignOneOutcomesBoxesItemTi
 
 export const getManagedCampaignDraftsResponseOnePageDesignOneOutcomesBoxesItemTextMax = 80;
 
-export const getManagedCampaignDraftsResponseOnePageDesignOneOutcomesBoxesMin = 3;
-export const getManagedCampaignDraftsResponseOnePageDesignOneOutcomesBoxesMax = 6;
+export const getManagedCampaignDraftsResponseOnePageDesignOneOutcomesBoxesMax = 9;
 
 export const getManagedCampaignDraftsResponseOnePageDesignOneTeamHeadlineMax = 60;
 
@@ -3110,9 +3094,7 @@ export const GetManagedCampaignDraftsResponseItem = zod
                         ),
                     }),
                   )
-                  .min(
-                    getManagedCampaignDraftsResponseOnePageDesignOneProgrammeBoxesMin,
-                  )
+                  .min(1)
                   .max(
                     getManagedCampaignDraftsResponseOnePageDesignOneProgrammeBoxesMax,
                   ),
@@ -3151,9 +3133,7 @@ export const GetManagedCampaignDraftsResponseItem = zod
                         ),
                     }),
                   )
-                  .min(
-                    getManagedCampaignDraftsResponseOnePageDesignOneOutcomesBoxesMin,
-                  )
+                  .min(1)
                   .max(
                     getManagedCampaignDraftsResponseOnePageDesignOneOutcomesBoxesMax,
                   ),
@@ -3492,8 +3472,7 @@ export const saveCampaignDraftBodyPageDesignOneProgrammeBoxesItemTitleMax = 30;
 
 export const saveCampaignDraftBodyPageDesignOneProgrammeBoxesItemTextMax = 160;
 
-export const saveCampaignDraftBodyPageDesignOneProgrammeBoxesMin = 2;
-export const saveCampaignDraftBodyPageDesignOneProgrammeBoxesMax = 4;
+export const saveCampaignDraftBodyPageDesignOneProgrammeBoxesMax = 9;
 
 export const saveCampaignDraftBodyPageDesignOneOutcomesHeadlineMax = 60;
 
@@ -3505,8 +3484,7 @@ export const saveCampaignDraftBodyPageDesignOneOutcomesBoxesItemTitleMax = 40;
 
 export const saveCampaignDraftBodyPageDesignOneOutcomesBoxesItemTextMax = 80;
 
-export const saveCampaignDraftBodyPageDesignOneOutcomesBoxesMin = 3;
-export const saveCampaignDraftBodyPageDesignOneOutcomesBoxesMax = 6;
+export const saveCampaignDraftBodyPageDesignOneOutcomesBoxesMax = 9;
 
 export const saveCampaignDraftBodyPageDesignOneTeamHeadlineMax = 60;
 
@@ -3667,7 +3645,7 @@ export const SaveCampaignDraftBody = zod.object({
                       ),
                   }),
                 )
-                .min(saveCampaignDraftBodyPageDesignOneProgrammeBoxesMin)
+                .min(1)
                 .max(saveCampaignDraftBodyPageDesignOneProgrammeBoxesMax),
             })
             .optional(),
@@ -3700,7 +3678,7 @@ export const SaveCampaignDraftBody = zod.object({
                       ),
                   }),
                 )
-                .min(saveCampaignDraftBodyPageDesignOneOutcomesBoxesMin)
+                .min(1)
                 .max(saveCampaignDraftBodyPageDesignOneOutcomesBoxesMax),
             })
             .optional(),
@@ -3949,8 +3927,7 @@ export const saveCampaignDraftResponseOnePageDesignOneProgrammeBoxesItemTitleMax
 
 export const saveCampaignDraftResponseOnePageDesignOneProgrammeBoxesItemTextMax = 160;
 
-export const saveCampaignDraftResponseOnePageDesignOneProgrammeBoxesMin = 2;
-export const saveCampaignDraftResponseOnePageDesignOneProgrammeBoxesMax = 4;
+export const saveCampaignDraftResponseOnePageDesignOneProgrammeBoxesMax = 9;
 
 export const saveCampaignDraftResponseOnePageDesignOneOutcomesHeadlineMax = 60;
 
@@ -3962,8 +3939,7 @@ export const saveCampaignDraftResponseOnePageDesignOneOutcomesBoxesItemTitleMax 
 
 export const saveCampaignDraftResponseOnePageDesignOneOutcomesBoxesItemTextMax = 80;
 
-export const saveCampaignDraftResponseOnePageDesignOneOutcomesBoxesMin = 3;
-export const saveCampaignDraftResponseOnePageDesignOneOutcomesBoxesMax = 6;
+export const saveCampaignDraftResponseOnePageDesignOneOutcomesBoxesMax = 9;
 
 export const saveCampaignDraftResponseOnePageDesignOneTeamHeadlineMax = 60;
 
@@ -4141,9 +4117,7 @@ export const SaveCampaignDraftResponse = zod
                         ),
                     }),
                   )
-                  .min(
-                    saveCampaignDraftResponseOnePageDesignOneProgrammeBoxesMin,
-                  )
+                  .min(1)
                   .max(
                     saveCampaignDraftResponseOnePageDesignOneProgrammeBoxesMax,
                   ),
@@ -4182,9 +4156,7 @@ export const SaveCampaignDraftResponse = zod
                         ),
                     }),
                   )
-                  .min(
-                    saveCampaignDraftResponseOnePageDesignOneOutcomesBoxesMin,
-                  )
+                  .min(1)
                   .max(
                     saveCampaignDraftResponseOnePageDesignOneOutcomesBoxesMax,
                   ),

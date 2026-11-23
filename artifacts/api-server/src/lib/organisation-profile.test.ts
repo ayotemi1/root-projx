@@ -258,8 +258,8 @@ test("Story and Look validate the reference limits, stable identities, plain tex
   const f = await fixture();
   const good = referencePageDesign();
   assert.deepEqual(f.campaignPatch({ pageDesign: good }).pageDesign, good);
-  for (const [section, min, max] of [["programme", 2, 4], ["outcomes", 3, 6]] as const) {
-    for (const n of [min, max]) {
+  for (const [section, min, max] of [["programme", 1, 9], ["outcomes", 1, 9]] as const) {
+    for (const n of [1, 2, 3, 4, 5, 6, 7, 8, 9]) {
       const d: any = structuredClone(good);
       d[section].boxes = Array.from({ length: n }, (_, i) => ({ id: `b-${i}`, title: "Title", text: "Text" }));
       assert.equal(f.campaignPatch({ pageDesign: d }).pageDesign[section].boxes.length, n);

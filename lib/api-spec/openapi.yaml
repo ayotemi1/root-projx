@@ -2553,8 +2553,8 @@ components:
         intro: {type: string, maxLength: 250}
         boxes:
           type: array
-          minItems: 2
-          maxItems: 4
+          minItems: 1
+          maxItems: 9
           items: {$ref: "#/components/schemas/CampaignProgrammeBox"}
     CampaignOutcomesSection:
       type: object
@@ -2565,8 +2565,8 @@ components:
         intro: {type: string, maxLength: 250}
         boxes:
           type: array
-          minItems: 3
-          maxItems: 6
+          minItems: 1
+          maxItems: 9
           items: {$ref: "#/components/schemas/CampaignOutcomeBox"}
     CampaignPerson:
       type: object

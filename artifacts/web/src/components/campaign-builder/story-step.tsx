@@ -1,4 +1,4 @@
-import { useId, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import type { Campaign, CampaignPageDesign, Org } from "@/lib/api";
 import { LegacyStoryFields, type StepProps } from "./steps";
 import { CampaignLivePreview } from "./live-preview";
@@ -68,7 +68,7 @@ function LayoutMini({ n }: { n: number }) {
       <span className="grid gap-[2px] bg-[#17100F] border-[1.5px] border-[#17100F] shrink-0" style={{ gridTemplateColumns: "repeat(6, 8px)" }} aria-hidden="true">
         {layoutSpans(n).map((s, i) => <i key={i} className="block h-2 bg-[#F3BF2C]" style={{ gridColumn: `span ${s}` }} />)}
       </span>
-      <span>Layout: {layoutWords(n)}. Every box is the same size.</span>
+      <span>Layout: {layoutWords(n)}. {[5, 7, 8].includes(n) ? "Every row fills the section." : "Every box is the same size."}</span>
     </div>
   );
 }
@@ -86,13 +86,22 @@ function ItemHead({ label, onRemove, min, count, testId }: { label: string; onRe
 }
 
 function AddButton({ unit, count, max, onAdd, testId }: { unit: string; count: number; max: number; onAdd: () => void; testId: string }) {
+  const [attemptedOverLimit, setAttemptedOverLimit] = useState(false);
   const full = count >= max;
+  const boxes = unit === "box";
   return (
-    <button type="button" onClick={onAdd} disabled={full}
+    <>
+    <button type="button" onClick={() => {
+      if (full) { setAttemptedOverLimit(true); return; }
+      setAttemptedOverLimit(false);
+      onAdd();
+    }} disabled={full && !boxes}
       className="mt-3.5 w-full inline-flex items-center justify-center gap-2 border-[1.5px] border-dashed border-[#17100F] bg-[#FFFDF9] px-4 py-2.5 text-[15px] font-bold text-[#17100F] disabled:opacity-45 disabled:cursor-default"
       data-testid={testId}>
-      + Add {unit}{full ? ` · ${max} is the most for this section` : ` · up to ${max}`}
+      + Add {unit}{full && !boxes ? ` · ${max} is the most for this section` : ` · up to ${max}`}
     </button>
+    {boxes && full && attemptedOverLimit && <p role="alert" className="mt-2 mb-0 text-[12px] font-semibold text-[#CA0813]">9 is the most for this section.</p>}
+    </>
   );
 }
 
@@ -140,8 +149,7 @@ export function StepStory(props: StoryStepProps) {
         <Fld label="Headline" value={f.headline} max={PD.headline} placeholder="Section headline" onChange={(v) => editBoxes(k, (s) => ({ ...s, headline: v }))} testId={`input-${k}-headline`} />
         <Fld label="Intro" value={f.intro} max={PD.intro} placeholder="A short intro" area onChange={(v) => editBoxes(k, (s) => ({ ...s, intro: v }))} testId={`input-${k}-intro`} />
         <LayoutMini n={count} />
-        {count < L.min && <p className="mt-2 mb-0 text-[12px] font-semibold text-[#8A5A00]" role="status">This section needs at least {L.min} boxes. Add {L.min - count} more.</p>}
-        {count > L.max && <p className="mt-2 mb-0 text-[12px] font-semibold text-[#CA0813]" role="alert">Up to {L.max} boxes fit here. Remove {count - L.max}; nothing has been removed for you.</p>}
+        {count < L.min && <p className="mt-2 mb-0 text-[12px] font-semibold text-[#8A5A00]" role="status">This section needs at least {L.min} box. Add {L.min - count} more.</p>}
         {f.boxes.map((b, i) => (
           <div key={b.id} className="border-t-[1.5px] border-[#17100F] mt-3.5 pt-2.5" data-testid={`row-${k}-box-${i}`}>
             <ItemHead label={`Box ${i + 1}`} min={L.min} count={count} testId={`button-remove-${k}-box-${i}`}

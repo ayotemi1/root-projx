@@ -152,6 +152,25 @@ test("Look reorders real sections and numbers in public and preview, scopes all 
   assert.deepEqual([...render(true).matchAll(/data-section="([^"]+)"/g)].map(m => m[1]), ["need", "programme", "outcomes", "team", "money", "wall"]);
 });
 
+test("Story accepts 1–9 boxes and its layout diagram fills every row", async () => {
+  const { PD, layoutSpans, layoutWords, pageDesignProblem } = await loadComponent("src/components/campaign-builder/story-design.ts");
+  const expected = [[6], [3, 3], [2, 2, 2], [3, 3, 3, 3], [2, 2, 2, 3, 3],
+    [2, 2, 2, 2, 2, 2], [2, 2, 2, 2, 2, 2, 6], [2, 2, 2, 2, 2, 2, 3, 3], Array(9).fill(2)];
+  for (const section of ["programme", "outcomes"]) {
+    assert.equal(PD[section].min, 1);
+    assert.equal(PD[section].max, 9);
+    for (let n = 1; n <= 9; n++) {
+      const boxes = Array.from({ length: n }, (_, i) => ({ id: `box-${i}`, title: "Title", text: "Text" }));
+      assert.equal(pageDesignProblem({ [section]: { headline: "", intro: "", boxes } }), null);
+      assert.deepEqual(layoutSpans(n), expected[n - 1]);
+    }
+    assert.equal(pageDesignProblem({ [section]: { boxes: Array(10).fill({ title: "", text: "" }) } }), "9 is the most for this section.");
+    assert.match(pageDesignProblem({ [section]: { boxes: [] } }), /at least 1 box/);
+  }
+  assert.deepEqual(PD.team, { min: 1, max: 8, name: 40, role: 50 });
+  assert.equal(layoutWords(6), "2 rows of 3");
+});
+
 test("new blank draft boxes still determine the real preview grid without fabricated text", async () => {
   const { CampaignPageView } = await loadComponent("src/components/campaign/campaign-page-view.tsx");
   const boxes = [0, 1].map(i => ({ id: `box-${i}`, title: "", text: "" }));

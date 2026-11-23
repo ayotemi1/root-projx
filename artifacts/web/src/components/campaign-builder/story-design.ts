@@ -7,8 +7,8 @@ export const PD = {
   headline: 60,
   intro: 250,
   title: 30,
-  programme: { min: 2, max: 4, title: 30, text: 160 },
-  outcomes: { min: 3, max: 6, title: 40, text: 80 },
+  programme: { min: 1, max: 9, title: 30, text: 160 },
+  outcomes: { min: 1, max: 9, title: 40, text: 80 },
   team: { min: 1, max: 8, name: 40, role: 50 },
 } as const;
 
@@ -112,8 +112,8 @@ export function pageDesignProblem(pd: CampaignPageDesign | null | undefined): st
     const s = pd[k]; if (!s) continue;
     const L = PD[k]; const label = k === "programme" ? "The programme" : "Outcomes";
     const p = copy(label, s); if (p) return p;
-    if (s.boxes.length < L.min) return `${label} needs at least ${L.min} boxes (${s.boxes.length} now).`;
-    if (s.boxes.length > L.max) return `${label} can have up to ${L.max} boxes. Remove ${s.boxes.length - L.max}.`;
+    if (s.boxes.length < L.min) return `${label} needs at least 1 box.`;
+    if (s.boxes.length > L.max) return "9 is the most for this section.";
     const i = s.boxes.findIndex((b) => b.title.length > L.title || b.text.length > L.text);
     if (i >= 0) return `${label} box ${i + 1} is too long. Titles fit ${L.title} characters, text ${L.text}.`;
   }
@@ -146,8 +146,14 @@ export const isStructured = (pd: CampaignPageDesign | null | undefined) =>
 
 /** Plain-words layout of n equal boxes on the six-column grid. */
 export function layoutWords(n: number) {
-  return n === 1 ? "1 box across" : n === 2 ? "2 side by side" : n === 3 ? "a row of 3" : n === 4 ? "2 rows of 2" : n === 5 ? "3 across, then 2 wider" : n === 6 ? "2 rows of 3" : `${n} boxes`;
+  return n === 1 ? "1 full-width box" : n === 2 ? "2 side by side" : n === 3 ? "a row of 3" : n === 4 ? "2 rows of 2" : n === 5 ? "a row of 3, then 2 wider boxes" : n === 6 ? "2 rows of 3" : n === 7 ? "2 rows of 3, then 1 full-width box" : n === 8 ? "2 rows of 3, then 2 wider boxes" : n === 9 ? "3 rows of 3" : `${n} boxes`;
 }
 export function layoutSpans(n: number) {
-  return n === 1 ? [6] : n === 2 || n === 4 ? Array(n).fill(3) : n === 5 ? [2, 2, 2, 3, 3] : Array(n).fill(2);
+  if (n === 4) return [3, 3, 3, 3];
+  const spans: number[] = [];
+  for (let remaining = n; remaining > 0; remaining -= 3) {
+    const count = Math.min(3, remaining);
+    spans.push(...Array(count).fill(6 / count));
+  }
+  return spans;
 }

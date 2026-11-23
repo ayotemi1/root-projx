@@ -1106,8 +1106,8 @@ export interface CampaignProgrammeSection {
   /** @maxLength 250 */
   intro: string;
   /**
-   * @minItems 2
-   * @maxItems 4
+   * @minItems 1
+   * @maxItems 9
    */
   boxes: CampaignProgrammeBox[];
 }
@@ -1118,8 +1118,8 @@ export interface CampaignOutcomesSection {
   /** @maxLength 250 */
   intro: string;
   /**
-   * @minItems 3
-   * @maxItems 6
+   * @minItems 1
+   * @maxItems 9
    */
   boxes: CampaignOutcomeBox[];
 }
