@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation, useSearch } from "wouter";
 import { BadgeCheck, Bookmark, Heart, Images, MessageCircle, Play, Repeat2, Send } from "lucide-react";
 import * as api from "@/lib/api";
+import { DonationAmountDialog } from "@/components/donation-amount-dialog";
 import type { FeedUpdate, Org } from "@/lib/api";
 import { ContentDialog } from "@/components/org-content/content-gallery";
 import { summarise } from "@/lib/content-media";
@@ -43,6 +44,7 @@ function JoinBox({ className = "" }: { className?: string }) {
 }
 
 function GuestPost({ item, org, onOpen, gate }: { item: FeedUpdate; org?: Org; onOpen: () => void; gate: (a: string) => void }) {
+  const [donateOpen, setDonateOpen] = useState(false);
   const s = summarise(item);
   const cover = s.images[0];
   const hasVideo = s.videos.length > 0 || !!s.link?.embedUrl;
@@ -52,6 +54,7 @@ function GuestPost({ item, org, onOpen, gate }: { item: FeedUpdate; org?: Org; o
   const btn = "inline-flex items-center gap-1.5 min-h-11 min-w-11 justify-center text-[14px] text-[#17100F] hover:text-[#CA0813]";
   return (
     <article className="rp-rise pb-8 border-b border-[#17100F]/15" data-testid={`card-guest-post-${item._id}`}>
+      {donateOpen && <DonationAmountDialog onClose={() => setDonateOpen(false)} orgId={item.orgId} orgName={name} />}
       <header className="flex items-center gap-3 mb-3">
         <Link href={`/organisations/${item.orgId}`} aria-label={`Visit ${name}`}><Logo name={name} logo={org?.logo ?? null} size={34} /></Link>
         <div className="min-w-0">
@@ -79,7 +82,7 @@ function GuestPost({ item, org, onOpen, gate }: { item: FeedUpdate; org?: Org; o
         <button type="button" className={btn} onClick={() => gate("repost updates")} aria-label="Repost" data-testid={`button-repost-${item._id}`}><Repeat2 className="w-[18px] h-[18px]" /></button>
         <button type="button" className={btn} onClick={() => gate("send posts")} aria-label="Send" data-testid={`button-send-${item._id}`}><Send className="w-[18px] h-[18px]" /></button>
         <button type="button" className={`${btn} ml-auto`} onClick={() => gate("save posts")} aria-label="Save" data-testid={`button-save-${item._id}`}><Bookmark className="w-[18px] h-[18px]" /></button>
-        <Link href={`/donate/${item.orgId}`} className="min-h-11 inline-flex items-center px-2 text-[14px]" data-testid={`link-donate-${item._id}`}><span className="rp-link-u">Donate</span></Link>
+        <button type="button" onClick={() => setDonateOpen(true)} className="min-h-11 inline-flex items-center px-2 text-[14px]" data-testid={`link-donate-${item._id}`}><span className="rp-link-u">Donate</span></button>
       </footer>
     </article>
   );

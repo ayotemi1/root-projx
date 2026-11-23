@@ -53,6 +53,8 @@ import OnboardingFollowsPage from "@/pages/onboarding-follows";
 import SupporterProfilePage from "@/pages/supporter-profile";
 import MyProfilePage from "@/pages/my-profile";
 import CampaignLandingPage from "@/pages/campaign-landing";
+import CampaignThankYouPage from "@/pages/campaign-thank-you";
+import CampaignShareGiftPage from "@/pages/campaign-share-gift";
 import CampaignPreviewPage from "@/pages/campaign-preview";
 
 const queryClient = new QueryClient({
@@ -130,7 +132,12 @@ function AppRoutes() {
       <Route path="/campaign/preview/:orgId/:campId">
         {() => <ApprovedOrganisationRoute component={CampaignPreviewPage} />}
       </Route>
+      <Route path="/campaign/:publicId/thank-you/share" component={CampaignShareGiftPage} />
+      <Route path="/campaign/:publicId/thank-you" component={CampaignThankYouPage} />
       <Route path="/campaign/:organisationSlug/:campaignSlug" component={CampaignLandingPage} />
+      <Route path="/campaign/:publicId" component={CampaignLandingPage} />
+      <Route path="/campaigns/:publicId/thank-you/share" component={CampaignShareGiftPage} />
+      <Route path="/campaigns/:publicId/thank-you" component={CampaignThankYouPage} />
       <Route path="/campaigns/:organisationSlug/:campaignSlug" component={CampaignLandingPage} />
       <Route path="/campaigns/:publicId" component={CampaignLandingPage} />
 

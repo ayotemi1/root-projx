@@ -16,6 +16,7 @@ import SupporterDiscoverPage from "@/components/supporter/SupporterDiscoverPage"
 import { VisitorHeading } from "@/components/visitor/VisitorHeading";
 import { VisitorFilterBar } from "@/components/visitor/VisitorFilterBar";
 import { GuestJoinPrompt } from "@/components/guest-feed/GuestJoinPrompt";
+import { DonationAmountDialog } from "@/components/donation-amount-dialog";
 
 const CATEGORIES = [
   "All Causes",
@@ -149,6 +150,7 @@ type FollowCtl = { mode: "guest" | "supporter" | "organisation"; following: bool
 
 function OrgCard({ org, follow }: { org: Org; follow: FollowCtl }) {
   const [, navigate] = useLocation();
+  const [donateOpen, setDonateOpen] = useState(false);
   const place = [org.city, org.country].filter(Boolean).join(", ");
   const blurb = org.shortDescription?.trim() || org.description;
   const followers = org.followerCount ?? 0;
@@ -159,6 +161,7 @@ function OrgCard({ org, follow }: { org: Org; follow: FollowCtl }) {
       className="group border-t-2 border-[#17100F] pt-4 flex flex-col cursor-pointer rp-rise"
       data-testid={`card-org-${org._id}`}
     >
+      {donateOpen && <DonationAmountDialog onClose={() => setDonateOpen(false)} orgId={org._id} orgName={org.name} />}
       <div className="flex items-center justify-between gap-3 rp-label !text-[12px] text-[#17100F]/75">
         <span className="inline-flex items-center gap-1.5 truncate"><MapPin className="w-3.5 h-3.5 shrink-0" />{place || "Location to come"}</span>
         {org.verified && (
@@ -184,9 +187,9 @@ function OrgCard({ org, follow }: { org: Org; follow: FollowCtl }) {
       </div>
 
       <div className="grid grid-cols-2 gap-2 mt-4" onClick={(e) => e.stopPropagation()}>
-        <Link href={`/donate/${org._id}`} className="rp-btn rp-btn-yellow" data-testid={`button-donate-${org._id}`}>
+        <button type="button" onClick={() => setDonateOpen(true)} className="rp-btn rp-btn-yellow" data-testid={`button-donate-${org._id}`}>
           Donate <ArrowRight className="w-4 h-4" />
-        </Link>
+        </button>
         {follow.mode === "organisation" ? (
           <Link href={`/organisations/${org._id}`} className="rp-btn rp-btn-ghost" data-testid={`button-view-${org._id}`}>View profile</Link>
         ) : follow.following ? (

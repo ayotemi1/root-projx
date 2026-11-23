@@ -15,6 +15,7 @@ import { OrganisationLogo } from "@/components/organisation-logo";
 import { SupporterPostCard } from "@/components/supporter/SupporterPostCard";
 import { BookmarkButton } from "@/components/bookmarks/BookmarkButton";
 import { listPosts, spKey, type SupporterPostRecord } from "@/lib/supporter-publishing";
+import { DonationAmountDialog } from "@/components/donation-amount-dialog";
 
 type FeedEntry = { kind: "org"; at: number; item: FeedUpdate } | { kind: "sp"; at: number; post: SupporterPostRecord };
 
@@ -26,6 +27,7 @@ function PostCard({ item, logo, onOpen, following, onFollow, followBusy }: {
   item: FeedUpdate; logo: string | null; onOpen: () => void; following: boolean | null; onFollow: () => void; followBusy: boolean;
 }) {
   const { toast } = useToast();
+  const [donateOpen, setDonateOpen] = useState(false);
   const s = summarise(item);
   const cover = s.images[0];
   const hasVideo = s.videos.length > 0 || !!s.link?.embedUrl;
@@ -47,6 +49,7 @@ function PostCard({ item, logo, onOpen, following, onFollow, followBusy }: {
 
   return (
     <article className="rp-rise" data-testid={`card-content-${item._id}`}>
+      {donateOpen && <DonationAmountDialog onClose={() => setDonateOpen(false)} orgId={item.orgId} orgName={orgName} />}
       <header className="flex items-center gap-3 mb-3">
         <Link href={`/organisations/${item.orgId}`} className="shrink-0" aria-label={`Visit ${orgName}`}>
           <OrganisationLogo name={orgName} logo={logo} />
@@ -117,10 +120,10 @@ function PostCard({ item, logo, onOpen, following, onFollow, followBusy }: {
           <Share2 className="w-4 h-4" />
         </button>
         <BookmarkButton kind="update" targetId={item._id} className="mr-auto -ml-2" />
-        <Link href={`/donate/${item.orgId}`} className="min-h-11 text-[16px] inline-flex items-center gap-1.5 group" data-testid={`link-donate-${item._id}`}>
+        <button type="button" onClick={() => setDonateOpen(true)} className="min-h-11 text-[16px] inline-flex items-center gap-1.5 group" data-testid={`link-donate-${item._id}`}>
           <span className="rp-link-u">Donate to {orgName}</span>
           <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
-        </Link>
+        </button>
       </footer>
     </article>
   );

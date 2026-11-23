@@ -72,6 +72,20 @@ function fixture() {
     return { status, data };
   } };
 }
+
+test("donation Involvement never repeats an opted-in amount from a post caption", async () => {
+  const f = fixture();
+  f.state.docs.get("organisations/org").campaigns = [{ _id: "campaign", name: "Training campaign" }];
+  Object.assign(f.state.docs.get("supporter_posts/post"), {
+    donation_post: true, campaign_id: "campaign", activity_type: "Gave",
+    caption: "I gave £987.65 to this campaign",
+  });
+  const result = await f.call();
+  const involvement = result.data.involvement.find((row: any) => row.source === "post");
+  assert.equal(involvement.details, "Supporter · Training campaign");
+  assert.doesNotMatch(JSON.stringify(involvement), /987|£/);
+  assert.match(result.data.posts[0].caption, /987\.65/);
+});
 const activity = (changes = {}) => ({ id: ENTRY, organisationId: "org", projectName: "Forged label ignored", activity: "Visited",
   details: "Saw the workshop", when: "Summer 2025", shared: true, ...changes });
 

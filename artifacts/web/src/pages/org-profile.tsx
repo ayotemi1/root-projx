@@ -6,7 +6,7 @@ import { useAuth } from "@/context/AuthContext";
 import * as api from "@/lib/api";
 import type { Campaign } from "@/lib/api";
 import { StartMessageButton } from "@/components/messaging/StartMessageButton";
-import { GuestDonateSheet } from "@/components/GuestDonateSheet";
+import { DonationAmountDialog } from "@/components/donation-amount-dialog";
 import { GuestJoinPrompt } from "@/components/guest-feed/GuestJoinPrompt";
 import { ContentGallery } from "@/components/org-content/content-gallery";
 import { CampaignDonateButton } from "@/components/campaign-donate-button";
@@ -256,9 +256,8 @@ export default function OrgProfilePage() {
   const isSelfOrg = authUser?.accountType === "organisation" && String(authUser.id) === id;
 
   function handleDonateClick() {
-    setDonationCampaign(null);
-    if (isAuthenticated) window.location.href = `/donate/${id}`;
-    else setDonateModalOpen(true);
+    setDonationCampaign(liveCampaign);
+    setDonateModalOpen(true);
   }
   function handleCampaignDonate(campaign: Campaign) {
     setDonationCampaign(campaign);
@@ -287,17 +286,15 @@ export default function OrgProfilePage() {
   return (
     <div className="rp-orgp">
       {previewBar}
-      <GuestDonateSheet
-        open={donateModalOpen}
+      {donateModalOpen && <DonationAmountDialog
         onClose={() => setDonateModalOpen(false)}
         orgId={id}
         orgName={org.name}
         campaignId={donationCampaign?._id}
         campaignName={donationCampaign?.name}
-        partnerFunding={donationCampaign?.partnerFunding}
-        partnerFundingMatchedGbp={donationCampaign?.partnerFundingMatchedGbp}
+        campaignPath={donationCampaign ? campaignHref(donationCampaign) : null}
         currency={donationCampaign?.currency ?? "gbp"}
-      />
+      />}
       <div className="orgp-wrap">
         {isOwnerPreview && previewRecordFailed && (
           <div role="alert" className="orgp-alert" data-testid="alert-profile-preview-record-failed">

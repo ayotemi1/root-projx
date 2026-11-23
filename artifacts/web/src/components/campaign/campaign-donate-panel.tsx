@@ -35,16 +35,21 @@ interface Props {
   receipt?: ConfirmedReceiptView | null;
   onDonate: (choice: DonateChoice) => void;
   onShare: () => void;
+  variant?: "page" | "popup";
+  initialAmount?: number | null;
+  initialFeeCovered?: boolean;
 }
 
 /** Rendered inside the page's give bento; colours come from the page's --rc-accent / --rc-hi. */
-export function CampaignDonatePanel({ currency, orgName, heading = "Support this campaign", cohortName, preview = false, receipt, onDonate, onShare }: Props) {
+export function CampaignDonatePanel({ currency, orgName, heading = "Support this campaign", cohortName, preview = false, receipt, onDonate, onShare, variant = "page", initialAmount, initialFeeCovered = true }: Props) {
   const sym = currencySymbol(currency);
   const ids = useId();
   const otherRef = useRef<HTMLInputElement>(null);
-  const [preset, setPreset] = useState<number | "other">(10);
-  const [other, setOther] = useState("");
-  const [feeCovered, setFeeCovered] = useState(true);
+  const [preset, setPreset] = useState<number | "other">(
+    initialAmount && !DONATE_PRESETS.includes(initialAmount) ? "other" : initialAmount ?? 10,
+  );
+  const [other, setOther] = useState(initialAmount && !DONATE_PRESETS.includes(initialAmount) ? String(initialAmount) : "");
+  const [feeCovered, setFeeCovered] = useState(initialFeeCovered);
 
   const money = (v: number) => `${sym}${v.toFixed(2)}`;
   const shortMoney = (v: number) => `${sym}${Number.isInteger(v) ? v : v.toFixed(2)}`;
@@ -74,10 +79,10 @@ export function CampaignDonatePanel({ currency, orgName, heading = "Support this
   const pickOther = () => { setPreset("other"); otherRef.current?.focus(); };
 
   return (
-    <section id={DONATE_BOX_ID} tabIndex={-1} aria-labelledby={`${ids}-h`} className="rc-donate" data-testid="panel-donate">
+    <section id={variant === "popup" ? undefined : DONATE_BOX_ID} tabIndex={-1} aria-labelledby={`${ids}-h`} className={`rc-donate ${variant === "popup" ? "rc-donate-popup" : ""}`} data-testid="panel-donate">
       <div>
-        <p className="rc-mono rc-muted m-0" data-testid="text-donate-heading">{heading}</p>
-        <h2 id={`${ids}-h`} className="rc-display">Choose an amount</h2>
+        <p id={`${ids}-h`} className="rc-mono rc-muted m-0" data-testid="text-donate-heading">{variant === "popup" ? "Choose an amount" : heading}</p>
+        {variant !== "popup" && <h2 className="rc-display">Choose an amount</h2>}
         {cohortName && <p className="mt-2 mb-0 text-[14px] rc-muted" data-testid="text-donate-cohort">For {cohortName}</p>}
       </div>
 
@@ -125,12 +130,12 @@ export function CampaignDonatePanel({ currency, orgName, heading = "Support this
       <button type="button" disabled={!valid || preview} title={preview ? "Disabled in preview" : undefined}
         onClick={() => valid && onDonate({ amount, feeCovered })}
         className="rc-give-btn" data-testid="button-donate-campaign">
-        {preview ? "Donations are off in preview" : valid ? `Donate ${shortMoney(amount)}` : `Choose ${sym}3 or more`}
+        {preview ? "Donations are off in preview" : valid ? `Give ${shortMoney(p!.chargedPence / 100)}` : `Choose ${sym}3 or more`}
         {valid && !preview && <ArrowRight className="w-4 h-4" aria-hidden="true" />}
       </button>
       <p className="rc-small">
         <ShieldCheck className="w-4 h-4 shrink-0 mt-px" style={{ color: "var(--ink)" }} aria-hidden="true" />
-        <span>One-off donation. Secure payment by Stripe. You choose at checkout whether your first name and last initial appear on the wall; otherwise you give anonymously. Card fees are an estimate; the exact Stripe fee depends on the card used.</span>
+        <span>One-off gift. Secure payment by Stripe. At checkout you choose whether your first name and last initial appear on the wall. Card fees are estimated.</span>
       </p>
     </section>
   );

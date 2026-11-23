@@ -46,6 +46,8 @@ export async function supporterShowcase(user: Doc, uid: string, token: string, o
     const linked = await org(text(p.organisation_id));
     // A removed organisation must not expose private drafts via a profile.
     if (!linked) return null;
+    const donationCampaign = p.donation_post === true && Array.isArray(linked.campaigns)
+      ? linked.campaigns.find((c: Doc) => c._id === p.campaign_id) : null;
     return {
       id: `post_${p.id}`, source: "post" as const, organisationId: p.organisation_id,
       projectName: text(linked.name), logo: text(linked.logo) || null,
@@ -54,7 +56,10 @@ export async function supporterShowcase(user: Doc, uid: string, token: string, o
       activity: p.type === "text" && tag?.type === "community" &&
         ({ volunteers: "Volunteered", visitors: "Visited", fundraisers: "Fundraised" } as Record<string, string>)[tag.value]
         || ((ACTIVITY_TYPES as readonly unknown[]).includes(p.activity_type) ? String(p.activity_type) : "Posted"),
-      details: text(p.caption), when: text(p.created_at),
+      // A donation post can opt into an amount in its caption, but Involvement
+      // is always an amount-free record, never a copy of the post text.
+      details: p.donation_post === true ? `Supporter · ${text(donationCampaign?.name) || "Campaign"}` : text(p.caption),
+      when: text(p.created_at),
       shared: !owner || publicProfile.enabled === true, href: `#post-${p.id}`,
     };
   }));

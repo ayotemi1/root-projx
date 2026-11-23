@@ -20,7 +20,7 @@ async function isolatedRouters(environment: Record<string, string> = {
         _id: "test-org", name: "Test Organisation", stripe_account_id: "acct_synthetic",
         contact: {email: "public-contact@example.test"},
         totalRaised: 10,
-        campaigns: [{_id: "test-campaign", title: "Test Campaign", amountRaised: 10}]
+        campaigns: [{_id: "test-campaign", name:"Test Campaign", title: "Test Campaign", amountRaised: 10}]
       });
       state.documents.set("users/test-user", {name:"Test Donor", email:"donor@example.test"});
       state.documents.set("users/test-org", {name:"Organisation Owner", email:"org@example.test"});
@@ -59,6 +59,16 @@ async function isolatedRouters(environment: Record<string, string> = {
         const {campaigns,result}=mutate(current);
         state.documents.set(key,{...current,campaigns});
         return result;
+      };
+      export const fsMutateSupporterShowcase = async (id,token,mutate) => {
+        const key="users/"+id;
+        const user=structuredClone(state.documents.get(key));
+        state.documents.set(key,{...user,profileShowcase:mutate(user)});
+      };
+      export const fsPublishSupporterPost = async (post) => {
+        const key="supporter_posts/"+post.id;
+        if(state.documents.has(key)) throw Error("Post exists");
+        state.documents.set(key,structuredClone(post));
       };
       export const fsPatch = async (collection, id, patch) => {
         const key = collection + "/" + id;
@@ -162,6 +172,7 @@ async function invoke(router: any, path: string, req: Record<string, unknown>, e
   const res = {
     status(value: number) { status = value; return this; },
     json(value: unknown) { body = value; },
+    sendStatus(value: number) { status = value; },
     setHeader() {},
   };
   await route.stack.at(-1).handle(req, res);
@@ -313,9 +324,11 @@ for (const path of ["/donations/checkout", "/donations/anonymous-checkout"]) {
         log: { error() { assert.fail("Unexpected Checkout error"); } },
       });
       assert.equal(state.checkout.success_url,
-        "https://rootprojx.com/donate/success?session_id={CHECKOUT_SESSION_ID}");
+        path === "/donations/checkout"
+          ? "https://rootprojx.com/campaigns/test-campaign/thank-you?session_id={CHECKOUT_SESSION_ID}"
+          : "https://rootprojx.com/donate/success?session_id={CHECKOUT_SESSION_ID}");
       assert.equal(state.checkout.cancel_url, path === "/donations/checkout"
-        ? "https://rootprojx.com/donate/test-org?campaign=test-campaign"
+        ? "https://rootprojx.com/campaigns/test-campaign?amount=3&cover=0"
         : "https://rootprojx.com/");
     }
   });
@@ -393,13 +406,16 @@ for (const path of ["/donations/checkout", "/donations/anonymous-checkout"]) {
           assert.equal(intent.metadata.feeCovered, String(feeCovered));
           assert.equal(intent.metadata.feeAmountPence, String(feeAmountPence));
           assert.equal(intent.metadata.amountPence, String(300 + feeAmountPence));
-          assert.equal(session.line_items[0].price_data.unit_amount, 300 + feeAmountPence);
+          assert.equal(session.line_items[0].price_data.unit_amount,
+            path === "/donations/checkout" ? 300 : 300 + feeAmountPence);
           assert.equal(session.line_items[0].price_data.currency, "gbp");
           if (path === "/donations/checkout") {
+            assert.equal(session.line_items.length, feeCovered ? 2 : 1);
+            if (feeCovered) assert.equal(session.line_items[1].price_data.unit_amount, feeAmountPence);
             assert.equal(intent.metadata.wallOptIn, "true");
             assert.equal(intent.metadata.userId, "test-user");
             assert.equal(session.customer_email, "donor@example.test");
-            assert.ok(session.cancel_url.endsWith("/donate/test-org?campaign=test-campaign"));
+            assert.ok(session.cancel_url.endsWith("/campaigns/test-campaign?amount=3&cover=" + (feeCovered ? "1" : "0")));
           } else {
             assert.equal(intent.metadata.userId, "anonymous");
             assert.equal(intent.metadata.type, "anonymous_one_time");
@@ -480,7 +496,9 @@ for (const feeCovered of [true, false]) {
     assert.equal(intentData.metadata.feePence, "15");
     assert.equal(intentData.metadata.originalAmountPence, "300");
     assert.equal(intentData.metadata.campaignId, "test-campaign");
-    assert.equal(state.checkout.line_items[0].price_data.unit_amount, grossPence);
+    assert.equal(state.checkout.line_items[0].price_data.unit_amount,
+      originalAmountPence);
+    assert.equal(state.checkout.line_items.length, feeCovered ? 2 : 1);
 
     const paymentIntent = {
       id: `pi_synthetic_${feeCovered ? "covered" : "uncovered"}`,
@@ -759,4 +777,59 @@ test("unpaid, subscription and unrelated Checkout completions never record donat
   assert.equal(state.writes.length, 0);
   assert.equal(state.documents.get("organisations/test-org").totalRaised, 10);
   assert.equal(state.emails.length, 0, "No receipt or alerts for unsuccessful/unrelated events");
+});
+
+test("async success records one gift, checkout wall choice controls guest name, failure records nothing", async () => {
+  const { webhooks, state } = await isolatedRouters();
+  const pi = { id: "pi_async_synthetic", amount: 325, currency: "gbp", status: "succeeded" };
+  const meta = { orgId: "test-org", orgName: "Test Organisation", campaignId: "test-campaign",
+    originalAmountPence: "300", feeCovered: "true", payoutMethod: "manual", userId: "guest", wallOptIn: "false" };
+  const event = checkoutEvent(pi, meta);
+  event.type = "checkout.session.async_payment_succeeded";
+  Object.assign(event.data.object, {
+    customer_details: { email: "guest@example.test", name: "Guest Example" },
+    custom_fields: [{ key: "wall_name", dropdown: { value: "yes" } }],
+  });
+  const send = (e: unknown) => invoke(webhooks, "/stripe", {
+    body: Buffer.from(JSON.stringify(e)), headers: { "stripe-signature": "synthetic-signature" },
+    log: { info() {}, error() { assert.fail("Unexpected webhook error"); } },
+  });
+  await send(event);
+  await send(event);
+  const d = state.documents.get("donations/pi_async_synthetic");
+  assert.equal(d.guestEmail, "guest@example.test");
+  assert.equal(d.publicDonorName, "Guest E.");
+  assert.equal(d.checkoutSessionId, "cs_synthetic");
+  assert.equal(state.writes.filter((w: any) => w.collection === "donations").length, 1);
+  assert.equal(state.documents.get("organisations/test-org").totalRaised, 13);
+  const failed = { ...event, type: "checkout.session.async_payment_failed", data: { object: { id: "cs_failed" } } };
+  await send(failed);
+  assert.equal(state.writes.filter((w: any) => w.collection === "donations").length, 1);
+});
+
+test("only the paying supporter can change private, post and Involvement sharing", async () => {
+  const { donations, state } = await isolatedRouters();
+  state.documents.set("users/test-user", { name: "Test Donor", accountType: "supporter" });
+  state.documents.set("donations/pi_sharesynthetic", {
+    userId: "test-user", status: "succeeded", orgId: "test-org", campaignId: "test-campaign",
+    currency: "gbp", intendedGbp: 3, createdAt: "2026-11-23T10:00:00Z",
+  });
+  const post = (userId: string, choice: string, text = "I'm supporting this work") => invoke(donations,
+    "/donations/:id/sharing", {
+      params: { id: "pi_sharesynthetic" }, body: { choice, text, showAmount: false },
+      user: { userId, accountType: "supporter" }, log: { error() { assert.fail("Unexpected share error"); } },
+    }, userId === "test-user" ? 200 : 404);
+  await post("other-user", "post");
+  assert.equal([...state.documents.keys()].some((k: string) => k.startsWith("supporter_posts/")), false);
+  const shared = await post("test-user", "post");
+  const postDoc = state.documents.get("supporter_posts/" + shared.postId);
+  assert.equal(postDoc.donation_post, true);
+  assert.equal(postDoc.caption, "I'm supporting this work");
+  await post("test-user", "post");
+  assert.equal([...state.documents.keys()].filter((k: string) => k.startsWith("supporter_posts/")).length, 1);
+  await post("test-user", "involvement");
+  assert.equal(state.documents.get("supporter_posts/" + shared.postId).removed, true);
+  assert.equal(state.documents.get("donations/pi_sharesynthetic").sharingChoice, "involvement");
+  await post("test-user", "private");
+  assert.equal(state.documents.get("users/test-user").profileShowcase.entries.length, 0);
 });

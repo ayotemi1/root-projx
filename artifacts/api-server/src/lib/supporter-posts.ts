@@ -97,6 +97,7 @@ export async function postDto(post: Doc, viewer: string | null, token: string, a
       description: typeof post.tag.description === "string" ? post.tag.description : null,
     } : null,
     organisation_id: post.organisation_id ?? null, campaign_id: post.campaign_id ?? null,
+    donation_post: post.donation_post === true,
     created_at: post.created_at, edited_at: post.edited_at ?? null, removed: !!post.removed,
     visibility: pp.enabled === true ? "public" : "private",
     author: {

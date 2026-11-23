@@ -3,6 +3,21 @@ import { campaignSharePath, findPublicCampaign } from "./organisations.js";
 
 const router = Router();
 
+// /campaigns belongs to this API artifact for crawler metadata. Payment
+// returns are browser pages, so hand them to the frontend-owned /campaign path
+// before the two-slug crawler route can mistake "thank-you" for a campaign.
+for (const suffix of ["/thank-you/share", "/thank-you", ""]) {
+  router.get(`/campaigns/:publicId${suffix}`, (req, res) => {
+    const id = encodeURIComponent(String(req.params.publicId));
+    const search = new URLSearchParams();
+    for (const key of ["session_id", "amount", "cover"]) {
+      if (typeof req.query[key] === "string") search.set(key, req.query[key] as string);
+    }
+    const query = search.toString();
+    res.set("Cache-Control", "no-store").redirect(302, `/campaign/${id}${suffix}${query ? `?${query}` : ""}`);
+  });
+}
+
 function escapeHtml(value: unknown): string {
   return String(value ?? "")
     .replace(/&/g, "&amp;")

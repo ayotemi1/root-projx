@@ -69,9 +69,13 @@ router.post(
       if (
         event.type === "payment_intent.succeeded" ||
         event.type === "checkout.session.completed" ||
+        event.type === "checkout.session.async_payment_succeeded" ||
         event.type === "invoice.payment_succeeded"
       ) {
         await handlePaymentSuccess(event, req.log as { info: (obj: unknown, msg: string) => void; error: (obj: unknown, msg: string) => void });
+      } else if (event.type === "checkout.session.async_payment_failed") {
+        // Failed payments must never create a donation or a hand.
+        req.log.info({ sessionId: event.data.object.id }, "Checkout payment failed");
       } else if (
         event.type === "customer.subscription.updated" ||
         event.type === "customer.subscription.deleted"
@@ -159,11 +163,13 @@ async function handlePaymentSuccess(
   let amountGbp = 0;
   let currency = "gbp";
   let stripeRef = "";
+  let checkoutSessionId: string | null = null;
   let chargedPence = 0;
   let cardCountry: string | null | undefined;
 
-  if (event.type === "checkout.session.completed") {
+  if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
     const session = event.data.object as Stripe.Checkout.Session;
+    checkoutSessionId = session.id;
     if (session.mode !== "payment" || session.payment_status !== "paid") {
       log.info({ sessionId: session.id }, "Checkout not a paid one-off payment — skipping");
       return;
@@ -176,7 +182,15 @@ async function handlePaymentSuccess(
     if (!stripeRef || !Number.isSafeInteger(session.amount_total) || session.amount_total! <= 0) {
       throw new Error("Paid donation Checkout is missing its PaymentIntent or amount");
     }
-    metadata = { ...session.metadata };
+    metadata = {
+      ...session.metadata,
+      ...(!session.metadata?.guestEmail && session.customer_details?.email ? { guestEmail: session.customer_details.email } : {}),
+    };
+    const wallAnswer = session.custom_fields?.find(field => field.key === "wall_name")?.dropdown?.value;
+    if (wallAnswer === "yes" || wallAnswer === "no") {
+      metadata.wallOptIn = wallAnswer === "yes" ? "true" : "false";
+      if (wallAnswer === "yes" && session.customer_details?.name) metadata.publicDonorName = session.customer_details.name;
+    }
     if (!metadata.originalAmountPence && metadata.intendedGbp !== undefined) {
       const intendedPence = Math.round(Number(metadata.intendedGbp) * 100);
       if (!Number.isSafeInteger(intendedPence) || intendedPence <= 0) {
@@ -282,7 +296,7 @@ async function handlePaymentSuccess(
     log.info({ metadata }, "Webhook: missing orgId in metadata — skipping");
     return;
   }
-  const isGuest = !userId && !!guestEmail;
+  const isGuest = (!userId || userId === "guest" || userId === "anonymous") && !!guestEmail;
 
   // 1. Create donation document in Firestore
   const donationDate = new Date().toISOString();
@@ -318,6 +332,8 @@ async function handlePaymentSuccess(
       orgId,
       orgName: orgName ?? "",
       ...(campaignId ? { campaignId } : {}),
+      ...(metadata.campaignPublicId ? { campaignPublicId: metadata.campaignPublicId } : {}),
+      sharingChoice: "private",
       ...accounting,
       receiptAccounting, exchangeRateToGbp,
       accountingCurrency: "gbp",
@@ -329,13 +345,14 @@ async function handlePaymentSuccess(
       type: type ?? "one_time",
       note: note ?? "",
       stripeRef,
+      ...(checkoutSessionId ? { checkoutSessionId } : {}),
       status: "succeeded",
       createdAt: donationDate,
     };
   // Keep the PI ID as stripeRef for compatibility with old records and confirm.
   // Create-only also closes the query-then-create race on simultaneous retries.
   let donationId: string;
-  if (event.type === "checkout.session.completed") {
+  if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
     donationId = stripeRef;
     if (!await fsCreateIfAbsent("donations", donationId, donationData, serverToken)) {
       const existing = await fsGet("donations", donationId, serverToken);

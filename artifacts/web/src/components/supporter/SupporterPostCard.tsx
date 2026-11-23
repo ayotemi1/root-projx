@@ -11,6 +11,8 @@ import { deletePost, followAuthor, unfollowAuthor, type SupporterPostRecord } fr
 import { myShowcaseKey, refreshShowcase } from "@/lib/supporter-showcase";
 import { EditedMedia } from "./EditedMedia";
 import { BookmarkButton } from "@/components/bookmarks/BookmarkButton";
+import { DonationAmountDialog } from "@/components/donation-amount-dialog";
+import { DonationHand } from "@/components/donation-hand";
 import "./supporter-post.css";
 
 const dateLabel = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
@@ -72,6 +74,7 @@ export function SupporterPostCard({ post }: { post: SupporterPostRecord }) {
   const { toast } = useToast();
   const follow = useSupporterFollow();
   const [confirm, setConfirm] = useState(false);
+  const [donateOpen, setDonateOpen] = useState(false);
   const a = post.author;
   // Preview intentionally has no owner privileges in its public DTO. Still
   // suppress self-follow, including immediately after enabling a public link
@@ -83,6 +86,7 @@ export function SupporterPostCard({ post }: { post: SupporterPostRecord }) {
   const camps = useQuery({ queryKey: ["campaigns", "post-link", post.organisation_id], queryFn: () => api.getCampaigns(post.organisation_id!), enabled: !!post.organisation_id && !!post.campaign_id, staleTime: 5 * 60_000 });
   const org = orgs.data?.find(o => o._id === post.organisation_id);
   const camp = camps.data?.find(c => c._id === post.campaign_id);
+  const donationPost = (post as SupporterPostRecord & { donation_post?: boolean }).donation_post === true;
   const remove = useMutation({
     mutationFn: () => deletePost(post.id, token!),
     onSuccess: () => { refreshShowcase(qc); toast({ title: "Post deleted" }); },
@@ -94,6 +98,10 @@ export function SupporterPostCard({ post }: { post: SupporterPostRecord }) {
 
   return (
     <article className="rp-rise" data-testid={`card-supporter-post-${post.id}`}>
+      {donateOpen && org && camp && <DonationAmountDialog onClose={() => setDonateOpen(false)}
+        orgId={org._id} orgName={org.name} campaignId={camp._id} campaignName={camp.name}
+        campaignPath={camp.sharePath || (camp.publicId ? `/campaigns/${camp.publicId}` : null)}
+        currency={camp.currency} />}
       <header className="flex items-center gap-3 mb-3">
         {a.avatarUrl ? <SupporterAvatar avatarUrl={a.avatarUrl} initials={a.initials} size={36} /> : <span className="w-9 h-9 shrink-0 rounded-full bg-[#CA0813] text-[#FBF8F2] grid place-items-center text-[13px] font-extrabold" aria-hidden>{a.initials}</span>}
         <div className="min-w-0 flex-1">
@@ -124,6 +132,11 @@ export function SupporterPostCard({ post }: { post: SupporterPostRecord }) {
       <Carousel post={post} />
 
       {post.caption && <p className={`${post.media.length ? "mt-4 text-[18px]" : "mt-1 border-l-4 border-[#F3BF2C] pl-4 text-[20px] sm:text-[22px] font-medium"} leading-relaxed text-[#17100F]/85 whitespace-pre-wrap break-words`} data-testid={`text-sp-caption-${post.id}`}>{post.caption}</p>}
+      {donationPost && camp && org && <button type="button" onClick={() => setDonateOpen(true)}
+        className="w-full mt-4 flex gap-3 text-left items-center border border-[#17100F] p-3 hover:bg-[#F3BF2C]/10" data-testid={`button-sp-donation-${post.id}`}>
+        <DonationHand className="w-10 h-10 shrink-0 text-[#CA0813]" />
+        <span><strong className="block">{camp.name}</strong><small>{org.name} · Support the training</small></span>
+      </button>}
 
       <footer className="mt-3 flex flex-wrap items-center justify-between gap-3">
         {post.organisation_id ? (

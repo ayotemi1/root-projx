@@ -573,6 +573,10 @@ export default function AccountPage({ view = "all" }: { view?: "all" | "giving" 
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-semibold text-foreground truncate">{d.orgName}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">{date}</p>
+                        {d.campaignId && <p className="text-xs text-muted-foreground mt-1" data-testid={`sharing-donation-${d._id}`}>
+                          {d.sharingChoice === "post" ? "Shared as a post" : d.sharingChoice === "involvement" ? "On Involvement" : "Private"}
+                          {d.checkoutSessionId && d.campaignPublicId && <Link className="ml-2 underline text-foreground" href={`/campaigns/${encodeURIComponent(d.campaignPublicId)}/thank-you/share?session_id=${encodeURIComponent(d.checkoutSessionId)}`}>Change</Link>}
+                        </p>}
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <span className="text-sm font-bold text-foreground">{amount}</span>

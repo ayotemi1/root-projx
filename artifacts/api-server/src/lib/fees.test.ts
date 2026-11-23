@@ -90,6 +90,8 @@ async function donationHandlers() {
     `,
     "firebase-rest.js": `
       export const fsMutateCampaigns = async () => {throw Error("Unexpected campaign write");};
+      export const fsMutateSupporterShowcase = async () => {throw Error("Unexpected sharing write");};
+      export const fsPublishSupporterPost = async () => {throw Error("Unexpected post write");};
       export const getServerToken = async () => "test-only";
       export const fsGet = async (collection, id) => {
         if (id === "no-external-calls") throw Error("Validation ran too late");

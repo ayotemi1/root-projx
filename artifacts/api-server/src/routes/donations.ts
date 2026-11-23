@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { fsGet, fsPatch, fsQuery, fsMutateCampaigns, getServerToken } from "../lib/firebase-rest.js";
+import { fsGet, fsPatch, fsQuery, fsMutateCampaigns, fsMutateSupporterShowcase, fsPublishSupporterPost, getServerToken } from "../lib/firebase-rest.js";
 import { checkoutCurrency } from "../lib/donation-currency.js";
 import { requireAuth, optionalAuth } from "../lib/auth.js";
 import { getUncachableStripeClient, getStripePublishableKey } from "../lib/stripeClient.js";
@@ -7,6 +7,9 @@ import { MIN_DONATION_PENCE, PLATFORM_FEE_PERCENT, platformFeePence, donationAcc
 import { resolvePayoutMethod } from "../lib/payout-setup.js";
 import { publicSiteOrigin } from "../lib/site-origin.js";
 import { checkoutWallMetadata, DonorWallInputError } from "../lib/donor-wall.js";
+import { estimateStripeFeePence } from "../lib/donation-accounting.js";
+import { createHash } from "node:crypto";
+import { POSTS } from "../lib/supporter-posts.js";
 
 const DOMAIN = publicSiteOrigin(process.env);
 
@@ -418,12 +421,8 @@ router.post("/donations/checkout", optionalAuth, async (req, res) => {
       return;
     }
 
-    // Either an authenticated user or a valid guest email is required
+    // Checkout collects a guest's email. Never require it before the hosted page.
     const uid = req.user?.userId;
-    if (!uid && !guestEmail) {
-      res.status(400).json({ error: "Sign in or provide an email to donate" });
-      return;
-    }
 
     const serverToken = await getServerToken();
     const org = await fsGet("organisations", orgId, serverToken);
@@ -449,6 +448,12 @@ router.post("/donations/checkout", optionalAuth, async (req, res) => {
     let currency: "gbp" | "usd";
     try { currency = await campaignCheckoutCurrency(orgId, org, campaignId, req.body.currency, serverToken); }
     catch (err) { res.status(400).json({ error: (err as Error).message }); return; }
+    const calculatedCardFee = feeCovered ? estimateStripeFeePence(basePence, null, currency) : 0;
+    if (amountPence !== basePence + calculatedCardFee ||
+        (feeAmountPence !== undefined && feeAmountPence !== calculatedCardFee)) {
+      res.status(400).json({ error: "Donation amount changed. Please try again." });
+      return;
+    }
 
     // Determine donor email: authenticated user's email takes priority
     let donorEmail: string | undefined = guestEmail;
@@ -459,6 +464,12 @@ router.post("/donations/checkout", optionalAuth, async (req, res) => {
 
     // Platform fee is calculated on the original donation amount, not the grossed-up total
     const feePence = platformFeePence(basePence);
+    const selectedCampaign = campaignId
+      ? (org.campaigns as Record<string, unknown>[]).find(c => c._id === campaignId)
+      : undefined;
+    const campaignName = typeof selectedCampaign?.name === "string" ? selectedCampaign.name : undefined;
+    const publicCampaignId = typeof selectedCampaign?.publicId === "string" ? selectedCampaign.publicId : campaignId;
+    const campaignPath = publicCampaignId ? `/campaigns/${encodeURIComponent(publicCampaignId)}` : null;
     const stripe = await getUncachableStripeClient();
     const metadata = {
       userId: uid ?? "guest", payoutMethod,
@@ -470,10 +481,11 @@ router.post("/donations/checkout", optionalAuth, async (req, res) => {
       ...(currency === "gbp" ? { intendedGbp: String(basePence / 100) } : {}),
       feeCovered: feeCovered ? "true" : "false",
       originalAmountPence: String(basePence),
-      feeAmountPence: String(feeAmountPence ?? 0),
+      feeAmountPence: String(calculatedCardFee),
       platform: "rootprojx",
       ...checkoutWallMetadata(req.body, !!uid),
       ...(campaignId ? { campaignId } : {}),
+      ...(publicCampaignId ? { campaignPublicId: publicCampaignId } : {}),
     };
 
     const session = await stripe.checkout.sessions.create({
@@ -483,9 +495,9 @@ router.post("/donations/checkout", optionalAuth, async (req, res) => {
         {
           price_data: {
             currency,
-            unit_amount: amountPence,
+            unit_amount: basePence,
             product_data: {
-              name: `Donation to ${org["name"] as string}`,
+              name: campaignName ?? `Donation to ${org["name"] as string}`,
               description: feeCovered
                 ? "You cover card processing fees so more of your donation reaches the organisation. A 5% platform fee still applies."
                 : "Your donation supports the organisation after the 5% platform fee and card processing fees.",
@@ -493,7 +505,21 @@ router.post("/donations/checkout", optionalAuth, async (req, res) => {
           },
           quantity: 1,
         },
+        ...(calculatedCardFee > 0 ? [{
+          price_data: { currency, unit_amount: calculatedCardFee, product_data: { name: "Card fee (you chose to cover it)" } },
+          quantity: 1,
+        }] : []),
       ],
+      custom_fields: [{
+        key: "wall_name",
+        label: { type: "custom", custom: "Show your name on the wall?" },
+        type: "dropdown",
+        dropdown: { options: [
+          { label: "Yes, show my first name and last initial", value: "yes" },
+          { label: "No, give anonymously", value: "no" },
+        ], default_value: "no" },
+      }],
+      name_collection: { individual: { enabled: true } },
       payment_intent_data: {
         ...(payoutMethod === "stripe_connect" ? {
           application_fee_amount: feePence,
@@ -501,9 +527,9 @@ router.post("/donations/checkout", optionalAuth, async (req, res) => {
         } : {}),
         metadata,
       },
-      customer_email: donorEmail,
-      success_url: `${DOMAIN}/donate/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${DOMAIN}/donate/${orgId}${campaignId ? `?campaign=${encodeURIComponent(campaignId)}` : ""}`,
+      ...(donorEmail ? { customer_email: donorEmail } : {}),
+      success_url: `${DOMAIN}${campaignPath ? `${campaignPath}/thank-you` : "/donate/success"}?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${DOMAIN}${campaignPath ?? `/organisations/${encodeURIComponent(orgId)}`}${campaignPath ? `?amount=${encodeURIComponent(String(basePence / 100))}&cover=${feeCovered ? "1" : "0"}` : ""}`,
     });
 
     res.json({ url: session.url, sessionId: session.id });
@@ -578,6 +604,20 @@ router.get("/donations/confirm", async (req, res) => {
     const theme = campaign?.theme as { unit?: { singular?: string; plural?: string; imageUrl?: string } } | undefined;
     const campaignPath = campaign && campaign.enabled !== false && campaign.status !== "deleted"
       ? (typeof campaign.sharePath === "string" ? campaign.sharePath : typeof campaign.publicId === "string" ? `/campaigns/${encodeURIComponent(campaign.publicId)}` : null) : null;
+    let wallNumber: number | null = null;
+    if (saved && campaignId) {
+      const gifts = await fsQuery("donations", [
+        { field: "orgId", op: "EQUAL", value: orgId },
+        { field: "campaignId", op: "EQUAL", value: campaignId },
+      ], serverToken);
+      const people = new Map<string, number>();
+      for (const gift of gifts.sort((a, b) => String(a.createdAt ?? "").localeCompare(String(b.createdAt ?? "")))) {
+        if (gift.status !== "succeeded" || typeof gift.donorIdentityKey !== "string" ||
+            gift.donorIdentityKey.startsWith("unidentified:")) continue;
+        if (!people.has(gift.donorIdentityKey)) people.set(gift.donorIdentityKey, people.size + 1);
+        if (gift.stripeRef === paymentIntent.id) wallNumber = people.get(gift.donorIdentityKey) ?? null;
+      }
+    }
     res.json({
       orgId,
       orgName,
@@ -589,12 +629,119 @@ router.get("/donations/confirm", async (req, res) => {
       feePence: Math.round(receiptAccounting.platformFeeGbp * 100),
       donorEmail: session.customer_details?.email ?? session.customer_email,
       recorded: existing.length > 0,
+      donationId: saved?._id ?? null,
+      wallNumber,
       campaignId, campaignPath, campaignName: typeof campaign?.name === "string" ? campaign.name : null,
       unit: theme?.unit ?? null,
     });
   } catch (err) {
     req.log.error({ err }, "GET /donations/confirm error");
     res.status(500).json({ error: "Failed to confirm donation" });
+  }
+});
+
+// A return URL is not proof of payment. This read-only status is used for the
+// pending/failed screens; /confirm and the signed webhook own the receipt.
+router.get("/donations/checkout-status", async (req, res) => {
+  try {
+    const id = req.query.session_id;
+    if (typeof id !== "string" || !/^cs_(test_|live_)[a-zA-Z0-9]+$/.test(id)) {
+      res.status(400).json({ error: "Invalid checkout session" }); return;
+    }
+    const stripe = await getUncachableStripeClient();
+    const session = await stripe.checkout.sessions.retrieve(id, { expand: ["payment_intent"] });
+    const intent = typeof session.payment_intent === "object" ? session.payment_intent : null;
+    const failed = session.status === "expired" || intent?.status === "canceled" ||
+      intent?.status === "requires_payment_method";
+    res.setHeader("Cache-Control", "no-store");
+    res.json({
+      status: session.payment_status === "paid" ? "paid" : failed ? "failed" : "pending",
+      campaignId: session.metadata?.campaignId ?? null,
+      amount: Number(session.metadata?.originalAmountPence ?? session.amount_total ?? 1000) / 100,
+      feeCovered: session.metadata?.feeCovered === "true",
+    });
+  } catch (err) {
+    req.log.warn({ err }, "Checkout status unavailable");
+    res.status(503).json({ error: "Checkout status unavailable" });
+  }
+});
+
+function sharingId(prefix: string, donationId: string) {
+  const s = createHash("sha256").update(`${prefix}:${donationId}`).digest("hex");
+  return `${s.slice(0, 8)}-${s.slice(8, 12)}-4${s.slice(13, 16)}-8${s.slice(17, 20)}-${s.slice(20, 32)}`;
+}
+
+// Sharing changes an existing, paid gift's presentation only. No donation or
+// financial totals are ever written from this endpoint.
+router.post("/donations/:id/sharing", requireAuth, async (req, res) => {
+  const id = String(req.params.id);
+  const choice = req.body?.choice;
+  const text = req.body?.text;
+  const showAmount = req.body?.showAmount === true;
+  if (!/^pi_[A-Za-z0-9]+$/.test(id) || !["post", "involvement", "private"].includes(choice) ||
+      (choice === "post" && (typeof text !== "string" || !text.trim() || text.length > 280))) {
+    res.status(400).json({ error: "Something went wrong, please try again" }); return;
+  }
+  try {
+    const uid = req.user!.userId;
+    if (req.user?.accountType !== "supporter") { res.sendStatus(403); return; }
+    const token = await getServerToken();
+    const gift = await fsGet("donations", id, token);
+    if (!gift || gift.userId !== uid || gift.status !== "succeeded" || !gift.campaignId) {
+      res.sendStatus(404); return;
+    }
+    const org = await fsGet("organisations", String(gift.orgId), token);
+    const campaign = (Array.isArray(org?.campaigns) ? org.campaigns : [])
+      .find((c: Record<string, unknown>) => c._id === gift.campaignId);
+    if (!org || !campaign) { res.sendStatus(404); return; }
+    const postId = sharingId("post", id);
+    const involvementId = sharingId("involvement", id);
+    const oldPost = await fsGet(POSTS, postId, token);
+    if (oldPost && oldPost.author_id !== uid) { res.sendStatus(409); return; }
+    if (choice === "post") {
+      const raw = text.trim();
+      const native = gift.receiptAccounting as { intendedGbp?: number } | undefined;
+      const giftAmount = Number(native?.intendedGbp ?? gift.intendedGbp);
+      const money = gift.currency === "usd" ? "US$" : "£";
+      const caption = showAmount && Number.isFinite(giftAmount)
+        ? `${raw}\n${money}${giftAmount.toFixed(2)} given to ${campaign.name}` : raw;
+      if (oldPost) {
+        await fsPatch(POSTS, postId, { caption, removed: false, edited_at: new Date().toISOString(), donation_post: true }, token);
+      } else {
+        try {
+          await fsPublishSupporterPost({
+            id: postId, author_id: uid, type: "text", caption, community_tag: null,
+            tag: null, organisation_id: gift.orgId, campaign_id: gift.campaignId,
+            activity_type: "Gave", donation_post: true, created_at: new Date().toISOString(),
+            edited_at: null, removed: false, media_ids: [], fingerprint: sharingId("fingerprint", id),
+          }, [], token);
+        } catch (e) {
+          const committed = await fsGet(POSTS, postId, token);
+          if (!committed || committed.author_id !== uid) throw e;
+        }
+      }
+    } else if (oldPost && !oldPost.removed) {
+      await fsPatch(POSTS, postId, { removed: true }, token);
+    }
+    await fsMutateSupporterShowcase(uid, token, user => {
+      if (user.accountType !== "supporter") throw new Error("Not a supporter");
+      const showcase = (user.profileShowcase ?? {}) as Record<string, unknown>;
+      const entries = Array.isArray(showcase.entries) ? showcase.entries as Record<string, unknown>[] : [];
+      const without = entries.filter(entry => entry.id !== involvementId);
+      return {
+        ...showcase, entries: choice === "involvement"
+          ? [...without, {
+            id: involvementId, organisationId: gift.orgId, projectName: String(org.name),
+            activity: "Gave", details: `Supporter · ${campaign.name}`,
+            when: String(gift.createdAt).slice(0, 10), shared: true, createdAt: new Date().toISOString(),
+          }] : without,
+      };
+    });
+    await fsPatch("donations", id, { sharingChoice: choice, sharingPostId: choice === "post" ? postId : null }, token);
+    res.json({ choice, postId: choice === "post" ? postId : null });
+  } catch (err) {
+    req.log.error({ err }, "Donation sharing failed");
+    res.status(503).json({ error: "Something went wrong, please try again" });
   }
 });
 

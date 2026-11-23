@@ -5,7 +5,7 @@ import { ArrowLeft, Users } from "lucide-react";
 import * as api from "@/lib/api";
 import type { Campaign, Org } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import { GuestDonateSheet } from "@/components/GuestDonateSheet";
+import { DonationAmountDialog } from "@/components/donation-amount-dialog";
 import { formatWhole } from "@/lib/currency";
 import { CampaignDonateButton } from "@/components/campaign-donate-button";
 
@@ -125,8 +125,6 @@ function CampaignCard({
 export default function OrgCampaignsPage() {
   const params = useParams<{ id: string }>();
   const orgId = params.id!;
-  const [, navigate] = useLocation();
-  const { isAuthenticated } = useAuth();
   const [tab, setTab] = useState<"active" | "completed">("active");
   const [sheetOpen, setSheetOpen] = useState(false);
   const [donationCampaign, setDonationCampaign] = useState<Campaign | null>(null);
@@ -147,11 +145,7 @@ export default function OrgCampaignsPage() {
 
   function handleDonate() {
     setDonationCampaign(null);
-    if (isAuthenticated) {
-      navigate(`/donate/${orgId}`);
-    } else {
-      setSheetOpen(true);
-    }
+    setSheetOpen(true);
   }
   function handleCampaignDonate(campaign: Campaign) {
     setDonationCampaign(campaign);
@@ -160,17 +154,15 @@ export default function OrgCampaignsPage() {
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
-      <GuestDonateSheet
-        open={sheetOpen}
+      {sheetOpen && <DonationAmountDialog
         onClose={() => setSheetOpen(false)}
         orgId={orgId}
         orgName={org?.name ?? "this organisation"}
         campaignId={donationCampaign?._id}
         campaignName={donationCampaign?.name}
-        partnerFunding={donationCampaign?.partnerFunding}
-        partnerFundingMatchedGbp={donationCampaign?.partnerFundingMatchedGbp}
+        campaignPath={donationCampaign?.sharePath ?? (donationCampaign?.publicId ? `/campaigns/${donationCampaign.publicId}` : null)}
         currency={donationCampaign?.currency ?? "gbp"}
-      />
+      />}
       {/* Back link */}
       <Link
         href={`/organisations/${orgId}`}

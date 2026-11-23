@@ -481,7 +481,7 @@ test("redesigned hero preserves inline gifts, canonical disclosures and an activ
   assert.match(html, /Card processing \(estimated\)/);
   assert.match(html, /data-testid="text-org-receives">£9\.50/);
   assert.match(html, /data-testid="text-total-charged">£10\.35/);
-  assert.match(html, /class="rc-give-btn" data-testid="button-donate-campaign">Donate £10/);
+  assert.match(html, /class="rc-give-btn" data-testid="button-donate-campaign">Give £10\.35/);
   assert.doesNotMatch(html, /marker-your-hand|panel-donate-thanks/);
   const preview = render({ preview: true });
   assert.match(preview, /disabled=""[^>]*data-testid="button-donate-campaign"/);

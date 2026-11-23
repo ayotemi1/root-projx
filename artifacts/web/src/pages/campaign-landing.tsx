@@ -4,7 +4,11 @@ import { useQuery } from "@tanstack/react-query";
 import { Target } from "lucide-react";
 import { getPublicCampaignLanding, getPublicCampaignLandingBySlug } from "@/lib/api";
 import { CampaignPageView } from "@/components/campaign/campaign-page-view";
-import { GuestDonateSheet } from "@/components/GuestDonateSheet";
+import { beginDonationCheckout } from "@/components/donation-amount-dialog";
+import { useAuth } from "@/context/AuthContext";
+import { currencyOf, currencySymbol } from "@/lib/currency";
+import { donationPence } from "@/components/campaign/campaign-donate-panel";
+import { userErrorMessage } from "@/lib/error-feedback";
 import { Skeleton } from "@/components/ui/skeleton";
 import { consumeConfirmedReceiptDetails, type ConfirmedReceiptDetails } from "@/lib/donor-identity";
 import type { DonateChoice } from "@/components/campaign/campaign-donate-panel";
@@ -12,7 +16,9 @@ import type { DonateChoice } from "@/components/campaign/campaign-donate-panel";
 export default function CampaignLandingPage() {
   const params = useParams<{ publicId?: string; organisationSlug?: string; campaignSlug?: string }>();
   const [, setLocation] = useLocation();
-  const [donateOpen, setDonateOpen] = useState(false);
+  const { token } = useAuth();
+  const [connecting, setConnecting] = useState<DonateChoice | null>(null);
+  const [checkoutError, setCheckoutError] = useState("");
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -81,7 +87,6 @@ export default function CampaignLandingPage() {
 
   // Verified receipt only (written by donate-success after confirm recorded=true for this campaign).
   const [receipt, setReceipt] = useState<(ConfirmedReceiptDetails & { campaignId: string }) | null>(null);
-  const [choice, setChoice] = useState<DonateChoice | null>(null);
   const campaignIdForReceipt = landing?.campaign._id;
   useEffect(() => {
     if (!campaignIdForReceipt) return;
@@ -132,28 +137,37 @@ export default function CampaignLandingPage() {
   }
 
   const { campaign, organisation: org } = landing;
+  const cancelParams = new URLSearchParams(window.location.search);
+  const canceledAmount = Number(cancelParams.get("amount"));
+  const initialDonateAmount = Number.isFinite(canceledAmount) && canceledAmount >= 3 ? canceledAmount : null;
+  const initialFeeCovered = cancelParams.get("cover") !== "0";
+  async function onDonate(choice?: DonateChoice) {
+    if (!choice || connecting) return;
+    setConnecting(choice); setCheckoutError("");
+    try {
+      await beginDonationCheckout({ orgId: org._id, campaignId: campaign._id, currency: currencyOf(campaign.currency), choice, token });
+    } catch (e) {
+      setCheckoutError(userErrorMessage(e, "start checkout"));
+      setConnecting(null);
+    }
+  }
 
   return (
     <>
-      <GuestDonateSheet
-        open={donateOpen}
-        onClose={() => setDonateOpen(false)}
-        orgId={org._id}
-        orgName={org.name}
-        campaignId={campaign._id}
-        campaignName={campaign.name}
-        partnerFunding={campaign.partnerFunding ?? null}
-        partnerFundingMatchedGbp={campaign.partnerFundingMatchedGbp ?? 0}
-        currency={campaign.currency ?? "gbp"}
-        initialAmount={choice?.amount ?? null}
-        initialFeeCovered={choice?.feeCovered ?? false}
-      />
+      {connecting && <div className="rpd-connecting" role="status" aria-live="polite">
+        <span className="rpd-spinner" aria-hidden="true" />
+        <strong className="rc-display">Connecting to Stripe…</strong>
+        <p>Taking you to secure checkout for {currencySymbol(currencyOf(campaign.currency))}{(donationPence(connecting.amount, connecting.feeCovered, currencyOf(campaign.currency)).chargedPence / 100).toFixed(2)}.</p>
+      </div>}
+      {checkoutError && <div role="alert" className="rpd-checkout-error">{checkoutError} <button onClick={() => setCheckoutError("")}>Dismiss</button></div>}
       <CampaignPageView
         campaign={campaign}
         organisation={org}
         scrolled={scrolled}
         confirmedReceipt={receipt?.campaignId === campaign._id ? receipt : null}
-        onDonate={(c) => { setChoice(c ?? null); setDonateOpen(true); }}
+        onDonate={onDonate}
+        initialDonateAmount={initialDonateAmount}
+        initialFeeCovered={initialFeeCovered}
         onVolunteer={() => setLocation(`/organisations/${org._id}/volunteer`)}
       />
     </>

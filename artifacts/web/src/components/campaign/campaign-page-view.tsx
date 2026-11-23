@@ -95,6 +95,8 @@ export interface CampaignPageViewProps {
   confirmedReceipt?: ConfirmedReceiptView | null;
   /** Called from the hero donate box with the chosen amount and fee-cover choice. */
   onDonate?: (choice?: DonateChoice) => void;
+  initialDonateAmount?: number | null;
+  initialFeeCovered?: boolean;
   onVolunteer?: () => void;
   /** Deprecated: sharing is handled inside the view with a copy-link fallback. */
   onShare?: () => void;
@@ -137,7 +139,7 @@ function Strip({ n, label, right }: { n: number; label: string; right?: ReactNod
 /** The single render component for public campaign pages and editor previews. */
 export function CampaignPageView({
   campaign, organisation: org, preview = false, layout = "responsive", scrolled = false,
-  highlightNewest = false, confirmedReceipt = null, onDonate, onVolunteer,
+  highlightNewest = false, confirmedReceipt = null, onDonate, onVolunteer, initialDonateAmount, initialFeeCovered,
 }: CampaignPageViewProps) {
   const currency = currencyOf(campaign.currency);
   const gbp = (n: number) => formatWhole(n, currency);
@@ -704,6 +706,8 @@ export function CampaignPageView({
                     <CampaignDonatePanel
                       currency={currency}
                       orgName={org.name}
+                      initialAmount={initialDonateAmount}
+                      initialFeeCovered={initialFeeCovered}
                       heading={donateLabel || "Support this campaign"}
                       cohortName={cohortName || undefined}
                       preview={preview}

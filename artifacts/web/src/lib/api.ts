@@ -156,6 +156,10 @@ export interface Resource {
 export interface Donation {
   receiptAccounting?: import("../../../api-server/src/lib/donation-accounting").DonationAccounting;
   _id: string;
+  checkoutSessionId?: string;
+  sharingChoice?: "post" | "involvement" | "private";
+  campaignPublicId?: string;
+  campaignId?: string;
   userId: string;
   orgId: string;
   orgName: string;
@@ -891,6 +895,8 @@ export const confirmDonation = (sessionId: string) =>
     campaignId?: string | null;
     campaignName?: string | null;
     campaignPath?: string | null;
+    donationId?: string | null;
+    wallNumber?: number | null;
     unit?: CampaignUnit | null;
   }>(`/donations/confirm?session_id=${encodeURIComponent(sessionId)}`);
 
