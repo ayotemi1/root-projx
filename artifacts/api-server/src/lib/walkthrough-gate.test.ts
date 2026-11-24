@@ -58,8 +58,9 @@ test("optional Skip permits absent content but never failed, pending or dirty ed
   assert.equal(skipGate({ ...input, skippable: false, checkPassed: true }).ok, false);
 });
 
-test("tour declarations retain exactly 10 profile and 12 campaign steps and only approved skips", () => {
-  assert.equal(TOUR_STEPS.filter(s => s.id.startsWith("p-")).length, 10);
+test("tour declarations retain 9 visible profile and 12 campaign steps and only approved skips", () => {
+  assert.equal(TOUR_STEPS.filter(s => s.id.startsWith("p-")).length, 9);
+  assert.equal(TOUR_STEPS.some(s => s.id === "p-cover"), false);
   assert.equal(TOUR_STEPS.filter(s => s.id.startsWith("c-")).length, 12);
   assert.deepEqual(TOUR_STEPS.filter(s => s.skippable).map(s => s.id),
     ["p-metrics", "c-breakdown", "c-locations", "c-video"]);

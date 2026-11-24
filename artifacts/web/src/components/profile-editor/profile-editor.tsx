@@ -21,7 +21,6 @@ export function profileChecks(org: Org): Check[] {
     { id: "story", section: "story", label: "Full story", done: story >= 200, missing: `Story is ${story} characters; aim for at least 200.` },
     { id: "sectors", section: "sectors", label: "At least one sector", done: orgSectors(org).some(value => (SECTORS as readonly string[]).includes(value)), missing: "Choose a sector." },
     { id: "logo", section: "identity", label: "Logo", done: !!org.logo, missing: "Add a logo." },
-    { id: "cover", section: "identity", label: "Cover image", done: !!org.coverImage, missing: "Add a cover photo." },
     { id: "impact", section: "impact", optional: true, label: "Impact metrics", done: !!org.impactMetrics && Object.keys(org.impactMetrics).length > 0, missing: "Share a number or two." },
     { id: "funds", section: "funds", optional: true, label: "Funds breakdown", done: !!org.fundsUsage, missing: "Show how money is spent." },
     { id: "contact", section: "contact", optional: true, label: "Contact", done: !!(org.contact && Object.values(org.contact).some(Boolean)), missing: "Add a way to reach you." },
@@ -45,7 +44,7 @@ function CompletenessMeter({ org }: { org: Org }) {
       <div className="mt-2 h-2.5 rounded-full bg-secondary overflow-hidden" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label="Essential profile completeness">
         <div className="h-full bg-primary origin-left transition-transform duration-500" style={{ transform: `scaleX(${pct / 100})` }} />
       </div>
-      <p className="text-xs text-muted-foreground mt-2">Based on what's saved. Name, one-line description, country, logo, cover, story and a sector are required; the extras below help but are optional.</p>
+      <p className="text-xs text-muted-foreground mt-2">Based on what's saved. Name, one-line description, country, logo, story and a sector are required; the extras below help but are optional.</p>
       <ul className="mt-3 space-y-1.5">
         {core.map((c) => (
           <li key={c.id} className="flex items-start gap-2 text-sm">

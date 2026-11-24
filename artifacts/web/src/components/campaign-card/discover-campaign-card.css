@@ -1,0 +1,26 @@
+/* Discover-style campaign card. Scoped to .dcc so Discover can reuse it. */
+.dcc { --dcc-ink: var(--rp-ink, #17100F); --dcc-y: var(--rp-yellow, #F3BF2C); --dcc-sand: #EDE4D6; --dcc-mut: #5A4F4B;
+  display: flex; flex-direction: column; background: #fff; border: 2px solid var(--dcc-ink); color: var(--dcc-ink); min-width: 0; }
+.dcc-media { display: block; aspect-ratio: 1 / 1; background: var(--dcc-sand); border-bottom: 2px solid var(--dcc-ink); overflow: hidden; }
+.dcc-media img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .4s ease; }
+a.dcc-media:hover img { transform: scale(1.03); }
+.dcc-fallback { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: var(--dcc-ink); color: var(--dcc-y);
+  font-family: var(--font-display); font-weight: 900; font-stretch: 75%; font-size: 56px; }
+.dcc-body { padding: 14px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.dcc-name { font-family: var(--font-display); font-weight: 900; font-stretch: 70%; font-variation-settings: "wdth" 70; text-transform: uppercase;
+  font-size: 24px; line-height: .95; color: inherit; text-decoration: none; overflow-wrap: anywhere; }
+a.dcc-name:hover { text-decoration: underline; text-underline-offset: 3px; }
+.dcc-org { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: inherit; text-decoration: none; min-width: 0; }
+.dcc-org-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dcc-logo { width: 22px; height: 22px; border-radius: 50%; flex: none; overflow: hidden; border: 1px solid var(--dcc-ink); background: var(--dcc-ink); color: var(--dcc-y);
+  display: inline-flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 800; }
+.dcc-logo img { width: 100%; height: 100%; object-fit: cover; }
+.dcc-bar { height: 8px; background: var(--dcc-sand); overflow: hidden; margin-top: 4px; }
+.dcc-bar > div { height: 100%; background: var(--dcc-y); transform-origin: left; }
+.dcc-meta { margin: 0; font-size: 13px; color: var(--dcc-mut); }
+.dcc-meta b { color: var(--dcc-ink); }
+.dcc-donate { margin-top: auto; min-height: 44px; border: 1.5px solid var(--dcc-ink); background: var(--dcc-y); color: var(--dcc-ink); font-weight: 700; font-size: 15px;
+  display: inline-flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 0; }
+.dcc-donate:hover { background: #F6CB4E; }
+.dcc-donate:disabled { opacity: .45; cursor: not-allowed; }
+@media (prefers-reduced-motion: reduce) { .dcc-media img { transition: none; } }

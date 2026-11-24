@@ -14,8 +14,8 @@ update, category, title or caption must not be required for a media post.
 
 **How to apply:** Keep on-site uploads and public social links usable independently. Do not promise that an Instagram link alone can always be played inline; uploaded video is the reliable on-site viewing option.
 
-Retain organisations' existing saved banner photos across public, donor-preview and dashboard profile views. Do not remove banners during profile redesigns or ask organisations to upload their existing images again. A missing banner still reserves the full banner area with an organisation-colour or ink fallback.
+Do not display banners on public, donor-preview or dashboard organisation profiles, and hide banner editing for now. Keep all saved banner images and their stored references intact.
 
-**Why:** The user explicitly requested restoring banners removed by the public-profile rebuild, while preserving all other profile content.
+**Why:** On 2026-11-24 the user explicitly replaced the earlier banner-restoration request with the supplied no-banner profile reference.
 
-**How to apply:** Treat banners and overlapping round logos as part of the profile identity, and retain banner replacement, positioning/cropping and removal in Edit profile.
+**How to apply:** Use the round-logo header without overlap or a reserved banner area. Preserve existing banner data when saving unrelated profile edits. Follow the written phone order: bio, live campaign card, then tabs and posts.

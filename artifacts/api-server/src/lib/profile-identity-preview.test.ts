@@ -52,13 +52,13 @@ const { flushIdentity } = await import(pathToFileURL(file).href) as {
   flushIdentity: (results: Record<string, boolean>) => Promise<{ saved: boolean; calls: string[] }>;
 };
 
-test("identity preview waits for text, logo and cover attachment saves", async () => {
+test("identity preview waits for text and logo saves without touching hidden banners", async () => {
   const result = await flushIdentity({});
   assert.equal(result.saved, true);
-  assert.deepEqual(result.calls.sort(), ["identity", "identity-cover", "identity-logo"]);
+  assert.deepEqual(result.calls.sort(), ["identity", "identity-logo"]);
 });
 
-for (const section of ["identity", "identity-logo", "identity-cover"]) {
+for (const section of ["identity", "identity-logo"]) {
   test(`identity preview refuses stale content when ${section} fails`, async () => {
     assert.equal((await flushIdentity({ [section]: false })).saved, false);
   });

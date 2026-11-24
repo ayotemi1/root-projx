@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { OrganisationBanner } from "@/components/organisation/OrganisationBanner";
+import { DiscoverCampaignCard } from "@/components/campaign-card/DiscoverCampaignCard";
 import { useRoute, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Send, Mail } from "lucide-react";
@@ -42,7 +42,15 @@ function LiveCampaignCard({ campaign, onDonate, testId }: { campaign: Campaign; 
   const href = campaignHref(campaign);
   const ends = endsLabel(campaign);
   return (
-    <section className="orgp-box" data-testid={testId}>
+    <section className="orgp-box orgp-live" data-testid={testId}>
+      {href ? (
+        <Link href={href} className="orgp-live-media" tabIndex={-1} aria-hidden data-testid={`${testId}-image`}>
+          {campaign.imageUrl ? <img src={campaign.imageUrl} alt="" /> : <span className="orgp-live-fallback">Live</span>}
+        </Link>
+      ) : (
+        <span className="orgp-live-media">{campaign.imageUrl ? <img src={campaign.imageUrl} alt="" /> : <span className="orgp-live-fallback">Live</span>}</span>
+      )}
+      <div className="orgp-live-bd">
       <div className="orgp-box-top">
         <span className="orgp-mono" style={{ fontWeight: 700, fontSize: 11 }}>Live campaign</span>
         <span className="orgp-tag">Live</span>
@@ -57,6 +65,7 @@ function LiveCampaignCard({ campaign, onDonate, testId }: { campaign: Campaign; 
       <div className="orgp-box-btns">
         <CampaignDonateButton campaign={campaign} onDonate={onDonate} className="orgp-btn y">Donate</CampaignDonateButton>
         {href ? <Link href={href} className="orgp-btn" data-testid={`${testId}-view`}>View</Link> : <button type="button" className="orgp-btn" disabled>View</button>}
+      </div>
       </div>
     </section>
   );
@@ -195,7 +204,6 @@ export default function OrgProfilePage() {
       <div className="rp-orgp" data-testid="status-org-loading">
         {previewBar}
         <div className="orgp-wrap">
-          <OrganisationBanner name="Organisation" />
           <div className="orgp-cols">
             <div className="orgp-main">
               <div className="orgp-head">
@@ -304,7 +312,6 @@ export default function OrgProfilePage() {
             <button type="button" className="orgp-btn" onClick={recordProfilePreview} data-testid="button-retry-profile-preview-record">Retry</button>
           </div>
         )}
-        <OrganisationBanner src={org.coverImage} name={org.name} />
         <div className="orgp-cols">
           <div className="orgp-main">
             <header id={PROFILE_ANCHORS.identity} className="orgp-head" style={{ scrollMarginTop: 80 }}>
@@ -382,8 +389,10 @@ export default function OrgProfilePage() {
                 ) : campaigns.length === 0 ? (
                   <p className="orgp-empty">No live campaigns.</p>
                 ) : (
-                  <div className="orgp-camps">
-                    {campaigns.map((c) => <CampaignRow key={c._id} campaign={c} orgId={id} onDonate={handleCampaignDonate} />)}
+                  <div className="orgp-camps orgp-camp-grid">
+                    {campaigns.map((c) => c.type === "fundraising"
+                      ? <DiscoverCampaignCard key={c._id} campaign={c} org={{ name: org.name, logo: org.logo, verified: org.verified, href: `/organisations/${encodeURIComponent(id)}` }} onDonate={handleCampaignDonate} />
+                      : <CampaignRow key={c._id} campaign={c} orgId={id} onDonate={handleCampaignDonate} />)}
                   </div>
                 )
               )}

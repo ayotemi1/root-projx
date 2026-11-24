@@ -139,6 +139,7 @@ test("public organisation profile uses the redesign with real data and preserves
       [["campaigns", id], [{
         _id: "library-campaign", publicId: "cp_library", sharePath: "/campaign/library/books",
         name: "Books for everyone", description: "Help fill the shelves.", type: "fundraising",
+        imageUrl: "/test-campaign-hero.png",
         goal: 1000, amountRaised: 125, currency: "gbp", status: "active", enabled: true,
       }]],
       [["volunteerRoles", id], []], [["org-reviews", id], []], [["org-supporters", id], []],
@@ -148,9 +149,10 @@ test("public organisation profile uses the redesign with real data and preserves
   assert.match(html, /data-testid="text-org-name">Profile Regression Organisation/);
   assert.match(html, /A library for everyone\./);
   assert.match(html, /src="\/test-logo\.png"/);
-  assert.match(html, /data-testid="org-profile-banner"/);
-  assert.match(html, /src="\/test-cover\.png"/);
-  assert.ok(html.indexOf('data-testid="org-profile-banner"') < html.indexOf('class="orgp-cols"'));
+  assert.doesNotMatch(html, /org-profile-banner|src="\/test-cover\.png"/);
+  assert.match(html, /data-testid="card-live-campaign-image"/);
+  assert.match(html, /src="\/test-campaign-hero\.png"/);
+  assert.ok(html.indexOf('data-testid="card-live-campaign-mobile"') < html.indexOf('data-testid="tab-posts"'));
   assert.match(html, /data-testid="card-content-profile-test-post"/);
   assert.match(html, /Opening the library/);
   assert.match(html, /data-testid="tab-posts"/);

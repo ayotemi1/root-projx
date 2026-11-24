@@ -5,7 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import type { Org, OrgProfilePatch, ImpactMetricKey, ImpactMetricsInput, TeamMember, FundsUsage } from "@/lib/api";
 import { SECTORS, orgSectors } from "@/lib/sectors";
-import { COVER_SPEC, LOGO_SPEC, TEAM_SPEC } from "@/lib/image-process";
+import { LOGO_SPEC, TEAM_SPEC } from "@/lib/image-process";
 import { useSectionAutosave } from "./use-section-autosave";
 import { SectionShell, CharCount, SaveIndicator } from "./section-shell";
 import { ImageUploadField } from "./image-upload-field";
@@ -48,12 +48,6 @@ export function IdentitySection(ctx: SectionCtx) {
     validate: (v) => (v ? null : "Upload a logo first."),
     toPatch: (v) => ({ logo: v }),
   });
-  const cover = useSectionAutosave<string | null>({
-    ...base(ctx, "identity-cover"),
-    initial: org.coverImage ?? null,
-    validate: () => null,
-    toPatch: (v) => ({ coverImage: v }),
-  });
 
   /** Uploaded URL is kept as a recoverable draft until the PATCH attaching it succeeds. */
   async function attach(hook: typeof logo, url: string) {
@@ -65,7 +59,7 @@ export function IdentitySection(ctx: SectionCtx) {
   return (
     <SectionShell section="identity" title="Identity" hint="Who you are, where you work, and the one line donors see on Discover."
       orgId={ctx.orgId} status={s.status} error={s.error} onRetry={s.commit}
-      onFlush={async () => (await Promise.all([s.flush(), logo.flush(), cover.flush()])).every(Boolean)} onBlur={s.onSectionBlur}
+      onFlush={async () => (await Promise.all([s.flush(), logo.flush()])).every(Boolean)} onBlur={s.onSectionBlur}
       wasRecovered={s.wasRecovered} onDiscard={s.discardDraft} storageWarning={s.storageWarning}>
       <div>
         <Label htmlFor="pe-name" className="font-semibold">Organisation name</Label>
@@ -101,13 +95,6 @@ export function IdentitySection(ctx: SectionCtx) {
             guidance="Required. Square, at least 400x400. We crop and shrink it on your phone before uploading."
             onUploaded={(url) => attach(logo, url)} tourId="profile-identity-logo" />
           <SaveIndicator section="identity-logo" manualSave status={logo.status} error={logo.error && `Logo uploaded but not attached yet. ${logo.error}`} onRetry={logo.commit} storageWarning={logo.storageWarning} />
-        </div>
-        <div className="space-y-2">
-          <ImageUploadField id="pe-cover" label="Banner image" spec={COVER_SPEC} token={ctx.token} currentUrl={cover.value}
-            guidance="Wide, at least 1600x600. Choose a photo, position the crop, then use it. Without a banner, your profile shows a plain ink block."
-            onUploaded={(url) => attach(cover, url)}
-            onRemoved={async () => { cover.setValue(null); await cover.commit(); }} tourId="profile-identity-cover" />
-          <SaveIndicator section="identity-cover" manualSave status={cover.status} error={cover.error && `Banner change not saved yet. ${cover.error}`} onRetry={cover.commit} storageWarning={cover.storageWarning} />
         </div>
       </div>
     </SectionShell>
