@@ -358,6 +358,7 @@ export default function DashboardPage() {
                     {orgId && <ProfilePreviewButton orgId={orgId} tourId="dashboard-profile-preview" testId="link-dashboard-profile-preview" className="ops-btn ops-btn--sm disabled:opacity-60" />}
                     <button type="button" className="ops-btn ops-btn--sm" style={{ background: "var(--ops-yellow)" }} onClick={() => setTab("posts")} data-testid="button-identity-create"><PlusSquare className="w-4 h-4" /> Create</button>
                   </div>
+                  <button type="button" className="ops-btn ops-btn--sm w-full justify-center mt-2 lg:!hidden" onClick={() => setTab("campaigns")} data-testid="button-your-campaigns">Your campaigns</button>
                   <dl className="flex flex-wrap gap-x-5 gap-y-1 mt-4" data-testid="list-identity-stats">
                     {([
                       [publishedPosts.length, publishedPosts.length === 1 ? "post" : "posts"],

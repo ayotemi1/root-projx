@@ -192,10 +192,21 @@ export function useCampaignDraft(opts: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [serverSerialized, key]);
 
-  // Persist recovered drafts promptly once the editor opens.
+  // Persist recovered drafts promptly once the editor opens. A phone user may
+  // navigate using the bottom bar before the debounce fires: enqueue that last
+  // snapshot instead of cancelling its only server save. Local recovery stays
+  // intact until the server acknowledges it, including after a failed request.
   useEffect(() => {
     if (init.recovered) void commit();
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+    const saveWhenHidden = () => {
+      if (document.visibilityState === "hidden" && snapshot() !== lastSavedRef.current) void commit();
+    };
+    document.addEventListener("visibilitychange", saveWhenHidden);
+    return () => {
+      document.removeEventListener("visibilitychange", saveWhenHidden);
+      if (snapshot() !== lastSavedRef.current) void commit();
+      else if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

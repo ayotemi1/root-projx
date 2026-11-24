@@ -23,7 +23,7 @@ export function previewOrganisation(org: Org | null | undefined, fallbackId: str
  * the column. Container queries see the device width; fitting hooks measure
  * on-screen rects, so the scale is accounted for.
  */
-export function CampaignLivePreview({ d, campaign, org }: { d: CampaignDraft; campaign: Campaign; org?: Org | null }) {
+export function CampaignLivePreview({ d, campaign, org, className = "" }: { d: CampaignDraft; campaign: Campaign; org?: Org | null; className?: string }) {
   const [device, setDevice] = useState<"phone" | "desktop">("desktop");
   const frameRef = useRef<HTMLDivElement>(null);
   const [avail, setAvail] = useState(0);
@@ -49,7 +49,7 @@ export function CampaignLivePreview({ d, campaign, org }: { d: CampaignDraft; ca
   const preview = draftToPreviewCampaign(d, campaign);
 
   return (
-    <div className="@[900px]:sticky @[900px]:top-4 min-w-0" data-testid="block-story-live-preview">
+    <div className={`@[900px]:sticky @[900px]:top-4 min-w-0 ${className}`} data-testid="block-story-live-preview">
       <div className="flex flex-wrap items-center justify-between gap-3 mb-2.5">
         <span className="font-mono text-[12px] font-bold uppercase tracking-[0.1em]" style={{ fontFamily: "'JetBrains Mono', monospace" }}>Live preview · exactly as donors see it</span>
         <span className="inline-flex border-[1.5px] border-[#17100F]" role="group" aria-label="Preview size">

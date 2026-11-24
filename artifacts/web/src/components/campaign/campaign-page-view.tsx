@@ -7,6 +7,7 @@ import {
 import type { Campaign, PublicCampaignLanding, CampaignVideo, CampaignEditableSection } from "@/lib/api";
 import { DEFAULT_SCHEMES, resolveSectionOrder, schemeSectionClass } from "./section-design";
 import { AccumulationField } from "./accumulation-field";
+import { safeHandCount } from "@/lib/hand-wall-layout";
 import { capOf, partnerMatch, ratioLabel } from "@/lib/partner-funding";
 import { whereYourMoneyGoes } from "@/lib/money-disclosure";
 import { CampaignFeeBreakdown } from "./campaign-fee-breakdown";
@@ -190,7 +191,8 @@ export function CampaignPageView({
   const presentation = campaignPresentation(campaign);
   const unitSingular = presentation.hasWall ? "hand" : "supporter";
   const unitPlural = presentation.hasWall ? "hands" : "supporters";
-  const supporters = campaign.supporterCount ?? 0;
+  // Hand walls: header count uses the same finite clamp as the canvas, so both always match.
+  const supporters = presentation.hasWall ? safeHandCount(campaign.supporterCount ?? 0) : campaign.supporterCount ?? 0;
   const recent = campaign.recentSupporters ?? [];
   const anon = campaign.unidentifiedGifts ?? 0;
   // Outcome boxes replace the displayed phases only; saved phases and their money targets are untouched.
@@ -699,18 +701,10 @@ export function CampaignPageView({
                             background="#EDE4D6"
                             highlightNewest={highlightNewest || !!confirmedReceipt}
                             still={preview}
-                            height={layout === "phone" || (layout === "responsive" && smallViewport) ? 260 : 400}
+                            compact={layout === "phone" || (layout === "responsive" && smallViewport)}
+                            ownLabel={!!confirmedReceipt}
+                            height={400}
                           />
-                          {confirmedReceipt && (
-                            <div className="rc-you" data-testid="marker-your-hand">
-                              <span className="flex flex-col items-center">
-                                <span className="rc-you-ring motion-safe:animate-[pulse_2.4s_ease-in-out_2]">
-                                  <CampaignSymbol campaign={campaign} className="w-12 h-12" />
-                                </span>
-                                <span className="rc-you-tag rc-mono">Your hand</span>
-                              </span>
-                            </div>
-                          )}
                         </div>
                         <button type="button" className="rc-wall-cta" onClick={donate} disabled={preview} title={previewTitle} data-testid="button-wall-add">
                           <DonationHand className="w-4 h-4" /> Add your {unitSingular} to the wall <ArrowRight className="w-4 h-4" aria-hidden="true" />

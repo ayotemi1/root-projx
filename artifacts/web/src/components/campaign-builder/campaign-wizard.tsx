@@ -180,7 +180,7 @@ export function CampaignWizard({ campaign, org, orgId, userId, token, onClose }:
         </button>
         <button type="button" onClick={openPreview} disabled={previewState === "saving"}
           className="ops-btn ops-btn--sm disabled:opacity-60" data-testid="link-preview-as-donor" data-tour-id="campaign-preview-open">
-          <Eye className="w-3.5 h-3.5" /> {previewState === "saving" ? "Saving…" : "Preview as donor"}
+          <Eye className="w-3.5 h-3.5" /> {previewState === "saving" ? "Saving…" : <><span className="sm:hidden">Preview</span><span className="hidden sm:inline">Preview as donor</span></>}
         </button>
         <SaveBadge status={draft.status} error={draft.error} onRetry={() => void draft.commit()} />
       </div>
@@ -218,7 +218,7 @@ export function CampaignWizard({ campaign, org, orgId, userId, token, onClose }:
               <li key={s.n} className="min-w-0">
                 <button type="button" onClick={() => go(s.n)} aria-current={active ? "step" : undefined} data-done={done}
                   aria-label={`Step ${s.n}: ${s.short}`} data-testid={`button-step-${s.n}`} data-tour-id={`campaign-step-${s.n}`}>
-                  <span className="ops-stepnum tabular-nums">{s.n}</span><span className="hidden sm:inline truncate">{s.short}</span>
+                  <span className="ops-stepnum tabular-nums">{s.n}</span><span className="truncate">{s.short}</span>
                 </button>
               </li>
             );
@@ -229,6 +229,7 @@ export function CampaignWizard({ campaign, org, orgId, userId, token, onClose }:
       <div>
         <p className="font-mono text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground" style={{ fontFamily: "'JetBrains Mono', monospace" }}>Step {step} of 5</p>
         <h3 className="ops-display uppercase text-2xl sm:text-[28px] leading-none text-foreground mt-1" data-testid="text-step-title">{meta.title}</h3>
+        {step === 1 && <p className="text-xs text-muted-foreground mt-2 lg:hidden" data-testid="text-laptop-tip">Tip: this is easier on a laptop. Your draft saves as you go.</p>}
       </div>
 
       {notice && (

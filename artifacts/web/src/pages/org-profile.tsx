@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { DiscoverCampaignCard } from "@/components/campaign-card/DiscoverCampaignCard";
 import { useRoute, Link } from "wouter";
+import { organisationDashboardHref } from "@/lib/supporter-navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Send, Mail } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
@@ -342,6 +343,9 @@ export default function OrgProfilePage() {
                     <Send className="w-[18px] h-[18px]" />
                   </button>
                 </div>
+                {isSelfOrg && (
+                  <Link href={organisationDashboardHref(token, id, "tab=campaigns")} className="orgp-btn w-full mt-2 justify-center lg:!hidden" data-testid="link-your-campaigns-profile">Your campaigns</Link>
+                )}
                 {shareNote && <span className="orgp-toast" role="status" data-testid="status-share">{shareNote}</span>}
                 {stats.length > 0 && (
                   <dl className="orgp-stats">

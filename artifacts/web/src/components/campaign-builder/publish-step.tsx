@@ -25,7 +25,7 @@ export function PublishStep({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="hidden lg:flex flex-wrap items-center justify-between gap-3">
         <div className="inline-flex rounded-lg border border-border p-0.5 bg-secondary/40" role="group" aria-label="Preview size">
           {(["phone", "desktop"] as const).map((v) => (
             <button key={v} type="button" onClick={() => setDevice(v)} aria-pressed={device === v}
@@ -39,7 +39,7 @@ export function PublishStep({
         <span className="text-xs text-muted-foreground">Preview of your latest draft. Donations and sharing are off here.</span>
       </div>
 
-      <div className="border-[1.5px] border-[#17100F] bg-[#EDE4D6] p-2 sm:p-4 overflow-hidden" data-tour-id="campaign-preview">
+      <div className="hidden lg:block border-[1.5px] border-[#17100F] bg-[#EDE4D6] p-2 sm:p-4 overflow-hidden" data-tour-id="campaign-preview">
         <div className={`mx-auto rounded-xl overflow-auto bg-background shadow-lg border border-border h-[640px] ${device === "phone" ? "w-full max-w-[390px]" : "w-full"}`}>
           <div className={device === "desktop" ? "min-w-[900px]" : ""}>
             <CampaignPageView campaign={preview} organisation={organisation} preview layout={device} />

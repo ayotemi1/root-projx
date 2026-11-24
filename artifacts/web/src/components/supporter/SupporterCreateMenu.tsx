@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useLocation } from "wouter";
-import { Copy, Camera, Pencil, X, type LucideIcon } from "lucide-react";
+import { Copy, Camera, Pencil, X, Target, type LucideIcon } from "lucide-react";
+import { isApprovedOrganisation, organisationDashboardHref } from "@/lib/supporter-navigation";
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { useAuth } from "@/context/AuthContext";
@@ -68,6 +69,10 @@ export function SupporterCreateMenu({ className, testId, children, variant = "au
   const keepFocus = (e: Event) => { if (pendingPost.current) e.preventDefault(); };
 
   useEffect(() => { setOpen(false); }, [location, desktop]);
+
+  if (isAuthenticated && isApprovedOrganisation(user)) {
+    return <OrganisationCreateMenu className={className} testId={testId} ariaLabel={ariaLabel} asMenu={asMenu} open={open} setOpen={setOpen}>{children}</OrganisationCreateMenu>;
+  }
 
   if (!isAuthenticated || user?.accountType !== "supporter") {
     return <Link href="/create" className={className} aria-label={ariaLabel} data-testid={testId}>{children}</Link>;
@@ -147,6 +152,77 @@ export function SupporterCreateMenu({ className, testId, children, variant = "au
                 )}
               </li>
             ))}
+          </ul>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
+  );
+}
+
+/** Organisation chooser: exactly Post, Story (honestly unavailable) and Campaign. */
+function OrganisationCreateMenu({ className, testId, ariaLabel, asMenu, open, setOpen, children }: {
+  className: string; testId: string; ariaLabel?: string; asMenu: boolean; open: boolean; setOpen: (o: boolean) => void; children: ReactNode;
+}) {
+  const { token, user } = useAuth();
+  const postHref = organisationDashboardHref(token, user?.id, "tab=posts");
+  const campaignHref = organisationDashboardHref(token, user?.id, "tab=campaigns&new=1");
+  const trigger = (
+    <button type="button" className={className} aria-label={ariaLabel} aria-haspopup={asMenu ? "menu" : "dialog"} aria-expanded={open} data-testid={testId}>
+      {children}
+    </button>
+  );
+  if (asMenu) {
+    return (
+      <DropdownMenuPrimitive.Root open={open} onOpenChange={setOpen} modal={false}>
+        <DropdownMenuPrimitive.Trigger asChild>{trigger}</DropdownMenuPrimitive.Trigger>
+        <DropdownMenuPrimitive.Portal>
+          <DropdownMenuPrimitive.Content align="start" sideOffset={6} collisionPadding={12} className="rpc-menu" data-testid="menu-create">
+            <DropdownMenuPrimitive.Item asChild>
+              <Link href={postHref} className="rpc-menu-item" data-testid="menu-create-post"><span>Post</span><Copy size={17} aria-hidden /></Link>
+            </DropdownMenuPrimitive.Item>
+            <DropdownMenuPrimitive.Item disabled className="rpc-menu-item is-unavailable" data-testid="menu-create-story">
+              <span>Story <span className="rpc-badge">Unavailable</span></span><Camera size={17} aria-hidden />
+            </DropdownMenuPrimitive.Item>
+            <DropdownMenuPrimitive.Item asChild>
+              <Link href={campaignHref} className="rpc-menu-item" data-testid="menu-create-campaign"><span>Campaign</span><Target size={17} aria-hidden /></Link>
+            </DropdownMenuPrimitive.Item>
+          </DropdownMenuPrimitive.Content>
+        </DropdownMenuPrimitive.Portal>
+      </DropdownMenuPrimitive.Root>
+    );
+  }
+  return (
+    <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
+      <DialogPrimitive.Trigger asChild>{trigger}</DialogPrimitive.Trigger>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="rpc-overlay" />
+        <DialogPrimitive.Content className="rpc-sheet" aria-describedby={undefined} data-testid="sheet-create">
+          <div className="rpc-sheet-head">
+            <DialogPrimitive.Title className="rpc-sheet-title">Create</DialogPrimitive.Title>
+            <DialogPrimitive.Close className="rpc-close" aria-label="Close create menu" data-testid="button-close-create"><X size={20} aria-hidden /></DialogPrimitive.Close>
+          </div>
+          <ul>
+            <li>
+              <Link href={postHref} className="rpc-sheet-item" onClick={() => setOpen(false)} data-testid="sheet-create-post">
+                <span className="rpc-sheet-text"><span className="rpc-sheet-label">Post</span><span className="rpc-sheet-desc">Photos, video or an update</span></span>
+                <Copy size={19} aria-hidden />
+              </Link>
+            </li>
+            <li>
+              <button type="button" className="rpc-sheet-item is-unavailable" disabled aria-disabled="true" data-testid="sheet-create-story">
+                <span className="rpc-sheet-text">
+                  <span className="rpc-sheet-label">Story <span className="rpc-badge" data-testid="status-story-unavailable">Unavailable</span></span>
+                  <span className="rpc-sheet-desc">Stories haven't been built yet.</span>
+                </span>
+                <Camera size={19} aria-hidden />
+              </button>
+            </li>
+            <li>
+              <Link href={campaignHref} className="rpc-sheet-item" onClick={() => setOpen(false)} data-testid="sheet-create-campaign">
+                <span className="rpc-sheet-text"><span className="rpc-sheet-label">Campaign</span><span className="rpc-sheet-desc">Starts a new draft at step 1</span></span>
+                <Target size={19} aria-hidden />
+              </Link>
+            </li>
           </ul>
         </DialogPrimitive.Content>
       </DialogPrimitive.Portal>

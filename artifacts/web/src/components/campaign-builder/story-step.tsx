@@ -215,7 +215,7 @@ export function StepStory(props: StoryStepProps) {
           <LegacyStoryFields {...props} />
         </details>
       </div>
-      {campaign && <CampaignLivePreview d={d} campaign={campaign} org={org} />}
+      {campaign && <CampaignLivePreview d={d} campaign={campaign} org={org} className="hidden lg:block" />}
     </div>
     </div>
   );

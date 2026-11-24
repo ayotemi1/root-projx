@@ -178,8 +178,9 @@ test("organisation phone navigation labels the fifth tab Profile and preserves t
   const bottom = html.slice(html.indexOf('<nav class="rps-bottom"'));
   assert.match(bottom, /data-testid="link-tab-profile"[\s\S]*?<span>Profile<\/span>/);
   assert.doesNotMatch(bottom, />Me</);
-  const action = bottom.match(/<a[^>]*data-testid="link-tab-create"[^>]*>/)?.[0] ?? "";
-  assert.match(action, /href="\/dashboard\?tab=posts"/);
+  const action = bottom.match(/<button[^>]*data-testid="link-tab-create"[^>]*>/)?.[0] ?? "";
+  assert.match(action, /aria-haspopup="dialog"/);
+  assert.doesNotMatch(action, /href=/);
   assert.match(action, /class="rps-tab"/);
   assert.doesNotMatch(action, /aria-current/);
   assert.match(html, /Resume walkthrough/);

@@ -15,6 +15,16 @@ existing donor links.
 edits when unpublishing, and keep previously published links stable after renames.
 Blank drafts should acquire readable links from the final name at first publish.
 
+Campaign drafting must support starting on a phone and finishing on a laptop.
+A local recovery copy alone is not a successfully saved draft.
+
+**Why:** Organisations explicitly need to move between devices while preparing
+the same campaign.
+
+**How to apply:** Preserve server autosaving and truthful save status when
+changing navigation or editor steps; verify recovery without the first device's
+local backup.
+
 Treat editorial/layout additions as partial overrides of existing campaign
 content. Opening a new control or changing a colour must not silently rewrite
 older story, outcome or team content to fit the new limits.

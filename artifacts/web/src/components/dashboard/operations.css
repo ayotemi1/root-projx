@@ -187,3 +187,9 @@
 .ops-psection { border-top: 1.5px solid var(--ops-ink); padding: 28px 0 8px; scroll-margin-top: 64px; }
 .ops-psection .bg-primary\/5, .ops-psection .bg-secondary\/50 { background: #FFFDF9 !important; }
 .ops.ops-portal { min-height: 0; }
+@media (max-width: 639px) {
+  .ops-stepper button { flex-direction: column; align-items: flex-start; gap: 4px; font-size: 10px; letter-spacing: .02em; padding: 10px 2px 8px; }
+  .ops-stepper button > span:last-child { max-width: 100%; }
+}
+.ops-progress { height: 6px; background: color-mix(in srgb, var(--ops-ink, #17100F) 12%, transparent); overflow: hidden; }
+.ops-progress > span { display: block; height: 100%; background: var(--ops-ink, #17100F); transform-origin: left; }

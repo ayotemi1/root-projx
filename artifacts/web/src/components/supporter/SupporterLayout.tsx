@@ -268,11 +268,7 @@ export default function SupporterLayout({ children }: { children: ReactNode }) {
               const active = isActive(item);
               return (
                 <li key={item.id}>
-                  {item.id === "create" && isOrg ? (
-                    <Link href={item.href} className="rps-nav-item" data-testid="link-nav-create">
-                      <Icon size={20} aria-hidden />{item.label}
-                    </Link>
-                  ) : item.id === "create" ? (
+                  {item.id === "create" ? (
                     <SupporterCreateMenu className="rps-nav-item" testId="link-nav-create">
                       <Icon size={20} aria-hidden />{item.label}
                     </SupporterCreateMenu>
@@ -318,11 +314,7 @@ export default function SupporterLayout({ children }: { children: ReactNode }) {
             const Icon = icons[item.id];
             return (
               <li key={item.id}>
-                {item.id === "create" && isOrg ? (
-                  <Link href={item.href} className="rps-tab" data-testid="link-tab-create">
-                    <Icon size={20} aria-hidden /><span>{item.label}</span>
-                  </Link>
-                ) : item.id === "create" ? (
+                {item.id === "create" ? (
                   <SupporterCreateMenu className="rps-tab" testId="link-tab-create" variant="sheet">
                     <Icon size={20} aria-hidden /><span>{item.label}</span>
                   </SupporterCreateMenu>

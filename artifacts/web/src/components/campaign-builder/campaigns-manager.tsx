@@ -1,5 +1,5 @@
 import { userErrorMessage } from "@/lib/error-feedback";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useSearch } from "wouter";
 import { PlusCircle, Target, ExternalLink, Trash2, CheckCircle, Pencil, AlertCircle, Users, Eye } from "lucide-react";
@@ -10,13 +10,16 @@ import * as api from "@/lib/api";
 import type { Campaign, Org } from "@/lib/api";
 import { CampaignWizard } from "./campaign-wizard";
 import { formatWhole } from "@/lib/currency";
+import { campaignFundingTotal, campaignFundedPercent } from "@/lib/discover-campaigns";
+import { campaignManagerGroup, organisationDashboardHref } from "@/lib/supporter-navigation";
+import { useAuth } from "@/context/AuthContext";
 import { CampaignEditorCard } from "./campaign-editor-card";
 
 function StatusPills({ c }: { c: Campaign }) {
   const pill = "text-[10px] font-bold px-2 py-0.5 rounded-full";
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      {c.status === "completed" ? <span className={`${pill} bg-gray-100 text-gray-600`}>Completed</span>
+      {campaignManagerGroup(c) === "ended" ? <span className={`${pill} bg-gray-100 text-gray-600`} data-testid={`status-ended-${c._id}`}>{c.status === "completed" ? "Completed" : "Ended"}</span>
         : c.enabled ? <span className={`${pill} bg-green-50 text-green-700`} data-testid={`status-live-${c._id}`}>Live</span>
         : <span className={`${pill} bg-secondary text-muted-foreground`} data-testid={`status-draft-${c._id}`}>Draft</span>}
       {c.enabled && c.hasUnpublishedChanges && <span className={`${pill} bg-amber-50 text-amber-800`} data-testid={`status-changes-${c._id}`}>Unpublished changes</span>}
@@ -48,8 +51,16 @@ function CampaignRow({ c, onEdit, orgId, token }: { c: Campaign; onEdit: () => v
         <StatusPills c={c} />
         <h4 className="font-bold text-sm text-foreground break-words" data-testid={`text-campaign-name-${c._id}`}>{c.name || "Untitled draft"}</h4>
         {c.tagline && <p className="text-xs text-muted-foreground line-clamp-2">{c.tagline}</p>}
-        {c.type === "fundraising" && c.goal > 0 && (
-          <p className="text-xs text-muted-foreground">{formatWhole(c.amountRaised ?? 0, c.currency)} raised of {formatWhole(c.goal, c.currency)}</p>
+        {c.type === "fundraising" && (
+          <div className="space-y-1" data-testid={`progress-campaign-${c._id}`}>
+            <div className="ops-progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(campaignFundedPercent(c))} aria-label="Funded">
+              <span style={{ transform: `scaleX(${campaignFundedPercent(c) / 100})` }} />
+            </div>
+            <p className="text-xs text-muted-foreground" data-testid={`text-raised-${c._id}`}>
+              {formatWhole(c.amountRaised ?? 0, c.currency)} raised{c.goal > 0 ? ` of ${formatWhole(c.goal, c.currency)}` : " · no goal set yet"}
+            </p>
+            {campaignFundingTotal(c) > (c.amountRaised ?? 0) && <p className="text-xs text-muted-foreground">{formatWhole(campaignFundingTotal(c), c.currency)} funded including partner funding</p>}
+          </div>
         )}
         {c.type === "volunteer" && c.volunteersNeeded > 0 && (
           <p className="text-xs text-muted-foreground flex items-center gap-1"><Users className="w-3.5 h-3.5" /> {c.volunteersNeeded} volunteers needed</p>
@@ -90,6 +101,8 @@ export function CampaignsManager({ orgId, userId, token, org }: { orgId: string;
   const search = useSearch();
   const [, setLocation] = useLocation();
   const editingId = new URLSearchParams(search).get("campaign");
+  const { token: sessionToken } = useAuth();
+  const wantsNew = new URLSearchParams(search).get("new") === "1";
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
@@ -101,23 +114,43 @@ export function CampaignsManager({ orgId, userId, token, org }: { orgId: string;
   const campaigns = q.data ?? [];
   const editing = editingId ? campaigns.find((c) => c._id === editingId) : undefined;
 
-  const open = (id: string | null) =>
-    setLocation(id ? `/dashboard?tab=campaigns&campaign=${encodeURIComponent(id)}` : "/dashboard?tab=campaigns");
+  const href = (q: string) => organisationDashboardHref(sessionToken ?? token, orgId, q);
+  const open = (id: string | null, replace = false) =>
+    setLocation(id ? href(`tab=campaigns&campaign=${encodeURIComponent(id)}`) : href("tab=campaigns"), { replace });
 
-  async function createDraft() {
+  async function createDraft(replace = false) {
     setCreating(true); setCreateError(null);
     try {
       const c = await api.createCampaignDraft(orgId, token);
+      await qc.cancelQueries({ queryKey: ["campaigns", orgId] });
       qc.setQueryData<Campaign[]>(["campaigns", orgId], (old) => [c, ...(old ?? [])]);
-      open(c._id);
+      open(c._id, replace);
     } catch (e) {
       setCreateError(userErrorMessage(e, "start a campaign draft"));
     } finally { setCreating(false); }
   }
 
-  const drafts = campaigns.filter((c) => !c.enabled && c.status !== "completed");
-  const live = campaigns.filter((c) => c.enabled && c.status !== "completed");
-  const done = campaigns.filter((c) => c.status === "completed");
+  // One-shot ?new=1 from the Create menu: latch so StrictMode / re-renders never POST twice,
+  // and drop the param with replace so Back never re-creates a draft.
+  const newLatch = useRef(false);
+  const createRef = useRef(createDraft);
+  createRef.current = createDraft;
+  useEffect(() => {
+    if (!wantsNew) {
+      if (!creating) newLatch.current = false;
+      return;
+    }
+    if (newLatch.current || creating || !orgId || !token) return;
+    newLatch.current = true;
+    setLocation(href("tab=campaigns"), { replace: true });
+    void createRef.current(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [wantsNew, orgId, token, creating]);
+
+  const visible = campaigns.filter((c) => c.status !== "deleted");
+  const live = visible.filter((c) => campaignManagerGroup(c) === "live");
+  const drafts = visible.filter((c) => campaignManagerGroup(c) === "draft");
+  const done = visible.filter((c) => campaignManagerGroup(c) === "ended");
 
   return (
     <Card className="border-border shadow-sm bg-card overflow-hidden">
@@ -128,12 +161,18 @@ export function CampaignsManager({ orgId, userId, token, org }: { orgId: string;
             <p className="text-sm text-muted-foreground mt-1">Build a donor-ready page in five short steps. Every step saves as you go.</p>
           </div>
           {!editingId && (
-            <Button size="sm" onClick={createDraft} disabled={creating} className="font-bold" data-testid="button-new-campaign" data-tour-id="campaign-new">
+            <Button size="sm" onClick={() => createDraft()} disabled={creating} className="font-bold" data-testid="button-new-campaign" data-tour-id="campaign-new">
               <PlusCircle className="w-4 h-4 mr-1.5" /> {creating ? "Starting" : "New campaign"}
             </Button>
           )}
         </div>
-        {createError && <p role="alert" className="text-xs text-destructive mt-2">{createError}</p>}
+        {creating && !editingId && <p className="text-xs text-muted-foreground mt-2" role="status" data-testid="status-creating-campaign">Starting a new draft…</p>}
+        {createError && (
+          <div role="alert" className="text-xs text-destructive mt-2 flex flex-wrap items-center gap-2" data-testid="error-create-campaign">
+            <span>{createError}</span>
+            <button type="button" className="font-bold underline" onClick={() => createDraft()} disabled={creating} data-testid="button-retry-create-campaign">Retry</button>
+          </div>
+        )}
       </CardHeader>
       <CardContent className="pt-6">
         {q.isLoading || (editingId && !org) ? (
@@ -156,13 +195,13 @@ export function CampaignsManager({ orgId, userId, token, org }: { orgId: string;
             <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 bg-primary/10 border border-primary/20"><Target className="w-8 h-8 text-primary" /></div>
             <h3 className="font-extrabold text-lg mb-2">Start your first campaign</h3>
             <p className="text-sm text-muted-foreground mb-6 max-w-md mx-auto leading-relaxed">Name it, set a goal, tell the story, add a picture, then preview it exactly as donors will see it.</p>
-            <Button onClick={createDraft} disabled={creating} className="font-bold h-11 px-6" data-testid="button-create-first-campaign">
+            <Button onClick={() => createDraft()} disabled={creating} className="font-bold h-11 px-6" data-testid="button-create-first-campaign">
               <PlusCircle className="w-5 h-5 mr-2" /> Start a campaign
             </Button>
           </div>
         ) : (
           <div className="space-y-8">
-            {[["Drafts", drafts], ["Live", live], ["Completed", done]].map(([label, list]) =>
+            {[["Live", live], ["Drafts", drafts], ["Ended", done]].map(([label, list]) =>
               (list as Campaign[]).length > 0 && (
                 <section key={label as string}>
                   <h4 className="font-bold text-xs text-muted-foreground uppercase tracking-wider mb-3">{label as string}</h4>
