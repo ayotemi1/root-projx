@@ -36,3 +36,13 @@ without the fixture declaring its filesystem resolution context.
 
 **How to apply:** Set `resolveDir` on the virtual module's load result when
 partially mocking a module while retaining its actual security functions.
+
+Isolate transactional side-effect adapters in auth, payment and route fixtures;
+test the real mail handlers separately with fake providers and private records.
+
+**Why:** A new email adapter can otherwise pull HTML assets, provider clients
+and credentials into unrelated route tests, or accidentally send real mail.
+
+**How to apply:** Stub the event boundary, not monetary validation or accounting.
+Assert event capture/replay in route tests and real recipient/privacy/rendering
+behaviour in dedicated handler tests with a text loader for HTML assets.

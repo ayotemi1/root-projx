@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { build } from "esbuild";
+import { emailEventsStubPlugin } from "../test-support/email-stubs.ts";
 import { createRequire } from "node:module";
 import { PASSWORD_RESET_MESSAGE, passwordResetEmail } from "./password-reset.ts";
 
@@ -11,7 +12,7 @@ const compiled = await build({
     resolveDir: new URL(".", import.meta.url).pathname,
   },
   bundle: true, write: false, platform: "node", format: "cjs", packages: "external",
-  plugins: [{
+  plugins: [emailEventsStubPlugin(), {
     name: "isolated-password-reset",
     setup(b) {
       b.onResolve({ filter: /^reset:state$/ }, () => ({ path: "state", namespace: "reset" }));
@@ -52,7 +53,7 @@ function fixture() {
       let status = 200, data: any;
       const res = { setHeader() {}, status(code: number) { status = code; return this; }, json(value: unknown) { data = value; } };
       const req = { body, headers: {}, socket: { remoteAddress: "synthetic-client" },
-        log: { error(...args: unknown[]) { state.logs.push(args); } } };
+        log: { info() {}, error(...args: unknown[]) { state.logs.push(args); } } };
       const selected = path === "/auth/forgot-password" ? route : router.stack.find((l: any) => l.route?.path === path).route;
       for (const layer of selected.stack) {
         let next = false;

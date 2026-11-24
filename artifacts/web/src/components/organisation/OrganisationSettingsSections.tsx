@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { addOrganisationManager, getOrganisationManagers, removeOrganisationManager } from "@workspace/api-client-react";
+import { getOrganisationManagers, removeOrganisationManager, useListEmailTeamInvitations, useInviteEmailTeamMember, getListEmailTeamInvitationsQueryKey } from "@workspace/api-client-react";
 import { useAuth } from "@/context/AuthContext";
 import { PayoutSetup } from "@/components/payout-setup";
 import * as api from "@/lib/api";
@@ -20,14 +20,17 @@ function OwnerSections({ orgId, token }: { orgId: string; token: string }) {
   const init = { headers: { Authorization: `Bearer ${token}` } };
   const q = useQuery({ queryKey: key, queryFn: () => getOrganisationManagers(orgId, init) });
   const org = useQuery({ queryKey: ["org", orgId], queryFn: () => api.getOrganisation(orgId, token) });
-  const [accountId, setAccountId] = useState(""), [busy, setBusy] = useState(false), [error, setError] = useState("");
-  const add = async (event: React.FormEvent) => {
-    event.preventDefault(); setError(""); setBusy(true);
-    try {
-      const next = await addOrganisationManager(orgId, { userId: accountId.trim() }, init);
-      qc.setQueryData(key, next); setAccountId("");
-    } catch { setError("Couldn’t add this account. Check the account ID and try again."); }
-    finally { setBusy(false); }
+  const [email, setEmail] = useState(""), [busy, setBusy] = useState(false), [error, setError] = useState(""), [notice, setNotice] = useState("");
+  const invKey = [...getListEmailTeamInvitationsQueryKey(), token];
+  const invites = useListEmailTeamInvitations({ request: { ...init, credentials: "include" }, query: { queryKey: invKey } });
+  const invite = useInviteEmailTeamMember({ request: { ...init, credentials: "include" } });
+  const add = (event: React.FormEvent) => {
+    event.preventDefault(); setError(""); setNotice("");
+    const to = email.trim();
+    invite.mutate({ data: { email: to } }, {
+      onSuccess: () => { setEmail(""); setNotice(`Invitation queued for ${to}. It stays valid until it expires or is accepted.`); qc.invalidateQueries({ queryKey: invKey }); },
+      onError: (e) => { const d = (e as { data?: { error?: unknown } }).data; setError(typeof d?.error === "string" ? d.error : "Couldn’t send this invitation. Check the email address and try again."); },
+    });
   };
   const remove = async (userId: string, name: string) => {
     if (!window.confirm(`Remove ${name}'s account-manager access? They will no longer be able to manage your profile, posts or campaigns. Any separate Inbox-only access stays as it was.`)) return;
@@ -40,7 +43,7 @@ function OwnerSections({ orgId, token }: { orgId: string; token: string }) {
     <section className="rpa-box" aria-labelledby="org-settings-team" data-testid="section-organisation-team">
       <h2 className="rpa-h2" id="org-settings-team">Team</h2>
       <p className="rpa-hint">Managers can edit your profile, posts and campaigns, and read and reply to your Inbox. Only you can manage the team or access payout details.</p>
-      <p className="rpa-hint">To add someone, ask them to copy their account ID from their own Inbox. They’ll find “Manage an organisation” in their navigation once added.</p>
+      <p className="rpa-hint">To add someone, invite them by email. They’ll sign in with that address and accept the invitation.</p>
       {q.isLoading ? <p role="status">Loading team…</p> : q.isError ? <p role="alert">Couldn’t load your team. <button type="button" className="rpa-btn sm" onClick={() => q.refetch()}>Try again</button></p> :
         <ul style={{ margin: "16px 0", padding: 0, listStyle: "none" }}>
           <li className="rpa-row"><strong>You</strong><span className="rpa-hint">Owner</span></li>
@@ -49,14 +52,22 @@ function OwnerSections({ orgId, token }: { orgId: string; token: string }) {
             <button type="button" className="rpa-btn sm" disabled={busy} onClick={() => remove(member.userId, member.name)} data-testid={`button-remove-manager-${member.userId}`}>Remove</button>
           </li>)}
         </ul>}
+      {invites.isError ? <p role="alert">Couldn’t load invitations. <button type="button" className="rpa-btn sm" onClick={() => invites.refetch()} data-testid="button-retry-invitations">Try again</button></p>
+        : (invites.data?.length ?? 0) > 0 && <ul style={{ margin: "0 0 16px", padding: 0, listStyle: "none" }} data-testid="list-team-invitations">
+          {invites.data!.map(i => <li key={i.id} className="rpa-row" style={{ padding: "8px 0", borderBottom: "1px solid #ddd5c8", flexWrap: "wrap" }} data-testid={`row-invitation-${i.id}`}>
+            <span style={{ flex: 1, minWidth: 0, overflowWrap: "anywhere" }}>{i.email}</span>
+            <span className="rpa-hint">{i.status === "pending" ? `Invited, expires ${new Date(i.expiresAt).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : i.status}</span>
+          </li>)}
+        </ul>}
       <form onSubmit={add}>
-        <label className="rpa-hint" htmlFor="org-manager-account-id">Team member account ID</label>
+        <label className="rpa-hint" htmlFor="org-manager-email">Team member email</label>
         <div className="rpa-row" style={{ marginTop: 8, flexWrap: "wrap" }}>
-          <input id="org-manager-account-id" className="rpa-in" style={{ flex: 1, minWidth: 130 }} value={accountId}
-            onChange={e => setAccountId(e.target.value)} maxLength={128} autoComplete="off" spellCheck={false} data-testid="input-organisation-manager" />
-          <button className="rpa-btn y" disabled={busy || !accountId.trim() || q.isError} data-testid="button-add-organisation-manager">{busy ? "Saving…" : "Add"}</button>
+          <input id="org-manager-email" type="email" className="rpa-in" style={{ flex: 1, minWidth: 130 }} value={email}
+            onChange={e => setEmail(e.target.value)} maxLength={254} autoComplete="off" spellCheck={false} data-testid="input-organisation-manager-email" />
+          <button className="rpa-btn y" disabled={invite.isPending || !/^\S+@\S+\.\S+$/.test(email.trim())} data-testid="button-invite-organisation-manager">{invite.isPending ? "Sending…" : "Send invitation"}</button>
         </div>
       </form>
+      {notice && <p className="rpa-hint" role="status" data-testid="status-invitation-sent">{notice}</p>}
       {error && <p className="rpa-err" role="alert">{error}</p>}
       <p className="rpa-hint" style={{ marginTop: 14 }}>Existing Inbox-only members keep their limited access. Manage those permissions in Inbox.</p>
     </section>

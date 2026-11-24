@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import test from "node:test";
 import { build } from "esbuild";
+import { emailEventsStubPlugin } from "../test-support/email-stubs.ts";
 
 // These tests compile the real routers but replace EVERY external-service
 // boundary. They never read Stripe keys, call Stripe/Brevo, or access Firestore.
@@ -74,6 +75,20 @@ async function isolatedRouters(environment: Record<string, string> = {
         const key = collection + "/" + id;
         state.documents.set(key, {...state.documents.get(key), ...structuredClone(patch)});
       };
+      export const fsApproveOrganisationApplication=async(id,uid,org,user,approval)=>{
+        const app=state.documents.get("org_applications/"+id);
+        if(!app||app.uid!==uid||!["pending","waiting"].includes(app.status)) throw Error("Application changed");
+        state.documents.set("organisations/"+uid,state.documents.get("organisations/"+uid)??structuredClone(org));
+        state.documents.set("users/"+uid,{...state.documents.get("users/"+uid),...structuredClone(user)});
+        state.documents.set("org_applications/"+id,{...app,...structuredClone(approval)});
+        return {...app,...approval,_id:id};
+      };
+      export const fsMutateApplicationState=async(id,token,decide)=>{
+        const current=structuredClone(state.documents.get("org_applications/"+id)??null);
+        const outcome=decide(current);
+        if(outcome.patch)state.documents.set("org_applications/"+id,{...current,...structuredClone(outcome.patch)});
+        return outcome.result;
+      };
       export const fsIncrement = async (collection, id, increments) => {
         const key = collection + "/" + id;
         const doc = state.documents.get(key);
@@ -143,7 +158,7 @@ async function isolatedRouters(environment: Record<string, string> = {
         ...environment, STRIPE_WEBHOOK_SECRET: "synthetic-secret",
       }),
     },
-    plugins: [{
+    plugins: [emailEventsStubPlugin("phase0:state"), {
       name: "phase0-isolated-services",
       setup(builder) {
         builder.onResolve({ filter: /^phase0:state$|\/(firebase-rest|stripeClient|auth|brevo)\.js$/ }, (args) => ({
@@ -259,7 +274,8 @@ for (const feeCovered of [false, true]) {
     const payout = state.writes.find((w: any) => w.collection === "payouts");
     assert.equal(payout.data.currency, "gbp");
     assert.equal(payout.data.amountGbp, d.toOrgGbp);
-    assert.match(state.emails[0].htmlContent, /US\$5\.00/);
+    assert.equal(state.emailEvents.filter((e: any) => e.name === "donation").length, 1);
+    assert.equal(state.emails.length, 0, "The webhook never competes with the durable email sender");
     assert.equal(state.errors.length, 0, JSON.stringify(state.errors));
   });
 }
@@ -559,24 +575,8 @@ for (const feeCovered of [true, false]) {
     assert.equal(org.campaigns[0].partnerFundingMatchedGbp, 5, "Only the remaining £1 is matched, once, even on webhook replay");
     assert.equal(org.totalRaised, 13, "Public raised amount uses the intended donation");
     assert.equal(org.totalOwedGbp, toOrgGbp, "Missing owed aggregate starts at zero");
-    assert.equal(state.emails.length, 3, "Donor, organisation and team each receive one email despite replay");
-    assert.deepEqual(state.emails.map((email: any) => email.to[0].email).sort(),
-      ["donor@example.test", "info@rootprojx.com", "org@example.test"].sort());
-    for (const notification of state.emails.slice(1)) {
-      assert.match(notification.htmlContent, /Test Campaign/);
-      assert.match(notification.htmlContent, /£3\.00/);
-      assert.match(notification.htmlContent, feeCovered ? /£2\.85/ : /£2\.60/);
-      assert.doesNotMatch(notification.htmlContent, /donor@example\.test|Test Donor/);
-    }
-    const html = state.emails[0].htmlContent;
-    assert.match(html, /£3\.00/);
-    assert.ok(html.includes(feeCovered
-      ? "Your donation £3.00 · Fee cover £0.25 · Total charged £3.25"
-      : "Your donation £3.00 · Total charged £3.00"));
-    assert.ok(html.includes(feeCovered
-      ? "Test Organisation receives £2.85 · Root ProjX platform fee £0.15 (5%)"
-      : "Test Organisation receives £2.60 · Root ProjX platform fee £0.15 (5%) · Card processing £0.25"));
-    assert.doesNotMatch(html.replace(/<[^>]*>/g, ""), /100%/);
+    assert.equal(state.emailEvents.filter((e: any) => e.name === "donation").length, 1, "Replay reuses the durable donation mail event");
+    assert.equal(state.emails.length, 0, "Only the new outbox owns receipt and alert delivery");
     assert.doesNotMatch(state.checkout.line_items[0].price_data.product_data.description, /100%/);
     assert.equal(state.errors.length, 0, "No swallowed side-effect failures");
     t.diagnostic(JSON.stringify({
@@ -629,17 +629,16 @@ test("invoice donations use the same accounting and add to existing owed totals"
   assert.equal(org.campaigns[0].amountRaised, 13);
   assert.equal(org.totalOwedGbp, 7.60);
   assert.equal(state.errors.length, 0);
-  assert.equal(state.emails.length, 3);
-  assert.match(state.emails[1].subject, /monthly donation: £3\.00/);
-  assert.match(state.emails[2].htmlContent, /Monthly donation payment/);
+  assert.equal(state.emailEvents.filter((e: any) => e.name === "donation").length, 1);
+  assert.equal(state.emails.length, 0);
   await invoke(webhooks, "/stripe", {
     body: Buffer.from(JSON.stringify(event)),
     headers: { "stripe-signature": "synthetic-signature" }, log,
   });
-  assert.equal(state.emails.length, 3, "Invoice replay must not repeat any notification");
+  assert.equal(state.emailEvents.filter((e: any) => e.name === "donation").length, 1, "Invoice replay must reuse its mail event");
 });
 
-test("donation alerts use the org contact fallback, configured team email, and escaped consented names", async () => {
+test("donation journaling retains consented names and never chooses a public contact recipient", async () => {
   const { webhooks, state } = await isolatedRouters({ TEAM_EMAIL: "team@example.test" });
   state.documents.delete("users/test-org");
   state.documents.get("organisations/test-org").contact = { email: "contact@example.test" };
@@ -650,34 +649,28 @@ test("donation alerts use the org contact fallback, configured team email, and e
     headers: { "stripe-signature": "synthetic-signature" }, log: { info() {}, error() {} } };
   await invoke(webhooks, "/stripe", req);
   await invoke(webhooks, "/stripe", req);
-  assert.equal(state.emails.length, 3);
-  const alerts = state.emails.filter((mail: any) => mail.to[0].email !== "private-donor@example.test");
-  assert.deepEqual(alerts.map((mail: any) => mail.to[0].email).sort(),
-    ["contact@example.test", "team@example.test"]);
-  for (const mail of alerts) {
-    assert.equal(mail.to.length, 1, "Recipients never share an address list");
-    assert.match(mail.htmlContent, /pi_alert_guest/);
-    assert.match(mail.htmlContent, /&lt;Alex&gt;/);
-    assert.doesNotMatch(mail.htmlContent, /<Alex>|private-donor@example\.test/);
-    assert.doesNotMatch(mail.htmlContent, /<th[^>]*>Campaign<\/th>/);
-  }
+  assert.equal(state.emailEvents.filter((e: any) => e.name === "donation").length, 1);
+  assert.equal(state.emails.length, 0, "Recipient selection belongs to the private email handler");
+  const saved = [...state.documents.entries()].find(([path]: [string, unknown]) => path.startsWith("donations/"))![1];
+  assert.equal(saved.publicDonorName, "<Alex>");
 });
 
-test("organisation email failure does not block the team alert or donation accounting", async () => {
+test("email journal failure retains a recovery marker without blocking donation accounting", async () => {
   const { webhooks, state } = await isolatedRouters();
-  state.failEmailTo = "org@example.test";
+  state.failEmailJournal = true;
   const errors: unknown[] = [];
   const event = checkoutEvent({ id: "pi_alert_failure", amount: 300, currency: "gbp",
     metadata: { orgId: "test-org", originalAmountPence: "300" } });
   await invoke(webhooks, "/stripe", {
     body: Buffer.from(JSON.stringify(event)), headers: { "stripe-signature": "synthetic-signature" },
-    log: { info() {}, error(obj: unknown) { errors.push(obj); } },
+    log: { info() {}, warn(obj: unknown) { errors.push(obj); }, error(obj: unknown) { errors.push(obj); } },
   });
-  assert.deepEqual(state.emails.map((mail: any) => mail.to[0].email).sort(),
-    ["info@rootprojx.com", "org@example.test"]);
+  assert.equal((state.emailEvents ?? []).length, 0);
   assert.equal(errors.length, 1);
   assert.equal(state.documents.get("organisations/test-org").totalRaised, 13);
   assert.equal(state.writes.filter((write: any) => write.collection === "donations").length, 1);
+  const pending = [...state.documents.entries()].find(([path]: [string, unknown]) => path.startsWith("donations/"))![1];
+  assert.equal(pending.emailDonationPending, true);
 });
 
 test("expanded international card country selects international fees", async () => {

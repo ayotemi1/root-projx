@@ -7,6 +7,188 @@
  */
 import * as zod from "zod";
 
+export const GetEmailJobStatusResponse = zod.object({
+  configured: zod.boolean(),
+  endpoint: zod.string(),
+  lastRunAt: zod.string().nullable(),
+  lastRunFailed: zod.boolean(),
+});
+
+export const CreateEmailJobKeyResponse = zod.object({
+  key: zod.string(),
+});
+
+export const RunScheduledEmailJobHeader = zod.object({
+  "x-email-job-key": zod.string(),
+});
+
+export const RunScheduledEmailJobResponse = zod.object({
+  processed: zod.number(),
+  failed: zod.number(),
+});
+
+export const readEmailPreferencesBodyAccessKeyMax = 2048;
+
+export const ReadEmailPreferencesBody = zod.object({
+  accessKey: zod.string().max(readEmailPreferencesBodyAccessKeyMax).optional(),
+});
+
+export const ReadEmailPreferencesResponse = zod.object({
+  welcome: zod.boolean(),
+  campaignGoals: zod.boolean(),
+  orgGifts: zod.boolean(),
+  giftFrequency: zod.enum(["every_gift", "daily_summary"]),
+  isOrganisation: zod.boolean(),
+});
+
+export const saveEmailPreferencesBodyAccessKeyMax = 2048;
+
+export const SaveEmailPreferencesBody = zod.object({
+  accessKey: zod.string().max(saveEmailPreferencesBodyAccessKeyMax).optional(),
+  welcome: zod.boolean().optional(),
+  campaignGoals: zod.boolean().optional(),
+  orgGifts: zod.boolean().optional(),
+  giftFrequency: zod.enum(["every_gift", "daily_summary"]).optional(),
+});
+
+export const SaveEmailPreferencesResponse = zod.object({
+  welcome: zod.boolean(),
+  campaignGoals: zod.boolean(),
+  orgGifts: zod.boolean(),
+  giftFrequency: zod.enum(["every_gift", "daily_summary"]),
+  isOrganisation: zod.boolean(),
+});
+
+export const GetEmailConfigurationResponse = zod.object({
+  adminRecipient: zod.string().email(),
+});
+
+export const saveEmailConfigurationBodyAdminRecipientMax = 254;
+
+export const SaveEmailConfigurationBody = zod.object({
+  adminRecipient: zod
+    .string()
+    .email()
+    .max(saveEmailConfigurationBodyAdminRecipientMax),
+});
+
+export const SaveEmailConfigurationResponse = zod.object({
+  adminRecipient: zod.string().email(),
+});
+
+export const GetEmailHistoryResponseItem = zod.object({
+  id: zod.string(),
+  recipient: zod.string(),
+  templateId: zod.string(),
+  state: zod.string(),
+  createdAt: zod.string(),
+  updatedAt: zod.string(),
+  providerStatus: zod.number().nullish(),
+  detail: zod.string().optional(),
+});
+export const GetEmailHistoryResponse = zod.array(GetEmailHistoryResponseItem);
+
+export const ProcessPendingEmailsResponse = zod.object({
+  processed: zod.number(),
+  failed: zod.number(),
+});
+
+export const ListEmailTeamInvitationsResponseItem = zod.object({
+  id: zod.string(),
+  email: zod.string(),
+  status: zod.string(),
+  expiresAt: zod.string(),
+});
+export const ListEmailTeamInvitationsResponse = zod.array(
+  ListEmailTeamInvitationsResponseItem,
+);
+
+export const inviteEmailTeamMemberBodyEmailMax = 254;
+
+export const InviteEmailTeamMemberBody = zod.object({
+  email: zod.string().email().max(inviteEmailTeamMemberBodyEmailMax),
+});
+
+export const acceptEmailTeamInvitationBodyAccessKeyMin = 40;
+export const acceptEmailTeamInvitationBodyAccessKeyMax = 100;
+
+export const AcceptEmailTeamInvitationBody = zod.object({
+  accessKey: zod
+    .string()
+    .min(acceptEmailTeamInvitationBodyAccessKeyMin)
+    .max(acceptEmailTeamInvitationBodyAccessKeyMax),
+});
+
+export const AcceptEmailTeamInvitationResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+export const GetOwnEmailApplicationResponse = zod.object({
+  id: zod.string(),
+  orgName: zod.string(),
+  status: zod.string(),
+  infoRequest: zod.string(),
+  response: zod.string(),
+});
+
+export const respondToEmailApplicationBodyResponseMax = 10000;
+
+export const RespondToEmailApplicationBody = zod.object({
+  response: zod.string().min(1).max(respondToEmailApplicationBodyResponseMax),
+});
+
+export const RespondToEmailApplicationResponse = zod.object({
+  id: zod.string(),
+  orgName: zod.string(),
+  status: zod.string(),
+  infoRequest: zod.string(),
+  response: zod.string(),
+});
+
+export const requestEmailApplicationInformationPathIdRegExp = new RegExp(
+  "^[A-Za-z0-9_-]{1,180}$",
+);
+
+export const RequestEmailApplicationInformationParams = zod.object({
+  id: zod.coerce.string().regex(requestEmailApplicationInformationPathIdRegExp),
+});
+
+export const requestEmailApplicationInformationBodyMessageMax = 5000;
+
+export const RequestEmailApplicationInformationBody = zod.object({
+  message: zod
+    .string()
+    .min(1)
+    .max(requestEmailApplicationInformationBodyMessageMax),
+});
+
+export const RequestEmailApplicationInformationResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+export const declineEmailApplicationPathIdRegExp = new RegExp(
+  "^[A-Za-z0-9_-]{1,180}$",
+);
+
+export const DeclineEmailApplicationParams = zod.object({
+  id: zod.coerce.string().regex(declineEmailApplicationPathIdRegExp),
+});
+
+export const declineEmailApplicationBodyReasonMax = 5000;
+
+export const declineEmailApplicationBodyReapplyDateRegExp = new RegExp(
+  "^[0-9]{4}-[0-9]{2}-[0-9]{2}$",
+);
+
+export const DeclineEmailApplicationBody = zod.object({
+  reason: zod.string().min(1).max(declineEmailApplicationBodyReasonMax),
+  reapplyDate: zod.string().regex(declineEmailApplicationBodyReapplyDateRegExp),
+});
+
+export const DeclineEmailApplicationResponse = zod.object({
+  ok: zod.boolean(),
+});
+
 export const ListArchivedPostsResponseItem = zod.object({
   id: zod.string(),
   kind: zod.enum(["post", "update"]),

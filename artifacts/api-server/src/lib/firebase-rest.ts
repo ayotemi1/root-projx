@@ -204,6 +204,158 @@ export async function fsCreateIfAbsent(
   return true;
 }
 
+/** Private email-only compare-and-write. Never broaden this to arbitrary
+ * caller-selected collections. The server rules must be manually published
+ * before enabling the email rollout. Fail without exposing a provider payload. */
+export async function fsMutateEmailState<T>(
+  collection: "email_outbox" | "email_preferences" | "email_settings" | "email_invitations" | "email_events",
+  id: string,
+  token: string,
+  decide: (current: Record<string, unknown> | null) => { patch?: Record<string, unknown>; result: T },
+): Promise<T> {
+  if (!["email_outbox", "email_preferences", "email_settings", "email_invitations", "email_events"].includes(collection) ||
+      !/^[A-Za-z0-9_-]{1,128}$/.test(id)) throw new Error("Invalid private email record.");
+  return fsCompareAndPatch(collection, id, token, decide);
+}
+export async function fsMutateApplicationState<T>(
+  id: string, token: string,
+  decide: (current: Record<string, unknown> | null) => { patch?: Record<string, unknown>; result: T },
+): Promise<T> {
+  if (!/^[A-Za-z0-9_-]{1,180}$/.test(id)) throw new Error("Invalid application.");
+  return fsCompareAndPatch("org_applications", id, token, decide);
+}
+async function fsCompareAndPatch<T>(
+  collection: string, id: string, token: string,
+  decide: (current: Record<string, unknown> | null) => { patch?: Record<string, unknown>; result: T },
+): Promise<T> {
+  const authHeaders = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+  const name = `projects/${PROJECT_ID}/databases/(default)/documents/${collection}/${id}`;
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const response = await fetch(`${FIRESTORE}/${collection}/${id}`, { headers: authHeaders });
+    if (!response.ok && response.status !== 404) throw new Error("Could not load private email record.");
+    const raw = response.status === 404 ? null : await response.json() as { fields?: Record<string, FsValue>; updateTime: string };
+    if (raw && typeof raw.updateTime !== "string") throw new Error("Invalid private email version.");
+    const decision = decide(raw ? fromFsDoc(raw.fields ?? {}) : null);
+    if (!decision.patch || !Object.keys(decision.patch).length) return decision.result;
+    const saved = await fetch(`${FIRESTORE}:commit`, {
+      method: "POST", headers: authHeaders,
+      body: JSON.stringify({ writes: [{
+        update: { name, fields: Object.fromEntries(Object.entries(decision.patch).map(([k, v]) => [k, toFsVal(v)])) },
+        updateMask: { fieldPaths: Object.keys(decision.patch) },
+        currentDocument: raw ? { updateTime: raw.updateTime } : { exists: false },
+      }] }),
+    });
+    if (saved.ok) return decision.result;
+    if (saved.status === 409 ||
+        saved.status === 400 && (await saved.clone().text()).includes("FAILED_PRECONDITION")) continue;
+    throw new Error("Could not save private email record.");
+  }
+  throw new Error("Private email record changed. Please retry.");
+}
+
+/** Approval changes the account role, initial public profile and application
+ * together. A concurrent decline cannot leave an approved account behind. */
+export async function fsApproveOrganisationApplication(
+  applicationId: string, uid: string, orgData: Record<string, unknown>, userData: Record<string, unknown>,
+  approval: Record<string, unknown>, token: string,
+): Promise<Record<string, unknown>> {
+  if (!/^[A-Za-z0-9_-]{1,180}$/.test(applicationId) || !/^[A-Za-z0-9_-]{1,128}$/.test(uid)) throw new Error("Invalid approval identity.");
+  const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+  const root = `projects/${PROJECT_ID}/databases/(default)/documents`;
+  async function read(path: string) {
+    const r = await fetch(`${FIRESTORE}/${path}`, { headers });
+    if (r.status === 404) return null;
+    if (!r.ok) throw new Error("Application approval could not be checked.");
+    const raw = await r.json() as { fields?: Record<string, FsValue>; updateTime: string };
+    return { name: `${root}/${path}`, raw, data: fromFsDoc(raw.fields ?? {}) };
+  }
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const [app, user, org] = await Promise.all([
+      read(`org_applications/${applicationId}`), read(`users/${uid}`), read(`organisations/${uid}`),
+    ]);
+    if (!app || app.data.uid !== uid || user?.data.deletedAt || user && user.data.accountType !== "organisation" || org?.data.deletedAt) {
+      throw new Error("Application account cannot be approved.");
+    }
+    if (app.data.status === "approved") return { ...app.data, _id: applicationId };
+    if (!["pending", "waiting"].includes(String(app.data.status))) throw new Error("Application is no longer awaiting approval.");
+    const update = (name: string, fields: Record<string, unknown>, version: string | null) => ({
+      update: { name, fields: Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, toFsVal(v)])) },
+      updateMask: { fieldPaths: Object.keys(fields) },
+      currentDocument: version ? { updateTime: version } : { exists: false },
+    });
+    const saved = await fetch(`${FIRESTORE}:commit`, {
+      method: "POST", headers,
+      body: JSON.stringify({ writes: [
+        org ? { verify: org.name, currentDocument: { updateTime: org.raw.updateTime } }
+          : update(`${root}/organisations/${uid}`, orgData, null),
+        update(`${root}/users/${uid}`, userData, user?.raw.updateTime ?? null),
+        update(app.name, approval, app.raw.updateTime),
+      ] }),
+    });
+    if (saved.ok) return { ...app.data, ...approval, _id: applicationId };
+    if (saved.status === 409 || saved.status === 400 && (await saved.text()).includes("FAILED_PRECONDITION")) continue;
+    throw new Error("Application approval could not be saved.");
+  }
+  throw new Error("Application changed during approval. Refresh before retrying.");
+}
+
+/** Consume the mailbox-delivered invitation and establish its limited grant in
+ * one commit. Retrying a consumed invitation cannot restore a revoked grant. */
+export async function fsAcceptEmailInvitation(invitationId: string, userId: string, recipientDigest: string, token: string): Promise<void> {
+  if (!/^[a-f0-9]{64}$/.test(invitationId) || !/^[a-f0-9]{64}$/.test(recipientDigest) || !/^[A-Za-z0-9_-]{1,128}$/.test(userId)) throw new Error("Invalid invitation.");
+  const headers = { Authorization: `Bearer ${token}`, "Content-Type": "application/json" };
+  const root = `projects/${PROJECT_ID}/databases/(default)/documents`;
+  async function read(path: string) {
+    const response = await fetch(`${FIRESTORE}/${path}`, { headers });
+    if (response.status === 404) return null;
+    if (!response.ok) throw new Error("Invitation access could not be checked.");
+    const raw = await response.json() as { fields?: Record<string, FsValue>; updateTime: string };
+    return { raw, data: fromFsDoc(raw.fields ?? {}), name: `${root}/${path}` };
+  }
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const invite = await read(`email_invitations/${invitationId}`);
+    if (!invite || invite.data.recipientDigest !== recipientDigest ||
+        typeof invite.data.orgId !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(invite.data.orgId)) throw new Error("Sign in with the account invited by email.");
+    if (invite.data.status === "accepted" && invite.data.acceptedBy === userId) return;
+    if (invite.data.status !== "pending" || !Number.isFinite(Date.parse(String(invite.data.expiresAt))) ||
+        Date.parse(String(invite.data.expiresAt)) <= Date.now()) throw new Error("This invitation is no longer valid. Ask for a new invitation.");
+    const orgId = invite.data.orgId;
+    const [org, owner, actor, access] = await Promise.all([
+      read(`organisations/${orgId}`), read(`users/${orgId}`), read(`users/${userId}`),
+      read(`organisation_messaging_access/${orgId}`),
+    ]);
+    if (orgId === userId || !org || org.data.deletedAt || !owner || owner.data.deletedAt ||
+        owner.data.accountType !== "organisation" || ["pending", "declined"].includes(String(owner.data.approvalStatus)) ||
+        !actor || actor.data.deletedAt || !["supporter", "organisation"].includes(String(actor.data.accountType)) ||
+        actor.data.accountType === "organisation" && actor.data.approvalStatus != null && actor.data.approvalStatus !== "approved") throw new Error("This account cannot accept the invitation.");
+    const ids = new Set(Array.isArray(access?.data.managerIds) ? access!.data.managerIds.filter((v): v is string => typeof v === "string") : []);
+    ids.add(userId);
+    if (ids.size > 25) throw new Error("This organisation already has 25 managers.");
+    const now = new Date().toISOString();
+    const save = await fetch(`${FIRESTORE}:commit`, {
+      method: "POST", headers,
+      body: JSON.stringify({ writes: [
+        ...[org, owner, actor].map(document => ({ verify: document.name, currentDocument: { updateTime: document.raw.updateTime } })),
+        {
+          update: { name: `${root}/organisation_messaging_access/${orgId}`, fields: {
+            managerIds: toFsVal([...ids]), updatedAt: toFsVal(now), updatedBy: toFsVal(orgId),
+          } },
+          updateMask: { fieldPaths: ["managerIds", "updatedAt", "updatedBy"] },
+          currentDocument: access ? { updateTime: access.raw.updateTime } : { exists: false },
+        },
+        {
+          update: { name: invite.name, fields: { status: toFsVal("accepted"), acceptedAt: toFsVal(now), acceptedBy: toFsVal(userId) } },
+          updateMask: { fieldPaths: ["status", "acceptedAt", "acceptedBy"] }, currentDocument: { updateTime: invite.raw.updateTime },
+        },
+      ] }),
+    });
+    if (save.ok) return;
+    if (save.status === 409 || save.status === 400 && (await save.text()).includes("FAILED_PRECONDITION")) continue;
+    throw new Error("Invitation could not be accepted. Please retry.");
+  }
+  throw new Error("The team changed while accepting. Please retry.");
+}
+
 /** Bounded messaging-only compare-and-write. A message and its counters commit
  * together; a lost response can safely be retried with the same message ID. */
 export async function fsMutateMessaging<T>(

@@ -12,9 +12,25 @@ logo must be publicly hosted, not embedded as base64.
 or newly written copy.
 
 **How to apply:** Use the manifest for subjects, preheaders and event mapping.
-Sender is Root ProjX at hello@rootprojx.com, reply-to info@rootprojx.com;
-application-admin recipient is configurable and defaults to info@rootprojx.com.
+Sender is Root ProjX at info@rootprojx.com; reply-to and every admin alert also
+use info@rootprojx.com, not a configurable alternative.
 Keep the existing Brevo service and provide plain text and full HTTPS links.
+
+**Why:** The owner clarified on 2026-11-24 that hello@rootprojx.com is not a real
+inbox and explicitly asked to remove or deactivate that Brevo sender.
+
+**How to apply:** Do not restore the hello sender or let legacy sender/team
+environment variables override the monitored info mailbox.
+
+Password resets must use Firebase Auth's existing email API and its owner-managed
+Brevo SMTP settings, not app-managed template 06 or a service-account credential.
+
+**Why:** The owner intentionally retains Google's organisation policy blocking
+service-account key creation. On 2026-11-24 they confirmed Firebase Auth SMTP
+already sends from info@rootprojx.com with public-facing name Root ProjX.
+
+**How to apply:** Do not request keys, enable template 06 delivery, or change
+Firebase Auth email settings. Preserve native expiry and single-use behaviour.
 
 Receipts, password resets and application emails are essential. Welcome,
 supporter campaign-goal and organisation new-gift emails respect email
@@ -52,3 +68,22 @@ delivery records and a test-mode donation rather than live charges.
 **How to apply:** Keep mail retries independent of financial mutations,
 distinguish provider acceptance from delivery, and do not claim Gmail or
 Apple Mail checks from browser-only HTML previews.
+
+Brevo IP restrictions are a separate authentication gate from API-key validity.
+An HTTP 401 can mean an unrecognised sending IP rather than an invalid key.
+
+**Why:** A rollout preflight was rejected specifically by Brevo's IP security;
+replacing credentials would not have addressed that cause.
+
+**How to apply:** Distinguish the provider's error category without logging its
+raw response. Ask the owner to approve the recognised app address in Brevo's
+Authorized IPs settings; do not silently disable IP security or rotate keys.
+
+The owner approved omitting inapplicable financial rows while keeping the
+remaining supplied email wording, layout and colours unchanged.
+
+**Why:** A receipt must not say the donor chose to cover a fee when they did not,
+and a gift without a campaign target must not display invented goal progress.
+
+**How to apply:** Keep original template assets unchanged; use narrowly scoped
+conditional row omissions, never invented financial data.

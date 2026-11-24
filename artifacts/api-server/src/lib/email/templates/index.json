@@ -1,0 +1,290 @@
+[
+ {
+  "id": "01-supporter-confirm-email",
+  "group": "Supporters",
+  "when": "Straight after someone signs up (if email confirmation is on)",
+  "subject": "Confirm your email for Root ProjX",
+  "preheader": "One click and you’re in.",
+  "variables": [
+   "confirm_url",
+   "first_name",
+   "logo_url",
+   "site_url"
+  ],
+  "sample_subject": "Confirm your email for Root ProjX"
+ },
+ {
+  "id": "02-supporter-welcome",
+  "group": "Supporters",
+  "when": "After a supporter confirms their email (or straight after sign-up if there is no confirmation step)",
+  "subject": "Welcome to the movement, {{first_name}}",
+  "preheader": "Follow grassroots organisations and see your impact in real time.",
+  "variables": [
+   "discover_url",
+   "first_name",
+   "logo_url",
+   "preferences_url",
+   "site_url"
+  ],
+  "sample_subject": "Welcome to the movement, Nadia"
+ },
+ {
+  "id": "03-donation-receipt",
+  "group": "Supporters",
+  "when": "When Stripe confirms a payment has succeeded (from the webhook, not the redirect)",
+  "subject": "Thank you for your gift to {{campaign_name}}",
+  "preheader": "Your receipt for {{total_paid}} · {{receipt_number}}",
+  "variables": [
+   "campaign_name",
+   "campaign_url",
+   "card_brand",
+   "card_fee",
+   "card_last4",
+   "date",
+   "first_name",
+   "gift_amount",
+   "giving_history_url",
+   "impact_line",
+   "logo_url",
+   "org_name",
+   "org_receives",
+   "receipt_number",
+   "share_url",
+   "site_url",
+   "total_paid"
+  ],
+  "sample_subject": "Thank you for your gift to Out of Many Hands"
+ },
+ {
+  "id": "04-donation-receipt-guest",
+  "group": "Supporters",
+  "when": "Same as the receipt, when the donor gave without a Root ProjX account",
+  "subject": "Thank you for your gift to {{campaign_name}}",
+  "preheader": "Your receipt for {{total_paid}} · {{receipt_number}}",
+  "variables": [
+   "campaign_name",
+   "card_brand",
+   "card_fee",
+   "card_last4",
+   "date",
+   "gift_amount",
+   "impact_line",
+   "logo_url",
+   "org_name",
+   "org_receives",
+   "receipt_number",
+   "signup_url",
+   "site_url",
+   "total_paid"
+  ],
+  "sample_subject": "Thank you for your gift to Out of Many Hands"
+ },
+ {
+  "id": "05-supporter-campaign-goal-reached",
+  "group": "Supporters",
+  "when": "When a campaign the supporter gave to reaches its goal",
+  "subject": "You did it: {{campaign_name}} is fully funded",
+  "preheader": "Thanks to you and {{supporter_count}} others.",
+  "variables": [
+   "campaign_name",
+   "campaign_url",
+   "first_name",
+   "goal_amount",
+   "logo_url",
+   "org_name",
+   "preferences_url",
+   "site_url",
+   "supporter_count"
+  ],
+  "sample_subject": "You did it: Out of Many Hands is fully funded"
+ },
+ {
+  "id": "06-password-reset",
+  "group": "Everyone",
+  "when": "When anyone (supporter or organisation) asks to reset their password",
+  "subject": "Reset your Root ProjX password",
+  "preheader": "This link works for 1 hour.",
+  "variables": [
+   "first_name",
+   "logo_url",
+   "reset_url",
+   "site_url"
+  ],
+  "sample_subject": "Reset your Root ProjX password"
+ },
+ {
+  "id": "07-org-application-received",
+  "group": "Organisations",
+  "when": "As soon as an organisation submits its application",
+  "subject": "We’ve received your application",
+  "preheader": "We’ll get back to you within 5 working days.",
+  "variables": [
+   "first_name",
+   "logo_url",
+   "org_name",
+   "signin_url",
+   "site_url"
+  ],
+  "sample_subject": "We’ve received your application"
+ },
+ {
+  "id": "08-org-application-approved",
+  "group": "Organisations",
+  "when": "When an admin approves the application",
+  "subject": "You’re in: {{org_name}} is approved",
+  "preheader": "Your organisation tools are now unlocked.",
+  "variables": [
+   "dashboard_url",
+   "first_name",
+   "logo_url",
+   "org_name",
+   "site_url"
+  ],
+  "sample_subject": "You’re in: Humanity Ova Vanity is approved"
+ },
+ {
+  "id": "09-org-application-declined",
+  "group": "Organisations",
+  "when": "When an admin declines the application",
+  "subject": "An update on your Root ProjX application",
+  "preheader": "Thank you for applying. Here’s our decision.",
+  "variables": [
+   "decline_reason",
+   "first_name",
+   "logo_url",
+   "org_name",
+   "reapply_date",
+   "site_url"
+  ],
+  "sample_subject": "An update on your Root ProjX application"
+ },
+ {
+  "id": "10-org-application-more-info",
+  "group": "Organisations",
+  "when": "When an admin needs more information before deciding",
+  "subject": "We need a little more information",
+  "preheader": "One quick thing before we can finish your review.",
+  "variables": [
+   "application_url",
+   "first_name",
+   "info_request",
+   "logo_url",
+   "org_name",
+   "site_url"
+  ],
+  "sample_subject": "We need a little more information"
+ },
+ {
+  "id": "11-org-team-invite",
+  "group": "Organisations",
+  "when": "When an organisation adds someone in Settings > Team",
+  "subject": "{{inviter_name}} invited you to manage {{org_name}}",
+  "preheader": "Join {{org_name}} on Root ProjX.",
+  "variables": [
+   "invite_url",
+   "inviter_name",
+   "logo_url",
+   "org_name",
+   "site_url"
+  ],
+  "sample_subject": "Donisha Prendergast invited you to manage Humanity Ova Vanity"
+ },
+ {
+  "id": "12-org-new-donation",
+  "group": "Organisations",
+  "when": "When a gift to one of their campaigns is confirmed (can be sent as a daily summary instead; see the prompt)",
+  "subject": "New gift to {{campaign_name}}: {{gift_amount}}",
+  "preheader": "{{donor_display_name}} just gave to {{campaign_name}}.",
+  "variables": [
+   "campaign_name",
+   "campaign_raised",
+   "dashboard_url",
+   "donor_display_name",
+   "first_name",
+   "gift_amount",
+   "goal_amount",
+   "logo_url",
+   "org_name",
+   "org_receives",
+   "preferences_url",
+   "site_url"
+  ],
+  "sample_subject": "New gift to Out of Many Hands: £10.00"
+ },
+ {
+  "id": "13-org-campaign-live",
+  "group": "Organisations",
+  "when": "When an organisation publishes a campaign",
+  "subject": "{{campaign_name}} is live",
+  "preheader": "Share it with your community to get your first gifts in.",
+  "variables": [
+   "campaign_name",
+   "campaign_url",
+   "first_name",
+   "logo_url",
+   "org_name",
+   "site_url"
+  ],
+  "sample_subject": "Out of Many Hands is live"
+ },
+ {
+  "id": "14-org-campaign-goal-reached",
+  "group": "Organisations",
+  "when": "When one of their campaigns reaches its goal",
+  "subject": "{{campaign_name}} reached its goal",
+  "preheader": "{{goal_amount}} raised from {{supporter_count}} supporters.",
+  "variables": [
+   "campaign_name",
+   "create_post_url",
+   "first_name",
+   "goal_amount",
+   "logo_url",
+   "org_name",
+   "site_url",
+   "supporter_count"
+  ],
+  "sample_subject": "Out of Many Hands reached its goal"
+ },
+ {
+  "id": "15-org-payout-sent",
+  "group": "Organisations",
+  "when": "When a payout is sent to the organisation’s bank account",
+  "subject": "Your payout of {{payout_amount}} is on its way",
+  "preheader": "Sent to your account ending {{account_last4}}.",
+  "variables": [
+   "account_last4",
+   "arrival_date",
+   "first_name",
+   "logo_url",
+   "org_name",
+   "payout_amount",
+   "payout_reference",
+   "payouts_url",
+   "period_end",
+   "period_start",
+   "sent_date",
+   "site_url"
+  ],
+  "sample_subject": "Your payout of £450.47 is on its way"
+ },
+ {
+  "id": "16-admin-new-application",
+  "group": "Root ProjX team",
+  "when": "To the admin inbox when an organisation submits an application",
+  "subject": "New application: {{org_name}} ({{country}})",
+  "preheader": "Submitted by {{contact_name}}.",
+  "variables": [
+   "admin_application_url",
+   "contact_email",
+   "contact_name",
+   "country",
+   "logo_url",
+   "org_name",
+   "sectors",
+   "site_url",
+   "submitted_date",
+   "website"
+  ],
+  "sample_subject": "New application: Humanity Ova Vanity (Jamaica)"
+ }
+]

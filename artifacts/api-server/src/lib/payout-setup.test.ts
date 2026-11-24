@@ -3,6 +3,7 @@ import { createHmac } from "node:crypto";
 import { createRequire } from "node:module";
 import test from "node:test";
 import { build } from "esbuild";
+import { emailEventsStubPlugin } from "../test-support/email-stubs.ts";
 import { activePayoutMethod, resolvePayoutMethod, manualPayoutLabel, withoutPrivatePayoutSetup } from "./payout-setup.ts";
 
 // Real route handlers and auth middleware, with every external-service boundary
@@ -22,6 +23,18 @@ async function fixture() {
         state.writes.push({collection,id,patch:structuredClone(patch)});
         const key=collection+"/"+id;
         state.docs.set(key,{...state.docs.get(key),...structuredClone(patch)});
+      };
+      export const fsApproveOrganisationApplication=async(id,uid,org,user,approval)=>{
+        const app=state.docs.get("org_applications/"+id);
+        if(!app||app.uid!==uid||!["pending","waiting"].includes(app.status))throw Error("Application changed");
+        if(!state.docs.has("organisations/"+uid))await fsPatch("organisations",uid,org);
+        await fsPatch("users",uid,user); await fsPatch("org_applications",id,approval);
+        return {...app,...approval,_id:id};
+      };
+      export const fsMutateApplicationState=async(id,token,decide)=>{
+        const current=await fsGet("org_applications",id), outcome=decide(current);
+        if(outcome.patch)await fsPatch("org_applications",id,outcome.patch);
+        return outcome.result;
       };
       export const fsCreate = async (collection,data) => {
         const id="application";
@@ -72,9 +85,15 @@ async function fixture() {
     },
     bundle: true, write: false, format: "cjs", platform: "node", packages: "external",
     define: { "process.env.ADMIN_PASSWORD": JSON.stringify("synthetic-admin-password") },
-    plugins: [{
+    plugins: [emailEventsStubPlugin(), {
       name: "mock-services",
       setup(b) {
+        b.onResolve({ filter: /^zod(?:\/.*)?$/ }, args => ({
+          path: createRequire(new URL("../../../../lib/api-zod/package.json", import.meta.url)).resolve(args.path),
+        }));
+        b.onResolve({ filter: /^@workspace\/api-zod$/ }, () => ({
+          path: new URL("../../../../lib/api-zod/src/generated/api.ts", import.meta.url).pathname,
+        }));
         b.onResolve({ filter: /^(setup-test:state)$|\/(firebase-rest|brevo|stripeClient)\.js$/ }, args => ({
           path: args.path.startsWith("setup-test:") ? "state" : args.path.split("/").at(-1)!,
           namespace: "setup-test",

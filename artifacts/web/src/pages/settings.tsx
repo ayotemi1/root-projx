@@ -9,6 +9,7 @@ import {
 import { useAuth } from "@/context/AuthContext";
 import { accountKey, authInit } from "./account-shared";
 import OrganisationSettingsSections from "@/components/organisation/OrganisationSettingsSections";
+import { EmailPreferencesPanel } from "@/components/email/EmailPreferencesPanel";
 import "./account-pages.css";
 
 type Category = keyof SupporterAccount["notifications"];
@@ -160,6 +161,8 @@ export default function SettingsPage() {
         </table>
         <p className="rpa-hint" style={{ marginTop: 14 }}>{isOrg ? "Donation and security emails are always sent." : "Receipts and security emails are always sent."}</p>
       </section>
+
+      {!token.startsWith("org-team.") && <EmailPreferencesPanel token={token} />}
 
       {isOrg ? <OrganisationSettingsSections /> : (
       <section className="rpa-box">

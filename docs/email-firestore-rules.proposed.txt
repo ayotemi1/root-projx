@@ -1,0 +1,212 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {match /conversations/{conversationId} {
+  allow read, create, update: if isServer();
+  allow delete: if false;
+}
+match /conversation_messages/{messageId} {
+  allow read, create: if isServer();
+  allow update, delete: if false;
+}
+match /organisation_messaging_access/{orgId} {
+  allow read, create, update: if isServer();
+  allow delete: if false;
+}
+
+    function isServer() {
+      return request.auth != null &&
+             request.auth.token.email == "seeder@rootprojx.internal";
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    // Privileged fields are server-controlled. Supporters may create their own
+    // basic profile and edit only non-privileged presentation fields.
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isServer();
+
+      allow create: if isServer() ||
+        (isOwner(userId) &&
+         request.resource.data.accountType == "supporter" &&
+         !request.resource.data.keys().hasAny(["approvalStatus"]));
+
+      allow update: if isServer() ||
+        (isOwner(userId) &&
+         request.resource.data.diff(resource.data).affectedKeys()
+           .hasOnly(["name", "phone", "avatarInitials", "publicProfile"]));
+
+      allow delete: if false;
+    }
+
+    // Organisation documents include private drafts. All writes go through
+    // the API so organisation approval is checked before changes are made.
+    match /organisations/{orgId} {
+      allow read, create, update: if isServer();
+      allow delete: if false;
+    }
+
+    // Encrypted bank details. Server only, never readable from a client.
+    match /organisation_bank_details/{orgId} {
+      allow read, write: if isServer();
+    }
+
+    // Append-only audit of every bank-detail reveal and approval.
+    // Update and delete are denied even to the server identity.
+    match /bank_details_audit/{entryId} {
+      allow read: if isServer();
+
+      allow create: if isServer() &&
+        request.resource.data.keys().hasAll([
+          "adminIdentity", "identityType", "action",
+          "timestamp", "orgId", "revision"
+        ]) &&
+        request.resource.data.keys().hasOnly([
+          "adminIdentity", "identityType", "action",
+          "timestamp", "orgId", "revision"
+        ]) &&
+        request.resource.data.adminIdentity == "shared-admin" &&
+        request.resource.data.identityType == "shared_credential" &&
+        request.resource.data.action in ["reveal", "approve"] &&
+        request.resource.data.timestamp is string &&
+        request.resource.data.orgId is string &&
+        request.resource.data.revision is string;
+
+      allow update, delete: if false;
+    }
+
+    // Updates are public, but only the API can create or modify them.
+    match /updates/{updateId} {
+      allow read: if true;
+      allow create, update, delete: if isServer();
+    }
+
+    // Users can see and manage only their own follows.
+    match /follows/{followId} {
+      allow read: if isServer() ||
+        (isSignedIn() && resource.data.userId == request.auth.uid);
+
+      allow create: if isServer() ||
+        (isSignedIn() && request.resource.data.userId == request.auth.uid);
+
+      allow delete: if isServer() ||
+        (isSignedIn() && resource.data.userId == request.auth.uid);
+
+      allow update: if false;
+    }
+
+    // Users can read their own donations. Only the API can write them.
+    match /donations/{donationId} {
+      allow read: if isServer() ||
+        (isSignedIn() && resource.data.userId == request.auth.uid);
+
+      allow write: if isServer();
+    }
+
+    // Recurring (monthly) donation records. Written by server only.
+    match /recurring/{recurringId} {
+      allow read: if isServer() ||
+        (isSignedIn() && resource.data.userId == request.auth.uid);
+
+      allow write: if isServer();
+    }
+
+    // Payout ledger — what Root ProjX owes each organisation, and proof of
+    // what has been sent. Server only.
+    match /payouts/{payoutId} {
+      allow read, write: if isServer();
+    }
+
+    // Payout history is private and accessed through the API.
+    match /disbursements/{disbursementId} {
+      allow read, write: if isServer();
+    }
+
+    // Reviews are publicly readable. Signed-in users can create reviews.
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update, delete: if isServer();
+    }
+
+    // Help entries are publicly readable and managed by the API.
+    match /help_entries/{entryId} {
+      allow read: if true;
+      allow write: if isServer();
+    }
+
+    // Supporter profiles are managed through the API.
+    match /supporters/{uid} {
+      allow read, write: if isServer();
+    }
+
+    // Organisation applications are managed through the API.
+    match /org_applications/{appId} {
+      allow read, write: if isServer();
+    }
+
+    // Supporter posts are read and written through the API only.
+    // The API enforces author ownership, public/private visibility and removal.
+    match /supporter_posts/{postId} {
+      allow read, create, update: if isServer();
+      allow delete: if false;
+    }
+
+    // File bytes stay in Object Storage; these documents contain metadata only.
+    match /supporter_post_media/{mediaId} {
+      allow read, create, update: if isServer();
+      allow delete: if false;
+    }
+
+    // Supporter-to-supporter following is authorised by the API.
+    match /supporter_follows/{followId} {
+      allow read, write: if isServer();
+    }
+
+   // Post likes, comments and replies: API access only.
+match /post_interactions/{interactionId} {
+  allow read, create, update, delete: if isServer();
+}
+
+    // Private email delivery queue and administrative delivery history.
+    // Recipients, reset/invitation links and rendered bodies stay API-only.
+    match /email_outbox/{emailId} {
+      allow read, create, update: if isServer();
+      allow delete: if false;
+    }
+
+    // Recipient-specific email choices, including guests with scoped links.
+    match /email_preferences/{recipientId} {
+      allow read, create, update: if isServer();
+      allow delete: if false;
+    }
+
+    // Platform email recipient and scheduler settings.
+    match /email_settings/{settingsId} {
+      allow read, create, update: if isServer();
+      allow delete: if false;
+    }
+
+    // Expiring, single-use invitations; the API verifies identity and access.
+    match /email_invitations/{invitationId} {
+      allow read, create, update: if isServer();
+      allow delete: if false;
+    }
+
+    // Durable event processing and per-campaign daily-summary checkpoints.
+    match /email_events/{eventId} {
+      allow read, create, update: if isServer();
+      allow delete: if false;
+    }
+
+    // Deny anything not explicitly permitted.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

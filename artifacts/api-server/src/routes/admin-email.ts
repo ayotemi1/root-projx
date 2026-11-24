@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { ROOT_ADMIN_EMAIL } from "../lib/email-identity.ts";
 import { rateLimit } from "express-rate-limit";
 import { requireAdmin } from "../lib/admin-auth.js";
 import { brevoSendEmail } from "../lib/brevo.js";
@@ -19,7 +20,7 @@ router.post("/admin/email/test", requireAdmin,
       res.status(503).json({ error: "Brevo email is not configured. No test email was sent." });
       return;
     }
-    const recipient = process.env.TEAM_EMAIL || "info@rootprojx.com";
+    const recipient = ROOT_ADMIN_EMAIL;
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient)) {
       res.status(503).json({ error: "The team email address is not configured correctly." });
       return;

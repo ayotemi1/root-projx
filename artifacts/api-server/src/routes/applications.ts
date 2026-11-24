@@ -1,8 +1,11 @@
 import { Router } from "express";
+import { ROOT_ADMIN_EMAIL } from "../lib/email-identity.ts";
 import crypto from "crypto";
 import { createOrganisationAccess } from "../lib/admin-organisation-access.js";
 import { getAdminTokenValue, requireAdmin } from "../lib/admin-auth.js";
 import { activePayoutMethod, manualPayoutLabel } from "../lib/payout-setup.js";
+import { DeclineEmailApplicationBody } from "@workspace/api-zod";
+import { applicationEmails } from "../lib/email/application-events.js";
 import {
   fsCreate,
   fsPatch,
@@ -14,6 +17,8 @@ import {
   firebaseSignIn,
   firebaseSendPasswordResetEmail,
   firebaseUpdateProfile,
+  fsApproveOrganisationApplication,
+  fsMutateApplicationState,
 } from "../lib/firebase-rest.js";
 import {
   brevoSendEmail,
@@ -25,7 +30,7 @@ import {
 
 const router = Router();
 
-const TEAM_EMAIL = process.env.TEAM_EMAIL ?? "info@rootprojx.com";
+const TEAM_EMAIL = ROOT_ADMIN_EMAIL;
 
 // ── Admin auth ────────────────────────────────────────────────────────────────
 
@@ -91,18 +96,19 @@ router.post("/applications/org", async (req, res) => {
     const hasSocials = Object.values(cleanSocials).some(Boolean);
 
     // Check for duplicate pending application from same email
-    const existing = await fsQuery(
+    const previousApplications = await fsQuery(
       "org_applications",
-      [{ field: "email", op: "EQUAL", value: normalisedEmail },
-       { field: "status", op: "EQUAL", value: "pending" }],
+      [{ field: "email", op: "EQUAL", value: normalisedEmail }],
       token,
     );
+    const existing = previousApplications.filter(app => app.status === "pending" || app.status === "waiting");
     if (existing.length > 0) {
       try {
         const signedIn = await firebaseSignIn(normalisedEmail, password);
         const existingUid = existing[0]?.uid;
         if (existingUid && existingUid === signedIn.uid) {
           await fsPatch("org_applications", String(existing[0]!._id), { country: country.trim() }, token);
+          if (existing[0]!.emailReceivedPending === true) await applicationEmails(String(existing[0]!._id), existing[0]!, "received");
           res.status(200).json({ id: existing[0]?._id, status: "pending", token: signedIn.idToken });
           return;
         }
@@ -138,6 +144,17 @@ router.post("/applications/org", async (req, res) => {
           res.status(409).json({ error: "This email is already used by a supporter account" });
           return;
         }
+        if (user?.approvalStatus === "approved" || await fsGet("organisations", uid, token)) {
+          res.status(409).json({ error: "This organisation account is already approved. Sign in to your dashboard." });
+          return;
+        }
+        const declined = previousApplications
+          .filter(app => app.status === "declined" && app.uid === uid)
+          .sort((a, b) => String(b.declinedAt).localeCompare(String(a.declinedAt)))[0];
+        if (typeof declined?.reapplyDate === "string" && declined.reapplyDate > now.slice(0, 10)) {
+          res.status(409).json({ error: `You can reapply from ${declined.reapplyDate}.` });
+          return;
+        }
       } catch {
         res.status(409).json({ error: "An account with this email already exists" });
         return;
@@ -166,32 +183,14 @@ router.post("/applications/org", async (req, res) => {
       website: cleanWebsite,
       socialLinks: hasSocials ? cleanSocials : null,
       status: "pending",
+      emailReceivedPending: true,
       createdAt: now,
     }, token);
 
-    // Fire-and-forget emails
-    Promise.all([
-      brevoSendEmail({
-        to: [{ email: normalisedEmail, name: contactName.trim() }],
-        subject: `We've received your application, ${orgName.trim()}`,
-        htmlContent: orgApplicationReceivedHtml({ orgName: orgName.trim(), contactName: contactName.trim() }),
-      }),
-      brevoSendEmail({
-        to: [{ email: TEAM_EMAIL, name: "Root ProjX Team" }],
-        subject: `New organisation sign-up: ${orgName.trim()}`,
-        htmlContent: internalNotificationHtml({
-          type: "org_application",
-          name: contactName.trim(),
-          email: normalisedEmail,
-          orgName: orgName.trim(),
-          sectors,
-          website: cleanWebsite,
-          socialLinks: hasSocials ? cleanSocials : null,
-        }),
-      }),
-    ]).catch((err) => {
-      console.error("[Brevo] org application email error:", err);
-    });
+    await applicationEmails(applicationId, {
+      email: normalisedEmail, contactName: contactName.trim(), orgName: orgName.trim(),
+      country: country.trim(), sectors, website: cleanWebsite, createdAt: now,
+    }, "received");
 
     res.status(201).json({ id: applicationId, status: "pending", token: initialToken });
   } catch (err) {
@@ -230,7 +229,7 @@ router.get("/admin/applications", requireAdmin, async (req, res) => {
     const token = await getServerToken();
     const { status } = req.query as { status?: string };
     let apps: Array<Record<string, unknown>>;
-    if (status && ["pending", "approved", "declined"].includes(status)) {
+    if (status && ["pending", "waiting", "approved", "declined"].includes(status)) {
       apps = await fsQuery("org_applications", [{ field: "status", op: "EQUAL", value: status }], token);
     } else {
       apps = await fsList("org_applications", token);
@@ -262,7 +261,7 @@ router.post("/admin/applications/:id/approve", requireAdmin, async (req, res) =>
       res.status(404).json({ error: "Application not found" });
       return;
     }
-    if (app.status !== "pending") {
+    if (!["pending", "waiting"].includes(String(app.status))) {
       res.status(400).json({ error: `Application is already ${app.status}` });
       return;
     }
@@ -318,7 +317,7 @@ router.post("/admin/applications/:id/approve", requireAdmin, async (req, res) =>
     const initials = avatarInitials(contactName);
 
     // Create org profile — carry over website and social links from the application
-    await fsPatch("organisations", uid, {
+    const initialOrganisation = {
       _id: uid,
       name: orgName,
       category: sectors[0] ?? "Community Development",
@@ -336,9 +335,9 @@ router.post("/admin/applications/:id/approve", requireAdmin, async (req, res) =>
       contact: { email, website: appWebsite },
       socialLinks: appSocialLinks,
       createdAt: now,
-    }, serverToken);
+    };
 
-    await fsPatch("users", uid, {
+    const approvedUser = {
       uid,
       name: contactName,
       email,
@@ -347,17 +346,14 @@ router.post("/admin/applications/:id/approve", requireAdmin, async (req, res) =>
       avatarInitials: initials,
       approvalStatus: "approved",
       approvedAt: now,
-    }, serverToken);
+    };
 
     // Update application status
-    await fsPatch("org_applications", id, { status: "approved", approvedAt: now, uid }, serverToken);
+    const approval = { status: "approved", approvedAt: now, uid, emailDecisionPending: true, emailDecisionId: `approval_${id}` };
+    const approvedApplication = await fsApproveOrganisationApplication(id, uid, initialOrganisation, approvedUser, approval, serverToken);
 
     // Send acceptance email
-    brevoSendEmail({
-      to: [{ email, name: contactName }],
-      subject: `Welcome to Root ProjX, ${orgName}!`,
-      htmlContent: orgAcceptedHtml({ orgName, contactName, email, passwordSetupRequired }),
-    }).catch((err) => console.error("[Brevo] org accepted email error:", err));
+    await applicationEmails(id, approvedApplication, "approved");
     if (passwordSetupRequired) {
       firebaseSendPasswordResetEmail(email)
         .catch((err) => console.error("[Firebase] legacy applicant password setup email error:", err));
@@ -373,6 +369,14 @@ router.post("/admin/applications/:id/approve", requireAdmin, async (req, res) =>
 // POST /admin/applications/:id/decline
 router.post("/admin/applications/:id/decline", requireAdmin, async (req, res) => {
   try {
+    const parsed = DeclineEmailApplicationBody.strict().safeParse(req.body);
+    if (!parsed.success || !parsed.data.reason.trim() ||
+        !Number.isFinite(Date.parse(`${parsed.data.reapplyDate}T00:00:00Z`)) ||
+        new Date(`${parsed.data.reapplyDate}T00:00:00Z`).toISOString().slice(0, 10) !== parsed.data.reapplyDate ||
+        parsed.data.reapplyDate < new Date().toISOString().slice(0, 10)) {
+      res.status(400).json({ error: "Enter a reason and a valid date from which the organisation can reapply." });
+      return;
+    }
     const id = String(req.params.id);
     const serverToken = await getServerToken();
 
@@ -383,7 +387,7 @@ router.post("/admin/applications/:id/decline", requireAdmin, async (req, res) =>
       res.status(404).json({ error: "Application not found" });
       return;
     }
-    if (app.status !== "pending") {
+    if (!["pending", "waiting"].includes(String(app.status))) {
       res.status(400).json({ error: `Application is already ${app.status}` });
       return;
     }
@@ -393,21 +397,21 @@ router.post("/admin/applications/:id/decline", requireAdmin, async (req, res) =>
     const email = app.email as string;
     const now = new Date().toISOString();
 
-    await fsPatch("org_applications", id, { status: "declined", declinedAt: now }, serverToken);
+    const changes = {
+      status: "declined", declinedAt: now, reason: parsed.data.reason.trim(),
+      reapplyDate: parsed.data.reapplyDate, emailDecisionId: crypto.randomUUID(),
+      emailDecisionPending: true,
+    };
+    const declinedApplication = await fsMutateApplicationState(id, serverToken, current => {
+      if (!current || !["pending", "waiting"].includes(String(current.status))) throw new Error("Application changed before the decline was saved.");
+      return { patch: changes, result: { ...current, ...changes } };
+    });
     const uid = typeof app.uid === "string" ? app.uid : null;
     if (uid) {
       await fsPatch("users", uid, { approvalStatus: "declined", declinedAt: now }, serverToken);
     }
 
-    // The admin UI does not currently send a request body. Treat it as an
-    // empty body so a missing optional decline reason cannot turn a successful
-    // decline into a 500 response after the status has already been written.
-    const { reason } = (req.body ?? {}) as { reason?: string };
-    brevoSendEmail({
-      to: [{ email, name: contactName }],
-      subject: `An update on your Root ProjX application`,
-      htmlContent: orgDeclinedHtml({ orgName, contactName, reason }),
-    }).catch((err) => console.error("[Brevo] org declined email error:", err));
+    await applicationEmails(id, declinedApplication, "declined");
 
     res.json({ ok: true });
   } catch (err) {

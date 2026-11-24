@@ -11,6 +11,7 @@ export const BANK_LOG_FIELDS = [
 export const LOG_REDACTION_PATHS = [
   "req.headers.authorization", "req.headers.cookie", "req.headers['x-admin-token']",
   "req.headers['x-admin-secret']", "res.headers['set-cookie']",
+  "req.headers['x-email-job-key']", "req.body.accessKey", "res.body.key",
   ...BANK_LOG_FIELDS.flatMap(field => [
     field, `*.${field}`, `*.*.${field}`, `*.*.*.${field}`, `*.*.*.*.${field}`,
   ]),

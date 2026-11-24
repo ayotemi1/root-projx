@@ -48,6 +48,7 @@ import AdminPage from "@/pages/admin";
 import NotFound from "@/pages/not-found";
 import { OnboardingInterestsPage, SettingsInterestsPage, ONBOARDING_INTERESTS_FLAG } from "@/pages/interests";
 import SettingsPage from "@/pages/settings";
+import { EmailPreferencesPage, TeamInvitationPage, ApplicationPage } from "@/pages/email-pages";
 import ProfileEditPage from "@/pages/profile-edit";
 import OnboardingFollowsPage from "@/pages/onboarding-follows";
 import SupporterProfilePage from "@/pages/supporter-profile";
@@ -187,6 +188,11 @@ function AppRoutes() {
               </Route>
               <Route path="/settings/interests">
                 {() => <ProtectedRoute component={SettingsInterestsPage} />}
+              </Route>
+              <Route path="/email-preferences" component={EmailPreferencesPage} />
+              <Route path="/team-invitation" component={TeamInvitationPage} />
+              <Route path="/application">
+                {() => <ProtectedRoute component={ApplicationPage} />}
               </Route>
               <Route path="/settings">
                 {() => <ProtectedRoute component={SettingsPage} />}

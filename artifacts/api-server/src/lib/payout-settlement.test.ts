@@ -3,6 +3,7 @@ import { createHmac } from "node:crypto";
 import { createRequire } from "node:module";
 import test from "node:test";
 import { build } from "esbuild";
+import { emailEventsStubPlugin } from "../test-support/email-stubs.ts";
 
 async function fixture(key = true) {
   const mocks: Record<string,string> = {
@@ -48,7 +49,7 @@ async function fixture(key = true) {
     bundle:true,write:false,platform:"node",format:"cjs",packages:"external",
     define:{"process.env.WISE_API_KEY":key?JSON.stringify("synthetic-key"):"undefined",
       "process.env.ADMIN_PASSWORD":JSON.stringify("synthetic-admin")},
-    plugins:[{name:"synthetic-services",setup(b){
+    plugins:[emailEventsStubPlugin("settlement:state"), {name:"synthetic-services",setup(b){
       b.onResolve({filter:/^@workspace\/api-zod$/},()=>({
         path:new URL("../../../../lib/api-zod/src/generated/api.ts",import.meta.url).pathname}));
       b.onResolve({filter:/^zod$/},()=>({

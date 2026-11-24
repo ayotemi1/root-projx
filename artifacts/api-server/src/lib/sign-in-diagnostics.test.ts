@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { build } from "esbuild";
+import { emailEventsStubPlugin } from "../test-support/email-stubs.ts";
 import { createRequire } from "node:module";
 import { signInDiagnosticCode } from "./sign-in-diagnostics.ts";
 
@@ -13,7 +14,7 @@ const compiled = await build({
     resolveDir: new URL(".", import.meta.url).pathname,
   },
   bundle: true, write: false, platform: "node", format: "cjs", packages: "external",
-  plugins: [{
+  plugins: [emailEventsStubPlugin(), {
     name: "isolated-sign-in",
     setup(b) {
       b.onResolve({ filter: /^signin:state$/ }, () => ({ path: "state", namespace: "signin" }));

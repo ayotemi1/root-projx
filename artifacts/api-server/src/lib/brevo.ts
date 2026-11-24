@@ -1,6 +1,7 @@
 // Brevo (formerly Sendinblue) API v3 helper
 // Uses BREVO_API_KEY secret — never hardcoded
 import { donationDisclosure, type DonationAccounting } from "./donation-accounting.ts";
+import { ROOT_EMAIL_IDENTITY } from "./email-identity.ts";
 
 const BREVO_BASE = "https://api.brevo.com/v3";
 
@@ -35,10 +36,11 @@ export interface BrevoTransactionalEmail {
   to: BrevoEmailRecipient[];
   subject: string;
   htmlContent: string;
-  /** Sender name — defaults to "Root ProjX" */
+  /** @deprecated All mail uses the fixed Root ProjX identity. */
   senderName?: string;
-  /** Sender email — defaults to BREVO_SENDER_EMAIL or noreply@rootprojx.com */
+  /** @deprecated All mail uses info@rootprojx.com. */
   senderEmail?: string;
+  /** @deprecated Replies always go to info@rootprojx.com. */
   replyTo?: BrevoEmailRecipient;
 }
 
@@ -86,17 +88,12 @@ export async function brevoAddContact(contact: BrevoContact): Promise<void> {
 export async function brevoSendEmail(email: BrevoTransactionalEmail): Promise<void> {
   if (!process.env.BREVO_API_KEY) return;
 
-  const senderEmail =
-    email.senderEmail ??
-    process.env.BREVO_SENDER_EMAIL ??
-    "noreply@rootprojx.com";
-
   const body = {
-    sender: { name: email.senderName ?? "Root ProjX", email: senderEmail },
+    sender: ROOT_EMAIL_IDENTITY,
+    replyTo: ROOT_EMAIL_IDENTITY,
     to: email.to,
     subject: email.subject,
     htmlContent: email.htmlContent,
-    ...(email.replyTo ? { replyTo: email.replyTo } : {}),
   };
 
   const res = await fetch(`${BREVO_BASE}/smtp/email`, {
@@ -112,6 +109,31 @@ export async function brevoSendEmail(email: BrevoTransactionalEmail): Promise<vo
 }
 
 // ── Pre-built email templates ─────────────────────────────────────────────────
+
+/** Strict, privacy-safe transport for the event outbox. Legacy callers remain
+ * unchanged until their corresponding event is migrated, avoiding double sends.
+ * Acceptance is not delivery; no recipient or provider response is logged. */
+export async function brevoSendRecordedEmail(email: {
+  to: [BrevoEmailRecipient]; subject: string; htmlContent: string; textContent: string;
+}): Promise<{ messageId: string }> {
+  const response = await fetch(`${BREVO_BASE}/smtp/email`, {
+    method: "POST", headers: headers(), signal: AbortSignal.timeout(20_000),
+    body: JSON.stringify({
+      ...email,
+      sender: ROOT_EMAIL_IDENTITY,
+      replyTo: ROOT_EMAIL_IDENTITY,
+    }),
+  });
+  if (!response.ok) {
+    // Discard error payloads: they can contain recipients, credentials or IPs.
+    await response.body?.cancel();
+    throw Object.assign(new Error("Brevo rejected the email request."), { brevoStatus: response.status });
+  }
+  const result: unknown = await response.json();
+  const messageId = result && typeof result === "object" && "messageId" in result ? result.messageId : null;
+  if (typeof messageId !== "string" || !messageId) throw new Error("Brevo acceptance is uncertain.");
+  return { messageId };
+}
 
 export function welcomeEmailHtml(name: string): string {
   return `

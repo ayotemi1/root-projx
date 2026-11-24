@@ -2,14 +2,15 @@ import { Router } from "express";
 import { fsCreate, fsCreateIfAbsent, fsGet, fsIncrement, fsPatch, fsQuery, fsMutateCampaigns, getServerToken } from "../lib/firebase-rest.js";
 import { getUncachableStripeClient } from "../lib/stripeClient.js";
 import { accountingInGbp, donationGbpRate } from "../lib/donation-currency.js";
-import { brevoSendEmail, donationConfirmationHtml, shopOrderConfirmationHtml } from "../lib/brevo.js";
+import { brevoSendEmail, shopOrderConfirmationHtml } from "../lib/brevo.js";
 import type Stripe from "stripe";
 import { recurringStatus } from "../lib/recurring-status.js";
 import { donationAccounting, PLATFORM_FEE_PERCENT } from "../lib/fees.js";
 import { queueDonationPayout } from "../lib/payouts.js";
 import { donorIdentity, firstNameLastInitial } from "../lib/campaign-supporters.js";
-import { campaignMatch, migrateCampaignPartnerFunding, partnerFundingFor } from "../lib/campaign-matching.js";
-import { notifyDonationReceived } from "../lib/donation-notifications.js";
+import { campaignMatch, migrateCampaignPartnerFunding, partnerFundingFor, campaignFundingTotal } from "../lib/campaign-matching.js";
+import { donationEmailEvent } from "../lib/email/donation-events.js";
+import { stripePayoutEmailEvent } from "../lib/email/payout-events.js";
 
 const router = Router();
 
@@ -81,6 +82,8 @@ router.post(
         event.type === "customer.subscription.deleted"
       ) {
         await handleSubscriptionChange(event);
+      } else if (event.type === "payout.paid" && event.account) {
+        await stripePayoutEmailEvent(event.account, event.data.object.id, event.created);
       }
       res.json({ received: true });
     } catch (err) {
@@ -279,6 +282,10 @@ async function handlePaymentSuccess(
       // Atomic create-only semantics preserve sent/failed rows on every replay.
       if (dedupCollection === "donations") {
         await queueDonationPayout(String(existing[0]!._id), existing[0]!, serverToken);
+        if (existing[0]!.emailDonationPending === true) {
+          try { await donationEmailEvent(String(existing[0]!._id)); }
+          catch { log.error({ donationId: existing[0]!._id }, "Donation email retained for recovery"); }
+        }
       }
       log.info({ stripeRef, type: type ?? "one_time" }, "Webhook: event already processed — skipping (idempotent)");
       return;
@@ -347,6 +354,7 @@ async function handlePaymentSuccess(
       stripeRef,
       ...(checkoutSessionId ? { checkoutSessionId } : {}),
       status: "succeeded",
+      emailDonationPending: true,
       createdAt: donationDate,
     };
   // Keep the PI ID as stripeRef for compatibility with old records and confirm.
@@ -358,6 +366,10 @@ async function handlePaymentSuccess(
       const existing = await fsGet("donations", donationId, serverToken);
       if (!existing) throw new Error("Existing Checkout donation could not be loaded");
       await queueDonationPayout(donationId, existing, serverToken);
+      if (existing.emailDonationPending === true) {
+        try { await donationEmailEvent(donationId); }
+        catch { log.error({ donationId }, "Donation email retained for recovery"); }
+      }
       log.info({ stripeRef }, "Checkout donation already created — skipping");
       return;
     }
@@ -365,48 +377,6 @@ async function handlePaymentSuccess(
     donationId = await fsCreate("donations", donationData, serverToken);
   }
   log.info({ donationId, userId: userId ?? "guest", orgId, intendedGbp, toOrgGbp }, "Donation recorded in Firestore");
-
-  // 1b. Send donation confirmation email via Brevo (fire-and-forget)
-  try {
-    let recipientEmail: string | undefined;
-    let recipientName = "Supporter";
-
-    if (isGuest) {
-      recipientEmail = guestEmail;
-    } else if (userId) {
-      const userDoc = await fsGet("users", userId, serverToken);
-      recipientEmail = userDoc?.["email"] as string | undefined;
-      recipientName = (userDoc?.["name"] as string | undefined) ?? "Supporter";
-    }
-
-    if (recipientEmail) {
-      await brevoSendEmail({
-        to: [{ email: recipientEmail, name: recipientName }],
-        subject: `Your donation to ${orgName ?? "Root ProjX"} — confirmed ✓`,
-        htmlContent: donationConfirmationHtml({
-          name: recipientName,
-          orgName: orgName ?? "the organisation",
-          accounting: receiptAccounting, currency,
-          platformFeePercent: PLATFORM_FEE_PERCENT,
-          type: type ?? "one_time",
-          donationDate: new Date(donationDate).toLocaleDateString("en-GB", {
-            day: "numeric",
-            month: "long",
-            year: "numeric",
-          }),
-        }),
-      });
-      log.info({ recipient: recipientEmail, isGuest }, "Donation confirmation email sent via Brevo");
-    }
-  } catch (emailErr) {
-    log.error({ emailErr }, "Brevo donation email failed (non-fatal)");
-  }
-
-  await notifyDonationReceived({
-    orgId, orgName: orgName ?? "", campaignId, publicDonorName,
-    accounting: receiptAccounting, currency, type: type ?? "one_time",
-    stripeRef, donationDate,
-  }, serverToken, log);
 
   // 2. Auto-follow the org — only for authenticated users (guests have no account)
   if (userId) {
@@ -464,9 +434,21 @@ async function handlePaymentSuccess(
       // Same update-time precondition as amountRaised: concurrent successful
       // payments re-read the remaining cap, so allocated partner money cannot exceed it.
       const match = campaignMatch(campaignIntended, funding, matchedUsed);
+      let emailGoalPending = false;
+      try {
+        emailGoalPending = Number(current.goal) > 0 &&
+          campaignFundingTotal({ ...current, amountRaised: previousAmount }) < Number(current.goal) &&
+          campaignFundingTotal({ ...current, amountRaised: Math.round((previousAmount + campaignIntended) * 100) / 100,
+            partnerFundingMatchedGbp: Math.round((matchedUsed + match.matchedGbp) * 100) / 100 }) >= Number(current.goal);
+      } catch {
+        // Invalid display metadata is retained for email review, never allowed
+        // to interrupt donation accounting or payout eligibility.
+        emailGoalPending = true;
+      }
       updatedCampaigns[index] = {
         ...current,
         amountRaised: Math.round((previousAmount + campaignIntended) * 100) / 100,
+        ...(emailGoalPending ? { emailGoalPending: true } : {}),
         ...(funding?.type === "matching" ? {
           partnerFundingMatchedGbp: Math.round((matchedUsed + match.matchedGbp) * 100) / 100,
         } : {}),
@@ -522,6 +504,8 @@ async function handlePaymentSuccess(
     orgId, orgName: orgName ?? "", stripeRef, toOrgGbp, currency: "gbp",
     payoutMethod: metadata.payoutMethod, createdAt: donationDate,
   }, serverToken);
+  try { await donationEmailEvent(donationId); }
+  catch { log.error({ donationId }, "Donation email retained for recovery"); }
 }
 
 // ── Shop order handler ────────────────────────────────────────────────────────

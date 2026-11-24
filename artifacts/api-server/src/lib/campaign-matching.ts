@@ -7,6 +7,20 @@ export interface PartnerFunding {
   matchCap?: number;
 }
 
+/** Same progress value as the public campaign: commitments count now, whereas
+ * matching counts only partner money already allocated. Not a payout amount. */
+export function campaignFundingTotal(campaign: Record<string, unknown>): number {
+  const raised = campaign.amountRaised ?? 0;
+  if (typeof raised !== "number" || !Number.isFinite(raised) || raised < 0) throw new Error("Campaign progress is unavailable.");
+  const partner = partnerFundingFor(campaign);
+  let contribution = 0;
+  if (partner && partner.amount > 0) {
+    contribution = partner.type === "matching" ? Number(campaign.partnerFundingMatchedGbp ?? 0) : partner.amount;
+    if (!Number.isFinite(contribution) || contribution < 0) throw new Error("Partner progress is unavailable.");
+  }
+  return Math.round((raised + contribution) * 100) / 100;
+}
+
 /** Legacy data always means committed, including private unpublished revisions. */
 export function migrateCampaignPartnerFunding(campaign: Record<string, unknown>): Record<string, unknown> {
   const { matchFunding, matchFundingAnswer, editorDraft, ...rest } = campaign;

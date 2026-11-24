@@ -5,6 +5,140 @@
  * Root ProjX API — community giving platform
  * OpenAPI spec version: 0.1.0
  */
+export interface EmailJobStatus {
+  configured: boolean;
+  endpoint: string;
+  /** @nullable */
+  lastRunAt: string | null;
+  lastRunFailed: boolean;
+}
+
+export interface EmailJobKey {
+  key: string;
+}
+
+export interface EmailPreferenceAccess {
+  /** @maxLength 2048 */
+  accessKey?: string;
+}
+
+export type EmailPreferencesGiftFrequency =
+  (typeof EmailPreferencesGiftFrequency)[keyof typeof EmailPreferencesGiftFrequency];
+
+export const EmailPreferencesGiftFrequency = {
+  every_gift: "every_gift",
+  daily_summary: "daily_summary",
+} as const;
+
+export interface EmailPreferences {
+  welcome: boolean;
+  campaignGoals: boolean;
+  orgGifts: boolean;
+  giftFrequency: EmailPreferencesGiftFrequency;
+  isOrganisation: boolean;
+}
+
+export type EmailPreferenceInputGiftFrequency =
+  (typeof EmailPreferenceInputGiftFrequency)[keyof typeof EmailPreferenceInputGiftFrequency];
+
+export const EmailPreferenceInputGiftFrequency = {
+  every_gift: "every_gift",
+  daily_summary: "daily_summary",
+} as const;
+
+export interface EmailPreferenceInput {
+  /** @maxLength 2048 */
+  accessKey?: string;
+  welcome?: boolean;
+  campaignGoals?: boolean;
+  orgGifts?: boolean;
+  giftFrequency?: EmailPreferenceInputGiftFrequency;
+}
+
+export interface EmailConfigurationInput {
+  /** @maxLength 254 */
+  adminRecipient: string;
+}
+
+export interface EmailConfiguration {
+  adminRecipient: string;
+}
+
+export interface EmailHistoryItem {
+  id: string;
+  recipient: string;
+  templateId: string;
+  state: string;
+  createdAt: string;
+  updatedAt: string;
+  /** @nullable */
+  providerStatus?: number | null;
+  detail?: string;
+}
+
+export interface EmailWorkerResult {
+  processed: number;
+  failed: number;
+}
+
+export interface EmailTeamInvitationInput {
+  /** @maxLength 254 */
+  email: string;
+}
+
+export interface EmailInvitationAccess {
+  /**
+   * @minLength 40
+   * @maxLength 100
+   */
+  accessKey: string;
+}
+
+export interface EmailTeamInvitation {
+  id: string;
+  email: string;
+  status: string;
+  expiresAt: string;
+}
+
+export interface EmailActionResult {
+  ok: boolean;
+}
+
+export interface EmailApplication {
+  id: string;
+  orgName: string;
+  status: string;
+  infoRequest: string;
+  response: string;
+}
+
+export interface EmailApplicationResponseInput {
+  /**
+   * @minLength 1
+   * @maxLength 10000
+   */
+  response: string;
+}
+
+export interface EmailApplicationInformationInput {
+  /**
+   * @minLength 1
+   * @maxLength 5000
+   */
+  message: string;
+}
+
+export interface EmailApplicationDeclineInput {
+  /**
+   * @minLength 1
+   * @maxLength 5000
+   */
+  reason: string;
+  /** @pattern ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ */
+  reapplyDate: string;
+}
+
 export type ManageOwnPostInputStatus =
   (typeof ManageOwnPostInputStatus)[keyof typeof ManageOwnPostInputStatus];
 

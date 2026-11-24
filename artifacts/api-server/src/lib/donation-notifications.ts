@@ -1,4 +1,5 @@
 import { fsGet } from "./firebase-rest.js";
+import { ROOT_ADMIN_EMAIL } from "./email-identity.ts";
 import { brevoSendEmail, donationReceivedHtml } from "./brevo.js";
 import type { DonationAccounting } from "./donation-accounting.ts";
 import { PLATFORM_FEE_PERCENT } from "./fees.js";
@@ -47,7 +48,7 @@ export async function notifyDonationReceived(input: {
   const amount = `${input.currency === "usd" ? "US$" : "£"}${input.accounting.intendedGbp.toFixed(2)}`;
   const recipients = [
     { audience: "organisation", email: orgEmail },
-    { audience: "team", email: process.env.TEAM_EMAIL || "info@rootprojx.com" },
+    { audience: "team", email: ROOT_ADMIN_EMAIL },
   ];
   await Promise.all(recipients.map(async ({ audience, email }) => {
     if (!email) {

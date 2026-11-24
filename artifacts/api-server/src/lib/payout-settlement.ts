@@ -3,6 +3,7 @@ import { fsGet, fsPatch, fsQuery, fsTrySettlementLock, fsReleaseSettlementLock, 
 import { payoutDue, type Payout } from "./payouts.js";
 import { resolvePayoutMethod } from "./payout-setup.js";
 import { disburseToOrg } from "./wise.js";
+import { payoutEmailEvent } from "./email/payout-events.js";
 
 const total = (rows: Payout[]) => rows.reduce((sum, p) => sum + Math.round(p.amountGbp * 100), 0) / 100;
 export async function listPayouts(token: string, orgId?: string): Promise<Payout[]> {
@@ -90,11 +91,14 @@ async function settleOrg(orgId: string, token: string, manualReference?: string)
     const sentAt=new Date().toISOString();
     for (const payout of eligibility.eligible) {
       await fsPatch("payouts",payout._id,{
-        status:"sent",sentAt,sentBy:manualReference ? "manual" : "wise",reference,batchId,
+        status:"sent",sentAt,sentBy:manualReference ? "manual" : "wise",reference,batchId,emailPayoutPending:true,
         ...(transferId ? {wiseTransferId:transferId} : {}),
       },token);
     }
     finalized=true;
+    // Failure here cannot undo or repeat a confirmed transfer. Source-side
+    // markers and the email worker recover the notification independently.
+    try { await payoutEmailEvent(batchId); } catch { /* retained emailPayoutPending markers */ }
     return result("sent",{batchId,...(transferId ? {wiseTransferId:transferId} : {})});
   } finally {
     // Leave lock intact after uncertain persistence failure; never resend.

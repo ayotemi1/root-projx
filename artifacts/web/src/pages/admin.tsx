@@ -9,6 +9,8 @@ import { adminPayoutsKey } from "@/lib/payouts-api";
 import { AdminDeleteOrganisation } from "@/components/admin-delete-organisation";
 import { AdminBankDetailsReview } from "@/components/admin-bank-details-review";
 import { AdminTestEmail } from "@/components/admin-test-email";
+import { AdminEmailOps } from "@/components/admin-email-ops";
+import { useRequestEmailApplicationInformation, useDeclineEmailApplication } from "@workspace/api-client-react";
 import "@/components/dashboard/operations.css";
 import { uploadMedia } from "@/lib/api";
 
@@ -41,8 +43,12 @@ interface OrgApplication {
   email: string;
   sectors: string[];
   country?: string | null;
-  status: "pending" | "approved" | "declined";
+  status: "pending" | "waiting" | "approved" | "declined";
   createdAt: string;
+  infoRequest?: string | null;
+  response?: string | null;
+  reason?: string | null;
+  reapplyDate?: string | null;
   approvedAt?: string;
   declinedAt?: string;
 }
@@ -145,13 +151,14 @@ interface Donation {
   guestEmail?: string;
 }
 
-function StatusBadge({ status }: { status: "pending" | "approved" | "declined" }) {
+function StatusBadge({ status }: { status: "pending" | "waiting" | "approved" | "declined" }) {
   const map = {
+    waiting:  { bg: "#E0E7FF", color: "#3730A3", label: "Waiting for organisation" },
     pending:  { bg: "#FEF9C3", color: "#92400E", label: "Pending" },
     approved: { bg: "#DCFCE7", color: "#166534", label: "Approved" },
     declined: { bg: "#FEE2E2", color: "#991B1B", label: "Declined" },
   };
-  const s = map[status];
+  const s = map[status] ?? map.pending;
   return (
     <span className="ops-chip" style={{ background: s.bg, color: s.color }}>
       {s.label}
@@ -199,7 +206,32 @@ export default function AdminPage() {
 
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [error, setError] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "approved" | "declined">("pending");
+  const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "waiting" | "approved" | "declined">("pending");
+  const [panel, setPanel] = useState<{ id: string; kind: "info" | "decline" } | null>(null);
+  const [panelText, setPanelText] = useState("");
+  const [panelDate, setPanelDate] = useState("");
+  const [panelError, setPanelError] = useState("");
+  const adminReq = { headers: { "x-admin-token": typeof window !== "undefined" ? localStorage.getItem("admin_token") ?? "" : "" } };
+  const requestInfo = useRequestEmailApplicationInformation({ request: adminReq });
+  const declineApp = useDeclineEmailApplication({ request: adminReq });
+  function openPanel(id: string, kind: "info" | "decline") {
+    const d = new Date(), day = d.getDate();
+    d.setDate(1); d.setMonth(d.getMonth() + 3);
+    const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+    d.setDate(Math.min(day, lastDay));
+    setPanel({ id, kind }); setPanelText(""); setPanelError("");
+    setPanelDate(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`);
+  }
+  function submitPanel() {
+    if (!panel) return;
+    const opts = { onSuccess: () => { setPanel(null); fetchApplications(); }, onError: (e: unknown) => {
+      if ((e as { status?: number }).status === 401) { logout(); return; }
+      const d = (e as { data?: { error?: unknown } }).data; setPanelError(typeof d?.error === "string" ? d.error : "That didn\u2019t save. Refresh the application and try again.");
+    } };
+    setPanelError("");
+    if (panel.kind === "info") requestInfo.mutate({ id: panel.id, data: { message: panelText.trim() } }, opts);
+    else declineApp.mutate({ id: panel.id, data: { reason: panelText.trim(), reapplyDate: panelDate } }, opts);
+  }
   const [editingOrg, setEditingOrgState] = useState<Organisation | null>(null);
   const imageRequest = useRef(0);
   const setEditingOrg = (org: Organisation | null) => {
@@ -353,21 +385,6 @@ export default function AdminPage() {
     }
   }
 
-  async function handleDecline(id: string, orgName: string) {
-    if (!confirm(`Decline ${orgName}'s application? This will send them a decline email.`)) return;
-    setActionLoading(id + "_decline");
-    try {
-      const res = await fetch(`/api/admin/applications/${id}/decline`, { method: "POST", headers: { "x-admin-token": token } });
-      const data = await res.json() as { error?: string };
-      if (!res.ok) { alert(userErrorMessage({ message: data.error, status: res.status }, "decline this application")); return; }
-      await fetchApplications();
-    } catch {
-      alert("We couldn’t confirm the decision. Check your connection and refresh the application status before trying again.");
-    } finally {
-      setActionLoading(null);
-    }
-  }
-
   function openOrgEditor(org: Organisation) {
     setEditingOrg(org);
     setOrgForm(formFromOrganisation(org));
@@ -439,6 +456,7 @@ export default function AdminPage() {
             <section aria-label="Send test email" style={{ background: "#FBF8F2", borderTop: "1.5px solid #17100F", padding: "4px 0" }}>
               <AdminTestEmail token={token} onUnauthorized={logout} />
             </section>
+            <AdminEmailOps token={token} onUnauthorized={logout} />
           </>
         )}
         {error && <p style={{ color: RED, marginBottom: 16 }}>{error}</p>}
@@ -470,6 +488,7 @@ export default function AdminPage() {
                   style={{ minHeight: 32, padding: "0 10px", fontSize: 13 }} aria-label="Filter applications by status"
                 >
                   <option value="pending">Pending</option>
+                  <option value="waiting">Waiting for organisation</option>
                   <option value="approved">Approved</option>
                   <option value="declined">Declined</option>
                   <option value="all">All</option>
@@ -512,8 +531,26 @@ export default function AdminPage() {
                         ))}
                       </div>
                       <p style={{ margin: 0, fontSize: 12, color: "#bbb" }}>Applied {formatDate(app.createdAt)}</p>
+                      {app.infoRequest && <p style={{ margin: "8px 0 0", fontSize: 13, whiteSpace: "pre-wrap" }} data-testid={`text-app-info-request-${app._id}`}><b>Information requested:</b> {app.infoRequest}</p>}
+                      {app.status === "waiting" && !app.response && <p style={{ margin: "4px 0 0", fontSize: 12, color: "#3730A3" }}>Waiting for organisation to respond.</p>}
+                      {app.response && <p style={{ margin: "8px 0 0", fontSize: 13, whiteSpace: "pre-wrap", background: "#F4EFE6", padding: 8 }} data-testid={`text-app-response-${app._id}`}><b>Organisation response:</b> {app.response}</p>}
+                      {app.status === "declined" && app.reason && <p style={{ margin: "8px 0 0", fontSize: 13 }}><b>Reason:</b> {app.reason}{app.reapplyDate ? ` · Can reapply from ${formatDate(app.reapplyDate)}` : ""}</p>}
+                      {panel?.id === app._id && <div style={{ marginTop: 12, borderTop: "1px solid #DDD5CC", paddingTop: 10 }} data-testid={`panel-${panel.kind}-${app._id}`}>
+                        <label style={{ fontSize: 12, fontWeight: 700, display: "block" }}>{panel.kind === "info" ? "Message to the organisation" : "Reason (sent to the organisation)"}
+                          <textarea value={panelText} onChange={e => setPanelText(e.target.value)} rows={4} maxLength={5000} required style={{ width: "100%", marginTop: 4, padding: 8, border: "1px solid #17100F", fontWeight: 400 }} data-testid={`input-${panel.kind}-text`} /></label>
+                        {panel.kind === "decline" && <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginTop: 8 }}>Can reapply from
+                          <input type="date" value={panelDate} onChange={e => setPanelDate(e.target.value)} required style={{ display: "block", marginTop: 4, minHeight: 32, padding: "0 8px", border: "1px solid #17100F" }} data-testid="input-reapply-date" /></label>}
+                        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                          <button className="ops-btn ops-btn--sm" style={panel.kind === "decline" ? { color: RED, borderColor: RED } : undefined}
+                            disabled={!panelText.trim() || (panel.kind === "decline" && !/^\d{4}-\d{2}-\d{2}$/.test(panelDate)) || requestInfo.isPending || declineApp.isPending}
+                            onClick={submitPanel} data-testid={`button-submit-${panel.kind}`}>
+                            {requestInfo.isPending || declineApp.isPending ? "Sending…" : panel.kind === "info" ? "Send request" : "Decline application"}</button>
+                          <button className="ops-btn ops-btn--sm" onClick={() => setPanel(null)} data-testid="button-cancel-panel">Cancel</button>
+                        </div>
+                        {panelError && <p role="alert" style={{ color: RED, fontSize: 13 }}>{panelError}</p>}
+                      </div>}
                     </div>
-                    {app.status === "pending" && (
+                    {(app.status === "pending" || app.status === "waiting") && (
                       <div style={{ display: "flex", gap: 8, flexShrink: 0, flexWrap: "wrap" }}>
                         <button
                           onClick={() => handleApprove(app._id)}
@@ -524,12 +561,21 @@ export default function AdminPage() {
                           {actionLoading === app._id + "_approve" ? "Approving…" : "Approve"}
                         </button>
                         <button
-                          onClick={() => handleDecline(app._id, app.orgName)}
+                          onClick={() => openPanel(app._id, "info")}
+                          disabled={actionLoading !== null}
+                          className="ops-btn ops-btn--sm"
+                          data-testid={`button-request-info-${app._id}`}
+                        >
+                          <MoreHorizontal size={14} /> Request more info
+                        </button>
+                        <button
+                          onClick={() => openPanel(app._id, "decline")}
+                          data-testid={`button-decline-${app._id}`}
                           disabled={actionLoading !== null}
                           className="ops-btn ops-btn--sm" style={{ color: RED, borderColor: RED }}
                         >
                           <XCircle size={14} />
-                          {actionLoading === app._id + "_decline" ? "Declining…" : "Decline"}
+                          Decline
                         </button>
                       </div>
                     )}

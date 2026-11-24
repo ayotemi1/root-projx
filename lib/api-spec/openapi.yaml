@@ -25,6 +25,193 @@ tags:
   - name: profile
     description: User profile
 paths:
+  /admin/email/job-status:
+    get:
+      operationId: getEmailJobStatus
+      responses:
+        '200':
+          description: Protected scheduled-job setup and last run, without credentials
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EmailJobStatus'}
+  /admin/email/job-key:
+    post:
+      operationId: createEmailJobKey
+      responses:
+        '200':
+          description: New narrowly scoped scheduled-job key, returned once to the administrator
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EmailJobKey'}
+  /email/jobs/run:
+    post:
+      operationId: runScheduledEmailJob
+      parameters:
+        - {name: x-email-job-key, in: header, required: true, schema: {type: string}}
+      responses:
+        '200':
+          description: Durable external scheduler callback; does not initiate financial transactions
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EmailWorkerResult'}
+  /email/preferences/read:
+    post:
+      operationId: readEmailPreferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/EmailPreferenceAccess'}
+      responses:
+        '200':
+          description: Scoped recipient preferences, without disclosing their address
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EmailPreferences'}
+  /email/preferences:
+    patch:
+      operationId: saveEmailPreferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/EmailPreferenceInput'}
+      responses:
+        '200':
+          description: Saved email choices
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EmailPreferences'}
+  /admin/email/config:
+    get:
+      operationId: getEmailConfiguration
+      responses:
+        '200':
+          description: Private platform mail configuration
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EmailConfiguration'}
+    put:
+      operationId: saveEmailConfiguration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/EmailConfigurationInput'}
+      responses:
+        '200':
+          description: Saved platform mail configuration
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EmailConfiguration'}
+  /admin/email/history:
+    get:
+      operationId: getEmailHistory
+      responses:
+        '200':
+          description: Most recent 100 private outbox records; accepted is not delivered
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: '#/components/schemas/EmailHistoryItem'}}
+  /admin/email/process:
+    post:
+      operationId: processPendingEmails
+      responses:
+        '200':
+          description: Processed pending work without repeating money updates
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EmailWorkerResult'}
+  /email/team-invitations:
+    get:
+      operationId: listEmailTeamInvitations
+      responses:
+        '200':
+          description: Owner-only invitations for this organisation
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: '#/components/schemas/EmailTeamInvitation'}}
+    post:
+      operationId: inviteEmailTeamMember
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/EmailTeamInvitationInput'}
+      responses:
+        '201':
+          description: Seven-day invitation queued for the verified recipient identity
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EmailTeamInvitation'}
+  /email/team-invitations/accept:
+    post:
+      operationId: acceptEmailTeamInvitation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/EmailInvitationAccess'}
+      responses:
+        '200':
+          description: Invitation consumed and content-and-Inbox grant established
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EmailActionResult'}
+  /email/application:
+    get:
+      operationId: getOwnEmailApplication
+      responses:
+        '200':
+          description: Own latest organisation application and information request
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EmailApplication'}
+    patch:
+      operationId: respondToEmailApplication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/EmailApplicationResponseInput'}
+      responses:
+        '200':
+          description: Response saved and application returned for review
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EmailApplication'}
+  /admin/applications/{id}/request-info:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: string, pattern: '^[A-Za-z0-9_-]{1,180}$'}}
+    post:
+      operationId: requestEmailApplicationInformation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/EmailApplicationInformationInput'}
+      responses:
+        '200':
+          description: Application waiting for organisation and essential email queued
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EmailActionResult'}
+  /admin/applications/{id}/decline:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: string, pattern: '^[A-Za-z0-9_-]{1,180}$'}}
+    post:
+      operationId: declineEmailApplication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/EmailApplicationDeclineInput'}
+      responses:
+        '200':
+          description: Required decline reason and reapply date saved
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/EmailActionResult'}
   /post-management/archived:
     get:
       operationId: listArchivedPosts
@@ -1822,6 +2009,116 @@ components:
       bearerFormat: JWT
 
   schemas:
+    EmailJobStatus:
+      type: object
+      required: [configured, endpoint, lastRunAt, lastRunFailed]
+      properties:
+        configured: {type: boolean}
+        endpoint: {type: string}
+        lastRunAt: {type: [string, "null"]}
+        lastRunFailed: {type: boolean}
+    EmailJobKey:
+      type: object
+      required: [key]
+      properties:
+        key: {type: string}
+    EmailPreferenceAccess:
+      type: object
+      properties:
+        accessKey: {type: string, maxLength: 2048}
+    EmailPreferences:
+      type: object
+      required: [welcome, campaignGoals, orgGifts, giftFrequency, isOrganisation]
+      properties:
+        welcome: {type: boolean}
+        campaignGoals: {type: boolean}
+        orgGifts: {type: boolean}
+        giftFrequency: {type: string, enum: [every_gift, daily_summary]}
+        isOrganisation: {type: boolean}
+    EmailPreferenceInput:
+      type: object
+      properties:
+        accessKey: {type: string, maxLength: 2048}
+        welcome: {type: boolean}
+        campaignGoals: {type: boolean}
+        orgGifts: {type: boolean}
+        giftFrequency: {type: string, enum: [every_gift, daily_summary]}
+    EmailConfigurationInput:
+      type: object
+      required: [adminRecipient]
+      properties:
+        adminRecipient: {type: string, format: email, maxLength: 254}
+    EmailConfiguration:
+      type: object
+      required: [adminRecipient]
+      properties:
+        adminRecipient: {type: string, format: email}
+    EmailHistoryItem:
+      type: object
+      required: [id, recipient, templateId, state, createdAt, updatedAt]
+      properties:
+        id: {type: string}
+        recipient: {type: string}
+        templateId: {type: string}
+        state: {type: string}
+        createdAt: {type: string}
+        updatedAt: {type: string}
+        providerStatus: {type: [integer, "null"]}
+        detail: {type: string}
+    EmailWorkerResult:
+      type: object
+      required: [processed, failed]
+      properties:
+        processed: {type: integer}
+        failed: {type: integer}
+    EmailTeamInvitationInput:
+      type: object
+      required: [email]
+      properties:
+        email: {type: string, format: email, maxLength: 254}
+    EmailInvitationAccess:
+      type: object
+      required: [accessKey]
+      properties:
+        accessKey: {type: string, minLength: 40, maxLength: 100}
+    EmailTeamInvitation:
+      type: object
+      required: [id, email, status, expiresAt]
+      properties:
+        id: {type: string}
+        email: {type: string}
+        status: {type: string}
+        expiresAt: {type: string}
+    EmailActionResult:
+      type: object
+      required: [ok]
+      properties:
+        ok: {type: boolean}
+    EmailApplication:
+      type: object
+      required: [id, orgName, status, infoRequest, response]
+      properties:
+        id: {type: string}
+        orgName: {type: string}
+        status: {type: string}
+        infoRequest: {type: string}
+        response: {type: string}
+    EmailApplicationResponseInput:
+      type: object
+      required: [response]
+      properties:
+        response: {type: string, minLength: 1, maxLength: 10000}
+    EmailApplicationInformationInput:
+      type: object
+      required: [message]
+      properties:
+        message: {type: string, minLength: 1, maxLength: 5000}
+    EmailApplicationDeclineInput:
+      type: object
+      required: [reason, reapplyDate]
+      properties:
+        reason: {type: string, minLength: 1, maxLength: 5000}
+        reapplyDate: {type: string, pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'}
     ManageOwnPostInput:
       type: object
       additionalProperties: false

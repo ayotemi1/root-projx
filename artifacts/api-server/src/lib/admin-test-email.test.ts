@@ -68,10 +68,10 @@ test("test email requires admin auth and cannot target an arbitrary recipient", 
     assert.equal(result.status, 200);
     assert.equal(result.body.accepted, true);
     assert.equal(result.body.environment, "production");
-    assert.equal(result.body.recipient, "team@example.test");
+    assert.equal(result.body.recipient, "info@rootprojx.com");
     assert.ok(Date.parse(result.body.sentAt));
     assert.equal(f.calls.length, 1);
-    assert.deepEqual(f.calls[0].to, [{ email: "team@example.test" }]);
+    assert.deepEqual(f.calls[0].to, [{ email: "info@rootprojx.com" }]);
     assert.equal(f.calls[0].subject, "Root ProjX — email delivery test");
     assert.match(f.calls[0].htmlContent, /production server/);
     assert.doesNotMatch(f.calls[0].htmlContent, /untrusted/);

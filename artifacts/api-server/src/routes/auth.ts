@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { ROOT_ADMIN_EMAIL } from "../lib/email-identity.ts";
 import { PASSWORD_RESET_MESSAGE, passwordResetEmail } from "../lib/password-reset.js";
 import { signInDiagnosticCode } from "../lib/sign-in-diagnostics.js";
 import type { Request, Response, NextFunction } from "express";
@@ -15,8 +16,9 @@ import {
 import { requireAuth } from "../lib/auth.js";
 import { setMediaSession } from "../lib/supporter-posts.js";
 import { brevoAddContact, brevoSendEmail, welcomeEmailHtml, internalNotificationHtml } from "../lib/brevo.js";
+import { welcomeEmailEvent } from "../lib/email/account-events.js";
 
-const TEAM_EMAIL = process.env.TEAM_EMAIL ?? "info@rootprojx.com";
+const TEAM_EMAIL = ROOT_ADMIN_EMAIL;
 
 const router = Router();
 
@@ -72,10 +74,12 @@ router.post("/auth/forgot-password", passwordResetRateLimit, async (req, res) =>
     return;
   }
   try {
+    // Firebase Auth owns both reset links and delivery through its configured
+    // SMTP provider. No service-account key or app-managed template is needed.
     await firebaseSendPasswordResetEmail(email);
   } catch (err) {
     const code = (err as { firebaseCode?: string }).firebaseCode;
-    if (code !== "EMAIL_NOT_FOUND") {
+    if (code !== "EMAIL_NOT_FOUND" && (err as { code?: string }).code !== "auth/user-not-found") {
       // Do not put email addresses, passwords, tokens or provider payloads in logs.
       req.log?.error("Firebase password reset could not be requested");
       res.status(503).json({ error: "We couldn't send a reset link right now. Please try again later." });
@@ -180,6 +184,7 @@ router.post("/auth/register", authRateLimit, async (req, res) => {
       accountType,
       avatarInitials: initials,
       createdAt: now,
+      ...(accountType === "supporter" ? { emailWelcomePending: true } : {}),
     };
     await fsPatch("users", uid, userDoc, initialToken);
 
@@ -216,11 +221,7 @@ router.post("/auth/register", authRateLimit, async (req, res) => {
         lastName,
         listIds: newsletterListId,
       }),
-      brevoSendEmail({
-        to: [{ email: email.toLowerCase(), name }],
-        subject: "Welcome to Root ProjX",
-        htmlContent: welcomeEmailHtml(name),
-      }),
+      welcomeEmailEvent(uid, email.toLowerCase(), name),
       // Internal notification to team for tracking
       brevoSendEmail({
         to: [{ email: TEAM_EMAIL, name: "Root ProjX Team" }],
@@ -233,7 +234,7 @@ router.post("/auth/register", authRateLimit, async (req, res) => {
       }),
     ]).catch((err) => {
       // Log but never throw — registration already succeeded
-      console.error("[Brevo] Welcome email/contact error:", err);
+      req.log.warn("Welcome email or contact operation could not be completed");
     });
 
     res.status(201).json({

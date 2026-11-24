@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { createRequire } from "node:module";
 import test from "node:test";
 import { build } from "esbuild";
+import { emailEventsStubPlugin } from "../test-support/email-stubs.ts";
 import { profilePatch, PROFILE_SECTORS } from "./organisation-profile.ts";
 import { suggest } from "./campaign-assist.ts";
 import { drumsFunded, DRUM_LIFE_ORG_ID, DRUM_LIFE_CAMPAIGN_ID } from "./drum-experience.ts";
@@ -150,7 +151,7 @@ async function fixture(assistSetting = "true") {
       export {state} from "profile-test:state";`,
       resolveDir: new URL("../", import.meta.url).pathname, loader: "ts" },
     bundle: true, write: false, platform: "node", format: "cjs", packages: "external",
-    plugins: [{ name: "synthetic-profile-services", setup(b) {
+    plugins: [emailEventsStubPlugin(), { name: "synthetic-profile-services", setup(b) {
       b.onResolve({ filter: /^@workspace\/api-zod$/ }, () => ({ path: new URL("../../../../lib/api-zod/src/generated/api.ts", import.meta.url).pathname }));
       b.onResolve({ filter: /^zod$/ }, () => ({ path: new URL("../../../../lib/api-zod/node_modules/zod/index.cjs", import.meta.url).pathname }));
       b.onResolve({ filter: /^profile-test:state$|\/(firebase-rest|objectStorage|campaign-assist)\.js$/ },

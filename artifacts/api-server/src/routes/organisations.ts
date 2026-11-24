@@ -10,10 +10,11 @@ import { fsGet, fsPatch, fsList, fsQuery, fsCreate, fsMutateCampaigns, getServer
 import { requireApprovedOrganisation, requireAuth } from "../lib/auth.js";
 import { isCampaignPublished } from "../lib/campaign-publication.js";
 import { campaignSharePath } from "../lib/campaign-links.js";
+import { campaignEmailEvent } from "../lib/email/campaign-events.js";
 export { campaignSharePath } from "../lib/campaign-links.js";
 import { objectStorageClient } from "../lib/objectStorage.js";
 import { withoutPrivatePayoutSetup } from "../lib/payout-setup.js";
-import { migrateCampaignPartnerFunding, partnerFundingFor } from "../lib/campaign-matching.js";
+import { migrateCampaignPartnerFunding, partnerFundingFor, campaignFundingTotal } from "../lib/campaign-matching.js";
 
 const router = Router();
 const PUBLIC_CAMPAIGN_ID_PATTERN = /^cp_[a-f0-9]{24}$/;
@@ -634,10 +635,28 @@ router.patch("/organisations/:id/campaigns/:campId", requireAuth, requireApprove
           Object.assign(merged, campaignSharePath({ ...orgWithIdentity, ...latest }, merged));
         }
       }
+      if (body.enabled === true && !isCampaignPublished(current) && isCampaignPublished(merged)) {
+        merged.emailPublicationPending = true;
+      }
+      try {
+        if (merged.enabled === true && isCampaignPublished(merged) && Number(merged.goal) > 0 &&
+            campaignFundingTotal(merged) >= Number(merged.goal) &&
+            (!isCampaignPublished(current) || current.enabled !== true || !(Number(current.goal) > 0 && campaignFundingTotal(current) >= Number(current.goal)))) {
+          merged.emailGoalPending = true;
+        }
+      } catch { merged.emailGoalPending = true; }
       campaigns[idx] = merged;
       return { campaigns, result: campaignForEditor(merged) };
     });
     req.log.info({ orgId, campId }, "Campaign updated");
+    if (result.emailGoalPending === true) {
+      try { await campaignEmailEvent(String(orgId), String(campId), "goal"); }
+      catch { req.log.warn("Campaign goal email remains pending for recovery."); }
+    }
+    if (result.emailPublicationPending === true) {
+      try { await campaignEmailEvent(String(orgId), String(campId), "live"); }
+      catch { req.log.warn({ orgId, campId }, "Campaign publication email retained for recovery"); }
+    }
     res.json(result);
   } catch (err) {
     if (err instanceof CampaignInputError) {
