@@ -79,11 +79,9 @@ or falsely marked as included.
 ### Provider and storage setup already verified
 
 The owner manually published the five API-only collection rules and previously
-authorised Brevo access; the original sample batch passed. The sender policy
-was subsequently corrected to `info@rootprojx.com`. Brevo rejected the next
-sender-management preflight because the current outgoing address was not
-authorised. Verify the info sender is active before removing the old sender;
-neither that verification nor removal has been completed yet.
+authorised Brevo access; the original sample batch passed. The owner subsequently
+confirmed verifying `info@rootprojx.com` and deleting the hello sender directly
+in Brevo. Do not repeat sender management.
 The published site serves the exact original PNG bytes. Production egress may
 differ from Preview, so check provider access after publication as well.
 
@@ -132,9 +130,22 @@ The API build passed. The full approval suite ran 467 checks: 456 passed and
 the same 11 pre-existing checks failed. Details and user-facing implications
 are in `docs/existing-test-failures.md`.
 
-After the owner publishes this revision, send only the two explicitly requested
+The owner republished. Production config, job-status and history endpoints now
+return HTTP 200; the admin recipient is info@rootprojx.com. The scheduler status
+reports no configured key and no recorded scheduled runs.
+
+The two explicitly requested template proofs (03 and 07) were prepared with
+clearly labelled test data and processed through the production API. Brevo
+rejected both with HTTP 401. Neither was accepted. No payment or application
+was created. Inspect Brevo's production authentication/IP rejection before
+retrying; do not infer that verifying a sender authorises the production server.
+
+When retrying, reuse the existing stable recipient-bound proof records. Do not
+enqueue another copy with a new proof key.
+Send only the two explicitly requested
 template proofs (03 and 07) through the production API's delivery processor.
 Use stable recipient-bound proof keys, clearly labelled test data, and no real
 charge or application creation. Do not substitute a Preview send for a live
 send, resend the whole sample pack, or claim inbox delivery from provider
-acceptance alone. The two live proofs and schedule activation are not yet done.
+acceptance alone. Successful live proof delivery and schedule activation remain
+pending; a manual production processing pass is not an active schedule.
