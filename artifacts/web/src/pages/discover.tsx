@@ -17,6 +17,8 @@ import { VisitorHeading } from "@/components/visitor/VisitorHeading";
 import { VisitorFilterBar } from "@/components/visitor/VisitorFilterBar";
 import { GuestJoinPrompt } from "@/components/guest-feed/GuestJoinPrompt";
 import { DonationAmountDialog } from "@/components/donation-amount-dialog";
+import { filterDiscoverOrgs } from "@/lib/discover-supporter";
+import { CampaignsGrid, DISCOVER_INTRO, DiscoverTabPanel, DiscoverTabs, LiveCampaignsRow, useDiscoverCampaigns, useDiscoverTab } from "@/components/discover/DiscoverCampaigns";
 
 const CATEGORIES = [
   "All Causes",
@@ -232,6 +234,9 @@ function LegacyDiscoverPage() {
   const [locationFilter, setLocationFilter] = useState("All");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [gate, setGate] = useState<string | null>(null);
+  const [tab, setTab] = useDiscoverTab();
+  const campaigns = useDiscoverCampaigns({ search, country: locationFilter, cause: category });
+  const clearAll = () => { setSearch(""); setLocationFilter("All"); setCategory("All Causes"); };
   const { isAuthenticated, token, user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -260,9 +265,8 @@ function LegacyDiscoverPage() {
   });
 
   const { data: orgs = [], isLoading, isError, refetch } = useQuery({
-    queryKey: ["organisations", category],
-    queryFn: () =>
-      api.getOrganisations(category !== "All Causes" ? { category } : undefined),
+    queryKey: ["organisations", "discover-all"],
+    queryFn: () => api.getOrganisations(),
     staleTime: 0,
     refetchOnMount: "always",
   });
@@ -271,14 +275,9 @@ function LegacyDiscoverPage() {
     (o) => typeof o.name === "string" && o.name.trim().length > 0,
   );
 
-  const filtered = publicOrgs.filter((o) => {
-    const matchesSearch =
-      (o.name ?? "").toLowerCase().includes(search.toLowerCase()) ||
-      (o.city ?? "").toLowerCase().includes(search.toLowerCase()) ||
-      (o.country ?? "").toLowerCase().includes(search.toLowerCase());
-    const matchesLocation =
-      locationFilter === "All" || o.country === locationFilter;
-    return matchesSearch && matchesLocation;
+  const filtered = filterDiscoverOrgs(publicOrgs, {
+    search, country: locationFilter === "All" ? "" : locationFilter,
+    cause: category === "All Causes" ? "" : category,
   });
 
   const selectCls = "w-full bg-transparent text-[16px] font-bold text-[#17100F] appearance-none pr-6 cursor-pointer focus:outline-none";
@@ -290,9 +289,9 @@ function LegacyDiscoverPage() {
   return (
     <div className={isAuthenticated ? "rp-page-shell py-10 sm:py-14" : "max-w-[1240px] mx-auto px-5 md:px-8 py-12 md:py-16"}>
       {!isAuthenticated ? (<>
-      <VisitorHeading label="Discover" title="Discover organisations" intro="Find and support verified grassroots organisations in Jamaica, the UK and beyond." />
-      <div className="mb-10">
-        <VisitorFilterBar search={search} onSearch={setSearch} placeholder="Search by name or location"
+      <VisitorHeading label="Discover" title="Discover" intro={DISCOVER_INTRO} />
+      <div className="mb-6">
+        <VisitorFilterBar search={search} onSearch={setSearch} placeholder="Search organisations and campaigns"
           country={locationFilter} onCountry={setLocationFilter} countries={DISCOVER_COUNTRIES}
           category={category} onCategory={setCategory} categoryLabel="Cause"
           categories={CATEGORIES.map((c) => ({ value: c, label: c === "All Causes" ? "All causes" : c }))}
@@ -300,18 +299,16 @@ function LegacyDiscoverPage() {
       </div>
       <GuestJoinPrompt action={gate} onClose={() => setGate(null)} />
       </>) : (<>
-      <h1 className="rp-display rp-rise text-[clamp(38px,11vw,54px)] sm:text-[96px] lg:text-[124px] text-[#17100F]">Discover<br />organisations</h1>
-      <p className="rp-label mt-6 sm:mt-8 text-[#17100F]/85">
-        Find and support verified grassroots organisations in Jamaica, the UK, and beyond.
-      </p>
+      <h1 className="rp-display rp-rise text-[clamp(38px,11vw,54px)] sm:text-[96px] lg:text-[124px] text-[#17100F]" data-testid="heading-discover">Discover</h1>
+      <p className="rp-label mt-6 sm:mt-8 text-[#17100F]/85">{DISCOVER_INTRO}</p>
 
-      <div className="mt-8 sm:mt-10 grid grid-cols-2 lg:grid-cols-[1.9fr_1fr_1fr_auto_auto] gap-2 mb-10 sm:mb-12">
+      <div className="mt-8 sm:mt-10 grid grid-cols-2 lg:grid-cols-[1.9fr_1fr_1fr_auto_auto] gap-2 mb-6">
         <label className="col-span-2 lg:col-span-1 h-14 flex items-center gap-3 px-4 border border-[#17100F] bg-[#FBF8F2] focus-within:outline focus-within:outline-2 focus-within:outline-[#F3BF2C]">
           <Search className="w-4 h-4 text-[#17100F] shrink-0" />
-          <span className="sr-only">Search organisations</span>
+          <span className="sr-only">Search organisations and campaigns</span>
           <input
             type="search"
-            placeholder="Search by name or location"
+            placeholder="Search organisations and campaigns"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="min-w-0 flex-1 bg-transparent text-[16px] placeholder:text-[#17100F]/55 focus:outline-none"
@@ -341,6 +338,10 @@ function LegacyDiscoverPage() {
       </div>
       </>)}
 
+      <DiscoverTabs tab={tab} onTab={setTab} />
+      <DiscoverTabPanel tab={tab}>
+      {tab === "all" && <LiveCampaignsRow state={campaigns} onSeeAll={() => setTab("campaigns")} onClear={clearAll} />}
+      {tab === "campaigns" ? <CampaignsGrid state={campaigns} onClear={clearAll} /> : (<>
       {!isAuthenticated && <h2 className="rp-display text-[36px] md:text-[48px] text-[#17100F] mb-8" data-testid="heading-all-organisations">All organisations</h2>}
       {viewMode === "map" ? (
         <div className="border border-[#17100F]"><OrgMap orgs={filtered} country={locationFilter} /></div>
@@ -357,7 +358,7 @@ function LegacyDiscoverPage() {
         <div className="border border-dashed border-[#17100F]/40 py-16 px-6 text-center">
           <p className="rp-display text-[32px]">No organisations match</p>
           <p className="text-sm text-[#17100F]/70 mt-2">Try a different name, country or cause.</p>
-          <button type="button" className="rp-btn rp-btn-ghost mt-5" onClick={() => { setSearch(""); setLocationFilter("All"); setCategory("All Causes"); }} data-testid="button-clear-filters">
+          <button type="button" className="rp-btn rp-btn-ghost mt-5" onClick={clearAll} data-testid="button-clear-filters">
             Clear filters
           </button>
         </div>
@@ -366,6 +367,8 @@ function LegacyDiscoverPage() {
           {filtered.map((org) => <OrgCard key={org._id} org={org} follow={followFor(org._id)} />)}
         </div>
       )}
+      </>)}
+      </DiscoverTabPanel>
     </div>
   );
 }

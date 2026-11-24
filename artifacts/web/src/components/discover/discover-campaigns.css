@@ -1,0 +1,35 @@
+.dcx-tabs { display: flex; gap: 4px; margin-top: 4px; margin-bottom: 32px; border-bottom: 2px solid var(--rp-ink); overflow-x: auto; }
+.dcx-tabs button { font-family: var(--app-font-mono); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: rgba(23,16,15,.7);
+  padding: 12px 14px; border-bottom: 3px solid transparent; margin-bottom: -2px; background: none; cursor: pointer; white-space: nowrap; }
+.dcx-tabs button:hover { color: var(--rp-ink); }
+.dcx-tabs button[aria-selected="true"] { color: var(--rp-ink); border-bottom-color: var(--rp-red); font-weight: 600; }
+.dcx-tabs button:focus-visible, .dcx-sorts button:focus-visible, .dcx-seeall:focus-visible { outline: 3px solid var(--rp-ink); outline-offset: 2px; box-shadow: 0 0 0 5px var(--rp-yellow); }
+.dcx-section { margin-bottom: 56px; }
+.dcx-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+.dcx-head-wrap { flex-wrap: wrap; }
+.dcx-h2 { font-family: var(--font-display); font-weight: 900; text-transform: uppercase; line-height: .92; font-size: clamp(30px, 4vw, 40px); color: var(--rp-ink); }
+.dcx-seeall { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 15px; color: var(--rp-ink); background: linear-gradient(var(--rp-yellow), var(--rp-yellow)) left bottom / 100% 3px no-repeat; padding-bottom: 3px; cursor: pointer; white-space: nowrap; }
+.dcx-sorts { display: flex; gap: 6px; flex-wrap: wrap; }
+.dcx-sorts button { min-height: 36px; padding: 0 12px; border: 1px solid var(--rp-ink); background: #FBF8F2; color: var(--rp-ink); font-weight: 700; font-size: 13px; cursor: pointer; }
+.dcx-sorts button[aria-pressed="true"] { background: var(--rp-ink); color: var(--rp-cream); }
+.dcx-row { display: grid; grid-auto-flow: column; grid-auto-columns: 78%; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 8px; overscroll-behavior-x: contain; }
+.dcx-row > * { scroll-snap-align: start; }
+.dcx-grid { display: grid; grid-template-columns: 1fr; gap: 16px; }
+.dcx-skel { border: 2px solid rgba(23,16,15,.15); background: #FBF8F2; display: flex; flex-direction: column; gap: 10px; padding-bottom: 14px; }
+.dcx-skel span { display: block; background: rgba(23,16,15,.08); margin: 0 14px; height: 14px; animation: dcx-pulse 1.4s ease-in-out infinite; }
+.dcx-skel span:first-child { margin: 0; aspect-ratio: 1/1; height: auto; }
+.dcx-skel span:nth-child(2) { height: 26px; width: 70%; }
+.dcx-skel span:last-child { height: 44px; }
+@keyframes dcx-pulse { 50% { opacity: .5; } }
+.dcx-msg { border: 1px dashed rgba(23,16,15,.4); padding: 40px 24px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px; font-size: 14px; color: rgba(23,16,15,.75); }
+.dcx-msg .rp-btn { margin-top: 8px; }
+.dcx-msg-h { font-family: var(--font-display); font-weight: 900; text-transform: uppercase; font-size: 28px; line-height: .95; color: var(--rp-ink); font-stretch: 72%; }
+@media (min-width: 640px) { .dcx-row { grid-auto-columns: calc((100% - 32px) / 2.4); } .dcx-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+@media (min-width: 1024px) { .dcx-row { grid-auto-columns: calc((100% - 48px) / 4); } .dcx-grid { grid-template-columns: repeat(4, minmax(0,1fr)); } }
+@media (prefers-reduced-motion: reduce) { .dcx-skel span { animation: none; } }
+/* The visitor footer's implicit grid track otherwise uses its newsletter's
+   min-content width. Constrain it on Discover without changing other pages. */
+@media (max-width: 639px) {
+  body:has(.dcx-tabs) [data-testid="footer-visitor"] > div:first-child { grid-template-columns: minmax(0, 1fr); }
+  body:has(.dcx-tabs) [data-testid="footer-visitor"] > div:first-child > div { min-width: 0; }
+}

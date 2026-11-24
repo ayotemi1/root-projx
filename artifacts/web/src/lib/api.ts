@@ -1066,3 +1066,20 @@ export const getOrgNotifications = (orgId: string, token: string) =>
 
 export const markOrgNotificationsRead = (orgId: string, token: string) =>
   req<{ updated: number }>(`/organisations/${orgId}/notifications/read-all`, { method: "PATCH" }, token);
+
+/** Live (published, not ended, public) campaigns with their owning organisation's public identity. */
+export interface DiscoverCampaignOrganisation {
+  _id: string;
+  name: string;
+  logo?: string | null;
+  country?: string | null;
+  city?: string | null;
+  category?: string | null;
+  sectors?: string[] | null;
+  verified?: boolean;
+}
+export interface DiscoverCampaignItem {
+  campaign: Campaign;
+  organisation: DiscoverCampaignOrganisation;
+}
+export const getDiscoverCampaigns = () => req<DiscoverCampaignItem[]>("/discover/campaigns");

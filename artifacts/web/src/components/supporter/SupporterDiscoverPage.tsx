@@ -15,6 +15,7 @@ import {
 import { OrganisationLogo } from "@/components/organisation-logo";
 import { useSupporterFollowing } from "./use-supporter-following";
 import { SupporterOrgMap, type MappedOrg } from "./SupporterOrgMap";
+import { CampaignsGrid, DISCOVER_INTRO, DiscoverTabPanel, DiscoverTabs, LiveCampaignsRow, useDiscoverCampaigns, useDiscoverTab } from "@/components/discover/DiscoverCampaigns";
 import "./supporter-discover.css";
 
 type FollowState = { known: boolean; following: boolean };
@@ -118,6 +119,8 @@ export default function SupporterDiscoverPage() {
   const [view, setView] = useState<"grid" | "map">("grid");
   const set = (patch: Partial<DiscoverFilters>) => setFilters(f => ({ ...f, ...patch }));
   const clear = () => setFilters(EMPTY);
+  const [tab, setTab] = useDiscoverTab();
+  const campaigns = useDiscoverCampaigns(filters);
 
   const orgsQ = useQuery({ queryKey: ["organisations", "discover-all"], queryFn: () => api.getOrganisations(), staleTime: 0, refetchOnMount: "always" });
   const follows = useSupporterFollowing();
@@ -178,14 +181,14 @@ export default function SupporterDiscoverPage() {
 
   return (
     <section className="rpd-page rp-rise" data-testid="page-supporter-discover">
-      <h1 className="rpd-title">Discover<br />organisations</h1>
-      <p className="rpd-lede">Find and support verified grassroots organisations in Jamaica, the UK, and beyond.</p>
+      <h1 className="rpd-title" data-testid="heading-discover">Discover</h1>
+      <p className="rpd-lede">{DISCOVER_INTRO}</p>
 
       <div className="rpd-filters" role="search">
         <label className="rpd-field rpd-search">
           <Search size={16} aria-hidden />
-          <span className="sr-only">Search by name or location</span>
-          <input type="search" placeholder="Search by name or location" value={filters.search}
+          <span className="sr-only">Search organisations and campaigns</span>
+          <input type="search" placeholder="Search organisations and campaigns" value={filters.search}
             onChange={e => set({ search: e.target.value })} data-testid="input-search" />
         </label>
         <label className="rpd-field rpd-select">
@@ -210,7 +213,11 @@ export default function SupporterDiscoverPage() {
         </div>
       </div>
 
-      {orgsQ.isLoading ? (
+      <div className="rpd-tabs-gap" />
+      <DiscoverTabs tab={tab} onTab={setTab} />
+      <DiscoverTabPanel tab={tab}>
+      {tab === "all" && <LiveCampaignsRow state={campaigns} onSeeAll={() => setTab("campaigns")} onClear={clear} />}
+      {tab === "campaigns" ? <CampaignsGrid state={campaigns} onClear={clear} /> : orgsQ.isLoading ? (
         <SkeletonGrid n={6} />
       ) : orgsQ.isError ? (
         <div className="rpd-error" role="alert" data-testid="error-orgs">
@@ -269,6 +276,7 @@ export default function SupporterDiscoverPage() {
           </section>
         </>
       )}
+      </DiscoverTabPanel>
     </section>
   );
 }

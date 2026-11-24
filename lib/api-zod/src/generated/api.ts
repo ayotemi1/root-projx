@@ -4986,6 +4986,63 @@ export const GetMeResponse = zod.object({
 });
 
 /**
+ * @summary List safe public summaries of live fundraising campaigns
+ */
+export const ListDiscoverCampaignsResponseItem = zod.object({
+  organisation: zod.object({
+    _id: zod.string(),
+    name: zod.string(),
+    country: zod.string(),
+    city: zod.string(),
+    category: zod.string(),
+    sectors: zod.array(zod.string()),
+    categories: zod.array(zod.string()).optional(),
+    verified: zod.boolean(),
+    logo: zod.string().nullable(),
+  }),
+  campaign: zod.object({
+    _id: zod.string(),
+    publicId: zod.string().optional(),
+    name: zod.string(),
+    description: zod.string(),
+    imageUrl: zod.string().nullable(),
+    amountRaised: zod.number(),
+    goal: zod.number(),
+    status: zod.enum(["active"]),
+    type: zod.enum(["fundraising"]),
+    currency: zod.enum(["gbp", "usd"]),
+    enabled: zod.boolean(),
+    deadline: zod.string().nullable(),
+    createdAt: zod.string(),
+    updatedAt: zod.string(),
+    sharePath: zod.string(),
+    volunteersNeeded: zod.number(),
+    phases: zod.array(zod.object({}).passthrough()),
+    theme: zod
+      .object({
+        primaryColor: zod.string().optional(),
+        accentColor: zod.string().optional(),
+        backgroundColor: zod.string().optional(),
+        textColor: zod.string().optional(),
+      })
+      .optional(),
+    partnerFunding: zod
+      .object({
+        amount: zod.number().optional(),
+        funderName: zod.string().optional(),
+        type: zod.enum(["committed", "matching"]).optional(),
+        matchRatio: zod.number().optional(),
+        matchCap: zod.number().optional(),
+      })
+      .nullish(),
+    partnerFundingMatchedGbp: zod.number().optional(),
+  }),
+});
+export const ListDiscoverCampaignsResponse = zod.array(
+  ListDiscoverCampaignsResponseItem,
+);
+
+/**
  * @summary List organisations
  */
 export const ListOrganisationsQueryParams = zod.object({

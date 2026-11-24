@@ -2,6 +2,7 @@ import { Link } from "wouter";
 import type { Campaign } from "@/lib/api";
 import { CampaignDonateButton } from "@/components/campaign-donate-button";
 import { formatWhole } from "@/lib/currency";
+import { campaignFundedPercent, campaignEndsLabel, campaignFundingTotal } from "@/lib/discover-campaigns";
 import "./discover-campaign-card.css";
 
 export interface DiscoverCampaignCardOrg {
@@ -26,14 +27,14 @@ export function DiscoverCampaignCard({ campaign, org, onDonate }: {
   onDonate: (c: Campaign) => void;
 }) {
   const href = campaignCardHref(campaign);
-  const pct = campaign.goal > 0 ? Math.min(100, ((campaign.amountRaised ?? 0) / campaign.goal) * 100) : 0;
-  const ends = campaign.deadline
-    ? `Ends ${new Date(campaign.deadline).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}`
-    : null;
+  const pct = campaignFundedPercent(campaign);
+  const ends = campaignEndsLabel(campaign.deadline);
   const done = campaign.status === "completed";
   const image = campaign.imageUrl
     ? <img src={campaign.imageUrl} alt="" loading="lazy" />
-    : <span className="dcc-fallback" aria-hidden>{initialsOf(campaign.name || org.name)}</span>;
+    : <span className="dcc-fallback" aria-hidden style={campaign.theme?.primaryColor ? { background: campaign.theme.primaryColor } : undefined}>
+        <span>{campaign.name || org.name}</span>
+      </span>;
   const orgInner = (
     <>
       <span className="dcc-logo">{org.logo ? <img src={org.logo} alt="" /> : <span aria-hidden>{initialsOf(org.name)}</span>}</span>
@@ -56,7 +57,7 @@ export function DiscoverCampaignCard({ campaign, org, onDonate }: {
           ? <Link href={href} className="dcc-name" data-testid={`link-campaign-${campaign._id}`}>{campaign.name}</Link>
           : <span className="dcc-name">{campaign.name}</span>}
         {org.href
-          ? <Link href={org.href} className="dcc-org">{orgInner}</Link>
+          ? <Link href={org.href} className="dcc-org" data-testid={`link-campaign-org-${campaign._id}`}>{orgInner}</Link>
           : <span className="dcc-org">{orgInner}</span>}
         {campaign.goal > 0 && (
           <>
@@ -64,9 +65,9 @@ export function DiscoverCampaignCard({ campaign, org, onDonate }: {
               <div style={{ transform: `scaleX(${pct / 100})` }} />
             </div>
             <p className="dcc-meta" data-testid={`text-campaign-progress-${campaign._id}`}>
-              <b>{formatWhole(campaign.amountRaised ?? 0, campaign.currency)}</b> of {formatWhole(campaign.goal, campaign.currency)}
-              {done ? " · Completed" : ends ? ` · ${ends}` : ""}
+              <b>{formatWhole(campaignFundingTotal(campaign), campaign.currency)}</b> of {formatWhole(campaign.goal, campaign.currency)}
             </p>
+            {(done || ends) && <p className="dcc-ends" data-testid={`text-campaign-ends-${campaign._id}`}>{done ? "Completed" : ends}</p>}
           </>
         )}
         {campaign.status === "active" && (

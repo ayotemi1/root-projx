@@ -68,3 +68,6 @@
   .rpd-search, .rpd-toggle { grid-column: auto; }
 }
 @media (prefers-reduced-motion: reduce) { .rpd-skel span { animation: none; } .rpd-card { transition: none; } .rpd-card:hover { transform: none; } }
+
+.rpd-tabs-gap { height: 24px; }
+.rpd-page .dcx-section:first-child { margin-top: 0; }

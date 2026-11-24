@@ -36,6 +36,7 @@ import type {
   CreateDonationRequest,
   CreateOrganisationRequest,
   CreateUpdateRequest,
+  DiscoverCampaignEntry,
   DonationCheckoutInput,
   DonationCheckoutResult,
   DonationIntentResponse,
@@ -6505,6 +6506,81 @@ export function useGetMe<
   request?: SecondParameter<typeof customFetch>;
 }): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
   const queryOptions = getGetMeQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary List safe public summaries of live fundraising campaigns
+ */
+export const getListDiscoverCampaignsUrl = () => {
+  return `/api/discover/campaigns`;
+};
+
+export const listDiscoverCampaigns = async (
+  options?: RequestInit,
+): Promise<DiscoverCampaignEntry[]> => {
+  return customFetch<DiscoverCampaignEntry[]>(getListDiscoverCampaignsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListDiscoverCampaignsQueryKey = () => {
+  return [`/api/discover/campaigns`] as const;
+};
+
+export const getListDiscoverCampaignsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listDiscoverCampaigns>>,
+  TError = ErrorType<ErrorResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listDiscoverCampaigns>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListDiscoverCampaignsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listDiscoverCampaigns>>
+  > = ({ signal }) => listDiscoverCampaigns({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listDiscoverCampaigns>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListDiscoverCampaignsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listDiscoverCampaigns>>
+>;
+export type ListDiscoverCampaignsQueryError = ErrorType<ErrorResponse>;
+
+/**
+ * @summary List safe public summaries of live fundraising campaigns
+ */
+
+export function useListDiscoverCampaigns<
+  TData = Awaited<ReturnType<typeof listDiscoverCampaigns>>,
+  TError = ErrorType<ErrorResponse>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listDiscoverCampaigns>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListDiscoverCampaignsQueryOptions(options);
 
   const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
     queryKey: QueryKey;

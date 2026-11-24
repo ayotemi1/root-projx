@@ -1253,6 +1253,27 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /discover/campaigns:
+    get:
+      operationId: listDiscoverCampaigns
+      tags: [organisations]
+      summary: List safe public summaries of live fundraising campaigns
+      responses:
+        "200":
+          description: Published live campaigns with public organisation identity
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DiscoverCampaignEntry"
+        "500":
+          description: Campaign listing unavailable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /organisations:
     get:
       operationId: listOrganisations
@@ -2009,6 +2030,64 @@ components:
       bearerFormat: JWT
 
   schemas:
+    DiscoverCampaignEntry:
+      type: object
+      required: [campaign, organisation]
+      properties:
+        organisation:
+          $ref: "#/components/schemas/DiscoverCampaignOrganisation"
+        campaign:
+          $ref: "#/components/schemas/DiscoverCampaignSummary"
+    DiscoverCampaignOrganisation:
+      type: object
+      required: [_id, name, country, city, category, sectors, verified, logo]
+      properties:
+        _id: {type: string}
+        name: {type: string}
+        country: {type: string}
+        city: {type: string}
+        category: {type: string}
+        sectors: {type: array, items: {type: string}}
+        categories: {type: array, items: {type: string}}
+        verified: {type: boolean}
+        logo: {type: [string, "null"]}
+    DiscoverCampaignSummary:
+      type: object
+      required: [_id, name, description, imageUrl, amountRaised, goal, status, type, currency, enabled, deadline, createdAt, updatedAt, sharePath, volunteersNeeded, phases]
+      properties:
+        _id: {type: string}
+        publicId: {type: string}
+        name: {type: string}
+        description: {type: string}
+        imageUrl: {type: [string, "null"]}
+        amountRaised: {type: number}
+        goal: {type: number}
+        status: {type: string, enum: [active]}
+        type: {type: string, enum: [fundraising]}
+        currency: {type: string, enum: [gbp, usd]}
+        enabled: {type: boolean}
+        deadline: {type: [string, "null"]}
+        createdAt: {type: string}
+        updatedAt: {type: string}
+        sharePath: {type: string}
+        volunteersNeeded: {type: number}
+        phases: {type: array, items: {type: object}}
+        theme:
+          type: object
+          properties:
+            primaryColor: {type: string}
+            accentColor: {type: string}
+            backgroundColor: {type: string}
+            textColor: {type: string}
+        partnerFunding:
+          type: [object, "null"]
+          properties:
+            amount: {type: number}
+            funderName: {type: string}
+            type: {type: string, enum: [committed, matching]}
+            matchRatio: {type: number}
+            matchCap: {type: number}
+        partnerFundingMatchedGbp: {type: number}
     EmailJobStatus:
       type: object
       required: [configured, endpoint, lastRunAt, lastRunFailed]

@@ -5,6 +5,92 @@
  * Root ProjX API — community giving platform
  * OpenAPI spec version: 0.1.0
  */
+export interface DiscoverCampaignOrganisation {
+  _id: string;
+  name: string;
+  country: string;
+  city: string;
+  category: string;
+  sectors: string[];
+  categories?: string[];
+  verified: boolean;
+  /** @nullable */
+  logo: string | null;
+}
+
+export type DiscoverCampaignSummaryStatus =
+  (typeof DiscoverCampaignSummaryStatus)[keyof typeof DiscoverCampaignSummaryStatus];
+
+export const DiscoverCampaignSummaryStatus = {
+  active: "active",
+} as const;
+
+export type DiscoverCampaignSummaryType =
+  (typeof DiscoverCampaignSummaryType)[keyof typeof DiscoverCampaignSummaryType];
+
+export const DiscoverCampaignSummaryType = {
+  fundraising: "fundraising",
+} as const;
+
+export type DiscoverCampaignSummaryCurrency =
+  (typeof DiscoverCampaignSummaryCurrency)[keyof typeof DiscoverCampaignSummaryCurrency];
+
+export const DiscoverCampaignSummaryCurrency = {
+  gbp: "gbp",
+  usd: "usd",
+} as const;
+
+export type DiscoverCampaignSummaryPhasesItem = { [key: string]: unknown };
+
+export type DiscoverCampaignSummaryTheme = {
+  primaryColor?: string;
+  accentColor?: string;
+  backgroundColor?: string;
+  textColor?: string;
+};
+
+/**
+ * @nullable
+ */
+export type DiscoverCampaignSummaryPartnerFunding = {
+  amount?: number;
+  funderName?: string;
+  type?: "committed" | "matching";
+  matchRatio?: number;
+  matchCap?: number;
+} | null;
+
+export interface DiscoverCampaignSummary {
+  _id: string;
+  publicId?: string;
+  name: string;
+  description: string;
+  /** @nullable */
+  imageUrl: string | null;
+  amountRaised: number;
+  goal: number;
+  status: DiscoverCampaignSummaryStatus;
+  type: DiscoverCampaignSummaryType;
+  currency: DiscoverCampaignSummaryCurrency;
+  enabled: boolean;
+  /** @nullable */
+  deadline: string | null;
+  createdAt: string;
+  updatedAt: string;
+  sharePath: string;
+  volunteersNeeded: number;
+  phases: DiscoverCampaignSummaryPhasesItem[];
+  theme?: DiscoverCampaignSummaryTheme;
+  /** @nullable */
+  partnerFunding?: DiscoverCampaignSummaryPartnerFunding;
+  partnerFundingMatchedGbp?: number;
+}
+
+export interface DiscoverCampaignEntry {
+  organisation: DiscoverCampaignOrganisation;
+  campaign: DiscoverCampaignSummary;
+}
+
 export interface EmailJobStatus {
   configured: boolean;
   endpoint: string;

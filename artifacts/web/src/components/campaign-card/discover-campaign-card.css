@@ -4,11 +4,12 @@
 .dcc-media { display: block; aspect-ratio: 1 / 1; background: var(--dcc-sand); border-bottom: 2px solid var(--dcc-ink); overflow: hidden; }
 .dcc-media img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .4s ease; }
 a.dcc-media:hover img { transform: scale(1.03); }
-.dcc-fallback { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: var(--dcc-ink); color: var(--dcc-y);
-  font-family: var(--font-display); font-weight: 900; font-stretch: 75%; font-size: 56px; }
+.dcc-fallback { width: 100%; height: 100%; display: flex; align-items: flex-end; padding: 16px; background: var(--dcc-ink); color: #FBF8F2;
+  font-family: var(--font-display); font-weight: 900; font-stretch: 72%; font-variation-settings: "wdth" 72; text-transform: uppercase;
+  font-size: clamp(26px, 3vw, 34px); line-height: .9; overflow-wrap: anywhere; text-shadow: 0 1px 0 rgba(23,16,15,.25); }
 .dcc-body { padding: 14px; display: flex; flex-direction: column; gap: 8px; flex: 1; }
 .dcc-name { font-family: var(--font-display); font-weight: 900; font-stretch: 70%; font-variation-settings: "wdth" 70; text-transform: uppercase;
-  font-size: 24px; line-height: .95; color: inherit; text-decoration: none; overflow-wrap: anywhere; }
+  font-size: 28px; line-height: .92; color: inherit; text-decoration: none; overflow-wrap: anywhere; }
 a.dcc-name:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dcc-org { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: inherit; text-decoration: none; min-width: 0; }
 .dcc-org-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -19,6 +20,7 @@ a.dcc-name:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dcc-bar > div { height: 100%; background: var(--dcc-y); transform-origin: left; }
 .dcc-meta { margin: 0; font-size: 13px; color: var(--dcc-mut); }
 .dcc-meta b { color: var(--dcc-ink); }
+.dcc-ends { margin: -4px 0 0; font-family: var(--app-font-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--dcc-mut); }
 .dcc-donate { margin-top: auto; min-height: 44px; border: 1.5px solid var(--dcc-ink); background: var(--dcc-y); color: var(--dcc-ink); font-weight: 700; font-size: 15px;
   display: inline-flex; align-items: center; justify-content: center; cursor: pointer; border-radius: 0; }
 .dcc-donate:hover { background: #F6CB4E; }

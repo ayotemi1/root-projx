@@ -4,6 +4,8 @@ import { campaignPatch, campaignForEditor, campaignPublishGates, CampaignInputEr
 import { publicDrumExperience, canUseDrumExperience, assertDrumExperienceAccess } from "../lib/drum-experience.js";
 import { campaignSupporters } from "../lib/campaign-supporters.js";
 import { campaignPresentation } from "../lib/campaign-presentation.js";
+import { ListDiscoverCampaignsResponse } from "@workspace/api-zod";
+import { discoverCampaignEntries } from "../lib/discover-campaigns.js";
 import { Router } from "express";
 import multer from "multer";
 import { fsGet, fsPatch, fsList, fsQuery, fsCreate, fsMutateCampaigns, getServerToken } from "../lib/firebase-rest.js";
@@ -141,6 +143,18 @@ router.post(
     }
   },
 );
+
+router.get("/discover/campaigns", async (req, res): Promise<void> => {
+  try {
+    const token = await getServerToken();
+    // A single collection query avoids fsList's first-page cap and per-card reads.
+    const orgs = await fsQuery("organisations", [], token);
+    res.json(ListDiscoverCampaignsResponse.parse(discoverCampaignEntries(orgs)));
+  } catch (err) {
+    req.log.error({ err }, "GET /discover/campaigns error");
+    res.status(500).json({ error: "Failed to fetch live campaigns" });
+  }
+});
 
 // GET /organisations — list all; optional ?category= &country= filters
 router.get("/organisations", async (req, res) => {
