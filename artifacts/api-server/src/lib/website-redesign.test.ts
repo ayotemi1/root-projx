@@ -28,7 +28,10 @@ async function page(path: string, options: { route?: string; search?: string; si
         }));
         b.onResolve({ filter: /context\/AuthContext$/ }, () => ({ path: "auth", namespace: "isolated" }));
         b.onResolve({ filter: /post-viewer\/PostViewerProvider$/ }, () => ({ path: "viewer", namespace: "viewer-presentation" }));
-        b.onLoad({ filter: /.*/, namespace: "viewer-presentation" }, () => ({ contents: "export const usePostViewer=()=>({open(){}});" }));
+        b.onLoad({ filter: /.*/, namespace: "viewer-presentation" }, () => ({
+          contents: `export const usePostViewer=()=>({open(){}});
+            export const postPath=ref=>"/posts/"+encodeURIComponent(ref.id)+"?kind="+ref.kind;`,
+        }));
         b.onLoad({ filter: /.*/, namespace: "isolated" }, () => ({
           contents: `export const useAuth=()=>({user:${options.signedIn ? '{id:"fixture",name:"Fixture Supporter",accountType:"supporter"}' : "null"},token:${options.signedIn ? '"fixture-token"' : "null"},isAuthenticated:${!!options.signedIn},isLoading:false,login:async()=>{throw new Error('Not called during rendering')}});`,
         }));

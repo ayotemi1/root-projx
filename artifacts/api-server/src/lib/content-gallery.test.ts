@@ -92,7 +92,8 @@ test("public content gallery renders real cards, filters and distinct failure/em
   assert.match(html, /filter-content-photos/);
   assert.match(html, /filter-content-links/);
   assert.match(html, /grid-cols-3 gap-1/);
-  assert.match(html, /aspect-square/);
+  assert.match(html, /aspect-\[4\/5\]/);
+  assert.doesNotMatch(html, /aspect-square/);
   assert.doesNotMatch(html, /<iframe/);
   assert.match(render({ isError: true }), /role="alert"/);
   assert.match(render({ isLoading: true }), /status-content-loading/);

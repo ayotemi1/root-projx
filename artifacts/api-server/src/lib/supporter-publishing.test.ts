@@ -29,14 +29,27 @@ async function fixture() {
         b.onResolve({ filter: /(?:^|\/)(auth|firebase-rest|objectStorage)\.js$/ }, a =>
           ({ path: a.path.split("/").pop()!, namespace: "fixture" }));
         b.onLoad({ filter: /.*/, namespace: "fixture" }, a => ({
-          loader: "js",
+          loader: "js", resolveDir: new URL("./", import.meta.url).pathname,
           contents: a.path === "state" ? `
             export const state={docs:new Map(),writes:[],fail:false,failCommit:false,objects:new Map()};
           ` : a.path === "auth.js" ? `
+            import{state}from"fixture:state";
+            import{organisationAccessDecision}from"./organisation-approval.ts";
+            import{fsGet,getServerToken}from"./firebase-rest.js";
             const auth=req=>{ const id=req.headers.authorization?.replace("Bearer ","");
-              if(id)req.user={userId:id,accountType:id==="org"?"organisation":"supporter"}; };
+              const user=state.docs.get("users/"+id);
+              if(user&&!user.deletedAt)req.user={userId:id,accountType:user.accountType,approvalStatus:user.approvalStatus}; };
             export function optionalAuth(req,res,next){auth(req);next();}
             export function requireAuth(req,res,next){auth(req);if(!req.user)return res.status(401).json({error:"Sign in"});next();}
+            export async function requireApprovedOrganisation(req,res,next){
+              const decision=organisationAccessDecision(req.user?.accountType,req.user?.approvalStatus);
+              if(decision==="allow")return next();
+              if(decision==="deny")return res.status(403).json({error:"Organisation approval required"});
+              try{
+                if(await fsGet("organisations",req.user.userId,await getServerToken()))return next();
+                return res.status(403).json({error:"Organisation approval required"});
+              }catch{return res.status(503).json({error:"Could not verify organisation approval status"});}
+            }
           ` : a.path === "objectStorage.js" ? `
             import {Readable} from "node:stream";import{state}from"fixture:state";
             import {readFile} from "node:fs/promises";
@@ -88,6 +101,7 @@ async function fixture() {
   });
   api.state.docs.set("users/alice", pub("alice"));
   api.state.docs.set("users/bob", pub("bob"));
+  api.state.docs.set("users/org", { accountType: "organisation", approvalStatus: "pending" });
   const server = api.app.listen(0, "127.0.0.1");
   await new Promise<void>(resolve => server.once("listening", resolve));
   const url = `http://127.0.0.1:${(server.address() as any).port}`;
@@ -106,6 +120,31 @@ async function fixture() {
   };
   return { ...api, call, media, close: () => new Promise<void>((resolve, reject) => server.close((e: Error) => e ? reject(e) : resolve())) };
 }
+
+test("media routes retain organisation approval checks with the current permission fixture", async () => {
+  const f = await fixture();
+  try {
+    const input = { name: "photo.jpg", contentType: "image/jpeg", size: 4 };
+    assert.equal((await f.call("/supporter-posts/uploads/request", undefined, "POST", input)).status, 401);
+    assert.equal((await f.call("/supporter-posts/uploads/request", "unknown", "POST", input)).status, 401);
+    f.state.docs.set("users/declined-org", { accountType: "organisation", approvalStatus: "declined" });
+    f.state.docs.set("users/legacy-org", { accountType: "organisation" });
+    for (const user of ["org", "declined-org", "legacy-org"]) {
+      assert.equal((await f.call("/supporter-posts/uploads/request", user, "POST", input)).status, 403);
+      assert.equal((await f.call("/supporter-posts/uploads/complete", user, "POST", { objectPath: "not-owned" })).status, 403);
+    }
+    assert.equal(f.state.writes.length, 0, "denied accounts must not stage uploads");
+    f.state.docs.set("users/approved-org", { accountType: "organisation", approvalStatus: "approved" });
+    const approved = await f.call("/supporter-posts/uploads/request", "approved-org", "POST", input);
+    assert.equal(approved.status, 200);
+    assert.match((await approved.json() as any).objectPath, /^supporter-pending\/approved-org\//);
+    f.state.docs.set("organisations/legacy-org", { name: "Existing legacy organisation" });
+    assert.equal((await f.call("/supporter-posts/uploads/request", "legacy-org", "POST", input)).status, 200);
+    f.state.fail = true;
+    assert.equal((await f.call("/supporter-posts/uploads/request", "legacy-org", "POST", input)).status, 503);
+    assert.equal(f.state.writes.length, 2);
+  } finally { await f.close(); }
+});
 
 test("text publishing rejects blank, long or media-bearing input and saves a retry-safe owner-only/private or public post", async () => {
   const f = await fixture();

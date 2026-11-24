@@ -7,6 +7,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { DRUM_LIFE_ORG_ID, DRUM_LIFE_CAMPAIGN_ID } from "./drum-experience.ts";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = path.resolve(here, "../../../web");
@@ -168,13 +169,26 @@ test("PDF-inspired campaign template uses real data and leaves sparse optional s
   assert.match(html, /Small reading circles, lasting change/);
   assert.match(html, /First paragraph\./);
   assert.match(html, /Second paragraph\./);
-  assert.match(html, /data-tour-id="campaign-accumulation"/);
+  assert.doesNotMatch(html, /data-tour-id="campaign-accumulation"/, "neutral campaigns have no hand wall or drum interaction to tour");
   assert.match(html, /data-testid="block-campaign-hero"/);
   assert.match(html, /data-testid="block-money-disclosure"/);
   assert.match(html, /data-testid="block-share"/);
   for (const absent of ["list-campaign-milestones", "list-campaign-breakdown", "list-campaign-locations", "block-campaign-video", "text-partner-funding"]) {
     assert.ok(!html.includes(`data-testid="${absent}"`), `${absent} should not render without content`);
   }
+});
+
+test("campaign accumulation walkthrough targets belong to the hand wall and authorised drum experience", async () => {
+  const { renderPage } = await load();
+  const hands = renderPage(campaign({ _id: "hov_out_of_many_hands", name: "Out of Many Hands" }), org);
+  assert.match(hands, /data-tour-id="campaign-accumulation"/);
+  assert.match(hands, /class="rc-wall"/);
+  const drums = renderPage(campaign({
+    _id: DRUM_LIFE_CAMPAIGN_ID, orgId: DRUM_LIFE_ORG_ID, name: "Drum Life",
+    currency: "usd", drumExperience: { enabled: true, updates: [] },
+  }), { ...org, _id: DRUM_LIFE_ORG_ID, name: "LifeYard" });
+  assert.match(drums, /data-tour-id="campaign-accumulation"/);
+  assert.doesNotMatch(drums, /class="rc-wall"/, "Drum Life must not inherit the hand wall");
 });
 
 test("the same campaign template disables payments and sharing in draft preview", async () => {
