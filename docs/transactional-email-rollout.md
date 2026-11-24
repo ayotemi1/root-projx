@@ -47,6 +47,21 @@ email is sent. Any previously added reset-specific credential is unused.
 
 ### Durable scheduling
 
+**Paused by the owner:** do not activate scheduling yet. Organisation gift
+frequency is Every gift only, and the daily-summary option is hidden.
+Reads override any legacy daily selection; writes reject attempts to select it.
+Daily batch preparation and queued summary delivery are disabled independently.
+Existing organisation gift-email opt-outs remain unchanged.
+The private preference audit found zero saved daily-summary selections, so no
+stored frequency changes were needed.
+Campaign-goal events are dispatched directly after a successful goal-crossing
+campaign update; they do not wait for the paused scheduler. The source marker
+and durable recipient ledger remain available for recovery and deduplication.
+The final targeted email/password-reset/webhook checks passed 98 of 98; API
+and web production builds passed. The Every gift-only update needs publication.
+
+The following instructions are retained for a future explicitly approved rollout.
+
 The website must remain a web deployment. Do not turn it into a Scheduled
 Deployment. Deploy the updated website and API normally first.
 Publishing and Scheduled Deployment activation require the owner's actions in
@@ -135,10 +150,11 @@ return HTTP 200; the admin recipient is info@rootprojx.com. The scheduler status
 reports no configured key and no recorded scheduled runs.
 
 The two explicitly requested template proofs (03 and 07) were prepared with
-clearly labelled test data and processed through the production API. Brevo
-rejected both with HTTP 401. Neither was accepted. No payment or application
-was created. Inspect Brevo's production authentication/IP rejection before
-retrying; do not infer that verifying a sender authorises the production server.
+clearly labelled test data and processed through the production API. After
+their initial HTTP 401 rejection, the owner authorised the new IPs and requested
+one retry. That single production retry processed both successfully with zero
+failures; both existing outbox records are now accepted. Acceptance is not proof
+of inbox delivery. No payment or application was created.
 
 When retrying, reuse the existing stable recipient-bound proof records. Do not
 enqueue another copy with a new proof key.
@@ -147,5 +163,5 @@ template proofs (03 and 07) through the production API's delivery processor.
 Use stable recipient-bound proof keys, clearly labelled test data, and no real
 charge or application creation. Do not substitute a Preview send for a live
 send, resend the whole sample pack, or claim inbox delivery from provider
-acceptance alone. Successful live proof delivery and schedule activation remain
-pending; a manual production processing pass is not an active schedule.
+acceptance alone. Do not resend the accepted proofs. The owner has now postponed
+schedule activation; a manual production processing pass is not an active schedule.

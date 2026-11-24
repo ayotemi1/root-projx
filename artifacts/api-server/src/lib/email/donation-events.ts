@@ -13,6 +13,7 @@ import { recordAndFulfilEmail } from "./obligations.ts";
 import { campaignFundingTotal } from "../campaign-matching.ts";
 import { emailDate, firstName, submitRenderedEmail } from "./service.ts";
 import { EMAIL_SITE_URL, emailMoney, emailPlainText, renderFinancialEmail } from "./templates.ts";
+import { DAILY_GIFT_SUMMARIES_ENABLED } from "./policy.ts";
 
 export type EmailCurrency = "gbp" | "usd";
 export function nativeDonationEmailAmounts(donation: Record<string, unknown>) {
@@ -102,7 +103,7 @@ export async function deliverDonationEmails(id: string) {
   })(), (async () => {
   if (typeof owner?.email !== "string") throw new Error("Organisation has no private notification address.");
   const preferences = await readMailPreferences(preferenceIdentity(owner.email), true);
-  if (preferences.orgGifts && preferences.giftFrequency === "daily_summary") {
+  if (DAILY_GIFT_SUMMARIES_ENABLED && preferences.orgGifts && preferences.giftFrequency === "daily_summary") {
     const dailyId = emailRecordId("daily-gift", eventId);
     await fsCreateIfAbsent("email_events", dailyId, {
       kind: "daily-gift", day: londonDay(String(donation.createdAt)), orgId, campaignId: String(donation.campaignId || "general"),

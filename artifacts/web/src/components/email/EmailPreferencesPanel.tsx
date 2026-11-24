@@ -71,14 +71,8 @@ export function EmailPreferencesPanel({ token, accessKey, first = false }: { tok
       </tbody>
     </table>
     {prefs.isOrganisation && prefs.orgGifts && (
-      <div role="radiogroup" aria-label="How often to email about new gifts" className="rpa-radios" style={{ marginTop: 14 }}>
-        {([["every_gift", "Every gift", "An email each time someone gives."], ["daily_summary", "Daily summary", "One email a day listing new gifts."]] as const).map(([v, t, s]) => (
-          <label key={v} className="rpa-radio">
-            <input type="radio" name="gift-frequency" value={v} checked={(prefs.giftFrequency ?? "every_gift") === v}
-              disabled={save.isPending} onChange={() => apply({ giftFrequency: v })} data-testid={`radio-gift-frequency-${v}`} />
-            <span><b>{t}</b><span className="rpa-hint">{s}</span></span>
-          </label>
-        ))}
+      <div className="rpa-hint" style={{ marginTop: 14 }} data-testid="status-gift-frequency-every-gift">
+        <b>Every gift</b> — An email each time someone gives.
       </div>
     )}
     <p className="rpa-hint" style={{ marginTop: 14 }}>Receipts, security and account emails are always sent.</p>

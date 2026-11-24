@@ -1,5 +1,6 @@
 import { emailRecordId, openEmail, sealEmail } from "./crypto.ts";
 import type { RenderedEmail } from "./templates.ts";
+import { DAILY_GIFT_SUMMARIES_ENABLED } from "./policy.ts";
 
 export type EmailState = "queued" | "sending" | "accepted" | "retryable" | "rejected" | "uncertain" | "suppressed" | "expired";
 export interface EmailJob {
@@ -81,6 +82,7 @@ export async function deliverEmail(
   // Template 06 is retained as a design reference only. Firebase Auth delivers
   // resets through its own SMTP configuration, including for old queued work.
   const permitted = snapshot.templateId !== "06-password-reset" &&
+    (snapshot.templateId !== "12-org-daily-summary" || DAILY_GIFT_SUMMARIES_ENABLED) &&
     (!optionalEmail(snapshot.templateId) || await canSend(snapshot, payload));
   const claimed = await store.mutate(id, job => {
     if (!["queued", "retryable"].includes(job.state) || job.nextAttemptAt > now.toISOString()) {

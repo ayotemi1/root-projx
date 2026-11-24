@@ -11,6 +11,7 @@ import { donorIdentity, firstNameLastInitial } from "../lib/campaign-supporters.
 import { campaignMatch, migrateCampaignPartnerFunding, partnerFundingFor, campaignFundingTotal } from "../lib/campaign-matching.js";
 import { donationEmailEvent } from "../lib/email/donation-events.js";
 import { stripePayoutEmailEvent } from "../lib/email/payout-events.js";
+import { campaignEmailEvent } from "../lib/email/campaign-events.js";
 
 const router = Router();
 
@@ -415,7 +416,7 @@ async function handlePaymentSuccess(
 
   if (campaignId) {
     try {
-      await fsMutateCampaigns(orgId, serverToken, orgDoc => {
+      const goalEmailPending = await fsMutateCampaigns(orgId, serverToken, orgDoc => {
       const campaigns = orgDoc.campaigns;
       if (!Array.isArray(campaigns)) throw new Error("Organisation has no campaigns array");
       const index = campaigns.findIndex((campaign: Record<string, unknown>) => campaign?._id === campaignId);
@@ -453,9 +454,17 @@ async function handlePaymentSuccess(
           partnerFundingMatchedGbp: Math.round((matchedUsed + match.matchedGbp) * 100) / 100,
         } : {}),
       };
-      return { campaigns: updatedCampaigns, result: undefined };
+      return { campaigns: updatedCampaigns, result: emailGoalPending || current.emailGoalPending === true };
       });
       log.info({ orgId, campaignId, intendedGbp }, "Updated campaign amountRaised");
+      // Dispatch only after the atomic campaign write succeeds. Goal emails
+      // are normal event mail, not dependent on the paused daily scheduler.
+      // Keep the source marker: failed preparation remains recoverable and
+      // the durable event/recipient ledger prevents duplicate sends.
+      if (goalEmailPending) {
+        try { await campaignEmailEvent(orgId, campaignId, "goal"); }
+        catch { log.error({ orgId, campaignId }, "Campaign goal email retained for recovery"); }
+      }
     } catch (campaignErr) {
       log.error({ campaignErr, orgId, campaignId }, "Campaign amountRaised update failed (non-fatal)");
     }

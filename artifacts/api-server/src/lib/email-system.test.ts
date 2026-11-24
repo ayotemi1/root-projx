@@ -9,6 +9,7 @@ const compiled = await build({
     export * from "./src/lib/email/crypto.ts"; export * from "./src/lib/email/delivery.ts";
     export * from "./src/lib/email/brevo-transport.ts";
     export * from "./src/lib/email/preferences.ts";
+    export {processDailySummaries} from "./src/lib/email/daily-summary.ts";
     export {brevoSendEmail,brevoSendRecordedEmail} from "./src/lib/brevo.ts";
     export {emailConfiguration,saveEmailConfiguration} from "./src/lib/email/service.ts";
     export {nativeDonationEmailAmounts,londonDay} from "./src/lib/email/donation-events.ts";
@@ -278,6 +279,52 @@ test("template 06 is suppressed even for previously queued work and explicit ret
   store.rows.set(entry.id, { ...store.rows.get(entry.id), state: "retryable" });
   assert.equal(await mail.deliverEmail(store, transport, entry.id, policy, now()), "suppressed");
 }));
+
+test("paused daily summaries cannot send queued mail or prepare batches, even with explicit consent", async () => withSecret(async () => {
+  const store = storeFixture();
+  const entry = await mail.enqueueEmail(store, {
+    eventKey: "previous-daily-batch", to: "owner@example.test", message: mail.renderDailySummary(summary()),
+  }, now());
+  assert.equal(await mail.deliverEmail(store, {
+    async send() { assert.fail("Paused summaries must never reach the provider"); return { messageId: "never" }; },
+  }, entry.id, policy, now()), "suppressed");
+  const before = globalThis.fetch;
+  try {
+    globalThis.fetch = async () => { throw Error("Paused batch preparation must not read or write data"); };
+    assert.deepEqual(await mail.processDailySummaries(now()), { processed: 0, failed: 0 });
+  } finally { globalThis.fetch = before; }
+}));
+
+test("Every gift overrides saved daily mode, preserves opt-outs and rejects stale daily selections", async () => {
+  const result = await build({
+    stdin: { contents: 'export * from "./src/lib/email/preferences.ts";', resolveDir: new URL("../../", import.meta.url).pathname },
+    bundle: true, write: false, platform: "node", format: "cjs", packages: "external", loader: { ".html": "text" },
+    plugins: [{ name: "private-preference-fixture", setup(b) {
+      b.onResolve({ filter: /\/firebase-rest\.ts$/ }, () => ({ path: "store", namespace: "preference-fixture" }));
+      b.onLoad({ filter: /.*/, namespace: "preference-fixture" }, () => ({ contents: `
+        let row={giftFrequency:"daily_summary",orgGifts:false,welcome:false,campaignGoals:true};
+        export const getServerToken=async()=>"fixture";
+        export const fsGet=async()=>({...row});
+        export const fsQuery=async()=>[];
+        export const fsMutateEmailState=async(c,id,token,decide)=>{const d=decide({...row});Object.assign(row,d.patch);return d.result;};` }));
+    } }],
+  });
+  const mod = { exports: {} as any };
+  new Function("require", "module", "exports", result.outputFiles[0]!.text)(createRequire(import.meta.url), mod, mod.exports);
+  const prefs = mod.exports;
+  assert.deepEqual(await prefs.readMailPreferences("fixture", true), {
+    welcome: false, campaignGoals: true, orgGifts: false, giftFrequency: "every_gift", isOrganisation: true,
+  });
+  await assert.rejects(prefs.saveMailPreferences("fixture", true, { giftFrequency: "daily_summary" }),
+    (e: any) => e.status === 400);
+  const saved = await prefs.saveMailPreferences("fixture", true, { welcome: true });
+  assert.equal(saved.giftFrequency, "every_gift");
+  assert.equal(saved.orgGifts, false);
+  assert.equal(saved.welcome, true);
+  const ui = await readFile(new URL("../../../web/src/components/email/EmailPreferencesPanel.tsx", import.meta.url), "utf8");
+  assert.match(ui, /Every gift/);
+  assert.doesNotMatch(ui, /daily_summary|Daily summary/);
+});
 
 test("Firestore email claims use version preconditions and reread after a racing claim", async () => {
   const beforeFetch = globalThis.fetch; let reads = 0; let commits = 0;

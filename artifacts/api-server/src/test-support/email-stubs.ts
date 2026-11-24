@@ -13,6 +13,7 @@ export function emailEventsStubPlugin(captureModule?: string): Plugin {
         contents: `${captureModule ? `import {state} from ${JSON.stringify(captureModule)};` : "const state={};"}
           const capture=(name,args)=>{
             if(name==="donation" && state.failEmailJournal)throw Error("Fixture email journal unavailable");
+            if(name==="campaign" && state.failCampaignEmailJournal)throw Error("Fixture campaign email journal unavailable");
             const events=state.emailEvents??=[];
             if(!events.some(e=>e.name===name && JSON.stringify(e.args)===JSON.stringify(args)))events.push({name,args});
             const source=(state.documents??state.docs)?.get("donations/"+args[0]);

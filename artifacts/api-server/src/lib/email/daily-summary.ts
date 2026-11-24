@@ -6,6 +6,7 @@ import { campaignFundingTotal } from "../campaign-matching.ts";
 import { emailPreferencesLink } from "./preferences.ts";
 import { submitRenderedEmail } from "./service.ts";
 import { EMAIL_SITE_URL, renderDailySummary, type DailyGift } from "./templates.ts";
+import { DAILY_GIFT_SUMMARIES_ENABLED } from "./policy.ts";
 
 interface DailyPayload extends DailyGift {
   email: string; orgName: string; firstName: string; campaignName: string;
@@ -13,6 +14,7 @@ interface DailyPayload extends DailyGift {
 /** Run after source recovery. A ten-minute London-midnight grace period keeps
  * an in-flight confirmed gift in the correct day's complete batch. */
 export async function processDailySummaries(now = new Date()) {
+  if (!DAILY_GIFT_SUMMARIES_ENABLED) return { processed: 0, failed: 0 };
   const today = londonDay(now.getTime() - 10 * 60_000);
   const token = await getServerToken();
   const rows = (await fsQuery("email_events", [{ field: "kind", op: "EQUAL", value: "daily-gift" }], token))

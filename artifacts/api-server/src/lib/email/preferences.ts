@@ -3,6 +3,7 @@ import { fsGet, fsMutateEmailState, fsQuery, getServerToken } from "../firebase-
 import { emailRecordId } from "./crypto.ts";
 import { normaliseEmailAddress, type EmailJob, type PrivateEmailPayload } from "./delivery.ts";
 import { EMAIL_SITE_URL } from "./templates.ts";
+import { DAILY_GIFT_SUMMARIES_ENABLED } from "./policy.ts";
 
 export type GiftFrequency = "every_gift" | "daily_summary";
 export interface MailPreferences {
@@ -46,7 +47,7 @@ export async function readMailPreferences(id: string, isOrganisation: boolean): 
     welcome: typeof row?.welcome === "boolean" ? row.welcome : defaults.welcome,
     campaignGoals: typeof row?.campaignGoals === "boolean" ? row.campaignGoals : defaults.campaignGoals,
     orgGifts: typeof row?.orgGifts === "boolean" ? row.orgGifts : defaults.orgGifts,
-    giftFrequency: row?.giftFrequency === "daily_summary" ? "daily_summary" : "every_gift",
+    giftFrequency: DAILY_GIFT_SUMMARIES_ENABLED && row?.giftFrequency === "daily_summary" ? "daily_summary" : "every_gift",
     isOrganisation,
   };
 }
@@ -56,7 +57,11 @@ export async function saveMailPreferences(
   if (!isOrganisation && (input.orgGifts !== undefined || input.giftFrequency !== undefined)) {
     throw new EmailAccessError(403, "Organisation gift settings belong to the organisation owner.");
   }
+  if (!DAILY_GIFT_SUMMARIES_ENABLED && input.giftFrequency === "daily_summary") {
+    throw new EmailAccessError(400, "Daily summaries are not available yet. New gifts are emailed individually.");
+  }
   const patch = Object.fromEntries(Object.entries(input).filter(([, v]) => v !== undefined));
+  if (isOrganisation && !DAILY_GIFT_SUMMARIES_ENABLED) patch.giftFrequency = "every_gift";
   await fsMutateEmailState("email_preferences", id, await getServerToken(), () =>
     ({ patch: { ...patch, updatedAt: new Date().toISOString() }, result: undefined }));
   return readMailPreferences(id, isOrganisation);
@@ -76,7 +81,7 @@ export async function mailPreferencePermits(job: EmailJob, payload: PrivateEmail
       });
     }
     case "12-org-new-donation": return preferences.orgGifts && preferences.giftFrequency === "every_gift";
-    case "12-org-daily-summary": return preferences.orgGifts && preferences.giftFrequency === "daily_summary";
+    case "12-org-daily-summary": return DAILY_GIFT_SUMMARIES_ENABLED && preferences.orgGifts && preferences.giftFrequency === "daily_summary";
     default: return true;
   }
 }

@@ -673,6 +673,26 @@ test("email journal failure retains a recovery marker without blocking donation 
   assert.equal(pending.emailDonationPending, true);
 });
 
+for (const failGoalEmail of [false, true]) test(`goal-crossing Checkout dispatch is scheduler-independent, replay-safe and non-financial (email journal failure: ${failGoalEmail})`, async () => {
+  const { webhooks, state } = await isolatedRouters();
+  state.failCampaignEmailJournal = failGoalEmail;
+  Object.assign(state.documents.get("organisations/test-org").campaigns[0], { goal: 12, enabled: true });
+  const event = checkoutEvent({
+    id: "pi_goal_synthetic", amount: 300, currency: "gbp", application_fee_amount: 15, metadata: {},
+  }, { orgId: "test-org", campaignId: "test-campaign", intendedGbp: "3.00", feeCovered: "false", payoutMethod: "manual" });
+  const req = { body: Buffer.from(JSON.stringify(event)), headers: { "stripe-signature": "synthetic-signature" },
+    log: { info() {}, warn() {}, error(obj: unknown) { state.errors.push(obj); } } };
+  await invoke(webhooks, "/stripe", req);
+  await invoke(webhooks, "/stripe", req);
+  assert.equal(state.documents.get("organisations/test-org").campaigns[0].amountRaised, 13);
+  assert.equal(state.documents.get("organisations/test-org").campaigns[0].emailGoalPending, true);
+  assert.deepEqual(state.emailEvents.filter((e: any) => e.name === "campaign").map((e: any) => e.args),
+    failGoalEmail ? [] : [["test-org", "test-campaign", "goal"]]);
+  assert.equal(state.emailEvents.filter((e: any) => e.name === "donation").length, 1);
+  assert.equal(state.writes.filter((w: any) => w.collection === "donations").length, 1);
+  assert.equal(state.errors.length, failGoalEmail ? 1 : 0);
+});
+
 test("expanded international card country selects international fees", async () => {
   const {webhooks, state} = await isolatedRouters();
   const event = checkoutEvent({

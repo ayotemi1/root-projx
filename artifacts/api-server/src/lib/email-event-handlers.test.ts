@@ -16,7 +16,9 @@ const modules: Record<string, string> = {
     export const getServerToken=async()=>"fixture";
     export const fsGet=async(c,id)=>structuredClone(s.docs.get(c+"/"+id)??null);
     export const fsPatch=async(c,id,p)=>s.docs.set(c+"/"+id,{...s.docs.get(c+"/"+id),...p});
-    export const fsQuery=async()=>[];
+    export const fsQuery=async(c,filters)=>[...s.docs.entries()]
+      .filter(([path,doc])=>path.startsWith(c+"/")&&filters.every(f=>doc[f.field]===f.value))
+      .map(([path,doc])=>({...structuredClone(doc),_id:path.split("/")[1]}));
     export const fsCreateIfAbsent=async(c,id,data)=>{const key=c+"/"+id;if(s.docs.has(key))return false;s.docs.set(key,structuredClone(data));return true;};`,
   "stripeClient": `export const getUncachableStripeClient=async()=>({paymentIntents:{retrieve:async()=>({
     status:"succeeded",latest_charge:{status:"succeeded",paid:true,payment_method_details:{type:"card",card:{brand:"visa",last4:"4417"}}}
@@ -31,12 +33,17 @@ const modules: Record<string, string> = {
       const key=event+":"+message.templateId+":"+to;
       if(!s.jobs.has(key))s.jobs.set(key,{to,message,event});
       return {state:"accepted",created:true};
+    };
+    export const submitTemplateEmail=async(event,templateId,to,values)=>{
+      const s=globalThis.__emailHandlerFixture,key=event+":"+templateId+":"+to;
+      if(!s.jobs.has(key))s.jobs.set(key,{event,to,message:{templateId,values}});
+      return {state:"accepted",created:true};
     };`,
   "obligations": `export const recordAndFulfilEmail=async()=>{};`,
   "fees": `export const PLATFORM_FEE_PERCENT=5;`,
 };
 const compiled = await build({
-  stdin: { contents: `export {deliverDonationEmails} from "./src/lib/email/donation-events.ts"; export {openEmail} from "./src/lib/email/crypto.ts"; export {campaignFundingTotal} from "./src/lib/campaign-matching.ts";`, resolveDir: process.cwd(), loader: "ts" },
+  stdin: { contents: `export {deliverDonationEmails} from "./src/lib/email/donation-events.ts"; export {deliverCampaignEmailEvent} from "./src/lib/email/campaign-events.ts"; export {openEmail} from "./src/lib/email/crypto.ts"; export {campaignFundingTotal} from "./src/lib/campaign-matching.ts";`, resolveDir: process.cwd(), loader: "ts" },
   bundle: true, platform: "node", format: "cjs", packages: "external", write: false,
   loader: { ".html": "text" },
   plugins: [{ name: "isolated-email-handler", setup(b) {
@@ -97,16 +104,13 @@ test("one organisation delivery failure cannot block the receipt or operational 
   fixture.failOrg = false; await mail.deliverDonationEmails("gift"); assert.equal(fixture.jobs.size, 3);
 });
 
-test("daily mode journals each gift once while retaining receipts and operational alerts", async () => {
+test("paused daily mode sends each organisation gift individually without creating daily journals", async () => {
   reset(); fixture.frequency = "daily_summary";
   await mail.deliverDonationEmails("gift"); await mail.deliverDonationEmails("gift");
-  assert.equal(fixture.jobs.size, 2);
+  assert.equal(fixture.jobs.size, 3);
   const rows = [...fixture.docs.entries()].filter(([path, value]) => path.startsWith("email_events/") && value.kind === "daily-gift");
-  assert.equal(rows.length, 1);
-  const [path, row] = rows[0]!;
-  const payload = mail.openEmail(row.encryptedPayload, path.split("/")[1]);
-  assert.equal(payload.orgReceivesMinor, 950); assert.equal(payload.giftMinor, 1000);
-  assert.equal(payload.publicDonorName, null);
+  assert.equal(rows.length, 0);
+  assert.equal([...fixture.jobs.values()].filter(job => job.message.templateId === "12-org-new-donation").length, 1);
 });
 
 test("public progress counts commitments and only actually allocated matching funds", () => {
@@ -114,4 +118,17 @@ test("public progress counts commitments and only actually allocated matching fu
   assert.equal(mail.campaignFundingTotal({ amountRaised: 6, partnerFunding: { type: "matching", amount: 100 }, partnerFundingMatchedGbp: 4 }), 10);
   assert.equal(mail.campaignFundingTotal({ amountRaised: 6, partnerFunding: { type: "matching", amount: 100 }, partnerFundingMatchedGbp: 0 }), 6);
   assert.throws(() => mail.campaignFundingTotal({ amountRaised: "unknown" }));
+});
+
+test("goal events reach both audiences once without running the paused daily worker", async () => {
+  reset();
+  const org = fixture.docs.get("organisations/org");
+  Object.assign(org.campaigns[0], { enabled: true, goal: 100, amountRaised: 100 });
+  await mail.deliverCampaignEmailEvent("org", "camp", "goal");
+  await mail.deliverCampaignEmailEvent("org", "camp", "goal");
+  assert.equal(fixture.jobs.size, 2);
+  assert.deepEqual([...fixture.jobs.values()].map(j => [j.message.templateId, j.to]).sort(), [
+    ["05-supporter-campaign-goal-reached", "donor@example.test"],
+    ["14-org-campaign-goal-reached", "owner@example.test"],
+  ]);
 });

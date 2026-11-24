@@ -34,15 +34,18 @@ Firebase Auth email settings. Preserve native expiry and single-use behaviour.
 
 Receipts, password resets and application emails are essential. Welcome,
 supporter campaign-goal and organisation new-gift emails respect email
-preferences. Organisation gift delivery defaults to every gift and also needs
-a daily-summary option; do not silently replace that with delayed individual
-messages.
+preferences. Organisation gift delivery currently uses Every gift only.
+Daily summaries must remain disabled and their option hidden until the owner
+explicitly re-enables them after setting up a durable scheduler.
 
 **Why:** The user distinguished necessary account/payment communication from
-optional updates and requested control over notification frequency.
+optional updates. On 2026-11-24 they explicitly postponed daily summaries and
+asked to switch every organisation to Every gift until scheduling is set up.
 
 **How to apply:** Keep opt-outs separate from required receipts and security
-messages. Never infer public donor identity from contact details; only use
+messages. Preserve existing organisation gift-email opt-outs when changing
+frequency. Pausing daily summaries must not pause ordinary event-triggered gift
+or campaign-goal emails. Never infer public donor identity from contact details; only use
 checkout-consented first name plus last initial, otherwise Anonymous.
 
 Daily gift summaries are a separate variant of template 12, retaining its
